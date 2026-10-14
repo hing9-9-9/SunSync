@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.ruff_cache/
+# DB / secrets
+*.db
+.env
+# Node
+node_modules/
+dist/
+# OS / IDE
+.DS_Store
+.vscode/
+.idea/
