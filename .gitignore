@@ -4,6 +4,8 @@ __pycache__/
 .venv/
 venv/
 .ruff_cache/
+.pytest_cache/
+.mypy_cache/
 # DB / secrets
 *.db
 .env

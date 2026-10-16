@@ -1,0 +1,658 @@
+{
+  "schema_version": "0.2.0",
+  "scene_id": "scene_demo_001",
+  "revision": 2,
+  "data_kind": "synthetic_fixture",
+  "created_at": "2026-10-14T00:00:00Z",
+  "units": "m",
+  "coordinate_frame": "ENU",
+  "site": {
+    "latitude_deg": 37.5,
+    "longitude_deg": 127.0,
+    "timezone": "Asia/Seoul",
+    "source": "synthetic_test_location"
+  },
+  "north_alignment": {
+    "source": "assumed",
+    "accuracy_deg": null,
+    "confirmed": true,
+    "note": "Synthetic ENU axes; not a surveyed site"
+  },
+  "room": {
+    "room_id": "room_001",
+    "name": "가상 방",
+    "floor_vertices_m": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        8,
+        0,
+        0
+      ],
+      [
+        8,
+        6,
+        0
+      ],
+      [
+        0,
+        6,
+        0
+      ]
+    ],
+    "height_m": 3.0,
+    "quality": {
+      "observation_ids": [
+        "obs_manual_room"
+      ],
+      "confirmed": true
+    }
+  },
+  "windows": [
+    {
+      "window_id": "window_001",
+      "room_id": "room_001",
+      "vertices_m": [
+        [
+          4,
+          0,
+          1
+        ],
+        [
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          0,
+          2.5
+        ],
+        [
+          4,
+          0,
+          2.5
+        ]
+      ],
+      "inward_normal": [
+        0,
+        1,
+        0
+      ],
+      "u_axis": [
+        -1,
+        0,
+        0
+      ],
+      "v_axis": [
+        0,
+        0,
+        1
+      ],
+      "azimuth_deg_true": 180.0,
+      "optical_profile_id": "optics_synthetic_scalar",
+      "quality": {
+        "observation_ids": [
+          "obs_manual_window"
+        ],
+        "confirmed": true
+      },
+      "initial_film_direct_transmittance": 1.0
+    }
+  ],
+  "occluders": [
+    {
+      "occluder_id": "shelf_001",
+      "room_id": "room_001",
+      "name": "가상 서가",
+      "kind": "cuboid",
+      "base_center_m": [
+        3,
+        3,
+        0
+      ],
+      "dimensions_m": [
+        2,
+        0.6,
+        1.8
+      ],
+      "yaw_deg_ccw_from_east": 0,
+      "material": "opaque",
+      "quality": {
+        "observation_ids": [
+          "obs_aruco_floor",
+          "obs_manual_shelf_height"
+        ],
+        "confirmed": true
+      }
+    }
+  ],
+  "protected_regions": [
+    {
+      "region_id": "region_A",
+      "room_id": "room_001",
+      "name": "서가 남쪽 전면",
+      "host_occluder_id": "shelf_001",
+      "vertices_m": [
+        [
+          2.1,
+          2.7,
+          0.2
+        ],
+        [
+          3.9,
+          2.7,
+          0.2
+        ],
+        [
+          3.9,
+          2.7,
+          1.6
+        ],
+        [
+          2.1,
+          2.7,
+          1.6
+        ]
+      ],
+      "receiving_normal": [
+        0,
+        -1,
+        0
+      ],
+      "grade": "A",
+      "policy_id": "policy_demo_001",
+      "quality": {
+        "observation_ids": [
+          "obs_aruco_floor",
+          "obs_manual_shelf_height",
+          "obs_manual_regions"
+        ],
+        "confirmed": true
+      },
+      "sample_points_m": [
+        [
+          2.1,
+          2.7,
+          0.2
+        ],
+        [
+          3.9,
+          2.7,
+          0.2
+        ],
+        [
+          3.9,
+          2.7,
+          1.6
+        ],
+        [
+          2.1,
+          2.7,
+          1.6
+        ],
+        [
+          3.0,
+          2.7,
+          0.9
+        ]
+      ]
+    },
+    {
+      "region_id": "region_B",
+      "room_id": "room_001",
+      "name": "높이 0.75 m 가상 작업면",
+      "host_occluder_id": null,
+      "vertices_m": [
+        [
+          5,
+          1,
+          0.75
+        ],
+        [
+          6.5,
+          1,
+          0.75
+        ],
+        [
+          6.5,
+          2,
+          0.75
+        ],
+        [
+          5,
+          2,
+          0.75
+        ]
+      ],
+      "receiving_normal": [
+        0,
+        0,
+        1
+      ],
+      "grade": "B",
+      "policy_id": "policy_demo_001",
+      "quality": {
+        "observation_ids": [
+          "obs_manual_regions"
+        ],
+        "confirmed": true
+      },
+      "sample_points_m": [
+        [
+          5,
+          1,
+          0.75
+        ],
+        [
+          6.5,
+          1,
+          0.75
+        ],
+        [
+          6.5,
+          2,
+          0.75
+        ],
+        [
+          5,
+          2,
+          0.75
+        ],
+        [
+          5.75,
+          1.5,
+          0.75
+        ]
+      ]
+    },
+    {
+      "region_id": "region_C",
+      "room_id": "room_001",
+      "name": "일반 바닥 구역",
+      "host_occluder_id": null,
+      "vertices_m": [
+        [
+          5,
+          4,
+          0
+        ],
+        [
+          7,
+          4,
+          0
+        ],
+        [
+          7,
+          5,
+          0
+        ],
+        [
+          5,
+          5,
+          0
+        ]
+      ],
+      "receiving_normal": [
+        0,
+        0,
+        1
+      ],
+      "grade": "C",
+      "policy_id": "policy_demo_001",
+      "quality": {
+        "observation_ids": [
+          "obs_aruco_floor"
+        ],
+        "confirmed": true
+      },
+      "sample_points_m": [
+        [
+          5,
+          4,
+          0
+        ],
+        [
+          7,
+          4,
+          0
+        ],
+        [
+          7,
+          5,
+          0
+        ],
+        [
+          5,
+          5,
+          0
+        ],
+        [
+          6.0,
+          4.5,
+          0.0
+        ]
+      ]
+    },
+    {
+      "region_id": "region_D",
+      "room_id": "room_001",
+      "name": "채광 우선 바닥 구역",
+      "host_occluder_id": null,
+      "vertices_m": [
+        [
+          0.5,
+          4,
+          0
+        ],
+        [
+          2,
+          4,
+          0
+        ],
+        [
+          2,
+          5,
+          0
+        ],
+        [
+          0.5,
+          5,
+          0
+        ]
+      ],
+      "receiving_normal": [
+        0,
+        0,
+        1
+      ],
+      "grade": "D",
+      "policy_id": "policy_demo_001",
+      "quality": {
+        "observation_ids": [
+          "obs_manual_regions"
+        ],
+        "confirmed": true
+      },
+      "sample_points_m": [
+        [
+          0.5,
+          4,
+          0
+        ],
+        [
+          2,
+          4,
+          0
+        ],
+        [
+          2,
+          5,
+          0
+        ],
+        [
+          0.5,
+          5,
+          0
+        ],
+        [
+          1.25,
+          4.5,
+          0.0
+        ]
+      ]
+    }
+  ],
+  "markers": [
+    {
+      "marker_id": "marker_floor_001",
+      "family": "aruco",
+      "dictionary": "DICT_4X4_50",
+      "code_id": 7,
+      "side_length_m": 0.2,
+      "plane": "floor",
+      "T_ENU_marker": [
+        1,
+        0,
+        0,
+        0.5,
+        0,
+        1,
+        0,
+        0.5,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "observations": [
+    {
+      "observation_id": "obs_manual_room",
+      "method": "manual",
+      "captured_at": "2026-10-14T00:00:00Z",
+      "uncertainty_m": null,
+      "confirmed": true,
+      "note": "Synthetic tape-input example: room floor and height"
+    },
+    {
+      "observation_id": "obs_manual_window",
+      "method": "manual",
+      "captured_at": "2026-10-14T00:00:00Z",
+      "uncertainty_m": null,
+      "confirmed": true,
+      "note": "Synthetic tape-input example: all window corners"
+    },
+    {
+      "observation_id": "obs_manual_shelf_height",
+      "method": "manual",
+      "captured_at": "2026-10-14T00:00:00Z",
+      "uncertainty_m": null,
+      "confirmed": true,
+      "note": "Synthetic height input: 1.8 m; not inferred from photo"
+    },
+    {
+      "observation_id": "obs_manual_regions",
+      "method": "manual",
+      "captured_at": "2026-10-14T00:00:00Z",
+      "uncertainty_m": null,
+      "confirmed": true,
+      "note": "Synthetic selected evaluation surfaces and grade assignments"
+    },
+    {
+      "observation_id": "obs_aruco_floor",
+      "method": "aruco_planar",
+      "captured_at": "2026-10-14T00:00:00Z",
+      "uncertainty_m": null,
+      "confirmed": true,
+      "note": "Synthetic floor point export; no actual image or accuracy measurement",
+      "marker_id": "marker_floor_001",
+      "plane": "floor",
+      "points_marker_m": [
+        [
+          1.5,
+          2.2,
+          0
+        ],
+        [
+          3.5,
+          2.2,
+          0
+        ],
+        [
+          3.5,
+          2.8,
+          0
+        ],
+        [
+          1.5,
+          2.8,
+          0
+        ],
+        [
+          4.5,
+          3.5,
+          0
+        ],
+        [
+          6.5,
+          3.5,
+          0
+        ],
+        [
+          6.5,
+          4.5,
+          0
+        ],
+        [
+          4.5,
+          4.5,
+          0
+        ]
+      ],
+      "points_enu_m": [
+        [
+          2,
+          2.7,
+          0
+        ],
+        [
+          4,
+          2.7,
+          0
+        ],
+        [
+          4,
+          3.3,
+          0
+        ],
+        [
+          2,
+          3.3,
+          0
+        ],
+        [
+          5,
+          4,
+          0
+        ],
+        [
+          7,
+          4,
+          0
+        ],
+        [
+          7,
+          5,
+          0
+        ],
+        [
+          5,
+          5,
+          0
+        ]
+      ],
+      "derived_fields": [
+        "shelf_001.base_center_m",
+        "shelf_001.dimensions_m[0:2]",
+        "shelf_001.yaw_deg_ccw_from_east",
+        "region_C.vertices_m"
+      ],
+      "independent_tape_error_m": null
+    }
+  ],
+  "optical_profiles": [
+    {
+      "optical_profile_id": "optics_synthetic_scalar",
+      "status": "assumed",
+      "model": "direct_scalar_transmittance",
+      "glazing_direct_transmittance": 0.8,
+      "film_min_direct_transmittance": 0.0,
+      "film_max_direct_transmittance": 1.0,
+      "actual_sgf_properties": null
+    }
+  ],
+  "policy": {
+    "policy_id": "policy_demo_001",
+    "version": "0.2.0",
+    "status": "proposal_demo_only",
+    "metric": "direct_solar_irradiance_W_m2",
+    "aggregation": "max_over_sample_points",
+    "threshold_status": "synthetic_demo_not_agreed",
+    "max_time_step_s": 10,
+    "brightening_margin_W_m2": 5,
+    "brightening_hold_s": 60,
+    "grades": {
+      "A": {
+        "rank": 1,
+        "constraint": "hard",
+        "rule": "block_geometric_direct_paths",
+        "max_direct_irradiance_W_m2": 0
+      },
+      "B": {
+        "rank": 2,
+        "constraint": "soft",
+        "rule": "intensity_cap",
+        "max_direct_irradiance_W_m2": 20
+      },
+      "C": {
+        "rank": 3,
+        "constraint": "soft",
+        "rule": "intensity_cap",
+        "max_direct_irradiance_W_m2": 80
+      },
+      "D": {
+        "rank": 4,
+        "constraint": "none",
+        "rule": "daylight_priority",
+        "max_direct_irradiance_W_m2": null
+      }
+    }
+  },
+  "scenario": {
+    "scenario_id": "scenario_demo_001",
+    "scene_revision": 2,
+    "start_time": "2026-10-14T03:00:00Z",
+    "end_time": "2026-10-14T04:00:00Z",
+    "time_step_s": 10,
+    "policy_id": "policy_demo_001",
+    "weather_id": "weather_demo_001"
+  },
+  "weather": {
+    "weather_id": "weather_demo_001",
+    "source": "synthetic",
+    "provider_hint": "open_meteo_forecast_adapter",
+    "variable": "direct_normal_irradiance_instant",
+    "unit": "W/m2",
+    "temporal_meaning": "instant",
+    "fetched_at": "2026-10-14T02:55:00Z",
+    "forecast_reference_time": null,
+    "source_updated_at": null,
+    "location_source": "scene.site",
+    "is_local_sensor": false,
+    "interpolation": "linear_estimate",
+    "max_age_s": 3600,
+    "records": [
+      {
+        "valid_time": "2026-10-14T03:00:00Z",
+        "interval_start": null,
+        "interval_end": null,
+        "dni_W_m2": 600
+      },
+      {
+        "valid_time": "2026-10-14T04:00:00Z",
+        "interval_start": null,
+        "interval_end": null,
+        "dni_W_m2": 400
+      }
+    ]
+  }
+}

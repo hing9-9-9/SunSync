@@ -1,4 +1,5 @@
-# Draft tables — FR-06 owner finalizes fields (Room, Window, Occluder, ProtectedRegion, Policy, Log)
+# Keep the draft Room table for existing databases; SceneRecord stores FR06 scenes.
 from app.models.room import Room
+from app.models.scene import SceneRecord
 
-__all__ = ["Room"]
+__all__ = ["Room", "SceneRecord"]
