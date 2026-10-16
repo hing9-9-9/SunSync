@@ -1,0 +1,1320 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "ArucoObservation": {
+      "additionalProperties": false,
+      "properties": {
+        "observation_id": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_]*$",
+          "title": "Observation Id",
+          "type": "string"
+        },
+        "method": {
+          "const": "aruco_planar",
+          "title": "Method",
+          "type": "string"
+        },
+        "captured_at": {
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})$",
+          "title": "Captured At",
+          "type": "string"
+        },
+        "uncertainty_m": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Uncertainty M"
+        },
+        "confirmed": {
+          "title": "Confirmed",
+          "type": "boolean"
+        },
+        "note": {
+          "title": "Note",
+          "type": "string"
+        },
+        "marker_id": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_]*$",
+          "title": "Marker Id",
+          "type": "string"
+        },
+        "plane": {
+          "const": "floor",
+          "title": "Plane",
+          "type": "string"
+        },
+        "points_marker_m": {
+          "items": {
+            "maxItems": 3,
+            "minItems": 3,
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array"
+          },
+          "minItems": 1,
+          "title": "Points Marker M",
+          "type": "array"
+        },
+        "points_enu_m": {
+          "items": {
+            "maxItems": 3,
+            "minItems": 3,
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array"
+          },
+          "minItems": 1,
+          "title": "Points Enu M",
+          "type": "array"
+        },
+        "derived_fields": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Derived Fields",
+          "type": "array"
+        },
+        "independent_tape_error_m": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Independent Tape Error M"
+        }
+      },
+      "required": [
+        "observation_id",
+        "method",
+        "captured_at",
+        "uncertainty_m",
+        "confirmed",
+        "note",
+        "marker_id",
+        "plane",
+        "points_marker_m",
+        "points_enu_m",
+        "derived_fields",
+        "independent_tape_error_m"
+      ],
+      "title": "ArucoObservation",
+      "type": "object"
+    },
+    "GradePolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "rank": {
+          "maximum": 4,
+          "minimum": 1,
+          "title": "Rank",
+          "type": "integer"
+        },
+        "constraint": {
+          "enum": [
+            "hard",
+            "soft",
+            "none"
+          ],
+          "title": "Constraint",
+          "type": "string"
+        },
+        "rule": {
+          "enum": [
+            "block_geometric_direct_paths",
+            "intensity_cap",
+            "daylight_priority"
+          ],
+          "title": "Rule",
+          "type": "string"
+        },
+        "max_direct_irradiance_W_m2": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Max Direct Irradiance W M2"
+        }
+      },
+      "required": [
+        "rank",
+        "constraint",
+        "rule",
+        "max_direct_irradiance_W_m2"
+      ],
+      "title": "GradePolicy",
+      "type": "object"
+    },
+    "Grades": {
+      "additionalProperties": false,
+      "properties": {
+        "A": {
+          "$ref": "#/$defs/GradePolicy",
+          "description": "Hard geometric path blocking; applies even with zero or unknown DNI."
+        },
+        "B": {
+          "$ref": "#/$defs/GradePolicy"
+        },
+        "C": {
+          "$ref": "#/$defs/GradePolicy"
+        },
+        "D": {
+          "$ref": "#/$defs/GradePolicy",
+          "description": "Daylight preference, subject to shared A/B/C film constraints."
+        }
+      },
+      "required": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "title": "Grades",
+      "type": "object"
+    },
+    "ManualObservation": {
+      "additionalProperties": false,
+      "properties": {
+        "observation_id": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_]*$",
+          "title": "Observation Id",
+          "type": "string"
+        },
+        "method": {
+          "const": "manual",
+          "title": "Method",
+          "type": "string"
+        },
+        "captured_at": {
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})$",
+          "title": "Captured At",
+          "type": "string"
+        },
+        "uncertainty_m": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Uncertainty M"
+        },
+        "confirmed": {
+          "title": "Confirmed",
+          "type": "boolean"
+        },
+        "note": {
+          "title": "Note",
+          "type": "string"
+        }
+      },
+      "required": [
+        "observation_id",
+        "method",
+        "captured_at",
+        "uncertainty_m",
+        "confirmed",
+        "note"
+      ],
+      "title": "ManualObservation",
+      "type": "object"
+    },
+    "Marker": {
+      "additionalProperties": false,
+      "properties": {
+        "marker_id": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_]*$",
+          "title": "Marker Id",
+          "type": "string"
+        },
+        "family": {
+          "const": "aruco",
+          "title": "Family",
+          "type": "string"
+        },
+        "dictionary": {
+          "const": "DICT_4X4_50",
+          "title": "Dictionary",
+          "type": "string"
+        },
+        "code_id": {
+          "exclusiveMaximum": 50,
+          "minimum": 0,
+          "title": "Code Id",
+          "type": "integer"
+        },
+        "side_length_m": {
+          "exclusiveMinimum": 0,
+          "title": "Side Length M",
+          "type": "number"
+        },
+        "plane": {
+          "const": "floor",
+          "title": "Plane",
+          "type": "string"
+        },
+        "T_ENU_marker": {
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 16,
+          "minItems": 16,
+          "title": "T Enu Marker",
+          "type": "array"
+        }
+      },
+      "required": [
+        "marker_id",
+        "family",
+        "dictionary",
+        "code_id",
+        "side_length_m",
+        "plane",
+        "T_ENU_marker"
+      ],
+      "title": "Marker",
+      "type": "object"
+    },
+    "NorthAlignment": {
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "enum": [
+            "assumed",
+            "surveyed",
+            "plan",
+            "true_heading",
+            "manual"
+          ],
+          "title": "Source",
+          "type": "string"
+        },
+        "accuracy_deg": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Accuracy Deg"
+        },
+        "confirmed": {
+          "title": "Confirmed",
+          "type": "boolean"
+        },
+        "note": {
+          "title": "Note",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source",
+        "accuracy_deg",
+        "confirmed",
+        "note"
+      ],
+      "title": "NorthAlignment",
+      "type": "object"
+    },
+    "Occluder": {
+      "additionalProperties": false,
+      "properties": {
+        "occluder_id": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_]*$",
+          "title": "Occluder Id",
+          "type": "string"
+        },
+        "room_id": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_]*$",
+          "title": "Room Id",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "kind": {
+          "const": "cuboid",
+          "title": "Kind",
+          "type": "string"
+        },
+        "base_center_m": {
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Base Center M",
+          "type": "array"
+        },
+        "dimensions_m": {
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            }
+          ],
+          "title": "Dimensions M",
+          "type": "array"
+        },
+        "yaw_deg_ccw_from_east": {
+          "title": "Yaw Deg Ccw From East",
+          "type": "number"
+        },
+        "material": {
+          "const": "opaque",
+          "title": "Material",
+          "type": "string"
+        },
+        "quality": {
+          "$ref": "#/$defs/Quality"
+        }
+      },
+      "required": [
+        "occluder_id",
+        "room_id",
+        "name",
+        "kind",
+        "base_center_m",
+        "dimensions_m",
+        "yaw_deg_ccw_from_east",
+        "material",
+        "quality"
+      ],
+      "title": "Occluder",
+      "type": "object"
+    },
+    "OpticalProfile": {
+      "additionalProperties": false,
+      "properties": {
+        "optical_profile_id": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_]*$",
+          "title": "Optical Profile Id",
+          "type": "string"
+        },
+        "status": {
+          "const": "assumed",
+          "title": "Status",
+          "type": "string"
+        },
+        "model": {
+          "const": "direct_scalar_transmittance",
+          "title": "Model",
+          "type": "string"
+        },
+        "glazing_direct_transmittance": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Glazing Direct Transmittance",
+          "type": "number"
+        },
+        "film_min_direct_transmittance": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Film Min Direct Transmittance",
+          "type": "number"
+        },
+        "film_max_direct_transmittance": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Film Max Direct Transmittance",
+          "type": "number"
+        },
+        "actual_sgf_properties": {
+          "title": "Actual Sgf Properties",
+          "type": "null"
+        }
+      },
+      "required": [
+        "optical_profile_id",
+        "status",
+        "model",
+        "glazing_direct_transmittance",
+        "film_min_direct_transmittance",
+        "film_max_direct_transmittance",
+        "actual_sgf_properties"
+      ],
+      "title": "OpticalProfile",
+      "type": "object"
+    },
+    "ProtectedRegion": {
+      "additionalProperties": false,
+      "properties": {
+        "region_id": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_]*$",
+          "title": "Region Id",
+          "type": "string"
+        },
+        "room_id": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_]*$",
+          "title": "Room Id",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "host_occluder_id": {
+          "anyOf": [
+            {
+              "pattern": "^[a-zA-Z][a-zA-Z0-9_]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Host Occluder Id"
+        },
+        "vertices_m": {
+          "items": {
+            "maxItems": 3,
+            "minItems": 3,
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array"
+          },
+          "minItems": 3,
+          "title": "Vertices M",
+          "type": "array"
+        },
+        "receiving_normal": {
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Receiving Normal",
+          "type": "array"
+        },
+        "sample_points_m": {
+          "items": {
+            "maxItems": 3,
+            "minItems": 3,
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array"
+          },
+          "minItems": 1,
+          "title": "Sample Points M",
+          "type": "array"
+        },
+        "grade": {
+          "enum": [
+            "A",
+            "B",
+            "C",
+            "D"
+          ],
+          "title": "Grade",
+          "type": "string"
+        },
+        "policy_id": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_]*$",
+          "title": "Policy Id",
+          "type": "string"
+        },
+        "quality": {
+          "$ref": "#/$defs/Quality"
+        }
+      },
+      "required": [
+        "region_id",
+        "room_id",
+        "name",
+        "vertices_m",
+        "receiving_normal",
+        "sample_points_m",
+        "grade",
+        "policy_id",
+        "quality"
+      ],
+      "title": "ProtectedRegion",
+      "type": "object"
+    },
+    "ProtectionPolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "policy_id": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_]*$",
+          "title": "Policy Id",
+          "type": "string"
+        },
+        "version": {
+          "const": "0.2.0",
+          "title": "Version",
+          "type": "string"
+        },
+        "status": {
+          "const": "proposal_demo_only",
+          "title": "Status",
+          "type": "string"
+        },
+        "metric": {
+          "const": "direct_solar_irradiance_W_m2",
+          "title": "Metric",
+          "type": "string"
+        },
+        "aggregation": {
+          "const": "max_over_sample_points",
+          "title": "Aggregation",
+          "type": "string"
+        },
+        "threshold_status": {
+          "const": "synthetic_demo_not_agreed",
+          "title": "Threshold Status",
+          "type": "string"
+        },
+        "max_time_step_s": {
+          "exclusiveMinimum": 0,
+          "title": "Max Time Step S",
+          "type": "number"
+        },
+        "brightening_margin_W_m2": {
+          "minimum": 0,
+          "title": "Brightening Margin W M2",
+          "type": "number"
+        },
+        "brightening_hold_s": {
+          "minimum": 0,
+          "title": "Brightening Hold S",
+          "type": "number"
+        },
+        "grades": {
+          "$ref": "#/$defs/Grades"
+        }
+      },
+      "required": [
+        "policy_id",
+        "version",
+        "status",
+        "metric",
+        "aggregation",
+        "threshold_status",
+        "max_time_step_s",
+        "brightening_margin_W_m2",
+        "brightening_hold_s",
+        "grades"
+      ],
+      "title": "ProtectionPolicy",
+      "type": "object"
+    },
+    "Quality": {
+      "additionalProperties": false,
+      "properties": {
+        "observation_ids": {
+          "items": {
+            "pattern": "^[a-zA-Z][a-zA-Z0-9_]*$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Observation Ids",
+          "type": "array"
+        },
+        "confirmed": {
+          "title": "Confirmed",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "observation_ids",
+        "confirmed"
+      ],
+      "title": "Quality",
+      "type": "object"
+    },
+    "Room": {
+      "additionalProperties": false,
+      "properties": {
+        "room_id": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_]*$",
+          "title": "Room Id",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "floor_vertices_m": {
+          "items": {
+            "maxItems": 3,
+            "minItems": 3,
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array"
+          },
+          "minItems": 3,
+          "title": "Floor Vertices M",
+          "type": "array"
+        },
+        "height_m": {
+          "exclusiveMinimum": 0,
+          "title": "Height M",
+          "type": "number"
+        },
+        "quality": {
+          "$ref": "#/$defs/Quality"
+        }
+      },
+      "required": [
+        "room_id",
+        "name",
+        "floor_vertices_m",
+        "height_m",
+        "quality"
+      ],
+      "title": "Room",
+      "type": "object"
+    },
+    "Scenario": {
+      "additionalProperties": false,
+      "properties": {
+        "scenario_id": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_]*$",
+          "title": "Scenario Id",
+          "type": "string"
+        },
+        "scene_revision": {
+          "maximum": 9223372036854775807,
+          "minimum": 1,
+          "title": "Scene Revision",
+          "type": "integer"
+        },
+        "start_time": {
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})$",
+          "title": "Start Time",
+          "type": "string"
+        },
+        "end_time": {
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})$",
+          "title": "End Time",
+          "type": "string"
+        },
+        "time_step_s": {
+          "exclusiveMinimum": 0,
+          "title": "Time Step S",
+          "type": "number"
+        },
+        "weather_id": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_]*$",
+          "title": "Weather Id",
+          "type": "string"
+        },
+        "policy_id": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_]*$",
+          "title": "Policy Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "scenario_id",
+        "scene_revision",
+        "start_time",
+        "end_time",
+        "time_step_s",
+        "weather_id",
+        "policy_id"
+      ],
+      "title": "Scenario",
+      "type": "object"
+    },
+    "Site": {
+      "additionalProperties": false,
+      "properties": {
+        "latitude_deg": {
+          "maximum": 90,
+          "minimum": -90,
+          "title": "Latitude Deg",
+          "type": "number"
+        },
+        "longitude_deg": {
+          "maximum": 180,
+          "minimum": -180,
+          "title": "Longitude Deg",
+          "type": "number"
+        },
+        "timezone": {
+          "title": "Timezone",
+          "type": "string"
+        },
+        "source": {
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "latitude_deg",
+        "longitude_deg",
+        "timezone",
+        "source"
+      ],
+      "title": "Site",
+      "type": "object"
+    },
+    "Weather": {
+      "additionalProperties": false,
+      "properties": {
+        "weather_id": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_]*$",
+          "title": "Weather Id",
+          "type": "string"
+        },
+        "source": {
+          "enum": [
+            "synthetic",
+            "open_meteo",
+            "pvlib_clear_sky"
+          ],
+          "title": "Source",
+          "type": "string"
+        },
+        "provider_hint": {
+          "title": "Provider Hint",
+          "type": "string"
+        },
+        "variable": {
+          "enum": [
+            "direct_normal_irradiance",
+            "direct_normal_irradiance_instant"
+          ],
+          "title": "Variable",
+          "type": "string"
+        },
+        "unit": {
+          "const": "W/m2",
+          "title": "Unit",
+          "type": "string"
+        },
+        "temporal_meaning": {
+          "enum": [
+            "instant",
+            "preceding_hour_mean"
+          ],
+          "title": "Temporal Meaning",
+          "type": "string"
+        },
+        "fetched_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Fetched At"
+        },
+        "forecast_reference_time": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Forecast Reference Time"
+        },
+        "source_updated_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Source Updated At"
+        },
+        "location_source": {
+          "const": "scene.site",
+          "title": "Location Source",
+          "type": "string"
+        },
+        "is_local_sensor": {
+          "const": false,
+          "title": "Is Local Sensor",
+          "type": "boolean"
+        },
+        "interpolation": {
+          "enum": [
+            "linear_estimate",
+            "none"
+          ],
+          "title": "Interpolation",
+          "type": "string"
+        },
+        "max_age_s": {
+          "exclusiveMinimum": 0,
+          "title": "Max Age S",
+          "type": "number"
+        },
+        "records": {
+          "items": {
+            "$ref": "#/$defs/WeatherRecord"
+          },
+          "minItems": 1,
+          "title": "Records",
+          "type": "array"
+        }
+      },
+      "required": [
+        "weather_id",
+        "source",
+        "provider_hint",
+        "variable",
+        "unit",
+        "temporal_meaning",
+        "fetched_at",
+        "forecast_reference_time",
+        "source_updated_at",
+        "location_source",
+        "is_local_sensor",
+        "interpolation",
+        "max_age_s",
+        "records"
+      ],
+      "title": "Weather",
+      "type": "object"
+    },
+    "WeatherRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "valid_time": {
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})$",
+          "title": "Valid Time",
+          "type": "string"
+        },
+        "interval_start": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Interval Start"
+        },
+        "interval_end": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Interval End"
+        },
+        "dni_W_m2": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Direct normal irradiance in W/m²; null is unknown, not zero.",
+          "title": "Dni W M2"
+        }
+      },
+      "required": [
+        "valid_time",
+        "dni_W_m2"
+      ],
+      "title": "WeatherRecord",
+      "type": "object"
+    },
+    "Window": {
+      "additionalProperties": false,
+      "properties": {
+        "window_id": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_]*$",
+          "title": "Window Id",
+          "type": "string"
+        },
+        "room_id": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_]*$",
+          "title": "Room Id",
+          "type": "string"
+        },
+        "vertices_m": {
+          "items": {
+            "maxItems": 3,
+            "minItems": 3,
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array"
+          },
+          "maxItems": 4,
+          "minItems": 4,
+          "title": "Vertices M",
+          "type": "array"
+        },
+        "inward_normal": {
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Inward Normal",
+          "type": "array"
+        },
+        "u_axis": {
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "U Axis",
+          "type": "array"
+        },
+        "v_axis": {
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "V Axis",
+          "type": "array"
+        },
+        "azimuth_deg_true": {
+          "exclusiveMaximum": 360,
+          "minimum": 0,
+          "title": "Azimuth Deg True",
+          "type": "number"
+        },
+        "optical_profile_id": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_]*$",
+          "title": "Optical Profile Id",
+          "type": "string"
+        },
+        "initial_film_direct_transmittance": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Initial Film Direct Transmittance",
+          "type": "number"
+        },
+        "quality": {
+          "$ref": "#/$defs/Quality"
+        }
+      },
+      "required": [
+        "window_id",
+        "room_id",
+        "vertices_m",
+        "inward_normal",
+        "u_axis",
+        "v_axis",
+        "azimuth_deg_true",
+        "optical_profile_id",
+        "initial_film_direct_transmittance",
+        "quality"
+      ],
+      "title": "Window",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "0.2.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "scene_id": {
+      "pattern": "^[a-zA-Z][a-zA-Z0-9_]*$",
+      "title": "Scene Id",
+      "type": "string"
+    },
+    "revision": {
+      "maximum": 9223372036854775807,
+      "minimum": 1,
+      "title": "Revision",
+      "type": "integer"
+    },
+    "data_kind": {
+      "enum": [
+        "synthetic_fixture",
+        "measured_draft"
+      ],
+      "title": "Data Kind",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})$",
+      "title": "Created At",
+      "type": "string"
+    },
+    "units": {
+      "const": "m",
+      "title": "Units",
+      "type": "string"
+    },
+    "coordinate_frame": {
+      "const": "ENU",
+      "title": "Coordinate Frame",
+      "type": "string"
+    },
+    "site": {
+      "$ref": "#/$defs/Site"
+    },
+    "north_alignment": {
+      "$ref": "#/$defs/NorthAlignment"
+    },
+    "room": {
+      "$ref": "#/$defs/Room"
+    },
+    "windows": {
+      "items": {
+        "$ref": "#/$defs/Window"
+      },
+      "title": "Windows",
+      "type": "array"
+    },
+    "occluders": {
+      "items": {
+        "$ref": "#/$defs/Occluder"
+      },
+      "title": "Occluders",
+      "type": "array"
+    },
+    "protected_regions": {
+      "items": {
+        "$ref": "#/$defs/ProtectedRegion"
+      },
+      "title": "Protected Regions",
+      "type": "array"
+    },
+    "markers": {
+      "items": {
+        "$ref": "#/$defs/Marker"
+      },
+      "title": "Markers",
+      "type": "array"
+    },
+    "observations": {
+      "items": {
+        "discriminator": {
+          "mapping": {
+            "aruco_planar": "#/$defs/ArucoObservation",
+            "manual": "#/$defs/ManualObservation"
+          },
+          "propertyName": "method"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/$defs/ManualObservation"
+          },
+          {
+            "$ref": "#/$defs/ArucoObservation"
+          }
+        ]
+      },
+      "minItems": 1,
+      "title": "Observations",
+      "type": "array"
+    },
+    "optical_profiles": {
+      "items": {
+        "$ref": "#/$defs/OpticalProfile"
+      },
+      "title": "Optical Profiles",
+      "type": "array"
+    },
+    "policy": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ProtectionPolicy"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "scenario": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Scenario"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "weather": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Weather"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    }
+  },
+  "required": [
+    "schema_version",
+    "scene_id",
+    "revision",
+    "data_kind",
+    "created_at",
+    "units",
+    "coordinate_frame",
+    "site",
+    "north_alignment",
+    "room",
+    "observations"
+  ],
+  "title": "Scene",
+  "type": "object"
+}
