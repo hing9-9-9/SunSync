@@ -13,6 +13,7 @@ from .models import (
     SolarPosition,
     Window,
 )
+from .predictor import evaluate_sample, predict_future_exposure, predict_region_exposure
 from .solar import (
     DEFAULT_DURATION_MINUTES,
     DEFAULT_INTERVAL_SECONDS,
@@ -32,6 +33,9 @@ __all__ = [
     "SolarPosition",
     "Window",
     "calculate_solar_positions",
+    "evaluate_sample",
     "make_prediction_grid",
+    "predict_future_exposure",
+    "predict_region_exposure",
     "sun_direction_enu",
 ]
