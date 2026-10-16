@@ -50,10 +50,7 @@ def test_rotated_window_frame_and_parallel_or_boundary_rays():
     hit = intersect_window((2, 2, 1.5), (-1, 0, 0), window)
     assert hit.kind is WindowIntersectionKind.HIT
     assert hit.hit is not None and hit.hit.hit_m == pytest.approx((0, 2, 1.5))
-    assert (
-        intersect_window((2, 2, 1.5), (0, -1, 0), window).kind
-        is WindowIntersectionKind.MISS
-    )
+    assert intersect_window((2, 2, 1.5), (0, -1, 0), window).kind is WindowIntersectionKind.MISS
     edge = intersect_window((2, 1, 1), (-1, 0, 0), window)
     assert edge.kind is WindowIntersectionKind.AMBIGUOUS
 

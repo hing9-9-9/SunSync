@@ -60,14 +60,10 @@ class WindowIntersection:
 
 def _window_dimensions(window: Window) -> tuple[float, float]:
     origin, u_end, _, v_end = window.vertices_m
-    return dot(subtract(u_end, origin), window.u_axis), dot(
-        subtract(v_end, origin), window.v_axis
-    )
+    return dot(subtract(u_end, origin), window.u_axis), dot(subtract(v_end, origin), window.v_axis)
 
 
-def intersect_window(
-    origin: Vector3, direction: Vector3, window: Window
-) -> WindowIntersection:
+def intersect_window(origin: Vector3, direction: Vector3, window: Window) -> WindowIntersection:
     """Intersect a ray with a front-facing window's strict inner rectangle."""
 
     if dot(window.inward_normal, direction) >= -ANGULAR_EPSILON:
@@ -123,16 +119,12 @@ def _point_in_floor(room: Room, point: Vector3) -> bool:
     return inside
 
 
-def first_room_boundary(
-    origin: Vector3, direction: Vector3, room: Room
-) -> RayHit | None:
+def first_room_boundary(origin: Vector3, direction: Vector3, room: Room) -> RayHit | None:
     """Return the nearest room wall, floor, or ceiling hit; corners are ambiguous."""
 
     hits: list[RayHit] = []
     vertices = room.floor_vertices_m
-    for index, (start, end) in enumerate(
-        zip(vertices, (*vertices[1:], vertices[0]), strict=True)
-    ):
+    for index, (start, end) in enumerate(zip(vertices, (*vertices[1:], vertices[0]), strict=True)):
         edge = subtract(end, start)
         normal = (edge[1], -edge[0], 0.0)
         denominator = dot(direction, normal)
@@ -167,13 +159,8 @@ def first_room_boundary(
         return None
     hits.sort(key=lambda hit: (hit.distance_m, hit.object_id))
     nearest = hits[0]
-    if (
-        len(hits) > 1
-        and abs(hits[1].distance_m - nearest.distance_m) <= DISTANCE_EPSILON_M
-    ):
-        return RayHit(
-            nearest.distance_m, nearest.hit_m, "boundary:ambiguous", "ambiguous"
-        )
+    if len(hits) > 1 and abs(hits[1].distance_m - nearest.distance_m) <= DISTANCE_EPSILON_M:
+        return RayHit(nearest.distance_m, nearest.hit_m, "boundary:ambiguous", "ambiguous")
     return nearest
 
 
@@ -210,9 +197,7 @@ def point_strictly_inside_cuboid(point: Vector3, cuboid: Cuboid) -> bool:
     )
 
 
-def intersect_cuboid(
-    origin: Vector3, direction: Vector3, cuboid: Cuboid
-) -> RayHit | None:
+def intersect_cuboid(origin: Vector3, direction: Vector3, cuboid: Cuboid) -> RayHit | None:
     """Return the first positive opaque intersection using a local-frame slab test."""
 
     local_origin = _localize(origin, cuboid)
@@ -224,10 +209,7 @@ def intersect_cuboid(
         local_origin, local_direction, bounds, strict=True
     ):
         if abs(component) <= ANGULAR_EPSILON:
-            if (
-                coordinate < low - DISTANCE_EPSILON_M
-                or coordinate > high + DISTANCE_EPSILON_M
-            ):
+            if coordinate < low - DISTANCE_EPSILON_M or coordinate > high + DISTANCE_EPSILON_M:
                 return None
             continue
         first = (low - coordinate) / component

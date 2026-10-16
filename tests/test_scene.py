@@ -14,7 +14,7 @@ EXAMPLE = Path(__file__).resolve().parents[1] / "docs/examples/fr06_scene_exampl
 
 @pytest.fixture
 def scene_data():
-    return json.loads(EXAMPLE.read_text())
+    return json.loads(EXAMPLE.read_text(encoding="utf-8"))
 
 
 def room_only(data):

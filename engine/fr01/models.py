@@ -18,11 +18,7 @@ Vector3: TypeAlias = tuple[float, float, float]
 
 
 def _finite_number(value: float, label: str) -> float:
-    if (
-        isinstance(value, bool)
-        or not isinstance(value, (int, float))
-        or not isfinite(value)
-    ):
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not isfinite(value):
         raise ValueError(f"{label} must be a finite number")
     return float(value)
 
@@ -116,9 +112,7 @@ class Window:
             "vertices_m",
             tuple(_vector(v, "window vertex") for v in self.vertices_m),
         )
-        object.__setattr__(
-            self, "inward_normal", _unit_vector(self.inward_normal, "inward_normal")
-        )
+        object.__setattr__(self, "inward_normal", _unit_vector(self.inward_normal, "inward_normal"))
         object.__setattr__(self, "u_axis", _unit_vector(self.u_axis, "u_axis"))
         object.__setattr__(self, "v_axis", _unit_vector(self.v_axis, "v_axis"))
 
@@ -137,13 +131,9 @@ class Cuboid:
         dimensions = _vector(self.dimensions_m, "dimensions_m")
         if any(dimension <= 0 for dimension in dimensions):
             raise ValueError("dimensions_m values must be positive")
-        object.__setattr__(
-            self, "occluder_id", _identifier(self.occluder_id, "occluder_id")
-        )
+        object.__setattr__(self, "occluder_id", _identifier(self.occluder_id, "occluder_id"))
         object.__setattr__(self, "room_id", _identifier(self.room_id, "room_id"))
-        object.__setattr__(
-            self, "base_center_m", _vector(self.base_center_m, "base_center_m")
-        )
+        object.__setattr__(self, "base_center_m", _vector(self.base_center_m, "base_center_m"))
         object.__setattr__(self, "dimensions_m", dimensions)
         object.__setattr__(
             self,
@@ -206,9 +196,7 @@ class PredictionOptions:
                 or not isinstance(value, int)
                 or not minimum <= value <= maximum
             ):
-                raise ValueError(
-                    f"{field_name} must be an integer between {minimum} and {maximum}"
-                )
+                raise ValueError(f"{field_name} must be an integer between {minimum} and {maximum}")
 
 
 @dataclass(frozen=True, slots=True)

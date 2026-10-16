@@ -29,9 +29,7 @@ from engine.fr01 import (
 def test_sun_direction_enu_cardinal_directions(elevation, azimuth, expected):
     result = sun_direction_enu(elevation, azimuth)
     assert result == pytest.approx(expected, abs=1e-12)
-    assert sqrt(sum(component * component for component in result)) == pytest.approx(
-        1.0
-    )
+    assert sqrt(sum(component * component for component in result)) == pytest.approx(1.0)
 
 
 def test_sun_direction_supports_night_and_horizon():
@@ -51,9 +49,7 @@ def test_default_grid_has_25_utc_timestamps():
 
 def test_grid_includes_non_aligned_end_once_across_date_boundary():
     start = datetime(2026, 12, 31, 23, 58, tzinfo=UTC)
-    grid = make_prediction_grid(
-        start, PredictionOptions(duration_minutes=7, interval_seconds=300)
-    )
+    grid = make_prediction_grid(start, PredictionOptions(duration_minutes=7, interval_seconds=300))
     assert grid == (
         start,
         start + timedelta(minutes=5),
@@ -120,8 +116,6 @@ def test_published_noaa_reference_fixture_for_solar_position():
     """
 
     site = Site(latitude_deg=51.4779, longitude_deg=0.0, timezone="Europe/London")
-    position = calculate_solar_positions(site, [datetime(2010, 1, 1, 12, tzinfo=UTC)])[
-        0
-    ]
+    position = calculate_solar_positions(site, [datetime(2010, 1, 1, 12, tzinfo=UTC)])[0]
     assert isclose(position.elevation_deg, 15.4, abs_tol=0.3)
     assert isclose(position.azimuth_deg_true, 179.1, abs_tol=0.5)

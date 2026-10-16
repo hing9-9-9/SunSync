@@ -20,11 +20,7 @@ SOLAR_POSITION_METHOD = "nrel_numpy"
 
 
 def _require_aware(value: datetime, label: str) -> datetime:
-    if (
-        not isinstance(value, datetime)
-        or value.tzinfo is None
-        or value.utcoffset() is None
-    ):
+    if not isinstance(value, datetime) or value.tzinfo is None or value.utcoffset() is None:
         raise ValueError(f"{label} must include a timezone offset")
     return value.astimezone(UTC)
 
@@ -72,9 +68,7 @@ def make_prediction_grid(
     if duration_seconds % options.interval_seconds:
         grid_size += 1
     if grid_size > MAX_TIMESTAMPS:
-        raise ValueError(
-            f"prediction grid exceeds the {MAX_TIMESTAMPS}-timestamp limit"
-        )
+        raise ValueError(f"prediction grid exceeds the {MAX_TIMESTAMPS}-timestamp limit")
     end = start + timedelta(minutes=options.duration_minutes)
     interval = timedelta(seconds=options.interval_seconds)
     timestamps = [start]
@@ -92,15 +86,11 @@ def calculate_solar_positions(
 ) -> tuple[SolarPosition, ...]:
     """Calculate geometric, not apparent, solar position for UTC-normalized timestamps."""
 
-    utc_timestamps = tuple(
-        _require_aware(timestamp, "timestamp") for timestamp in timestamps
-    )
+    utc_timestamps = tuple(_require_aware(timestamp, "timestamp") for timestamp in timestamps)
     if not utc_timestamps:
         return ()
     if len(utc_timestamps) > MAX_TIMESTAMPS:
-        raise ValueError(
-            f"solar calculation exceeds the {MAX_TIMESTAMPS}-timestamp limit"
-        )
+        raise ValueError(f"solar calculation exceeds the {MAX_TIMESTAMPS}-timestamp limit")
 
     frame = get_solarposition(
         pd.DatetimeIndex(utc_timestamps),

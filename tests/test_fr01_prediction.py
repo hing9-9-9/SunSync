@@ -114,13 +114,8 @@ def test_predictor_true_from_start_never_exposed_and_rejects_interior_sample():
         room(), (window(),), (), region(), (position(0, 45, SUN_SOUTH),)
     )
     assert true_from_start.exposed_at_start
-    assert (
-        true_from_start.first_predicted_exposure_time
-        == true_from_start.timeline[0].timestamp
-    )
-    never = predict_region_exposure(
-        room(), (), (), region(), (position(0, 45, SUN_SOUTH),)
-    )
+    assert true_from_start.first_predicted_exposure_time == true_from_start.timeline[0].timestamp
+    never = predict_region_exposure(room(), (), (), region(), (position(0, 45, SUN_SOUTH),))
     assert not never.timeline[0].exposed
     assert never.timeline[0].samples[0].reason is ExposureReason.NO_WINDOW
     box = Cuboid("box", "room", (3, 2, 0), (1, 1, 2), 0)

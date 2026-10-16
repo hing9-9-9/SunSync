@@ -101,9 +101,7 @@ def evaluate_sample(
         if not windows:
             return _not_exposed(sample_index, point, ExposureReason.NO_WINDOW)
         reason = (
-            ExposureReason.BOUNDARY_AMBIGUOUS
-            if window_ambiguous
-            else ExposureReason.WINDOW_MISSED
+            ExposureReason.BOUNDARY_AMBIGUOUS if window_ambiguous else ExposureReason.WINDOW_MISSED
         )
         return _not_exposed(sample_index, point, reason)
 
@@ -205,7 +203,5 @@ def predict_future_exposure(
 ) -> RegionPrediction:
     """Use Stage 1's UTC grid and pvlib positions for one region prediction."""
 
-    positions = calculate_solar_positions(
-        site, make_prediction_grid(start_time, options)
-    )
+    positions = calculate_solar_positions(site, make_prediction_grid(start_time, options))
     return predict_region_exposure(room, windows, occluders, region, positions)
