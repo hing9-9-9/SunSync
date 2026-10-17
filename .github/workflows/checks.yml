@@ -24,7 +24,7 @@ jobs:
       - run: ruff check backend tests
       - run: ruff format --check backend tests
       - run: mypy backend/app
-      - run: pytest -q
+      - run: python -m pytest -q
       - run: PYTHONPATH=backend python -m app.scene_cli schema --check
   frontend:
     runs-on: ubuntu-latest
