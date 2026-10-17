@@ -1,0 +1,8 @@
+{
+  "scenario": "mock_scene_invalid_window_geometry",
+  "kind": "invalid_window_geometry",
+  "expected": {
+    "validate_status": 422,
+    "persisted": false
+  }
+}

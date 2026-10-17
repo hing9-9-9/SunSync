@@ -4,6 +4,7 @@ import copy
 import json
 from collections.abc import Iterator
 from datetime import datetime
+from itertools import pairwise
 from pathlib import Path
 from typing import Any
 
@@ -96,6 +97,40 @@ def test_prediction_can_select_one_region_and_does_not_require_scenario_or_weath
     )
     assert response.status_code == 200, response.text
     assert [region["region_id"] for region in response.json()["regions"]] == ["region_B"]
+
+
+def test_prediction_evaluates_every_sample_at_every_requested_timestamp(client, scene_payload):
+    create_scene(client, scene_payload)
+    response = client.post(
+        f"/api/scenes/{scene_payload['scene_id']}/sunpath-predictions",
+        json=request_body(
+            duration_minutes=120,
+            interval_seconds=600,
+            protected_region_ids=["region_A"],
+            expected_scene_revision=2,
+        ),
+    )
+    assert response.status_code == 200, response.text
+    result = response.json()
+    region = result["regions"][0]
+    assert len(result["timestamps"]) == len(region["timeline"]) == 13
+    timestamp_values = [datetime.fromisoformat(value) for value in result["timestamps"]]
+    assert all(
+        (following - preceding).total_seconds() == 600
+        for preceding, following in pairwise(timestamp_values)
+    )
+    for entry in region["timeline"]:
+        assert [sample["sample_index"] for sample in entry["samples"]] == [0, 1, 2, 3, 4]
+        assert entry["exposed_sample_count"] == sum(
+            sample["status"] == "exposed" for sample in entry["samples"]
+        )
+        assert entry["status"] == ("exposed" if entry["exposed_sample_count"] else "not_exposed")
+    first_exposed_entry = next(
+        (entry for entry in region["timeline"] if entry["status"] == "exposed"), None
+    )
+    assert region["first_predicted_exposure_time"] == (
+        first_exposed_entry["timestamp"] if first_exposed_entry is not None else None
+    )
 
 
 def test_prediction_reports_not_found_revision_and_request_validation_errors(client, scene_payload):

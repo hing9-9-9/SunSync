@@ -1,158 +1,155 @@
-# FR-01 / FR-06 Mock 데이터 검증 계획
+# FR-01 / FR-06 Mock Validation 계획
 
-## 목적
+## 목적과 범위
 
-FR-06 공간 데이터 저장과 FR-01 태양 경로 예측을 사람이 읽을 수 있는 CLI 출력으로 검증한다. 이 계획의 mock Scene, 실행 보조 코드, 출력 파일은 제품 기능 코드와 명확히 분리하고, 검증이 끝나면 한 경로 단위로 안전하게 제거할 수 있어야 한다.
+이 계획은 FR-06 Scene 저장·검증과 FR-01 기하학적 직사광선 예측을 mock fixture로 end-to-end 확인하기 위한 것이다. 검증 도구는 production API 서버와 `sunsync.db`를 사용하지 않는다.
 
-이 계획은 테스트 실행, API 서버 실행, mock 파일 생성 또는 기존 코드 변경을 포함하지 않는다.
+대상은 FR-06 Scene validation/storage, FR-01 prediction timeline·sample diagnostic·window hit·blocker·최초 sampled exposure, 그리고 예측 전후 Scene JSON/revision 불변성이다. DNI, weather, optics, reflection, outdoor shading, FR-02 제어는 대상이 아니다.
 
-## 분리 원칙
+## 확인된 실제 계약
 
-- 제품 코드인 `backend/app/`, `engine/fr01/`, `frontend/`에는 mock 전용 분기, fixture 경로, CLI 출력 코드를 넣지 않는다.
-- FR-06 `Scene` schema, `SceneRecord`, 기존 API endpoint와 FR-01 prediction endpoint의 계약을 바꾸지 않는다.
-- mock 데이터는 실제 측정 데이터처럼 보이는 이름을 사용하지 않는다.
-- 출력물은 Git 추적 대상이 아니어야 하며, 하나의 전용 디렉터리만 삭제하면 정리할 수 있어야 한다.
-- 기존 `docs/examples/`는 FR-06의 공식 계약 예제이므로 새 smoke-test fixture를 추가하지 않는다.
+| 항목 | 확인된 값 |
+|---|---|
+| App factory | `app.main.create_app(database_engine: Engine | None = None)` |
+| DB 격리 | 전달한 engine으로 `init_db()` 실행 후 `get_session` dependency override |
+| Scene 검증 | `POST /api/scenes/validate`, 성공 200, 저장하지 않음 |
+| Scene 생성 | `POST /api/scenes`, 성공 201, 중복 ID 409 |
+| Prediction | `POST /api/scenes/{scene_id}/sunpath-predictions`, 성공 200 |
+| Prediction request | `start_time` 필수, `duration_minutes`, `interval_seconds`, 선택 `protected_region_ids`, `expected_scene_revision` |
+| Unknown region | 422 |
+| Revision mismatch | 409 |
+| Missing scene | 404 |
+| Response | `timestamps`, `solar_positions`, `regions[].timeline[].samples[]`, `candidate_path`, `blocker`, `first_predicted_exposure_time` |
 
-## 제안 디렉터리 구조
+runner는 `tempfile.TemporaryDirectory()` 아래의 고유 SQLite file로 engine을 만들고, 반드시 `with TestClient(create_app(engine))` 안에서만 사용한다. `app.db.engine`, `DATABASE_URL`, `sunsync.db`를 참조·수정하지 않는다.
+
+## 디렉터리와 삭제 경계
 
 ```text
 tools/
   mock_validation/
     README.md
     run_fr01_mock_validation.py
-    format_report.py
     fixtures/
-      mock_scene_south_window.json
-      mock_scene_occluder_blocked.json
-      mock_scene_no_exposure.json
-      mock_scene_invalid_geometry.json
+      valid/
+        mock_scene_clear_path.json
+        mock_scene_occluder_blocked.json
+        mock_scene_no_exposure.json
+        mock_scene_seoul_multi_sample_temporal.json
+      invalid/
+        mock_scene_invalid_window_geometry.json
 
 artifacts/
   mock_validation/
     .gitkeep
-    <run-id>/
-      request.json
-      response.json
+    <utc-run-id>-<uuid8>/
+      summary.json
       report.txt
-      stderr.txt
+      <scenario>/
+        request.json
+        response.json
+        scene_before.json
+        scene_after.json
+        failure.txt
 ```
 
-`tools/mock_validation/`은 삭제 가능한 검증 도구와 입력 fixture만 둔다. `artifacts/mock_validation/`은 실행 결과 전용이며 `.gitignore`에 등록한다. `artifacts/mock_validation/<run-id>/`의 `<run-id>`는 UTC 기준 `YYYYMMDDTHHMMSSZ` 형식을 사용한다.
+`tools/mock_validation/`, `artifacts/mock_validation/`, 이 문서는 mock validation의 전체 삭제 경계다. production source와 `docs/examples/`에는 mock fixture나 mock 분기를 추가하지 않는다.
 
-## 이름 규칙
+`artifacts/mock_validation/*`는 Git에서 무시하고 `.gitkeep`만 추적한다. run ID는 `YYYYMMDDTHHMMSSZ-<uuid8>` 형식이다. 이미 존재하는 run directory는 덮어쓰지 않고 실패한다.
 
-### 파일과 디렉터리
+## Fixture 분리와 이름 규칙
 
-- mock 관련 파일은 반드시 `mock_` 또는 `mock_validation` 접두사를 사용한다.
-- fixture 파일명은 `mock_scene_<scenario>.json` 형식을 사용한다.
-- 검증 script는 `run_fr01_mock_validation.py`처럼 동작과 mock 목적을 함께 드러낸다.
-- 제품 코드 아래에 `mock.py`, `demo.py`, `test_data.py` 같은 모호한 파일명을 만들지 않는다.
+- 모든 mock 식별자와 파일명은 `mock_` 접두사를 사용한다.
+- valid fixture는 `fixtures/valid/`에만 둔다.
+- invalid fixture는 `fixtures/invalid/`에만 둔다.
+- invalid fixture는 validate endpoint에서 422가 나와야 하며, runner는 create endpoint를 호출하지 않는다.
+- valid fixture만 validate 200 이후 create 201을 호출한다.
 
-### Scene 식별자와 객체 ID
+예시 ID: `mock_scene_clear_path`, `mock_room_main`, `mock_window_south`, `mock_occluder_blocker`, `mock_region_target`.
 
-- `scene_id`: `mock_scene_<scenario>`
-- `room_id`: `mock_room_<scenario>`
-- `window_id`: `mock_window_<orientation>`
-- `occluder_id`: `mock_occluder_<purpose>`
-- `region_id`: `mock_region_<purpose>`
-- `policy_id`, `weather_id`, `scenario_id`, `observation_id`: 모두 `mock_` 접두사 사용
+## 독립 expected oracle
 
-예:
+endpoint가 반환한 `solar_positions`, `candidate_path`, `blocker`로 expected 값을 계산하거나 갱신하지 않는다. 각 valid fixture의 별도 expected spec에는 다음을 고정한다.
 
-```json
-{
-  "scene_id": "mock_scene_south_window",
-  "room": {"room_id": "mock_room_main"},
-  "windows": [{"window_id": "mock_window_south"}],
-  "protected_regions": [{"region_id": "mock_region_target"}]
-}
-```
+1. 공개 SPA/NOAA reference의 timestamp, site, elevation, azimuth
+2. 그 독립 태양 방향과 fixture의 명시적 plane/cuboid 방정식으로 사전 계산한 교점
+3. 기대 exposure status/reason, window 또는 blocker ID, 최초 exposure timestamp
 
-## Fixture 시나리오
+| 비교 | Tolerance |
+|---|---:|
+| solar elevation | ±0.10 degree |
+| solar azimuth | ±0.10 degree |
+| ENU vector component | ±0.002 |
+| window/blocker hit coordinate | ±0.02 m |
+| ray distance | ±0.02 m |
+| exposure timestamp | 정확히 같은 ISO 8601 instant |
 
-모든 fixture는 FR-06 `Scene` schema를 통과해야 한다. geometry는 작은 정수 또는 단순 소수 좌표를 사용해 ray path를 손으로 재검증할 수 있게 만든다.
+Tolerance는 결과를 본 뒤 변경하지 않는다.
 
-| Fixture | 목적 | 기대 FR-01 결과 |
-|---|---|---|
-| `mock_scene_south_window.json` | 남향 창과 보호면의 단순한 직사광선 경로 | 적어도 하나의 sample에서 `clear_path`, `window_hit_m` 확인 |
-| `mock_scene_occluder_blocked.json` | 창과 보호면 사이 cuboid | 대상 sample에서 `occluder_blocked`, blocker ID 확인 |
-| `mock_scene_no_exposure.json` | 창 없음 또는 back-facing 보호면 | 모든 timestamp에서 미노출, 첫 노출 null |
-| `mock_scene_invalid_geometry.json` | 검증 불가 input | FR-06 저장/검증 단계에서 422 확인. DB에 저장하지 않음 |
+## Scenario
 
-weather, DNI, scenario는 FR-01 기하 경로 계산에 필요하지 않으므로 기본 fixture에서는 생략한다. 필요하면 별도 fixture를 만들되 이름에 `with_weather`를 포함한다.
+| Fixture | 독립 expected 결과 |
+|---|---|
+| `mock_scene_clear_path.json` | 단일 sample, `exposed` / `clear_path`, 지정 window ID, 사전 계산한 `window_hit_m`, 첫 grid timestamp와 같은 최초 exposure |
+| `mock_scene_occluder_blocked.json` | 같은 ray 중간의 cuboid, `not_exposed` / `occluder_blocked`, 지정 blocker ID/교점, 최초 exposure null |
+| `mock_scene_no_exposure.json` | 공개 reference에서 태양이 지평선 아래인 time, 모든 sample `sun_below_horizon`, 최초 exposure null |
+| `mock_scene_seoul_multi_sample_temporal.json` | 서울시청 인근 site, 2시간·10분 간격의 수직 보호면 3 sample. 13개 timestamp, 모든 sample의 결과·집계 count·최초 노출 시각을 확인하고, 창 높이 경계로 노출 sample 집합이 변하는지를 기하학적 불변조건으로 검증 |
+| `mock_scene_invalid_window_geometry.json` | 직사각형이 아닌 window, validate 422, persistence 호출 없음, DB record 없음 |
 
-## 실행 방식
+Endpoint의 `duration_minutes` 최소값은 1이고 grid는 종료 시각을 포함하므로, 각 geometry scenario는 60초 간격의 두 timestamp를 사용한다. oracle은 시작 timestamp의 고정 reference와 최초 exposure를 비교하고, 두 번째 timestamp는 response 구조·상태 일관성만 확인한다. 기본 range·여러 timestamp contract 검증은 별도의 request-contract scenario에서 수행한다.
 
-검증 script는 제품 서버를 별도 프로세스로 띄우지 않고, `app.main.create_app()`과 임시 SQLite database를 사용한다. 이를 통해 로컬 `sunsync.db`를 생성·수정하지 않는다.
+다중 sample scenario는 API가 반환한 태양 위치로 expected 값을 재계산하지 않는다. 독립적인 geometry invariant로 (1) 요청한 13개 UTC timestamp와 정확한 600초 간격, (2) timestamp당 세 sample의 stable index, (3) `exposed_sample_count`와 sample status의 일치, (4) region `any_sample` 집계, (5) 노출 ray의 south-window plane 교점과 aperture 내부 조건, (6) 낮은 z sample부터만 노출되는 prefix, (7) 2시간 동안 노출 sample 수 변화, (8) 시작 timestamp와 같은 최초 sampled exposure를 확인한다.
 
-각 run은 다음 순서로 수행하도록 설계한다.
+## Runner 절차
 
-1. run 전용 artifact 디렉터리를 만든다.
-2. fixture JSON을 `POST /api/scenes/validate`로 검증한다.
-3. 유효 fixture만 `POST /api/scenes`로 임시 DB에 저장한다.
-4. `POST /api/scenes/{scene_id}/sunpath-predictions`를 호출한다.
-5. request, 원본 response JSON, 사람이 읽는 `report.txt`를 artifact에 기록한다.
-6. 예측 전후 `GET /api/scenes/{scene_id}`를 비교해 Scene JSON과 revision이 변하지 않았는지 검증한다.
-7. script 종료 시 임시 DB를 dispose하고 삭제한다.
+1. 고유 temporary SQLite engine과 artifact run directory를 만든다.
+2. `with TestClient(create_app(engine))`에서 scenario를 실행한다.
+3. valid fixture는 validate 200 → create 201 → prediction 200 → Scene before/after equality 순서다.
+4. invalid fixture는 validate 422와 DB 무기록만 확인한다.
+5. actual API로 unknown region 422, duplicate region 422, revision mismatch 409, missing scene 404를 확인한다.
+6. request/response 원문은 artifact에, oracle 비교는 `summary.json`과 `report.txt`에 기록한다.
+7. 한 scenario 실패가 다른 scenario를 막지 않는다. 하나라도 실패하면 exit 1이다.
+8. temporary SQLite directory는 종료 시 제거한다. artifact만 남긴다.
 
-CLI는 기본적으로 종료 코드 0/1을 반환한다. `--verbose`일 때만 sample별 ray detail을 출력한다. JSON 응답은 stdout에 섞지 않고 `response.json`에 기록한다.
+## 출력과 실패 분류
 
-## 사람이 읽는 출력 형식
-
-`report.txt`와 stdout 기본 출력은 제품 입력의 전체 dump가 아니라 계산 결과 중심으로 구성한다.
+| 결과 | 의미 |
+|---|---|
+| `PASS` | API contract와 독립 expected oracle 모두 일치 |
+| `SETUP_FAIL` | fixture read, artifact 생성, temporary SQLite/TestClient 준비 실패 |
+| `API_FAIL` | HTTP status 또는 response 구조 불일치 |
+| `NUMERICAL_FAIL` | solar, hit coordinate, blocker, exposure timestamp가 tolerance 밖 |
 
 ```text
-FR-01 Mock Validation: PASS
-Run: 20261017T030000Z
-Fixture: mock_scene_south_window.json
+FR-01 / FR-06 mock validation
+run: 20261017T030000Z-a1b2c3d4
+database: temporary isolated SQLite
 
-Prediction result
-  timestamps evaluated: 25
-  selected regions:     1
+PASS           mock_scene_clear_path
+  status: exposed / clear_path
+  window: mock_window_south
+  hit: expected=(4.74436, 0.00, 1.86266), actual=(4.74436, 0.00, 1.86216), tolerance=0.02 m
 
-First predicted exposure
-  region:    mock_region_target
-  timestamp: 2026-10-17T03:10:00+00:00
-  sample:    0
-  window:    mock_window_south
-  hit:       (3.00, 0.00, 2.10) m
+PASS           mock_scene_invalid_window_geometry
+  validate: 422
+  persisted: false
 
-Exposure periods
-  EXPOSED      12:10–12:35 KST
-  NOT_EXPOSED  12:40–14:00 KST
-
-Diagnostics
-  clear_path:        6
-  occluder_blocked:  0
-  room_blocked:      0
-  window_missed:    19
-
-Persistence check: PASS (scene revision unchanged)
+Summary: 4 PASS, 0 SETUP_FAIL, 0 API_FAIL, 0 NUMERICAL_FAIL
 ```
 
-`--verbose` 출력에는 timestamp별 `status`, `reason`, `sample_index`, `window_id`, `window_hit_m`, blocker ID와 좌표만 추가한다. 실제 endpoint의 모든 JSON field를 반복 출력하지 않는다.
+## 실행 명령
 
-## 확인 항목
+```powershell
+$env:PYTHONPATH = "backend"
+python tools/mock_validation/run_fr01_mock_validation.py
+python tools/mock_validation/run_fr01_mock_validation.py --scenario mock_scene_clear_path --verbose
 
-- FR-06 validation이 유효 Scene을 허용하고 invalid fixture를 저장하지 않는지
-- Scene 저장·조회 결과가 fixture와 동일한지
-- FR-01 응답의 timestamp 수, UTC timestamp, 태양 position 수가 일치하는지
-- `clear_path`의 `window_id`, `window_hit_m`, 방향 벡터가 기대 fixture와 맞는지
-- `occluder_blocked`의 blocker ID와 근접 교점이 맞는지
-- `first_predicted_exposure_time`이 첫 `exposed` sample timestamp와 일치하는지
-- 노출이 없는 fixture에서 첫 노출이 null인지
-- 예측 호출이 Scene revision과 저장 JSON을 바꾸지 않는지
-- invalid request, unknown region, revision mismatch가 422/409으로 처리되는지
-
-## 정리 계획
-
-검증 종료 후 제거 대상은 다음뿐이다.
-
-```text
-tools/mock_validation/
-artifacts/mock_validation/
-docs/fr01_mock_test_plan.md
+python -m pytest -q
+python -m ruff check backend/app engine/fr01 tests tools/mock_validation
+python -m ruff format --check backend/app engine/fr01 tests tools/mock_validation
+python -m mypy backend/app engine/fr01
 ```
 
-이 범위 밖의 `backend/app/`, `engine/fr01/`, FR-06 fixture, production API contract는 mock 검증 작업에서 변경하지 않는 것이 원칙이다. mock 검증 도구를 삭제하기 전에는 artifact 중 보존할 보고서가 있는지 확인하고, 필요하면 `artifacts/mock_validation/` 밖으로 명시적으로 복사한다.
+## Production defect 보고 규칙
+
+runner 구현 중 defect가 발견되면 production source를 수정하지 않는다. 파일/함수, 재현 fixture, actual/expected response 또는 수치, 영향 범위, production 수정 필요 이유를 별도로 보고한다.

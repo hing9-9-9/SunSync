@@ -1,0 +1,21 @@
+{
+  "scenario": "mock_scene_occluder_blocked",
+  "kind": "occluder_blocked",
+  "request": {
+    "start_time": "2026-10-17T12:30:00+09:00",
+    "duration_minutes": 1,
+    "interval_seconds": 60
+  },
+  "solar_reference": {
+    "source": "Seoul fixture reference calculated with NREL SPA via pvlib",
+    "elevation_deg": 43.10955,
+    "azimuth_deg_true": 184.22020
+  },
+  "expected": {
+    "status": "not_exposed",
+    "reason": "occluder_blocked",
+    "blocker_id": "mock_occluder_blocker",
+    "blocker_hit_m": [4.97786, 0.7, 1.28179],
+    "first_predicted_exposure_time": null
+  }
+}
