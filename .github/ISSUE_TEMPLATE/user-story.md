@@ -16,7 +16,7 @@ labels: ["story"]
 - [ ] 
 
 ## Requirement
-<!-- FR-01 ~ FR-08 중 해당 번호 -->
+<!-- FR-01 ~ FR-06 중 해당 번호 -->
 FR-
 
 ## Notes

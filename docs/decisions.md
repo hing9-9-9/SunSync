@@ -12,5 +12,5 @@ One line per decision. Add a row when the team makes a decision that affects sco
 | 2026-10-21 | The film is a virtual device with fine-grained, independently switchable cells | Hardware specifications are not public | Hardware feasibility is not verified |
 | 2026-10-21 | Without weather forecasts, sunlight intensity is estimated under clear-sky conditions | Works without external data | May shade unnecessarily on cloudy days |
 | 2026-10-21 | Spatial measurement uses a QR marker shown on the window film, video capture and VO/SLAM | Measures furniture as well as the room (Daeun's design) | High implementation difficulty |
-| 2026-10-21 | FR renumbering: FR-03 = QR measurement, FR-05 = film control interface; old FR-03 and FR-05 moved to FR-09 and FR-10 | Reflect new functions and keep this term's scope as FR-01 to FR-06 | FR-03 means something different in older documents |
+| 2026-10-21 | FR renumbering: FR-03 = QR measurement, FR-05 = film control interface; the former FR-03, FR-05, FR-07 and FR-08 are removed and will be added later with new numbers | Reflect new functions and keep this term's list to FR-01 to FR-06 | FR-03 means something different in older documents |
 | 2026-10-21 | Main scenario is a library reading room; the space model stays general | Clearest motivation and evidence | Other spaces are not tested this term |
