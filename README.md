@@ -8,7 +8,7 @@ backend/   FastAPI + SQLModel + SQLite
 frontend/  React + Vite (TypeScript)
 engine/    sunlight calculation (FR-01)
 measure/   ArUco measurement (research)
-docs/      architecture, decisions (meeting notes: shared doc)
+docs/      architecture, feature list, module docs (meeting notes: shared doc)
 ```
 
 ## Setup
