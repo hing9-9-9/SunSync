@@ -1,11 +1,8 @@
-# FR-01 MVP — Codex Implementation Guide (3 Stages)
+# FR-01 MVP — Implementation Guide (3 Stages)
 
-> **Purpose:** Execute this guide in VS Code Codex, one stage at a time. This is an implementation checklist, not a design-history report.
+> **Purpose:** Implementation checklist for FR-01, one stage at a time. It is not a design-history report.
 >
-> **Working branch:** `feature/fr01-sunpath`  
-> **FR-06 reference:** `origin/feature/fr06-scene-data` (not yet merged)  
-> **Design reference:** `docs/fr01_design.md`  
-> **Communication:** Explain progress, results, and errors in **Korean**. Keep code, identifiers, comments, and docstrings in **English**.
+> **Design reference:** `docs/fr01_design.md`
 
 ## Target behavior
 
@@ -31,7 +28,7 @@ For a requested time range, calculate solar elevation/azimuth and determine whet
 
 ### Implementation instructions
 
-1. Read `docs/fr01_design.md`, especially sections 3–7, and inspect existing `engine/` conventions and dependencies. Use `git show origin/feature/fr06-scene-data:<path>` for reference only; do not switch or merge branches.
+1. Read `docs/fr01_design.md`, especially sections 3–7, and inspect existing `engine/` conventions and dependencies. Read the FR-06 Scene contract in `backend/app/schemas/scene.py` for reference only; do not modify it.
 2. Define typed, pure-Python computation DTOs for site, room, windows, cuboids, protected regions, prediction options, solar positions, sample/path/blocker results, and region/timeline results. Avoid imports from `backend`, FastAPI, SQLModel, or `app` in `engine/`. Use clear immutable or validated representations and document units.
 3. Implement timezone-aware timestamp validation and a deterministic UTC prediction grid: default 120 minutes / 300 seconds; include both endpoints, adding the end timestamp if not aligned. Default yields **25 timestamps**.
 4. Use `pvlib.solarposition.get_solarposition(..., method="nrel_numpy", altitude=0, pressure=101325)` to compute **geometric** `elevation` and `azimuth`. Record assumptions; do not use apparent elevation.
@@ -45,12 +42,6 @@ For a requested time range, calculate solar elevation/azimuth and determine whet
 - Default 25 timestamps; non-aligned end included once; invalid intervals rejected.
 - At least one independent published/reference solar-position fixture with a stated tolerance; don't assert correctness by calling the same function twice.
 - Run focused tests and available lint/type checks; report exact commands and results.
-
-### Codex prompt — Stage 1
-
-```text
-Implement Stage 1 of `fr01_implementation_guide.md` on `feature/fr01-sunpath`: pure-Python FR-01 DTOs, pvlib solar positions, UTC time grid, and focused tests. Follow `docs/fr01_design.md`. Inspect FR-06 via read-only Git commands only. Do not merge or modify FR-06, and do not implement geometry/API yet. Run tests, summarize changes and remaining issues in Korean, then stop for approval.
-```
 
 **Stage 1 exit gate:** solar module and tests pass; no FR-06 schema changes; commit only after review.
 
@@ -89,12 +80,6 @@ Implement Stage 1 of `fr01_implementation_guide.md` on `feature/fr01-sunpath`: p
 - Timeline false→true, true from start, never exposed, multiple exposure periods.
 - Verify returned coordinates, window IDs, sample indices, and stable tie-breaking.
 
-### Codex prompt — Stage 2
-
-```text
-Implement Stage 2 of `fr01_implementation_guide.md`: reverse ray casting for FR-06-compatible Window, Room, Occluder and ProtectedRegion geometry, plus the sampled-time exposure predictor. Reuse Stage 1 code and `docs/fr01_design.md`. Add analytic geometry and timeline tests. Keep engine pure Python, do not change FR-06, do not add API/frontend. Run checks and report results in Korean; stop for review.
-```
-
 **Stage 2 exit gate:** independently checkable geometry fixtures and predictor tests pass; no HTTP/DB dependency.
 
 ---
@@ -103,11 +88,7 @@ Implement Stage 2 of `fr01_implementation_guide.md`: reverse ray casting for FR-
 
 **Goal:** Expose predictions through the existing FastAPI backend, using the FR-06 Scene contract unchanged.
 
-### Prerequisite: safe integration
-
-FR-06 is not yet merged. **Do not blindly merge or cherry-pick it.** First check `git status`, current branch, remote refs, and team integration policy. Prefer working on a separate integration branch or worktree derived from an agreed base containing both features. If the FR-06 models are unavailable, **stop and ask for approval** rather than fabricating substitute backend schemas. Keep `feature/fr01-sunpath` history reviewable.
-
-### Files to implement (once FR-06 is available)
+### Files to implement
 
 - `backend/app/schemas/sunpath.py`
 - `backend/app/services/sunpath.py`
@@ -133,20 +114,13 @@ FR-06 is not yet merged. **Do not blindly merge or cherry-pick it.** First check
 - Existing FR-06 regression tests remain green, plus `pytest`, `ruff`, `mypy` and frontend checks when relevant.
 - Provide a runnable API request example, test summary, and known limitations.
 
-### Codex prompt — Stage 3
-
-```text
-Implement Stage 3 of `fr01_implementation_guide.md` after verifying that the actual FR-06 Scene models are safely available. Add a thin FastAPI adapter and POST sunpath prediction endpoint, reusing the existing Scene schema without modification. If integration requires a branch merge/worktree, explain the safest option and ask for approval before changing Git state. Add API integration tests, run regression checks, and summarize results in Korean. Do not implement FR-02 or frontend.
-```
-
 **Stage 3 exit gate:** endpoint works with real FR-06 Scene data, tests pass, and existing FR-06 behavior is unchanged.
 
 ---
 
 ## Working rules for all stages
 
-1. **One stage per Codex run.** Read this guide and `docs/fr01_design.md`, implement only the requested stage, run tests, and stop for review.
-2. Preserve the existing branch and any uncommitted work. Never silently merge, reset, or overwrite teammate files.
-3. If the guide conflicts with actual FR-06 code, identify the mismatch and ask before altering its contract.
+1. Implement one stage at a time, run its tests, and review before starting the next.
+2. Preserve existing branches and teammates' files; never silently merge, reset, or overwrite them.
+3. If this guide conflicts with the actual FR-06 code, identify the mismatch and agree on it before altering its contract.
 4. Prefer small, testable functions and deterministic analytic fixtures. Explain any necessary deviation from the design.
-5. Report in Korean: files changed, commands run, tests passed/failed, unresolved questions, and next stage readiness.
