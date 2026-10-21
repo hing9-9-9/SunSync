@@ -10,8 +10,8 @@ This term covers FR-01 to FR-06. Features outside this scope will be added later
 | FR-01 | Future sunlight path prediction | Misong Ha | FR-01 |
 | FR-02 | Selective shading decision | Heegyeong Chung | FR-02 |
 | FR-03 | QR-based spatial measurement | Daeun Lee | New |
-| FR-04 | Stable control against temporary changes | Jiyeon Kim (to be confirmed 10/28) | FR-04 |
-| FR-05 | Film control interface | Jiyeon Kim (to be confirmed 10/28) | New |
+| FR-04 | Stable control against temporary changes | - | FR-04 |
+| FR-05 | Film control interface | - | New |
 | FR-06 | Space information management | Heegyeong Chung | FR-06 |
 
 Note: in documents written before 2026-10-21, FR-03 referred to outdoor shadows.
