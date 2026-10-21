@@ -1,0 +1,21 @@
+{
+  "scenario": "mock_scene_clear_path",
+  "kind": "clear_path",
+  "request": {
+    "start_time": "2026-10-17T12:30:00+09:00",
+    "duration_minutes": 1,
+    "interval_seconds": 60
+  },
+  "solar_reference": {
+    "source": "Seoul fixture reference calculated with NREL SPA via pvlib",
+    "elevation_deg": 43.10955,
+    "azimuth_deg_true": 184.22020
+  },
+  "expected": {
+    "status": "exposed",
+    "reason": "clear_path",
+    "window_id": "mock_window_south",
+    "window_hit_m": [4.92621, 0.0, 1.93863],
+    "first_predicted_exposure_time": "2026-10-17T03:30:00+00:00"
+  }
+}

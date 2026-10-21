@@ -48,6 +48,25 @@ PYTHONPATH=backend python -m app.scene_cli schema --check
 Frontend verification: `cd frontend && npm ci && npm run lint && npm run build`.
 GitHub Actions runs the backend checks on Python 3.11/3.12 and the frontend checks.
 
+### FR-01 future sunlight path prediction
+
+FR-01 predicts geometric direct-sun paths from a stored FR-06 Scene through
+`POST /api/scenes/{scene_id}/sunpath-predictions`. It evaluates every selected
+`ProtectedRegion.sample_points_m` at each requested timestamp and returns solar
+positions, sample-level window hits or blockers, exposure counts, and the first
+sampled exposure timestamp. See the [FR-01 MVP guide](docs/fr01_design.md) and
+[API contract](docs/fr01_api.md).
+
+Run the isolated mock validation from the repository root:
+
+```powershell
+$env:PYTHONPATH = "backend"
+python tools/mock_validation/run_fr01_mock_validation.py
+python tools/mock_validation/run_fr01_mock_validation.py --scenario mock_scene_seoul_multi_sample_temporal --verbose
+```
+
+The mock runner uses a temporary SQLite database and does not open `sunsync.db`.
+
 ### Frontend
 ```bash
 cd frontend

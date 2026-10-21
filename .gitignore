@@ -9,6 +9,9 @@ venv/
 # DB / secrets
 *.db
 .env
+# Mock-validation output (keep the directory marker only)
+artifacts/mock_validation/*
+!artifacts/mock_validation/.gitkeep
 # Node
 node_modules/
 dist/

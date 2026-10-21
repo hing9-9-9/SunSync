@@ -1,0 +1,14 @@
+{
+  "scenario": "mock_scene_no_exposure",
+  "kind": "no_exposure",
+  "request": {
+    "start_time": "2026-10-17T02:00:00+09:00",
+    "duration_minutes": 1,
+    "interval_seconds": 60
+  },
+  "expected": {
+    "status": "not_exposed",
+    "reason": "sun_below_horizon",
+    "first_predicted_exposure_time": null
+  }
+}
