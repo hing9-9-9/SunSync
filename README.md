@@ -8,8 +8,16 @@ backend/   FastAPI + SQLModel + SQLite
 frontend/  React + Vite (TypeScript)
 engine/    sunlight calculation (FR-01)
 measure/   ArUco measurement (research)
-docs/      architecture, decisions (meeting notes: shared doc)
+docs/      requirements, architecture, decisions, data contracts, reports
 ```
+
+## Documents
+- [Functional requirements](docs/features.md): FR-01 to FR-06, owners and sub-requirements
+- [Decisions](docs/decisions.md): one line per team decision
+- [Architecture](docs/architecture.md): modules and data flow
+- [FR-06 space data](docs/fr06.md) and [JSON schema](docs/fr06_scene.schema.json)
+- Requirement document: `docs/reports/SunSync_Requirements.pdf`
+- Meeting notes: shared Google document (not in the repository)
 
 ## Setup
 Requirements: Python 3.11+, Node.js LTS
