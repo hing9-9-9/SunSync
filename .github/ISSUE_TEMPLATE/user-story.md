@@ -1,29 +1,23 @@
 ---
 name: User story
-about: 모든 작업 (화면, 서버, 엔진). 1~3일 안에 끝낼 수 있는 크기
-title: "[FR-0X-n] "
-labels: []
+about: 사용자 관점의 기능 단위 (1~3일 안에 끝낼 수 있는 크기)
+title: "[Story] "
+labels: ["story"]
 ---
 
 ## Story
-**As a** <!-- 누가: 사서 / 공간 관리자 -->
+**As a** <!-- 누가: 매장 관리자 / 설치 담당자 / 방문객 -->
 **I want** <!-- 무엇을 -->
 **so that** <!-- 왜 -->
 
-## Acceptance criteria
-<!-- 확인 가능한 문장으로. "~하면 ~가 된다" -->
+## Acceptance criteria (완료 조건)
+<!-- 확인 가능한 문장으로 2~4개. "~하면 ~가 보인다" -->
 - [ ] 
 - [ ] 
 
 ## Requirement
-<!-- FR-01 ~ FR-06 중 해당 번호와 세부 항목 (예: FR-02.1) -->
+<!-- FR-01 ~ FR-08 중 해당 번호 -->
 FR-
 
-## Implementation notes
-- **할 일:** 
-- **위치:** <!-- 파일·모듈 경로 -->
-- **API / 데이터:** <!-- 엔드포인트, 필드 -->
-
-## Dependencies
-- Depends on: <!-- #번호 -->
-- Blocks: <!-- #번호 -->
+## Notes
+<!-- 선택: 의존하는 이슈(#번호), 참고 자료, 화면 스케치 -->
