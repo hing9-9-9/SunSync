@@ -1,16 +1,66 @@
 # Functional Requirements
 
-Numbering follows the team's requirement list (updated 2026-10-21).
+Numbering follows the requirement document (`docs/reports/SunSync_Requirements.pdf`, updated 2026-10-21).
 This term covers FR-01 to FR-06. Features outside this scope will be added later with new numbers.
 
-| ID | Requirement | Previous ID |
-|---|---|---|
-| FR-01 | Future sunlight path prediction | FR-01 |
-| FR-02 | Selective shading by film cells | FR-02 |
-| FR-03 | QR-based spatial measurement | New |
-| FR-04 | Stable control against temporary changes | FR-04 |
-| FR-05 | Film control interface | New |
-| FR-06 | Space information management | FR-06 |
+## Overview
+
+| ID | Requirement | Owner | Previous ID |
+|---|---|---|---|
+| FR-01 | Future sunlight path prediction | Misong Ha | FR-01 |
+| FR-02 | Selective shading decision | Heegyeong Chung | FR-02 |
+| FR-03 | QR-based spatial measurement | Daeun Lee | New |
+| FR-04 | Stable control against temporary changes | Jiyeon Kim (to be confirmed 10/28) | FR-04 |
+| FR-05 | Film control interface | Jiyeon Kim (to be confirmed 10/28) | New |
+| FR-06 | Space information management | Heegyeong Chung | FR-06 |
 
 Note: in documents written before 2026-10-21, FR-03 referred to outdoor shadows.
 It now refers to QR-based spatial measurement.
+
+## Flow
+
+```
+FR-03 measure -> FR-06 store -> FR-01 predict -> FR-02 decide -> FR-04 smooth -> FR-05 apply
+                    ^                                                             |
+                    +------------- FR-05.2 shows the marker for FR-03 <-----------+
+```
+
+FR-06 is the shared contract: every other FR reads the space model from it.
+
+## Sub-requirements
+
+### FR-01 Future Sunlight Path Prediction
+- FR-01.1 Solar position for each time step from the location and a time zone-aware start time
+- FR-01.2 Direct-sun path tracing from sample points on each protected surface toward the sun
+- FR-01.3 Exposure timeline: exposure and reason per time step, first predicted exposure time
+- FR-01.4 Sunlight intensity from clear-sky conditions, replaced by forecasts such as Open-Meteo
+
+### FR-02 Selective Shading Decision
+- FR-02.1 Cell mapping: window crossing point to the film cell that contains it
+- FR-02.2 Grade-based decision; the stricter grade applies when a cell affects several areas
+- FR-02.3 Advance shading that allows for switching time, processing delay and a safety margin
+- FR-02.4 Shading schedule provided to the mobile and web applications
+
+### FR-03 QR-Based Spatial Measurement
+- FR-03.1 Marker detection and image quality check in each photo
+- FR-03.2 Camera position from the known marker size and its four corners; photos without the whole marker are rejected
+- FR-03.3 Furniture output: the camera positions of the four corner photos become the furniture corners (width, depth, position relative to the window and walls)
+
+### FR-04 Stable Control Against Temporary Changes
+- FR-04.1 Gap filling: short transparent gaps between shaded periods stay opaque
+- FR-04.2 Minimum holding time, except to strengthen protection
+- FR-04.3 Threshold margin for grades B and C (switch on above the limit, off only below a lower value)
+- FR-04.4 Edge margin: the neighboring cell is shaded when a light path crosses a cell boundary
+
+### FR-05 Film Control Interface
+- FR-05.1 Cell commands applied at the scheduled time and recorded
+- FR-05.2 Marker display on a fixed group of cells during measurement, then restore
+- FR-05.3 Replaceable device, independent of film hardware and type (PDLC or SPD)
+
+### FR-06 Space Information Management
+- FR-06.1 Space model: location, room size, zones, windows with film cell layout, furniture as boxes with a type, protected areas
+- FR-06.2 Window and marker specification
+- FR-06.3 Measurement records (manual or marker-based)
+- FR-06.4 Validation and versioning (409 on conflicting updates)
+- FR-06.5 Synchronization between the mobile and web applications
+- FR-06.6 Protection grades A to D
