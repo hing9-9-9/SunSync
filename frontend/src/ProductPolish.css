@@ -208,3 +208,18 @@
 .app.award-app .account-content .muted,
 .app.award-app .more-content .small,
 .app.award-app .more-content .muted { color: #55515f; }
+/* 2026-10-23: user asked for white web backgrounds again (no purple-tinted page/section fills). */
+.app.award-app,
+.app.award-app .ap-hero-visual,
+.app.award-app .ap-visual-controls,
+.app.award-app .ap-statement,
+.app.award-app .ap-process,
+.app.award-app .ap-guide-page,
+.app.award-app .ap-guide-page .website-guide-art,
+.app.award-app .plan-wrap,
+.app.award-app .editor-command-bar,
+.app.award-app .ap-footer { background: #fff; }
+.app.award-app .ap-process-art,
+.app.award-app .ap-process-row:hover,
+.app.award-app .award-room-visual.award-art-0 { background: #f6f6f7; }
+.app.award-app .ap-process-row:hover { border-color: #8e8a96; }

@@ -1,5 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { CSSProperties } from "react";
 import "./AwardPreview.css";
+import { GuideIllustration, StepIcon } from "./MoodIcons";
 
 const objects = [
   { name: "책장", type: "SHELVING", width: 2, depth: 0.6, height: 1.8 },
@@ -14,6 +16,14 @@ export function Arrow({ diagonal = false }: { diagonal?: boolean }) {
         stroke="currentColor"
         strokeWidth="1.5"
       />
+    </svg>
+  );
+}
+// Hand-drawn ellipse that draws itself around a primary link on hover.
+export function Scribble() {
+  return (
+    <svg className="ap-scribble" viewBox="0 0 220 72" fill="none" aria-hidden="true" preserveAspectRatio="none">
+      <path d="M150 8C96 2 22 10 8 34c-12 22 40 34 104 32 62-2 104-14 100-34C208 12 160 4 110 6" pathLength="1" />
     </svg>
   );
 }
@@ -33,6 +43,37 @@ export function SunMark() {
     </svg>
   );
 }
+// 0 at night, 1 in daylight; eases over the hour before sunrise (05-06) and after sunset (18-19).
+const smoothstep = (a: number, b: number, x: number) => {
+  const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
+  return t * t * (3 - 2 * t);
+};
+const daylight = (hour: number) => smoothstep(5, 6, hour) * (1 - smoothstep(18, 19, hour));
+// Sunlight text colour (#c2520f) blends to charcoal (#343434) as daylight fades.
+const sunInk = (d: number) =>
+  `rgb(${[[0xc2, 0x34], [0x52, 0x34], [0x0f, 0x34]].map(([a, b]) => Math.round(b + (a - b) * d)).join(",")})`;
+// Autoplay: 05:00 -> 20:00 over 14s, then 2s through the night back to 05:00.
+// Time slows while the beam reaches the shelf (16:30-18:45) so the protection scene can be read.
+const DAY_MS = 14000,
+  NIGHT_MS = 2000;
+const dayKeys = [
+  [0, 5],
+  [6000, 15.5],
+  [11500, 18.5],
+  [DAY_MS, 20],
+];
+const sceneAt = (ms: number) => {
+  const t = ms % (DAY_MS + NIGHT_MS);
+  if (t >= DAY_MS) {
+    const n = (t - DAY_MS) / NIGHT_MS;
+    return { hour: (20 + 9 * n) % 24, progress: 1 - n };
+  }
+  const k = dayKeys.findIndex(([at]) => at > t);
+  const [[t0, h0], [t1, h1]] = [dayKeys[k - 1], dayKeys[k]];
+  return { hour: h0 + ((h1 - h0) * (t - t0)) / (t1 - t0), progress: t / DAY_MS };
+};
+// The beam's far edge first overlaps the shelf footprint at about 16:30 and is gone by 18:45.
+const beamOnShelf = (hour: number) => hour >= 16.5 && hour < 18.75;
 function Room({
   hour,
   protectedOn,
@@ -56,9 +97,9 @@ function Room({
       ? Math.min(1.15, Math.max(0.7, d.height / objects[i].height))
       : 1;
     const [dx, dy] = [
-      [-45, -65],
+      [5, -94],
       [-10, -10],
-      [85, -38],
+      [-55, -75],
     ][i];
     return `translate(${dx} ${dy}) translate(${x} ${y}) scale(${sx} ${sy}) translate(${-x} ${-y})`;
   };
@@ -79,8 +120,8 @@ function Room({
           <stop offset="1" stopColor="#f3f1ed" />
         </linearGradient>
         <linearGradient id="ap-ray" x1="0" y1="0" x2="0" y2="1">
-          <stop stopColor="#fbdf98" stopOpacity=".65" />
-          <stop offset="1" stopColor="#fff0c4" stopOpacity=".15" />
+          <stop stopColor="#ff7426" stopOpacity=".34" />
+          <stop offset="1" stopColor="#ff7426" stopOpacity=".05" />
         </linearGradient>
         <filter id="ap-shadow">
           <feGaussianBlur stdDeviation="12" />
@@ -149,7 +190,7 @@ function Room({
       <path
         d={`M176 325 351 229 ${572 + shift} 358 ${389 + shift} 465Z`}
         fill="url(#ap-ray)"
-        opacity={hour < 6 || hour >= 18 ? 0 : 1}
+        opacity={daylight(hour)}
         className="ap-light"
       />
       <g
@@ -167,11 +208,12 @@ function Room({
           }
         }}
       >
+        <path d="m452 362 40-23 150 87-40 23Z" fill="#343040" opacity=".08" />
         <path d="m458 226 34-19 144 83-34 19Z" fill="#c3b8a5" />
         <path
           d="M458 226v134l144 84V309Z"
           fill={selected === 0 ? "#c7c0df" : "#c7bba7"}
-          stroke={selected === 0 ? "#6660e5" : "#a79c8a"}
+          stroke={selected === 0 ? "#b9b5ee" : "#a79c8a"}
         />
         <path d="m602 309 34-19v134l-34 20Z" fill="#aca08d" />
         {[0, 1, 2].map((n) => (
@@ -227,7 +269,7 @@ function Room({
         <path
           d="m265 343 106-59 99 57-105 61Z"
           fill={selected === 1 ? "#cbc4e5" : "#d7c9b4"}
-          stroke={selected === 1 ? "#6660e5" : "#bcae98"}
+          stroke={selected === 1 ? "#b9b5ee" : "#bcae98"}
         />
         <path
           d="M265 343v9l100 58v-8Zm100 59 105-61v9l-105 60Z"
@@ -275,7 +317,7 @@ function Room({
         <path
           d="m190 386 43-24 55 32v44l-43 24-55-32Z"
           fill={selected === 2 ? "#a99ec9" : "#a5ad9d"}
-          stroke={selected === 2 ? "#6660e5" : "#8d9687"}
+          stroke={selected === 2 ? "#b9b5ee" : "#8d9687"}
         />
         <path d="m190 386 55 32 43-24v44l-43 24v-44" fill="#8a9584" />
         <path d="M202 435v30m72-20v28" stroke="#756d63" strokeWidth="5" />
@@ -321,15 +363,60 @@ export default function AwardPreview({
   onGuide: () => void;
   embedded?: boolean;
 }) {
-  const [hour, setHour] = useState(14),
-    [protectedOn, setProtected] = useState(true),
-    [selected, setSelected] = useState(0);
+  // Reduced motion keeps the original still: 14:00 with the shelf protected.
+  const [scene, setScene] = useState<{ hour: number; progress: number } | null>(null),
+    [photoProtected, setPhotoProtected] = useState(true),
+    [selected, setSelected] = useState(0),
+    visualRef = useRef<HTMLDivElement>(null);
+  const hour = scene?.hour ?? 14,
+    protectedOn = scene ? beamOnShelf(hour) : true;
   const studio = onStart,
     openGuide = onGuide;
-  const time = `${String(hour).padStart(2, "0")}:00`;
+  const minutes = Math.floor((hour * 60) / 10) * 10;
+  const time = `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+  const day = daylight(hour);
+  useEffect(() => {
+    const el = visualRef.current;
+    const reduced = matchMedia("(prefers-reduced-motion: reduce)");
+    if (!el) return;
+    let frame = 0,
+      elapsed = 0,
+      last = 0,
+      onScreen = false;
+    const tick = (now: number) => {
+      elapsed += Math.min(100, now - (last || now));
+      last = now;
+      setScene(sceneAt(elapsed));
+      frame = requestAnimationFrame(tick);
+    };
+    const sync = () => {
+      const run = onScreen && !document.hidden && !reduced.matches;
+      if (reduced.matches) setScene(null);
+      if (run && !frame) {
+        last = 0;
+        frame = requestAnimationFrame(tick);
+      } else if (!run && frame) {
+        cancelAnimationFrame(frame);
+        frame = 0;
+      }
+    };
+    const observer = new IntersectionObserver(([e]) => {
+      onScreen = e.isIntersecting;
+      sync();
+    });
+    observer.observe(el);
+    document.addEventListener("visibilitychange", sync);
+    reduced.addEventListener("change", sync);
+    return () => {
+      observer.disconnect();
+      document.removeEventListener("visibilitychange", sync);
+      reduced.removeEventListener("change", sync);
+      cancelAnimationFrame(frame);
+    };
+  }, []);
   useEffect(() => {
     const elements = document.querySelectorAll(
-      ".ap-embedded .ap-statement,.ap-embedded .ap-photo-section,.ap-embedded .ap-process,.ap-embedded .ap-screens,.ap-embedded .ap-final",
+      ".ap-embedded .ap-statement,.ap-embedded .ap-process,.ap-embedded .ap-screens,.ap-embedded .ap-final",
     );
     const observer = new IntersectionObserver(
       (entries) =>
@@ -347,6 +434,34 @@ export default function AwardPreview({
     });
     return () => observer.disconnect();
   }, []);
+  // Photo band: one continuous, scroll-linked progress (0 = entering, 1 = leaving) instead of a class toggle.
+  useEffect(() => {
+    const photo = document.querySelector<HTMLElement>(".ap-embedded .ap-photo-section");
+    if (!photo) return;
+    const reduced = matchMedia("(prefers-reduced-motion: reduce)");
+    let frame = 0;
+    const update = () => {
+      frame = 0;
+      if (reduced.matches) {
+        photo.style.setProperty("--photo-p", "0.5");
+        return;
+      }
+      const r = photo.getBoundingClientRect();
+      const p = Math.min(1, Math.max(0, (innerHeight - r.top) / (innerHeight + r.height)));
+      photo.style.setProperty("--photo-p", p.toFixed(4));
+    };
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(update);
+    };
+    update();
+    addEventListener("scroll", schedule, { passive: true });
+    addEventListener("resize", schedule);
+    return () => {
+      removeEventListener("scroll", schedule);
+      removeEventListener("resize", schedule);
+      cancelAnimationFrame(frame);
+    };
+  }, []);
   return (
     <div className={`ap ${embedded ? "ap-embedded" : ""}`}>
       <main tabIndex={-1} id="ap-main">
@@ -355,7 +470,9 @@ export default function AwardPreview({
             <h1>
               빛은 그대로.
               <br />
-              <span>보호는 섬세하게.</span>
+              <span>
+                보호는 <mark className="ap-mark">섬세하게.</mark>
+              </span>
             </h1>
             <div className="ap-hero-note">
               <p>
@@ -366,6 +483,7 @@ export default function AwardPreview({
                 새로운 공간 경험, SunSync.
               </p>
               <button className="ap-round-link" onClick={studio}>
+                <Scribble />
                 <span>내 공간 설계하기</span>
                 <b>
                   <Arrow diagonal />
@@ -373,7 +491,15 @@ export default function AwardPreview({
               </button>
             </div>
           </div>
-          <div className="ap-hero-visual">
+          <div className="ap-hero-visual" ref={visualRef}>
+            <div className="ap-wordmark" aria-hidden="true">
+              SunSync
+            </div>
+            <div
+              className="ap-sun-glow"
+              style={{ "--sun": Math.min(1, Math.max(0, (hour - 6) / 12)), "--day": day } as CSSProperties}
+              aria-hidden="true"
+            />
             <div className="ap-visual-label">
               <span>가구를 눌러 보호할 곳을 골라 보세요</span>
             </div>
@@ -390,7 +516,7 @@ export default function AwardPreview({
                 <span className="ap-dot" />
                 <span>
                   {objects[selected].name}
-                  <small>
+                  <small key={String(protectedOn)} className="ap-fade-up">
                     {protectedOn
                       ? "선택한 영역 보호 중"
                       : "자연광이 들어오는 중"}
@@ -398,46 +524,67 @@ export default function AwardPreview({
                 </span>
               </div>
             </div>
+            <div className="ap-night" style={{ opacity: (1 - day) * 0.07 }} aria-hidden="true" />
             <div className="ap-visual-controls">
-              <div className="ap-time">
-                <SunMark />
-                <strong>{time}</strong>
+              <div className="ap-time" style={{ "--day": day } as CSSProperties}>
+                <span className="ap-time-icons" aria-hidden="true">
+                  <SunMark />
+                  <SunMark />
+                </span>
+                <strong style={{ color: sunInk(day) }}>{time}</strong>
                 <span>햇빛 미리보기</span>
+                <em className="ap-night-note" style={{ opacity: 1 - day }} aria-hidden={day > 0.5}>
+                  해가 진 시간
+                </em>
               </div>
-              <label className="ap-slider">
-                <span className="ap-sr">햇빛 확인 시간</span>
-                <span>0시</span>
-                <input
-                  type="range"
-                  min="0"
-                  max="23"
-                  value={hour}
-                  onChange={(e) => setHour(Number(e.target.value))}
-                />
-                <span>23시</span>
-              </label>
-              <button
-                className={`ap-toggle ${protectedOn ? "on" : ""}`}
-                role="switch"
-                aria-checked={protectedOn}
-                onClick={() => setProtected(!protectedOn)}
-              >
+              <div className="ap-slider ap-progress" aria-hidden="true">
+                <span>05시</span>
+                <i>
+                  <b style={{ transform: `scaleX(${scene?.progress ?? 0.6})` }} />
+                </i>
+                <span>20시</span>
+              </div>
+              <div className={`ap-toggle ${protectedOn ? "on" : ""}`} aria-hidden="true">
                 <span>부분 차단</span>
                 <i>
                   <b />
                 </i>
-              </button>
+              </div>
             </div>
           </div>
           <div className="ap-hero-foot">
             <span>필요한 빛은 남기고, 소중한 공간은 지키고.</span>
+            <dl className="ap-spec">
+              <div>
+                <dt>필름 제어 단위</dt>
+                <dd>10 cm 칸</dd>
+              </div>
+              <div>
+                <dt>햇빛 미리보기</dt>
+                <dd className="is-sun" style={{ color: sunInk(day) }}>{time}</dd>
+              </div>
+              <div>
+                <dt>선택한 가구</dt>
+                <dd>{objects[selected].name}</dd>
+              </div>
+              <div>
+                <dt>상태</dt>
+                <dd>
+                  <span className={`ap-state-chip ${protectedOn ? "on" : ""}`}>
+                    {protectedOn ? "보호 중" : "자연광 유지"}
+                  </span>
+                </dd>
+              </div>
+            </dl>
           </div>
         </section>
         <section className="ap-statement" id="ap-experience">
           <h2>
             빛을 끄는 대신,
             <br />
-            <span>빛을 디자인합니다.</span>
+            <span>
+              빛을 <mark className="ap-mark">디자인</mark>합니다.
+            </span>
           </h2>
           <div className="ap-statement-bottom">
             <SunMark />
@@ -470,10 +617,10 @@ export default function AwardPreview({
             <span>공간 적용을 표현한 연출 이미지</span>
           </div>
           <button
-            onClick={() => setProtected(!protectedOn)}
+            onClick={() => setPhotoProtected(!photoProtected)}
             className="ap-photo-tag"
           >
-            {protectedOn ? "선택한 영역 보호" : "자연광 유지"}
+            {photoProtected ? "선택한 영역 보호" : "자연광 유지"}
             <span className="ap-dot" />
           </button>
         </section>
@@ -485,6 +632,21 @@ export default function AwardPreview({
             </h2>
           </div>
           <div className="ap-process-list">
+            <svg className="ap-sun-path" viewBox="0 0 600 120" aria-hidden="true">
+              <path d="M0 110C150-20 450-20 600 110" pathLength="1" />
+              {[
+                [86.1, 55.8, "01", "06:00", "start"],
+                [300, 12.5, "02", "12:00", "middle"],
+                [513.9, 55.8, "03", "18:00", "end"],
+              ].map(([x, y, n, t, anchor]) => (
+                <g key={n} transform={`translate(${x} ${y})`}>
+                  <circle r="7" />
+                  <text y="34" x={anchor === "start" ? -12 : anchor === "end" ? 12 : 0} textAnchor={anchor as "start" | "middle" | "end"}>
+                    {n} · {t}
+                  </text>
+                </g>
+              ))}
+            </svg>
             {[
               {
                 title: "공간을 담고",
@@ -509,35 +671,16 @@ export default function AwardPreview({
                   openGuide();
                 }}
               >
+                <span>0{i + 1}</span>
                 <div>
                   <h3>{step.title}</h3>
                   <p>{step.text}</p>
                 </div>
                 <div
-                  className={`ap-process-art ${step.art}`}
+                  className={`ap-process-art mood-art ${step.art}`}
                   aria-hidden="true"
                 >
-                  {i === 0 ? (
-                    <>
-                      <i />
-                      <i />
-                      <i />
-                      <i />
-                      <b>⌗</b>
-                    </>
-                  ) : i === 1 ? (
-                    <>
-                      <i />
-                      <i />
-                      <i />
-                      <b />
-                    </>
-                  ) : (
-                    <>
-                      <i />
-                      <b>09—18</b>
-                    </>
-                  )}
+                  <StepIcon kind={step.art as "scan" | "select" | "time"} />
                 </div>
                 <Arrow diagonal />
               </button>
@@ -552,18 +695,12 @@ export default function AwardPreview({
           </h2>
           <div className="ap-screens-row">
             {[
-              ["app-capture", "가구 모서리의 QR을 찍어 공간을 담습니다"],
-              ["app-review", "도면에서 가구를 옮기고 치수를 고칩니다"],
-              ["app-detail", "보호구역과 차단 시간을 한눈에 확인합니다"],
-            ].map(([file, caption]) => (
-              <figure key={file}>
-                <img
-                  src={`/design/${file}.jpg`}
-                  alt={`SunSync 앱 화면: ${caption}`}
-                  width="390"
-                  height="844"
-                  loading="lazy"
-                />
+              [2, "가구 모서리의 QR을 찍어 공간을 담습니다"],
+              [3, "도면에서 가구를 옮기고 치수를 고칩니다"],
+              [5, "보호구역과 차단 시간을 한눈에 확인합니다"],
+            ].map(([step, caption]) => (
+              <figure key={step}>
+                <GuideIllustration step={step as number} />
                 <figcaption>{caption}</figcaption>
               </figure>
             ))}
@@ -576,6 +713,7 @@ export default function AwardPreview({
             <span>설계할 차례.</span>
           </h2>
           <button className="ap-round-link" onClick={studio}>
+            <Scribble />
             <span>공간 스튜디오 열기</span>
             <b>
               <Arrow diagonal />

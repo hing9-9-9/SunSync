@@ -63,6 +63,7 @@ import {
 } from "./navigation";
 import type { BrowserLocation, Page } from "./navigation";
 import { AwardHeader, AwardLanding, AwardSpaces, AwardGuide, AwardFooter } from "./AwardSystem";
+import { AccountOverview, AuthPanel } from "./AccountPage";
 const titles: Record<Page, string> = {
   home: "홈",
   spaces: "내 공간",
@@ -1072,17 +1073,7 @@ function App() {
         {page === "home" && <AwardLanding onStart={()=>requireAccount(()=>navigate("spaces"))} onGuide={()=>navigate("guide")}/>}
         {page === "guide" && (<AwardGuide index={guideIndex} onIndex={setGuideIndex} onStart={()=>requireAccount(()=>navigate("spaces"))}/>)}
         {!account ? (
-          <main className={`auth ${(page === "home") || page === "guide" ? "landing-auth-hidden" : ""}`}>
-            <div className="auth-brand">
-              <Icon name="sun" />
-              <span>SunSync</span>
-            </div>
-            <h1>회원가입 · 로그인</h1>
-            <button className="google-button" onClick={() => setModal("login")}>
-              <span className="google-g">G</span> Google로 계속하기
-            </button>
-            
-          </main>
+          <AuthPanel hidden={page === "home" || page === "guide"} brand={<Icon name="sun" />} onLogin={() => setModal("login")} />
         ) : (
           <>
             <main id="main" className="main" tabIndex={-1} onChangeCapture={() => setEditedDraftId(draft?.id ?? null)}>
@@ -2188,89 +2179,18 @@ function App() {
                   </aside>
                 </div>
               )}
-              {page === "more" && (
-                <div className="more-content">
-                  <button
-                    className="row card account-row"
-                    onClick={() => setPage("account")}
-                  >
-                    <span className="account-avatar" aria-hidden="true">{account.name.slice(0, 1)}</span>
-                    <span>
-                      <strong>내 계정</strong>
-                      <small>{account.email}</small>
-                    </span>
-                    <span>›</span>
-                  </button>
-                  <h2 className="section-label">공간</h2>
-                  <Card>
-                    <button className="row" onClick={() => setPage("spaces")}>
-                      <span>내 공간</span>
-                      <span>{spaces.length}개 ›</span>
-                    </button>
-                    <button
-                      className="row"
-                      onClick={() =>
-                        active ? selectSpace(active) : setPage("spaces")
-                      }
-                    >
-                      <span>구역 정보</span>
-                      <span>
-                        {spaces.reduce((n, s) => n + s.zones.length, 0)}개 ›
-                      </span>
-                    </button>
-                  </Card>
-                  <h2 className="section-label">보호 정보</h2>
-                  <Card>
-                    <button
-                      className="row"
-                      onClick={() =>
-                        active ? selectSpace(active) : setPage("spaces")
-                      }
-                    >
-                      <span>보호구역</span>
-                      <span>
-                        {spaces.reduce((n, s) => n + s.regions.filter((r) => r.grade !== "D").length, 0)}개 ›
-                      </span>
-                    </button>
-                    <button
-                      className="row"
-                      onClick={() => (active ? editSpace(active) : begin())}
-                    >
-                      <span>보호 등급</span>
-                      <span>
-                        {active
-                          ? [
-                              ...new Set(active.regions.filter((r) => r.grade !== "D").map((r) => r.grade)),
-                            ].join(" · ")
-                          : "미지정"}{" "}
-                        ›
-                      </span>
-                    </button>
-                  </Card>
-                  <button
-                    className="row card"
-                    onClick={() => navigate("guide")}
-                  >
-                    사용 가이드 <span>›</span>
-                  </button>
-                </div>
-              )}
-              {page === "account" && (
-                <div className="account-content">
-                  <h2>연결된 Google 계정</h2>
-                  <Card>
-                    <p className="muted small">Google · 체험 계정</p>
-                    <h3>{account.name}</h3>
-                    <p>{account.email}</p>
-                  </Card>
-                  <button
-                    className="secondary danger"
-                    onClick={() => setModal("logout")}
-                  >
-                    로그아웃
-                  </button>
-                  {<button className="secondary" onClick={()=>navigate("more")}>공간·보호 정보 모아보기</button>}
-                </div>
+              {(page === "account" || page === "more") && (
+                <AccountOverview
+                  account={account}
+                  spaces={spaces}
+                  serverState={serverState}
+                  onOpen={selectSpace}
+                  onEdit={editSpace}
+                  onRegister={begin}
+                  onGuide={() => navigate("guide")}
+                  onRefresh={refreshServer}
+                  onLogout={() => setModal("logout")}
+                />
               )}
             </main>
             {actionBar && <div className="app-action-bar">{actionBar}</div>}
@@ -2315,6 +2235,7 @@ function App() {
         {<AwardFooter onHome={()=>navigate("home")}/>}
         <dialog
           ref={modalRef}
+          className={modal === "login" ? "acct-login-dialog" : undefined}
           tabIndex={-1}
           onCancel={dismissModal}
           onClick={(e) => {
@@ -2336,6 +2257,16 @@ function App() {
                 pending?.();
               }}
             >
+              <aside className="acct-login-visual" aria-hidden="true">
+                <div className="acct-auth-glow" />
+                <div className="acct-wordmark">SunSync</div>
+                <p>
+                  햇빛은 들이고,
+                  <br />
+                  <mark className="ap-mark">책은 지킨다.</mark>
+                </p>
+                <span className="ap-state-chip on">보호 중</span>
+              </aside>
               <h2>체험 계정으로 계속</h2>
               <p className="muted small">Google 로그인은 준비 중이라 이름과 이메일로 체험합니다.</p>
               <label className="field">

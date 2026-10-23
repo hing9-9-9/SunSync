@@ -3,9 +3,9 @@ import type { Account, Space } from "./model";
 import { resolveWindow, isWidthWall } from "./model";
 import type { Page } from "./navigation";
 import type { HandoffSession } from "./spaceApi";
-import { GuideArt } from "./Website";
+import { GuideIllustration } from "./MoodIcons";
 import { guideSteps } from "./guideContent";
-import AwardPreview, { Arrow, SunMark } from "./AwardPreview";
+import AwardPreview, { Arrow, Scribble, SunMark } from "./AwardPreview";
 import "./AwardSystem.css";
 
 type Destination = "home" | "spaces" | "guide" | "account";
@@ -120,8 +120,8 @@ function SpaceThumbnail({ space }: { space: Space }) {
         height={space.depth}
         rx=".07"
         fill="#fff"
-        stroke="#bbb3c8"
-        strokeWidth=".045"
+        stroke="#343434"
+        strokeWidth=".04"
       />
       {space.furniture
         .filter((f) => f.zone === space.zone)
@@ -133,8 +133,8 @@ function SpaceThumbnail({ space }: { space: Space }) {
             width={f.width}
             height={f.depth}
             rx=".03"
-            fill="#e5e1eb"
-            stroke="#b4a9c3"
+            fill="#e9e9e9"
+            stroke="#9d9d9d"
             strokeWidth=".025"
           />
         ))}
@@ -158,8 +158,8 @@ function SpaceThumbnail({ space }: { space: Space }) {
           x2={horizontal ? window.offset + window.width : window.wall === "east" ? space.width : 0}
           y1={horizontal ? window.wall === "south" ? space.depth : 0 : window.offset}
           y2={horizontal ? window.wall === "south" ? space.depth : 0 : window.offset + window.width}
-          stroke="#8876b1"
-          strokeWidth=".075"
+          stroke="#343434"
+          strokeWidth=".1"
         />
       )}
     </svg>
@@ -383,17 +383,31 @@ export function AwardGuide({
             <section
               id={`award-guide-${i}`}
               key={step.title}
-              className="ap-guide-step"
+              className={`ap-guide-step ${(index ?? 0) === i ? "is-open" : ""}`}
             >
-              <div className="ap-guide-step-title">
-                <span>0{i + 1}</span>
-                <h2>{step.title}</h2>
+              <h2 className="ap-guide-step-title">
+                <button
+                  type="button"
+                  aria-expanded={(index ?? 0) === i}
+                  aria-controls={`award-guide-body-${i}`}
+                  onClick={() => onIndex(i)}
+                >
+                  <span>0{i + 1}</span>
+                  {step.title}
+                  <i aria-hidden="true" />
+                </button>
+              </h2>
+              <div
+                className="ap-guide-step-body"
+                id={`award-guide-body-${i}`}
+                hidden={(index ?? 0) !== i}
+              >
+                <div className="ap-guide-art">
+                  <GuideIllustration step={i} />
+                </div>
+                <p>{step.text}</p>
+                <p className="ap-guide-detail">{step.detail}</p>
               </div>
-              <div className="ap-guide-art">
-                <GuideArt step={i} />
-              </div>
-              <p>{step.text}</p>
-              <p className="ap-guide-detail">{step.detail}</p>
             </section>
           ))}
         </div>
@@ -405,6 +419,7 @@ export function AwardGuide({
           <strong>이제 내 공간에서 시작해 보세요.</strong>
         </p>
         <button className="ap-round-link" onClick={onStart}>
+          <Scribble />
           <span>내 공간 시작하기</span>
           <b>
             <Arrow diagonal />
