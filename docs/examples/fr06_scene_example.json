@@ -111,6 +111,7 @@
       "room_id": "room_001",
       "name": "가상 서가",
       "kind": "cuboid",
+      "type": "bookshelf",
       "base_center_m": [
         3,
         3,

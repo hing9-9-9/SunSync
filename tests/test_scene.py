@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 from app.schemas.scene import (
     Marker,
+    Occluder,
     ProtectedRegion,
     Scene,
     Window,
@@ -750,3 +751,23 @@ def test_aruco_observation_rejects_window_marker(scene_data):
         ValidationError, match="ArUco planar floor observation requires a floor marker"
     ):
         Scene.model_validate(scene_data)
+
+
+def test_occluder_furniture_type(scene_data):
+    # Backward compatibility: omitted type defaults to "other"
+    occluder_raw = copy.deepcopy(scene_data["occluders"][0])
+    occluder_raw.pop("type", None)
+    occ = Occluder.model_validate(occluder_raw)
+    assert occ.type == "other"
+
+    # All allowed values pass
+    for allowed in ("bookshelf", "desk", "chair", "other"):
+        occluder_raw["type"] = allowed
+        occ_valid = Occluder.model_validate(occluder_raw)
+        assert occ_valid.type == allowed
+
+    # Disallowed values raise ValidationError
+    for disallowed in ("sofa", 123, True, None):
+        occluder_raw["type"] = disallowed
+        with pytest.raises(ValidationError):
+            Occluder.model_validate(occluder_raw)

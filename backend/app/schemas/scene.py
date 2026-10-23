@@ -264,11 +264,15 @@ def window_cell_to_uv(window: Window, row: int, col: int) -> tuple[float, float]
     return window.cell_to_uv(row, col)
 
 
+FurnitureType = Literal["bookshelf", "desk", "chair", "other"]
+
+
 class Occluder(Model):
     occluder_id: Identifier
     room_id: Identifier
     name: str
     kind: Literal["cuboid"]
+    type: FurnitureType = "other"
     base_center_m: Vector
     dimensions_m: Dimensions
     yaw_deg_ccw_from_east: Number
