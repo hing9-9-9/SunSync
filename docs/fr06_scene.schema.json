@@ -1142,6 +1142,18 @@
         },
         "quality": {
           "$ref": "#/$defs/Quality"
+        },
+        "film_rows": {
+          "default": 10,
+          "minimum": 1,
+          "title": "Film Rows",
+          "type": "integer"
+        },
+        "film_cols": {
+          "default": 10,
+          "minimum": 1,
+          "title": "Film Cols",
+          "type": "integer"
         }
       },
       "required": [

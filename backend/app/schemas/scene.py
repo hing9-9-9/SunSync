@@ -7,7 +7,7 @@ The schema describes structure; model validators also enforce geometry and refer
 from __future__ import annotations
 
 from datetime import datetime
-from math import atan2, degrees
+from math import atan2, degrees, floor
 from typing import Annotated, Literal, Self
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -127,6 +127,99 @@ class Window(Model):
     optical_profile_id: Identifier
     initial_film_direct_transmittance: Fraction
     quality: Quality
+    film_rows: Annotated[int, Field(ge=1)] = 10
+    film_cols: Annotated[int, Field(ge=1)] = 10
+
+    @property
+    def width_m(self) -> float:
+        return float(dot(subtract(self.vertices_m[1], self.vertices_m[0]), self.u_axis))
+
+    @property
+    def height_m(self) -> float:
+        return float(dot(subtract(self.vertices_m[3], self.vertices_m[0]), self.v_axis))
+
+    @property
+    def cell_width_m(self) -> float:
+        return self.width_m / self.film_cols
+
+    @property
+    def cell_height_m(self) -> float:
+        return self.height_m / self.film_rows
+
+    def grid_from_cell_size(self, cell_size_m: float = 0.1) -> tuple[int, int]:
+        require(cell_size_m > 0, "cell_size_m must be positive")
+        cols = round(self.width_m / cell_size_m)
+        rows = round(self.height_m / cell_size_m)
+        require(
+            cols >= 1 and abs(self.width_m - cols * cell_size_m) <= EPS,
+            "window width must be an integer multiple of cell_size_m",
+        )
+        require(
+            rows >= 1 and abs(self.height_m - rows * cell_size_m) <= EPS,
+            "window height must be an integer multiple of cell_size_m",
+        )
+        return (rows, cols)
+
+    def uv_to_cell(self, u_m: float, v_m: float) -> tuple[int, int]:
+        require(
+            -EPS <= u_m <= self.width_m + EPS and -EPS <= v_m <= self.height_m + EPS,
+            "point lies outside window bounds",
+        )
+        u_clamped = min(max(u_m, 0.0), self.width_m)
+        v_clamped = min(max(v_m, 0.0), self.height_m)
+        if u_clamped >= self.width_m - EPS:
+            col = self.film_cols - 1
+        else:
+            col_idx = floor((u_clamped + EPS) / self.cell_width_m)
+            col = min(max(col_idx, 0), self.film_cols - 1)
+
+        top_dist = self.height_m - v_clamped
+        if top_dist >= self.height_m - EPS:
+            row = self.film_rows - 1
+        elif top_dist <= EPS:
+            row = 0
+        else:
+            row_idx = floor((top_dist + EPS) / self.cell_height_m)
+            row = min(max(row_idx, 0), self.film_rows - 1)
+
+        return (row, col)
+
+    def cell_to_uv_bounds(
+        self, row: int, col: int
+    ) -> tuple[tuple[float, float], tuple[float, float]]:
+        require(
+            type(row) is int and type(col) is int,
+            "cell row and col must be integers",
+        )
+        require(
+            0 <= row < self.film_rows and 0 <= col < self.film_cols,
+            "cell row/col outside window film grid",
+        )
+        u_min = col * self.cell_width_m
+        u_max = (col + 1) * self.cell_width_m
+        v_max = self.height_m - row * self.cell_height_m
+        v_min = self.height_m - (row + 1) * self.cell_height_m
+        return ((u_min, u_max), (v_min, v_max))
+
+    def cell_to_uv(self, row: int, col: int) -> tuple[float, float]:
+        (u_min, u_max), (v_min, v_max) = self.cell_to_uv_bounds(row, col)
+        return ((u_min + u_max) / 2.0, (v_min + v_max) / 2.0)
+
+    def enu_to_uv(self, point_m: Vector) -> tuple[float, float]:
+        rel = subtract(point_m, self.vertices_m[0])
+        dist_normal = dot(rel, self.inward_normal)
+        require(abs(dist_normal) <= EPS, "point is not on window plane")
+        u_m = dot(rel, self.u_axis)
+        v_m = dot(rel, self.v_axis)
+        return (float(u_m), float(v_m))
+
+    def uv_to_enu(self, u_m: float, v_m: float) -> tuple[float, float, float]:
+        origin = self.vertices_m[0]
+        return (
+            float(origin[0] + u_m * self.u_axis[0] + v_m * self.v_axis[0]),
+            float(origin[1] + u_m * self.u_axis[1] + v_m * self.v_axis[1]),
+            float(origin[2] + u_m * self.u_axis[2] + v_m * self.v_axis[2]),
+        )
 
     @model_validator(mode="after")
     def valid_frame(self) -> Self:
@@ -155,6 +248,20 @@ class Window(Model):
             "window azimuth must describe the outward normal clockwise from true north",
         )
         return self
+
+
+def window_uv_to_cell(window: Window, u_m: float, v_m: float) -> tuple[int, int]:
+    return window.uv_to_cell(u_m, v_m)
+
+
+def window_cell_to_uv_bounds(
+    window: Window, row: int, col: int
+) -> tuple[tuple[float, float], tuple[float, float]]:
+    return window.cell_to_uv_bounds(row, col)
+
+
+def window_cell_to_uv(window: Window, row: int, col: int) -> tuple[float, float]:
+    return window.cell_to_uv(row, col)
 
 
 class Occluder(Model):

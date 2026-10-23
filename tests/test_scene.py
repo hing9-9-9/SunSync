@@ -6,7 +6,14 @@ import math
 from pathlib import Path
 
 import pytest
-from app.schemas.scene import ProtectedRegion, Scene
+from app.schemas.scene import (
+    ProtectedRegion,
+    Scene,
+    Window,
+    window_cell_to_uv,
+    window_cell_to_uv_bounds,
+    window_uv_to_cell,
+)
 from pydantic import ValidationError
 
 EXAMPLE = Path(__file__).resolve().parents[1] / "docs/examples/fr06_scene_example.json"
@@ -409,3 +416,145 @@ def test_surface_validation_applies_without_scene_wrapper(scene_data):
     region["sample_points_m"][0][2] = 2
     with pytest.raises(ValidationError, match="evaluation surface"):
         ProtectedRegion.model_validate(region)
+
+
+def test_window_film_grid_defaults_to_10x10_when_omitted(scene_data):
+    # Backward compatibility: omit film_rows and film_cols from existing window json
+    scene_data["windows"][0].pop("film_rows")
+    scene_data["windows"][0].pop("film_cols")
+    scene = Scene.model_validate(scene_data)
+    window = scene.windows[0]
+    assert window.film_rows == 10
+    assert window.film_cols == 10
+    assert math.isclose(window.cell_width_m, window.width_m / 10)
+    assert math.isclose(window.cell_height_m, window.height_m / 10)
+
+
+def test_window_coordinate_conversions_and_bounds_1m_window(scene_data):
+    # 1m x 1m south-facing window on y=0 wall
+    # Looking from room interior towards window (south / -y):
+    # left is +x (x=3), right is -x (x=2), bottom is z=1, top is z=2.
+    # vertices: (3, 0, 1), (2, 0, 1), (2, 0, 2), (3, 0, 2)
+    # u_axis = (-1, 0, 0), v_axis = (0, 0, 1), inward_normal = (0, 1, 0), azimuth = 180
+    win_data = copy.deepcopy(scene_data["windows"][0])
+    win_data["vertices_m"] = [[3, 0, 1], [2, 0, 1], [2, 0, 2], [3, 0, 2]]
+    win_data["u_axis"] = [-1, 0, 0]
+    win_data["v_axis"] = [0, 0, 1]
+    win_data["inward_normal"] = [0, 1, 0]
+    win_data["azimuth_deg_true"] = 180.0
+    win_data["film_rows"] = 10
+    win_data["film_cols"] = 10
+    window = Window.model_validate(win_data)
+
+    # Dimension and cell size
+    assert math.isclose(window.width_m, 1.0)
+    assert math.isclose(window.height_m, 1.0)
+    assert math.isclose(window.cell_width_m, 0.1)
+    assert math.isclose(window.cell_height_m, 0.1)
+
+    # grid_from_cell_size
+    assert window.grid_from_cell_size(0.1) == (10, 10)
+    assert window.grid_from_cell_size(0.2) == (5, 5)
+    assert window.grid_from_cell_size(0.5) == (2, 2)
+    with pytest.raises(ValueError, match="cell_size_m must be positive"):
+        window.grid_from_cell_size(0.0)
+    with pytest.raises(ValueError, match="cell_size_m must be positive"):
+        window.grid_from_cell_size(-0.1)
+    with pytest.raises(ValueError, match="integer multiple"):
+        window.grid_from_cell_size(0.15)
+
+    # Four corners uv_to_cell
+    # Top-left: u=0, v=1.0 -> (0, 0)
+    assert window.uv_to_cell(0.0, 1.0) == (0, 0)
+    # Top-right: u=1.0, v=1.0 -> (0, 9)
+    assert window.uv_to_cell(1.0, 1.0) == (0, 9)
+    # Bottom-left: u=0, v=0 -> (9, 0)
+    assert window.uv_to_cell(0.0, 0.0) == (9, 0)
+    # Bottom-right: u=1.0, v=0 -> (9, 9)
+    assert window.uv_to_cell(1.0, 0.0) == (9, 9)
+
+    # Boundary clamping tolerance within EPS
+    assert window.uv_to_cell(-1e-7, 1.0 + 1e-7) == (0, 0)
+    assert window.uv_to_cell(1.0 + 1e-7, -1e-7) == (9, 9)
+
+    # Out of bounds uv_to_cell
+    with pytest.raises(ValueError, match="outside window bounds"):
+        window.uv_to_cell(-0.01, 0.5)
+    with pytest.raises(ValueError, match="outside window bounds"):
+        window.uv_to_cell(1.01, 0.5)
+    with pytest.raises(ValueError, match="outside window bounds"):
+        window.uv_to_cell(0.5, -0.01)
+    with pytest.raises(ValueError, match="outside window bounds"):
+        window.uv_to_cell(0.5, 1.01)
+
+    # Cell bounds and centers
+    (u_min, u_max), (v_min, v_max) = window.cell_to_uv_bounds(0, 0)
+    assert math.isclose(u_min, 0.0) and math.isclose(u_max, 0.1)
+    assert math.isclose(v_min, 0.9) and math.isclose(v_max, 1.0)
+    u_c, v_c = window.cell_to_uv(0, 0)
+    assert math.isclose(u_c, 0.05) and math.isclose(v_c, 0.95)
+
+    (u_min9, u_max9), (v_min9, v_max9) = window.cell_to_uv_bounds(9, 9)
+    assert math.isclose(u_min9, 0.9) and math.isclose(u_max9, 1.0)
+    assert math.isclose(v_min9, 0.0) and math.isclose(v_max9, 0.1)
+    u_c9, v_c9 = window.cell_to_uv(9, 9)
+    assert math.isclose(u_c9, 0.95) and math.isclose(v_c9, 0.05)
+
+    # Invalid row / col
+    with pytest.raises(ValueError, match="outside window film grid"):
+        window.cell_to_uv_bounds(-1, 0)
+    with pytest.raises(ValueError, match="outside window film grid"):
+        window.cell_to_uv_bounds(10, 0)
+    with pytest.raises(ValueError, match="outside window film grid"):
+        window.cell_to_uv_bounds(0, 10)
+    with pytest.raises(ValueError, match="must be integers"):
+        window.cell_to_uv_bounds(True, 0)  # bool rejected
+
+    # Roundtrip check across all 100 cells
+    for r in range(10):
+        for c in range(10):
+            u_center, v_center = window.cell_to_uv(r, c)
+            assert window.uv_to_cell(u_center, v_center) == (r, c)
+
+    # ENU <-> UV mapping
+    # vertices: [3, 0, 1], [2, 0, 1], [2, 0, 2], [3, 0, 2]
+    assert window.enu_to_uv((3.0, 0.0, 1.0)) == (0.0, 0.0)
+    assert window.enu_to_uv((2.0, 0.0, 1.0)) == (1.0, 0.0)
+    assert window.enu_to_uv((2.0, 0.0, 2.0)) == (1.0, 1.0)
+    assert window.enu_to_uv((3.0, 0.0, 2.0)) == (0.0, 1.0)
+
+    assert window.uv_to_enu(0.0, 0.0) == (3.0, 0.0, 1.0)
+    assert window.uv_to_enu(1.0, 0.0) == (2.0, 0.0, 1.0)
+    assert window.uv_to_enu(1.0, 1.0) == (2.0, 0.0, 2.0)
+    assert window.uv_to_enu(0.0, 1.0) == (3.0, 0.0, 2.0)
+
+    # Point off window plane
+    with pytest.raises(ValueError, match="not on window plane"):
+        window.enu_to_uv((3.0, 0.1, 1.0))
+
+    # Module-level convenience functions
+    assert window_uv_to_cell(window, 0.05, 0.95) == (0, 0)
+    assert window_cell_to_uv(window, 0, 0) == (0.05, 0.95)
+    assert window_cell_to_uv_bounds(window, 0, 0) == ((0.0, 0.1), (0.9, 1.0))
+
+
+def test_window_coordinate_conversions_large_multimodule_window(scene_data):
+    # 3m x 1.5m multi-module window (15 rows, 30 cols)
+    win_data = copy.deepcopy(scene_data["windows"][0])
+    win_data["film_rows"] = 15
+    win_data["film_cols"] = 30
+    window = Window.model_validate(win_data)
+
+    assert math.isclose(window.width_m, 3.0)
+    assert math.isclose(window.height_m, 1.5)
+    assert math.isclose(window.cell_width_m, 0.1)
+    assert math.isclose(window.cell_height_m, 0.1)
+    assert window.grid_from_cell_size(0.1) == (15, 30)
+
+    assert window.uv_to_cell(0.0, 1.5) == (0, 0)
+    assert window.uv_to_cell(3.0, 0.0) == (14, 29)
+
+    u_tl, v_tl = window.cell_to_uv(0, 0)
+    assert math.isclose(u_tl, 0.05) and math.isclose(v_tl, 1.45)
+    u_br, v_br = window.cell_to_uv(14, 29)
+    assert math.isclose(u_br, 2.95) and math.isclose(v_br, 0.05)

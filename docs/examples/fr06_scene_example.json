@@ -100,7 +100,9 @@
         ],
         "confirmed": true
       },
-      "initial_film_direct_transmittance": 1.0
+      "initial_film_direct_transmittance": 1.0,
+      "film_rows": 10,
+      "film_cols": 10
     }
   ],
   "occluders": [
