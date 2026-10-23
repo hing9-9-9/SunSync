@@ -1,0 +1,1266 @@
+.desktop-only {
+  display: none;
+}
+@media (min-width: 761px) {
+  :where(.app:not(.mode-app)) .desktop-only {
+    display: block;
+  }
+  .app:where(:not(.mode-app)), .app:where(:not(.mode-app)).auth-page, .app:where(:not(.mode-app)).more-page {
+    background: #fff;
+    padding-bottom: 0;
+  }
+  .app:where(:not(.mode-app)) > .demo-banner, .app:where(:not(.mode-app)) > .auth, .app:where(:not(.mode-app)) > .app-header, .app:where(:not(.mode-app)) > .desktop-nav {
+    display: none;
+  }
+  .app:where(:not(.mode-app)).page-home .main, .app:where(:not(.mode-app)).page-guide .main {
+    display: none;
+  }
+  :where(.app:not(.mode-app)) .website-topbar {
+    height: 88px;
+    max-width: 1400px;
+    margin: auto;
+    padding: 0 var(--space-16);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-6);
+  }
+  :where(.app:not(.mode-app)) .website-brand {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    background: none;
+    font-size: var(--text-3xl);
+    letter-spacing: -0.7px;
+    font-weight: 700;
+    padding: 0;
+    min-height: 44px;
+  }
+  :where(.app:not(.mode-app)) .website-brand img {
+    width: 30px;
+    height: 30px;
+  }
+  :where(.app:not(.mode-app)) .website-account {
+    display: flex;
+    align-items: center;
+    gap: var(--space-5);
+  }
+  :where(.app:not(.mode-app)) .website-account button {
+    background: none;
+    font-size: var(--text-base);
+    padding: var(--space-3) 0;
+    min-height: 40px;
+    display: flex;
+    gap: var(--space-3);
+    align-items: center;
+  }
+  :where(.app:not(.mode-app)) .website-account button:hover {
+    color: var(--brand);
+  }
+  :where(.app:not(.mode-app)) .account-separator {
+    height: 12px;
+    width: 1px;
+    background: var(--border);
+  }
+  :where(.app:not(.mode-app)) .account-name {
+    color: var(--muted);
+    font-size: var(--text-sm);
+    border-left: 1px solid var(--line);
+    padding-left: var(--space-3);
+    margin-left: var(--space-1);
+  }
+  :where(.app:not(.mode-app)) .person-icon {
+    width: 18px;
+    height: 18px;
+    position: relative;
+    display: block;
+  }
+  :where(.app:not(.mode-app)) .person-icon:before {
+    content: "";
+    position: absolute;
+    border: 1.4px solid currentColor;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    top: 0;
+    left: 5px;
+  }
+  :where(.app:not(.mode-app)) .person-icon:after {
+    content: "";
+    position: absolute;
+    border: 1.4px solid currentColor;
+    width: 14px;
+    height: 7px;
+    border-radius: 8px 8px 2px 2px;
+    bottom: 0;
+    left: 1px;
+  }
+  :where(.app:not(.mode-app)) .website-nav-border {
+    border-top: 1px solid var(--surface-muted);
+    border-bottom: 1px solid #e6e6ea;
+  }
+  :where(.app:not(.mode-app)) .website-nav {
+    max-width: 1400px;
+    margin: auto;
+    padding: 0 var(--space-16);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-6);
+    height: 62px;
+  }
+  :where(.app:not(.mode-app)) .website-nav-links {
+    display: flex;
+    align-items: stretch;
+    gap: var(--space-8);
+    height: 100%;
+  }
+  :where(.app:not(.mode-app)) .website-nav-links button {
+    background: none;
+    padding: 0 1px;
+    border-bottom: 2px solid transparent;
+    font-size: var(--text-lg);
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  :where(.app:not(.mode-app)) .website-nav-links button[aria-current="page"] {
+    border-color: var(--ink);
+    font-weight: 500;
+  }
+  :where(.app:not(.mode-app)) .website-nav-links button:hover {
+    border-bottom-color: #777777;
+  }
+  :where(.app:not(.mode-app)) .website-start {
+    border: 1px solid var(--ink);
+    background: var(--ink);
+    color: white;
+    padding: var(--space-2) var(--space-4);
+    font-size: var(--text-base);
+    display: flex;
+    align-items: center;
+    gap: var(--space-6);
+    min-height: 38px;
+    border-radius: 6px;
+    white-space: nowrap;
+  }
+  :where(.app:not(.mode-app)) .website-start:hover {
+    background: #43434b;
+  }
+  :where(.app:not(.mode-app)) .website-home {
+    width: 100%;
+    margin: 0;
+  }
+  :where(.app:not(.mode-app)) .website-hero {
+    position: relative;
+    min-height: 400px;
+    max-width: 1920px;
+    margin: auto;
+    overflow: hidden;
+    background: #e8dfd1;
+    isolation: isolate;
+  }
+  :where(.app:not(.mode-app)) .website-hero-photo {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center 52%;
+    z-index: -2;
+  }
+  :where(.app:not(.mode-app)) .website-hero-shade {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: linear-gradient(
+      90deg,
+      #f2eee7f5 0%,
+      #f2eee7d9 24%,
+      #f2eee788 40%,
+      transparent 58%
+    );
+  }
+  :where(.app:not(.mode-app)) .website-hero-content {
+    max-width: 1400px;
+    margin: auto;
+    padding: var(--space-10) var(--space-16) var(--space-12);
+  }
+  :where(.app:not(.mode-app)) .website-eyebrow {
+    font-size: var(--text-sm);
+    letter-spacing: 1px;
+    font-weight: 500;
+    color: #6b6573;
+    line-height: 1.6;
+  }
+  :where(.app:not(.mode-app)) .website-hero h1 {
+    font-size: clamp(36px, 3.2vw, 50px);
+    line-height: 1.38;
+    letter-spacing: -2px;
+    font-weight: 700;
+    margin: var(--space-4) 0;
+    color: var(--ink);
+  }
+  :where(.app:not(.mode-app)) .website-hero-description {
+    font-size: var(--text-lg);
+    line-height: 1.8;
+    color: #555258;
+  }
+  :where(.app:not(.mode-app)) .website-hero-actions {
+    display: flex;
+    gap: var(--space-3);
+    margin-top: var(--space-6);
+    align-items: center;
+  }
+  :where(.app:not(.mode-app)) .website-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-5);
+    padding: var(--space-3) var(--space-5);
+    min-height: 44px;
+    min-width: 144px;
+    font-size: var(--text-base);
+    font-weight: 500;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    text-decoration: none;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  :where(.app:not(.mode-app)) .website-button.filled {
+    color: white;
+    background: #2c2c32;
+    border-color: #2c2c32;
+  }
+  :where(.app:not(.mode-app)) .website-button.filled:hover {
+    background: #454545;
+  }
+  :where(.app:not(.mode-app)) .website-button.outlined {
+    color: #35353b;
+    background: #ffffff8a;
+    border-color: #66636b;
+  }
+  :where(.app:not(.mode-app)) .website-button.outlined:hover {
+    background: #fff;
+  }
+  :where(.app:not(.mode-app)) .website-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.35;
+  }
+  :where(.app:not(.mode-app)) .website-image-caption {
+    position: absolute;
+    bottom: 15px;
+    right: 32px;
+    color: white;
+    background: #00000066;
+    padding: var(--space-1) var(--space-2);
+    border-radius: 4px;
+    font-size: var(--text-xs);
+  }
+  :where(.app:not(.mode-app)) .website-guide-section {
+    max-width: 1400px;
+    padding: var(--space-10) var(--space-16) var(--space-12);
+    margin: auto;
+    scroll-margin-top: 30px;
+  }
+  :where(.app:not(.mode-app)) .website-section-heading {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--space-6);
+    margin-bottom: var(--space-6);
+  }
+  :where(.app:not(.mode-app)) .website-section-heading h2, :where(.app:not(.mode-app)) .website-section-heading h1 {
+    font-size: var(--text-3xl);
+    letter-spacing: -1px;
+    font-weight: 700;
+    margin-top: var(--space-2);
+    line-height: 1.45;
+  }
+  :where(.app:not(.mode-app)) .website-inline-link {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-4);
+    background: none;
+    padding: var(--space-2) 0;
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: #454545;
+    min-height: 36px;
+    white-space: nowrap;
+  }
+  :where(.app:not(.mode-app)) button.website-inline-link:hover {
+    color: var(--brand);
+  }
+  :where(.app:not(.mode-app)) .website-guide-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--space-6);
+  }
+  :where(.app:not(.mode-app)) .website-guide-tile {
+    background: #fff;
+    text-align: left;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    border-radius: 0;
+  }
+  :where(.app:not(.mode-app)) .website-guide-visual {
+    position: relative;
+    background: #f5f5f7;
+    border-radius: 8px;
+    overflow: hidden;
+    width: 100%;
+  }
+  :where(.app:not(.mode-app)) .website-guide-art {
+    width: 100%;
+    display: block;
+    height: auto;
+  }
+  :where(.app:not(.mode-app)) .website-guide-tile:hover .website-guide-visual {
+    background: #ebebed;
+  }
+  :where(.app:not(.mode-app)) .website-step-number {
+    position: absolute;
+    left: 14px;
+    top: 11px;
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: #6f6a80;
+  }
+  :where(.app:not(.mode-app)) .website-guide-tile-copy {
+    padding: var(--space-5) 0 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-2);
+    flex: 1;
+  }
+  :where(.app:not(.mode-app)) .website-guide-tile h3, :where(.app:not(.mode-app)) .website-guide-tile h2 {
+    font-size: var(--text-lg);
+    font-weight: 700;
+    letter-spacing: -0.5px;
+  }
+  :where(.app:not(.mode-app)) .website-guide-tile p {
+    font-size: var(--text-sm);
+    color: var(--muted);
+    line-height: 1.7;
+    flex: 1;
+    word-break: keep-all;
+  }
+  :where(.app:not(.mode-app)) .website-guide-tile .website-inline-link {
+    font-size: var(--text-sm);
+    min-height: 30px;
+  }
+  :where(.app:not(.mode-app)) .website-footer {
+    border-top: 1px solid #e8e8ec;
+    background: var(--surface-subtle);
+    padding: 30px max(40px, calc((100vw - 1272px) / 2));
+    color: var(--muted);
+  }
+  :where(.app:not(.mode-app)) .website-footer > div {
+    display: flex;
+    gap: var(--space-5);
+    align-items: center;
+  }
+  :where(.app:not(.mode-app)) .website-footer strong {
+    font-size: var(--text-xl);
+    font-weight: 700;
+    color: #52515d;
+  }
+  :where(.app:not(.mode-app)) .website-footer span {
+    font-size: var(--text-sm);
+  }
+  :where(.app:not(.mode-app)) .website-footer p {
+    font-size: var(--text-xs);
+    margin-top: var(--space-4);
+    color: #9996a2;
+  }
+  :where(.app:not(.mode-app)) .website-guide-page {
+    max-width: 1400px;
+    margin: auto;
+    padding: var(--space-8) var(--space-16) 80px;
+    min-height: 65vh;
+  }
+  :where(.app:not(.mode-app)) .website-all-guides {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-10) var(--space-8);
+  }
+  :where(.app:not(.mode-app)) .website-guide-article {
+    display: grid;
+    grid-template-columns: 250px minmax(0, 1fr);
+    gap: var(--space-12);
+    margin-top: var(--space-10);
+    align-items: start;
+  }
+  :where(.app:not(.mode-app)) .website-guide-steps {
+    display: flex;
+    flex-direction: column;
+    border-top: 1px solid #e4e2e9;
+  }
+  :where(.app:not(.mode-app)) .website-guide-steps button {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    padding: var(--space-4) var(--space-4);
+    border-bottom: 1px solid #e4e2e9;
+    background: #fff;
+    text-align: left;
+    font-size: var(--text-base);
+    line-height: 1.7;
+  }
+  :where(.app:not(.mode-app)) .website-guide-steps span {
+    font-size: var(--text-sm);
+    color: #918b9c;
+  }
+  :where(.app:not(.mode-app)) .website-guide-steps [aria-current="step"] {
+    color: var(--ink);
+    font-weight: 500;
+    background: #f2f2f3;
+  }
+  :where(.app:not(.mode-app)) .website-guide-body {
+    max-width: 780px;
+  }
+  :where(.app:not(.mode-app)) .website-guide-body h2 {
+    font-size: var(--text-3xl);
+    margin: var(--space-3) 0 var(--space-6);
+    letter-spacing: -0.6px;
+  }
+  :where(.app:not(.mode-app)) .website-guide-detail-art {
+    max-width: 600px;
+    border-radius: 12px;
+    background: #f5f5f8;
+    padding: var(--space-3) var(--space-16);
+    margin-bottom: var(--space-6);
+  }
+  :where(.app:not(.mode-app)) .website-guide-lead {
+    font-size: var(--text-lg);
+    font-weight: 500;
+    line-height: 1.8;
+    word-break: keep-all;
+  }
+  :where(.app:not(.mode-app)) .website-guide-detail-text {
+    color: #77717f;
+    font-size: var(--text-base);
+    margin-top: var(--space-4);
+    word-break: keep-all;
+  }
+  :where(.app:not(.mode-app)) .website-guide-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-5);
+    border-top: 1px solid var(--line);
+    padding-top: var(--space-6);
+    margin-top: var(--space-8);
+  }
+  :where(.app:not(.mode-app)) .website-guide-grades {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-4);
+    margin: var(--space-6) 0 0;
+  }
+  :where(.app:not(.mode-app)) .website-guide-grades > div {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    font-size: var(--text-base);
+    background: #f5f5f5;
+    padding: var(--space-4);
+    border-radius: 6px;
+  }
+  :where(.app:not(.mode-app)) .website-guide-grades dt {
+    font-size: var(--text-lg);
+    color: #454545;
+  }
+  :where(.app:not(.mode-app)) .website-guide-grades dd {
+    margin: 0;
+  }
+  :where(.app:not(.mode-app)) /* Desktop workspaces use compact controls and a fixed inspector column. */
+  .main {
+    max-width: 1400px;
+    padding: var(--space-6) var(--space-16) var(--space-16);
+  }
+  .page-heading:where(:not(.mode-app)) {
+    margin-bottom: var(--space-5);
+  }
+  .page-heading:where(:not(.mode-app)) h1 {
+    font-size: var(--text-3xl);
+  }
+  :where(.app:not(.mode-app)) .primary, :where(.app:not(.mode-app)) .secondary, :where(.app:not(.mode-app)) .file-button {
+    width: auto;
+    min-width: 120px;
+    min-height: 40px;
+    padding: var(--space-3) var(--space-5);
+    border-radius: 6px;
+    font-size: var(--text-base);
+  }
+  :where(.app:not(.mode-app)) .primary {
+    background: #303038;
+  }
+  :where(.app:not(.mode-app)) .primary:hover {
+    background: #454545;
+  }
+  :where(.app:not(.mode-app)) .secondary {
+    background: #fff;
+    border: 1px solid #d8d5df;
+    color: #454545;
+  }
+  :where(.app:not(.mode-app)) .secondary:hover {
+    background: #f2f2f3;
+  }
+  :where(.app:not(.mode-app)) .actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--space-3);
+  }
+  :where(.app:not(.mode-app)) .registration > .actions {
+    max-width: none;
+    margin: var(--space-6) 0 0;
+    padding-top: var(--space-5);
+    border-top: 1px solid var(--line);
+  }
+  :where(.app:not(.mode-app)) .card {
+    border-radius: 12px;
+  }
+  :where(.app:not(.mode-app)) .field {
+    border-radius: 6px;
+    padding: var(--space-3) var(--space-3);
+  }
+  :where(.app:not(.mode-app)) .field input, :where(.app:not(.mode-app)) .field select {
+    font-size: var(--text-base);
+    min-height: 23px;
+  }
+  :where(.app:not(.mode-app)) .workspace {
+    grid-template-columns: minmax(0, 1fr) 340px;
+    gap: var(--space-8);
+  }
+  :where(.app:not(.mode-app)) .workspace-main {
+    gap: var(--space-4);
+  }
+  :where(.app:not(.mode-app)) .inspector {
+    position: sticky;
+    top: 20px;
+    border-radius: 12px;
+    border: 1px solid #eae8ee;
+    background: var(--surface-subtle);
+    max-height: calc(100svh - 40px);
+    overflow-y: auto;
+    padding: var(--space-5);
+    gap: var(--space-3);
+    scrollbar-width: thin;
+  }
+  :where(.app:not(.mode-app)) .inspector h2 {
+    font-size: var(--text-xl);
+  }
+  :where(.app:not(.mode-app)) .inspector .actions {
+    flex-direction: column;
+  }
+  :where(.app:not(.mode-app)) .inspector .actions > button {
+    width: 100%;
+  }
+  :where(.app:not(.mode-app)) .inspector > .primary, :where(.app:not(.mode-app)) .inspector > .secondary {
+    width: 100%;
+  }
+  :where(.app:not(.mode-app)) .inspector .dimensions input {
+    font-size: var(--text-lg);
+  }
+  :where(.app:not(.mode-app)) .inspector .text-button {
+    min-height: 34px;
+    font-size: var(--text-sm);
+    padding: var(--space-2) 0;
+  }
+  :where(.app:not(.mode-app)) .chip {
+    border-radius: 6px;
+    min-height: 36px;
+    padding: var(--space-2) var(--space-4);
+  }
+  :where(.app:not(.mode-app)) .grade-picker .chip {
+    min-height: 38px;
+    padding: var(--space-2);
+  }
+  :where(.app:not(.mode-app)) .toolbar {
+    min-height: 38px;
+  }
+  :where(.app:not(.mode-app)) .zone-tabs {
+    margin: 0 0 var(--space-2);
+  }
+  :where(.app:not(.mode-app)) .zone-tabs .text-button {
+    min-height: 34px;
+  }
+  :where(.app:not(.mode-app)) .plan-card {
+    padding: var(--space-4) var(--space-2);
+  }
+  :where(.app:not(.mode-app)) .plan {
+    min-height: 320px;
+    max-height: 430px;
+  }
+  :where(.app:not(.mode-app)) .item-tabs button {
+    border-radius: 6px;
+    min-height: 36px;
+    padding: var(--space-2) var(--space-4);
+  }
+  :where(.app:not(.mode-app)) .list-content {
+    max-width: none;
+  }
+  :where(.app:not(.mode-app)) .room-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  :where(.app:not(.mode-app)) .room-card {
+    border-radius: 10px;
+    padding: var(--space-5);
+    min-height: 92px;
+  }
+  :where(.app:not(.mode-app)) .list-content > .empty {
+    margin: var(--space-10) 0;
+    max-width: none;
+    background: var(--surface-subtle);
+    border: 1px solid #e8e6ed;
+    align-items: flex-start;
+    padding: var(--space-10);
+  }
+  :where(.app:not(.mode-app)) .empty .primary {
+    width: auto;
+  }
+  :where(.app:not(.mode-app)) .empty-icon {
+    font-size: var(--text-4xl);
+  }
+  :where(.app:not(.mode-app)) .add-space {
+    max-width: none;
+    margin: var(--space-6) 0 0;
+    display: inline-flex;
+    width: auto;
+  }
+  :where(.app:not(.mode-app)) .two-column .card {
+    padding: var(--space-6);
+  }
+  :where(.app:not(.mode-app)) .registration .two-column {
+    gap: var(--space-6);
+  }
+  :where(.app:not(.mode-app)) .capture-layout {
+    max-width: none;
+    grid-template-columns: minmax(0, 1fr) 340px;
+    gap: var(--space-10);
+  }
+  :where(.app:not(.mode-app)) .capture-card {
+    max-width: 620px;
+  }
+  :where(.app:not(.mode-app)) .capture-controls .actions {
+    flex-direction: column;
+  }
+  :where(.app:not(.mode-app)) .capture-controls .actions > * {
+    width: 100%;
+  }
+  :where(.app:not(.mode-app)) dialog .primary, :where(.app:not(.mode-app)) dialog .secondary {
+    width: 100%;
+    min-height: 44px;
+    border-radius: 8px;
+  }
+}
+@media (min-width: 761px) and (max-width: 1050px) {
+  :where(.app:not(.mode-app)) .website-topbar, :where(.app:not(.mode-app)) .website-nav {
+    padding-left: var(--space-8);
+    padding-right: var(--space-8);
+  }
+  :where(.app:not(.mode-app)) .website-nav-links {
+    gap: var(--space-6);
+  }
+  :where(.app:not(.mode-app)) .website-nav-links button {
+    font-size: var(--text-base);
+  }
+  :where(.app:not(.mode-app)) .website-topbar {
+    height: 76px;
+  }
+  :where(.app:not(.mode-app)) .website-nav {
+    height: 56px;
+  }
+  :where(.app:not(.mode-app)) .account-name {
+    display: none;
+  }
+  :where(.app:not(.mode-app)) .website-hero {
+    min-height: 380px;
+  }
+  :where(.app:not(.mode-app)) .website-hero-content {
+    padding: var(--space-8) var(--space-8);
+  }
+  :where(.app:not(.mode-app)) .website-hero h1 {
+    font-size: var(--text-4xl);
+  }
+  :where(.app:not(.mode-app)) .website-hero-description {
+    font-size: var(--text-base);
+  }
+  :where(.app:not(.mode-app)) .website-hero-shade {
+    background: linear-gradient(
+      90deg,
+      #f2eee7fc 0%,
+      #f2eee7de 33%,
+      #f2eee750 65%,
+      transparent 85%
+    );
+  }
+  :where(.app:not(.mode-app)) .website-guide-section, :where(.app:not(.mode-app)) .website-guide-page {
+    padding-left: var(--space-8);
+    padding-right: var(--space-8);
+  }
+  :where(.app:not(.mode-app)) .website-guide-grid {
+    gap: var(--space-4);
+  }
+  :where(.app:not(.mode-app)) .website-guide-tile h3 {
+    font-size: var(--text-lg);
+  }
+  :where(.app:not(.mode-app)) .website-guide-tile-copy {
+    padding-top: var(--space-4);
+  }
+  :where(.app:not(.mode-app)) .website-section-heading h2 {
+    font-size: var(--text-3xl);
+  }
+  :where(.app:not(.mode-app)) .website-guide-article {
+    grid-template-columns: 200px minmax(0, 1fr);
+    gap: var(--space-8);
+  }
+  :where(.app:not(.mode-app)) .website-guide-detail-art {
+    padding: var(--space-3) var(--space-5);
+  }
+  :where(.app:not(.mode-app)) .website-guide-grades {
+    grid-template-columns: 1fr;
+  }
+  :where(.app:not(.mode-app)) .main {
+    padding-left: var(--space-8);
+    padding-right: var(--space-8);
+  }
+  :where(.app:not(.mode-app)) .workspace {
+    grid-template-columns: minmax(0, 1fr) 290px;
+    gap: var(--space-5);
+  }
+  :where(.app:not(.mode-app)) .room-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  :where(.app:not(.mode-app)) .capture-layout {
+    grid-template-columns: minmax(0, 1fr) 290px;
+    gap: var(--space-6);
+  }
+}
+
+@media (min-width: 761px) {
+  .app:where(:not(.mode-app)) {
+    font-size: var(--text-lg);
+  }
+  .app:where(:not(.mode-app)) .main h2 {
+    font-size: var(--text-xl);
+  }
+  .app:where(:not(.mode-app)) .main h3 {
+    font-size: var(--text-lg);
+  }
+  :where(.app:not(.mode-app)) .small, .app:where(:not(.mode-app)) small, :where(.app:not(.mode-app)) .field > span, :where(.app:not(.mode-app)) .field > label, :where(.app:not(.mode-app)) .zone-tabs button, :where(.app:not(.mode-app)) .furniture-tabs button, :where(.app:not(.mode-app)) .text-button, :where(.app:not(.mode-app)) .server-sync-row, :where(.app:not(.mode-app)) .checkbox-row {
+    font-size: var(--text-base);
+  }
+  :where(.app:not(.mode-app)) .room-card strong {
+    font-size: var(--text-lg);
+  }
+  :where(.app:not(.mode-app)) .row strong, :where(.app:not(.mode-app)) .status-card strong {
+    font-size: var(--text-base);
+  }
+  :where(.app:not(.mode-app)) .legend, :where(.app:not(.mode-app)) .plan-heading, :where(.app:not(.mode-app)) .region-list button {
+    font-size: var(--text-sm);
+  }
+  :where(.app:not(.mode-app)) dialog {
+    font-size: var(--text-lg);
+  }
+  :where(.app:not(.mode-app)) dialog h2 {
+    font-size: var(--text-2xl);
+  }
+}
+
+/* Web controls use neutral selection states; the mobile palette is unchanged. */
+@media (min-width: 761px) {
+  .app:where(:not(.mode-app)) {
+    --brand: #303038;
+    --soft: var(--surface-muted);
+  }
+  .app:where(:not(.mode-app)) .field:focus-within {
+    background: var(--surface-subtle);
+    border-color: #777;
+  }
+  :where(.app:not(.mode-app)) .chip.active, :where(.app:not(.mode-app)) .item-tabs button.active {
+    background: #efeff1;
+    color: var(--ink);
+    border-color: #b7b7bd;
+    font-weight: 500;
+    box-shadow: none;
+    border: 1pt solid #68686f;
+  }
+  :where(.app:not(.mode-app)) .chip:not(.active):hover, :where(.app:not(.mode-app)) .item-tabs button:not(.active):hover, :where(.app:not(.mode-app)) .room-card:hover, :where(.app:not(.mode-app)) .row:hover {
+    background: #f6f6f7;
+  }
+  :where(.app:not(.mode-app)) .grade-picker .active {
+    background: #303038;
+    color: #fff;
+    font-weight: 500;
+  }
+  :where(.app:not(.mode-app)) .row.selected {
+    background: var(--surface-muted);
+    box-shadow: none;
+    font-weight: 500;
+  }
+  :where(.app:not(.mode-app)) .website-guide-steps [aria-current="step"] {
+    box-shadow: none;
+    font-weight: 500;
+  }
+  :where(.app:not(.mode-app)) .website-guide-art {
+    filter: none;
+  }
+  :where(.app:not(.mode-app)) .website-guide-section, :where(.app:not(.mode-app)) .website-guide-page {
+    --brand: var(--accent);
+  }
+  :where(.app:not(.mode-app)) .website-guide-steps [aria-current="step"] {
+    color: #655a97;
+    background: #f6f4fa;
+    border-left: 2px solid #8276bf;
+  }
+  :where(.app:not(.mode-app)) .website-guide-grades {
+    color: #655a97;
+  }
+  :where(.app:not(.mode-app)) .website-guide-grades > div {
+    background: #f7f5fa;
+  }
+  :where(.app:not(.mode-app)) .website-guide-grades dt {
+    color: #75689d;
+  }
+  .app:where(:not(.mode-app)) .more-content, .app:where(:not(.mode-app)).more-page {
+    background: #fff;
+  }
+}
+
+@media (min-width: 761px) {
+  :where(.app:not(.mode-app)) .step-label {
+    font-size: var(--text-lg);
+    line-height: 1.6;
+  }
+  :where(.app:not(.mode-app)) .plan-caption {
+    font-size: var(--text-lg);
+    line-height: 1.5;
+    font-weight: 500;
+    padding: 0 var(--space-1);
+    margin-bottom: 2px;
+  }
+  :where(.app:not(.mode-app)) .plan-card {
+    padding: 0;
+  }
+  :where(.app:not(.mode-app)) .zone-tabs {
+    width: 100%;
+    gap: var(--space-3);
+  }
+  :where(.app:not(.mode-app)) .zone-action {
+    border: 1pt solid #b7b7bd;
+    border-radius: 6px;
+    background: #fff;
+    color: #303038;
+    font-size: var(--text-base);
+    padding: var(--space-2) var(--space-4);
+    min-height: 38px;
+  }
+  :where(.app:not(.mode-app)) .zone-action:not(:disabled):hover {
+    background: var(--surface-muted);
+    border-color: #68686f;
+  }
+  :where(.app:not(.mode-app)) .zone-delete {
+    margin-left: auto;
+  }
+  :where(.app:not(.mode-app)) .chip.active, :where(.app:not(.mode-app)) .item-tabs button.active, :where(.app:not(.mode-app)) .grade-picker .active {
+    border-width: 1pt;
+  }
+  :where(.app:not(.mode-app)) button:focus-visible, :where(.app:not(.mode-app)) input:focus-visible, :where(.app:not(.mode-app)) select:focus-visible, :where(.app:not(.mode-app)) svg g:focus-visible {
+    outline-width: 1pt;
+  }
+  :where(.app:not(.mode-app)) .file-button:focus-within {
+    outline-width: 1pt;
+  }
+  :where(.app:not(.mode-app)) .website-nav-links button, :where(.app:not(.mode-app)) .website-guide-steps [aria-current="step"] {
+    border-width: 1pt;
+  }
+}
+
+@media (min-width: 761px) {
+  :where(.app:not(.mode-app)) .row, :where(.app:not(.mode-app)) .row.selected {
+    font-size: var(--text-sm);
+    font-weight: 400;
+    padding: var(--space-4) var(--space-3);
+  }
+  :where(.app:not(.mode-app)) .chip, :where(.app:not(.mode-app)) .chip.active, :where(.app:not(.mode-app)) .item-tabs button, :where(.app:not(.mode-app)) .item-tabs button.active {
+    border-width: 1pt;
+    font-weight: 500;
+  }
+}
+
+/* Website refresh: editorial spacing, split imagery and flat interaction states.
+   All rules stay above the app breakpoint to preserve the mobile UI. */
+@media (min-width: 761px) {
+  :where(.app:not(.mode-app)) .website-header {
+    background: #fff;
+  }
+  :where(.app:not(.mode-app)) .website-topbar, :where(.app:not(.mode-app)) .website-nav, :where(.app:not(.mode-app)) .website-guide-section, :where(.app:not(.mode-app)) .website-guide-page, .app:where(:not(.mode-app)) > .main {
+    max-width: 1440px;
+    padding-left: clamp(32px, 5vw, 72px);
+    padding-right: clamp(32px, 5vw, 72px);
+  }
+  :where(.app:not(.mode-app)) .website-topbar { height: 80px; }
+  :where(.app:not(.mode-app)) .website-nav { height: 60px; }
+  :where(.app:not(.mode-app)) .website-nav-links { gap: var(--space-3); }
+  :where(.app:not(.mode-app)) .website-nav-links button {
+    position: relative;
+    padding: 0 var(--space-4);
+    border: 0;
+    font-weight: 500;
+  }
+  :where(.app:not(.mode-app)) .website-nav-links button::after {
+    content: "";
+    position: absolute;
+    left: 18px;
+    right: 18px;
+    bottom: 0;
+    height: 1pt;
+    background: currentColor;
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 180ms ease;
+  }
+  :where(.app:not(.mode-app)) .website-nav-links button[aria-current="page"] {
+    color: var(--ink);
+    background: #f4f4f5;
+    font-weight: 500;
+  }
+  :where(.app:not(.mode-app)) .website-nav-links button[aria-current="page"]::after, :where(.app:not(.mode-app)) .website-nav-links button:hover::after { transform: scaleX(1); }
+  :where(.app:not(.mode-app)) .website-nav-links button:hover { background: var(--surface-subtle); }
+  :where(.app:not(.mode-app)) .website-brand { font-weight: 700; letter-spacing: -1px; }
+  :where(.app:not(.mode-app)) .website-account button:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 5px; }
+  :where(.app:not(.mode-app)) .website-start, :where(.app:not(.mode-app)) .website-button {
+    min-height: 46px;
+    border-radius: 8px;
+    font-size: var(--text-base);
+  }
+  :where(.app:not(.mode-app)) .website-start span, :where(.app:not(.mode-app)) .website-button span, :where(.app:not(.mode-app)) .website-inline-link span {
+    transition: transform 180ms ease;
+  }
+  :where(.app:not(.mode-app)) .website-start:hover span, :where(.app:not(.mode-app)) .website-button:hover span, :where(.app:not(.mode-app)) .website-inline-link:hover span { transform: translateX(4px); }
+  :where(.app:not(.mode-app)) .website-hero {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    max-width: 1440px;
+    min-height: 400px;
+    background: #fff;
+    padding: 32px clamp(32px, 5vw, 72px);
+    gap: var(--space-10);
+    align-items: stretch;
+  }
+  :where(.app:not(.mode-app)) .website-hero-photo {
+    position: relative;
+    inset: auto;
+    grid-column: 2;
+    grid-row: 1;
+    height: 100%;
+    min-height: 336px;
+    border-radius: 12px;
+    z-index: auto;
+    object-position: 68% center;
+  }
+  :where(.app:not(.mode-app)) .website-hero-shade { display: none; }
+  :where(.app:not(.mode-app)) .website-hero-content {
+    grid-column: 1;
+    grid-row: 1;
+    width: 100%;
+    padding: var(--space-4) 0;
+    margin: 0;
+    align-self: center;
+  }
+  :where(.app:not(.mode-app)) .website-eyebrow { color: #6660a0; font-size: var(--text-sm); }
+  :where(.app:not(.mode-app)) .website-hero h1 {
+    font-size: clamp(32px, 3.1vw, 46px);
+    line-height: 1.35;
+    letter-spacing: -1.8px;
+    margin: var(--space-4) 0;
+    font-weight: 700;
+    word-break: keep-all;
+  }
+  :where(.app:not(.mode-app)) .website-hero-description { color: #5e6068; font-size: var(--text-lg); line-height: 1.7; }
+  :where(.app:not(.mode-app)) .website-hero-actions { margin-top: var(--space-6); }
+  :where(.app:not(.mode-app)) .website-hero-actions .filled { background: var(--accent); border-color: var(--accent); }
+  :where(.app:not(.mode-app)) .website-hero-actions .filled:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+  :where(.app:not(.mode-app)) .website-image-caption {
+    right: calc(clamp(32px, 5vw, 72px) + 16px);
+    bottom: 44px;
+  }
+  :where(.app:not(.mode-app)) .website-guide-section { padding-top: var(--space-10); padding-bottom: var(--space-16); }
+  :where(.app:not(.mode-app)) .website-section-heading { margin-bottom: var(--space-8); align-items: center; }
+  :where(.app:not(.mode-app)) .website-section-heading h1, :where(.app:not(.mode-app)) .website-section-heading h2 { margin: 0; font-size: var(--text-3xl); line-height: 1.4; }
+  :where(.app:not(.mode-app)) .website-section-heading .website-eyebrow { margin-bottom: var(--space-3); }
+  :where(.app:not(.mode-app)) .website-guide-grid { gap: var(--space-5); }
+  :where(.app:not(.mode-app)) .website-guide-tile {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: border-color 180ms ease, background-color 180ms ease;
+  }
+  :where(.app:not(.mode-app)) .website-guide-visual { border-radius: 0; background: var(--surface-subtle); }
+  :where(.app:not(.mode-app)) .website-guide-art { transition: transform 240ms ease; }
+  :where(.app:not(.mode-app)) .website-guide-tile-copy { padding: var(--space-5); gap: var(--space-3); }
+  :where(.app:not(.mode-app)) .website-guide-tile h2, :where(.app:not(.mode-app)) .website-guide-tile h3 { font-size: var(--text-xl); line-height: 1.5; }
+  :where(.app:not(.mode-app)) .website-guide-tile p { color: #656771; font-size: var(--text-base); }
+  :where(.app:not(.mode-app)) .website-guide-tile .website-inline-link { font-size: var(--text-base); color: #6660a0; }
+  :where(.app:not(.mode-app)) .website-guide-tile:hover { border-color: #9c96ca; background: #fcfbff; }
+  :where(.app:not(.mode-app)) .website-guide-tile:hover .website-guide-visual { background: var(--accent-soft); }
+  :where(.app:not(.mode-app)) .website-guide-tile:hover .website-guide-art { transform: scale(1.025); }
+  :where(.app:not(.mode-app)) .website-guide-tile:active { background: var(--accent-soft); border-color: var(--accent); }
+  :where(.app:not(.mode-app)) .website-inline-link { font-size: var(--text-base); }
+  :where(.app:not(.mode-app)) .website-guide-page, .app:where(:not(.mode-app)) > .main { padding-top: var(--space-10); padding-bottom: var(--space-16); }
+  .page-heading:where(:not(.mode-app)) { margin-bottom: var(--space-6); }
+  .page-heading:where(:not(.mode-app)) h1 { font-size: var(--text-3xl); line-height: 1.4; letter-spacing: -1px; }
+  :where(.app:not(.mode-app)) .website-all-guides { gap: var(--space-6); }
+  :where(.app:not(.mode-app)) .website-guide-article { gap: var(--space-10); margin-top: var(--space-8); }
+  :where(.app:not(.mode-app)) .website-guide-steps { position: sticky; top: 24px; }
+  :where(.app:not(.mode-app)) .website-guide-steps button {
+    border-left: 1pt solid transparent;
+    border-radius: 0;
+    font-size: var(--text-base);
+    transition: background-color 160ms ease, color 160ms ease;
+  }
+  :where(.app:not(.mode-app)) .website-guide-steps button:hover { background: #f7f6fb; color: #655a97; }
+  :where(.app:not(.mode-app)) .website-guide-steps [aria-current="step"] { border-left: 1pt solid var(--accent); background: var(--accent-soft); font-weight: 500; }
+  :where(.app:not(.mode-app)) .website-guide-detail-art { border-radius: 12px; }
+  .app:where(:not(.mode-app)) .card, .app:where(:not(.mode-app)) .inspector { border-radius: 12px; box-shadow: none; }
+  .app:where(:not(.mode-app)) .field { border: 1px solid var(--border); background: var(--surface-subtle); border-radius: 8px; }
+  .app:where(:not(.mode-app)) .field:focus-within { border-color: #6660a0; background: #fff; }
+  .app:where(:not(.mode-app)) .primary, .app:where(:not(.mode-app)) .secondary, .app:where(:not(.mode-app)) .file-button, .app:where(:not(.mode-app)) .zone-action, .app:where(:not(.mode-app)) .inspector .text-button, .app:where(:not(.mode-app)) .inspector .primary, .app:where(:not(.mode-app)) .inspector .secondary { border-radius: 8px; min-height: 44px; box-shadow: none; }
+  .app:where(:not(.mode-app)) .chip, .app:where(:not(.mode-app)) .item-tabs button { border-radius: 8px; background: #fff; border: 1pt solid #d5d5dc; }
+  .app:where(:not(.mode-app)) .chip.active, .app:where(:not(.mode-app)) .item-tabs button.active { border-color: #55555f; background: #ededf0; font-weight: 500; }
+  .app:where(:not(.mode-app)) .grade-picker .chip.active { background: #303038; color: #fff; }
+  .app:where(:not(.mode-app)) .row, .app:where(:not(.mode-app)) .row.selected { border-radius: 8px; border: 1pt solid transparent; font-weight: 400; }
+  .app:where(:not(.mode-app)) .row.selected { border-color: #9a9aa3; background: var(--surface-muted); }
+  .app:where(:not(.mode-app)) .room-card { border: 1px solid var(--border); border-radius: 12px; padding: var(--space-6); min-height: 116px; box-shadow: none; }
+  .app:where(:not(.mode-app)) .room-card:hover { border-color: #7f7f8b; background: var(--surface-subtle); }
+  .app:where(:not(.mode-app)) .room-card:active { background: #ededf0; }
+  .app:where(:not(.mode-app)) .room-card > span:last-child { transition: transform 180ms ease; }
+  .app:where(:not(.mode-app)) .room-card:hover > span:last-child { transform: translateX(4px); }
+  .app:where(:not(.mode-app)) button:not(:disabled), .app:where(:not(.mode-app)) .file-button { transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease; }
+  .app:where(:not(.mode-app)) button:not(:disabled):active { filter: brightness(.95); }
+  .app:where(:not(.mode-app)) button:disabled { filter: none; transform: none; }
+  .app:where(:not(.mode-app)) .danger:not(:disabled):hover { background: #fff1f1; color: var(--danger); border-color: #b87171; }
+  :where(.app:not(.mode-app)) .website-footer { padding-top: var(--space-8); padding-bottom: var(--space-8); background: var(--surface-subtle); }
+}
+@media (min-width: 761px) and (max-width: 1050px) {
+  :where(.app:not(.mode-app)) .website-nav-links { gap: 0; }
+  :where(.app:not(.mode-app)) .website-nav-links button { padding-left: var(--space-3); padding-right: var(--space-3); }
+  :where(.app:not(.mode-app)) .website-hero { gap: var(--space-6); }
+  :where(.app:not(.mode-app)) .website-hero h1 { font-size: var(--text-3xl); }
+  :where(.app:not(.mode-app)) .website-guide-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  :where(.app:not(.mode-app)) .website-all-guides { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (prefers-reduced-motion: reduce) and (min-width: 761px) {
+  .app *, .app *::after { transition: none !important; }
+}
+
+/* Space selection owns registration and editing; commands remain outside the inspector. */
+@media (min-width: 761px) {
+  :where(.app:not(.mode-app)) .space-context.desktop-only { display: flex; align-items: center; gap: var(--space-3); font-size: var(--text-sm); color: var(--muted); margin-bottom: var(--space-4); }
+  :where(.app:not(.mode-app)) .space-context strong { color: #303038; font-weight: 500; }
+  :where(.app:not(.mode-app)) .context-mode { border-left: 1px solid var(--border); padding-left: var(--space-3); }
+  :where(.app:not(.mode-app)) .space-workflow.desktop-only { display: flex; padding: 0; margin: 0 0 var(--space-6); gap: var(--space-6); list-style: none; }
+  :where(.app:not(.mode-app)) .space-workflow li { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-sm); color: #6d6d78; }
+  :where(.app:not(.mode-app)) .space-workflow li > span { display: grid; place-items: center; width: 26px; height: 26px; border: 1px solid var(--border); border-radius: 50%; }
+  :where(.app:not(.mode-app)) .space-workflow [aria-current="step"] { color: var(--accent); }
+  :where(.app:not(.mode-app)) .space-workflow [aria-current="step"] > span { background: var(--accent); color: white; border-color: var(--accent); }
+  :where(.app:not(.mode-app)) .space-workflow .complete { color: #55555f; }
+  :where(.app:not(.mode-app)) .editor-command-bar { position: sticky; top: 0; z-index: 5; display: flex; justify-content: space-between; align-items: center; gap: var(--space-5); background: #fff; border: 1px solid var(--border); border-radius: 12px 12px 0 0; padding: var(--space-4) var(--space-5); }
+  :where(.app:not(.mode-app)) .editor-command-bar > div:first-child { display: flex; flex-direction: column; gap: var(--space-1); }
+  :where(.app:not(.mode-app)) .editor-command-bar strong { font-size: var(--text-lg); }
+  :where(.app:not(.mode-app)) .editor-command-bar > div:first-child > span, :where(.app:not(.mode-app)) .editor-save-status { font-size: var(--text-sm); color: var(--muted); }
+  :where(.app:not(.mode-app)) .editor-command-actions { display: flex; gap: var(--space-3); align-items: center; }
+  .app:where(:not(.mode-app)) .editor-command-actions .primary { background: var(--accent); color: #fff; min-width: 88px; }
+  .app:where(:not(.mode-app)) .editor-command-actions .primary:hover { background: var(--accent-hover); }
+  :where(.app:not(.mode-app)) .editor-workspace { background: #f4f4f6; border: 1px solid var(--border); border-top: 0; padding: var(--space-6); border-radius: 0 0 12px 12px; gap: var(--space-6); align-items: start; }
+  :where(.app:not(.mode-app)) .editor-workspace > .workspace-main { min-width: 0; }
+  :where(.app:not(.mode-app)) .editor-workspace .plan-card { background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: var(--space-4); }
+  :where(.app:not(.mode-app)) .editor-workspace .plan { min-height: 350px; }
+  :where(.app:not(.mode-app)) .editor-workspace .inspector { background: #fff; border-radius: 10px; top: 88px; max-height: calc(100svh - 110px); }
+  :where(.app:not(.mode-app)) .editor-workspace .save-protection, :where(.app:not(.mode-app)) .editor-step-label { display: none; }
+  :where(.app:not(.mode-app)) .editor-workspace .region-list { padding: var(--space-4); background: #fff; border-radius: 8px; }
+  .page-protect:where(:not(.mode-app)) .website-footer, .page-review:where(:not(.mode-app)) .website-footer { display: none; }
+}
+@media (min-width: 761px) and (max-width: 1050px) {
+  :where(.app:not(.mode-app)) .editor-workspace { padding: var(--space-4); grid-template-columns: minmax(0, 1fr) 280px; gap: var(--space-4); }
+  :where(.app:not(.mode-app)) .editor-save-status { display: none; }
+}
+@media (min-width: 761px) {
+  .page-protect:where(:not(.mode-app)) > .main, .page-review:where(:not(.mode-app)) > .main { padding-top: var(--space-6); }
+  .mode-web.page-protect .page-heading, .mode-web.page-review .page-heading { display: none; }
+  .page-protect:where(:not(.mode-app)) .space-context, .page-review:where(:not(.mode-app)) .space-context { margin-bottom: var(--space-3); }
+  .page-protect:where(:not(.mode-app)) .space-workflow, .page-review:where(:not(.mode-app)) .space-workflow { margin-bottom: var(--space-4); }
+  :where(.app:not(.mode-app)) .editor-workspace .plan { min-height: 300px; max-height: 410px; }
+}
+
+/* Full-width drawing workspace with a separate vertical settings pane. */
+@media (min-width: 761px) {
+  .app:where(:not(.mode-app)).page-detail > .main, .app:where(:not(.mode-app)).page-protect > .main, .app:where(:not(.mode-app)).page-review > .main {
+    max-width: none;
+    padding-left: var(--space-8);
+    padding-right: 0;
+    padding-bottom: 0;
+  }
+  .page-detail:where(:not(.mode-app)) .workspace, .page-protect:where(:not(.mode-app)) .workspace, .page-review:where(:not(.mode-app)) .workspace {
+    grid-template-columns: minmax(0, 1fr) 350px;
+    gap: 0;
+    background: #fff;
+    border: 0;
+    border-top: 1px solid var(--border);
+    border-radius: 0;
+    padding: 0;
+    align-items: stretch;
+  }
+  .page-detail:where(:not(.mode-app)) .workspace-main, .page-protect:where(:not(.mode-app)) .workspace-main, .page-review:where(:not(.mode-app)) .workspace-main { padding: var(--space-6) var(--space-8) var(--space-8) 0; min-width: 0; }
+  .page-detail:where(:not(.mode-app)) .inspector, .page-protect:where(:not(.mode-app)) .inspector, .page-review:where(:not(.mode-app)) .inspector {
+    border: 0;
+    border-left: 1px solid var(--border);
+    border-radius: 0;
+    box-shadow: none;
+    background: #fff;
+    margin: 0;
+    padding: var(--space-6);
+    top: 0;
+    max-height: 100svh;
+    align-self: start;
+    min-height: calc(100svh - 220px);
+  }
+  .page-protect:where(:not(.mode-app)) .inspector, .page-review:where(:not(.mode-app)) .inspector { top: 76px; max-height: calc(100svh - 76px); }
+  .page-detail:where(:not(.mode-app)) .plan-card, .page-protect:where(:not(.mode-app)) .plan-card, .page-review:where(:not(.mode-app)) .plan-card { padding: 0; border: 0; border-radius: 0; background: #fff; }
+  .page-detail:where(:not(.mode-app)) .plan, .page-protect:where(:not(.mode-app)) .plan, .page-review:where(:not(.mode-app)) .plan { width: 100%; height: auto; max-height: none; min-height: 0; }
+  .page-detail:where(:not(.mode-app)) .plan-caption, .page-protect:where(:not(.mode-app)) .plan-caption, .page-review:where(:not(.mode-app)) .plan-caption { margin: 0 0 var(--space-2); padding: 0; }
+  .page-detail:where(:not(.mode-app)) .plan-legend, .page-protect:where(:not(.mode-app)) .plan-legend, .page-review:where(:not(.mode-app)) .plan-legend { margin-top: var(--space-3); }
+  .page-protect:where(:not(.mode-app)) .editor-command-bar, .page-review:where(:not(.mode-app)) .editor-command-bar { border: 0; border-top: 1px solid var(--border); border-radius: 0; margin-left: -32px; padding: var(--space-4) var(--space-6) var(--space-4) var(--space-8); }
+  :where(.app:not(.mode-app)) .editor-workspace .region-list { padding: var(--space-4) 0; border-radius: 0; }
+  .page-detail:where(:not(.mode-app)) .page-heading { padding-right: var(--space-8); }
+  .page-detail:where(:not(.mode-app)) .website-footer { display: none; }
+}
+@media (min-width: 761px) and (max-width: 1050px) {
+  .app:where(:not(.mode-app)).page-detail > .main, .app:where(:not(.mode-app)).page-protect > .main, .app:where(:not(.mode-app)).page-review > .main { padding-left: var(--space-6); }
+  .page-detail:where(:not(.mode-app)) .workspace, .page-protect:where(:not(.mode-app)) .workspace, .page-review:where(:not(.mode-app)) .workspace { grid-template-columns: minmax(0, 1fr) 290px; }
+  .page-detail:where(:not(.mode-app)) .workspace-main, .page-protect:where(:not(.mode-app)) .workspace-main, .page-review:where(:not(.mode-app)) .workspace-main { padding-right: var(--space-6); }
+  .page-detail:where(:not(.mode-app)) .inspector, .page-protect:where(:not(.mode-app)) .inspector, .page-review:where(:not(.mode-app)) .inspector { padding: var(--space-5); }
+  .page-protect:where(:not(.mode-app)) .editor-command-bar, .page-review:where(:not(.mode-app)) .editor-command-bar { margin-left: -24px; padding-left: var(--space-6); }
+}
+
+/* The compact footer follows page content; the divider spans the entire pane. */
+@media (min-width: 761px) {
+  .app:where(:not(.mode-app)), .app:where(:not(.mode-app)).auth-page, .app:where(:not(.mode-app)).more-page {
+    display: flex;
+    flex-direction: column;
+    min-height: 100svh;
+    padding-bottom: 0;
+  }
+  .app:where(:not(.mode-app)) > .website-header { flex-shrink: 0; }
+  .app:where(:not(.mode-app)) > .main, .app:where(:not(.mode-app)) > .website-home, .app:where(:not(.mode-app)) > .website-guide-page { flex: 1; width: 100%; }
+  .app:where(:not(.mode-app)) .website-footer.desktop-only {
+    display: block;
+    position: static;
+    flex-shrink: 0;
+    margin-top: auto;
+    height: 44px;
+    padding: 0 var(--space-8);
+    background: var(--surface-subtle);
+    border-top: 1px solid var(--border);
+  }
+  :where(.app:not(.mode-app)) .website-footer > div { height: 100%; gap: var(--space-4); }
+  :where(.app:not(.mode-app)) .website-footer strong { font-size: var(--text-base); }
+  :where(.app:not(.mode-app)) .website-footer span { font-size: var(--text-xs); }
+  .app:where(:not(.mode-app)).page-detail > .main, .app:where(:not(.mode-app)).page-protect > .main, .app:where(:not(.mode-app)).page-review > .main { display: flex; flex-direction: column; }
+  .page-detail:where(:not(.mode-app)) .workspace, .page-protect:where(:not(.mode-app)) .workspace, .page-review:where(:not(.mode-app)) .workspace { position: relative; flex: 1; }
+  .page-detail:where(:not(.mode-app)) .workspace::after, .page-protect:where(:not(.mode-app)) .workspace::after, .page-review:where(:not(.mode-app)) .workspace::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: 350px;
+    width: 1px;
+    background: var(--border);
+    pointer-events: none;
+  }
+  .page-detail:where(:not(.mode-app)) .inspector, .page-protect:where(:not(.mode-app)) .inspector, .page-review:where(:not(.mode-app)) .inspector { border-left: 0; max-height: calc(100svh - 44px); min-height: 0; }
+  .page-protect:where(:not(.mode-app)) .inspector, .page-review:where(:not(.mode-app)) .inspector { max-height: calc(100svh - 120px); }
+  .app:where(:not(.mode-app)) .card, .app:where(:not(.mode-app)) .field, .app:where(:not(.mode-app)) .summary-box, .app:where(:not(.mode-app)) .status-card, :where(.app:not(.mode-app)) .website-guide-visual, :where(.app:not(.mode-app)) .website-guide-detail-art, :where(.app:not(.mode-app)) .website-guide-grades > div, :where(.app:not(.mode-app)) .website-hero-photo { border-radius: 3px; }
+  .app:where(:not(.mode-app)) .region-list, .app:where(:not(.mode-app)) .plan-card, .app:where(:not(.mode-app)) .notice { border-radius: 3px; }
+  :where(.app:not(.mode-app)) /* Interactive cards keep their existing button shape. */
+  .app button.card, :where(.app:not(.mode-app)) button.website-guide-tile { border-radius: 8px; }
+}
+@media (min-width: 761px) and (max-width: 1050px) {
+  .page-detail:where(:not(.mode-app)) .workspace::after, .page-protect:where(:not(.mode-app)) .workspace::after, .page-review:where(:not(.mode-app)) .workspace::after { right: 290px; }
+}
+
+@media (min-width: 761px) {
+  .app:where(:not(.mode-app)) .field { border-color: #b9bbc4; }
+  .app:where(:not(.mode-app)) .card:not(button), .app:where(:not(.mode-app)) .room-card, :where(.app:not(.mode-app)) .website-guide-tile { border-color: #bec0c8; }
+  .app:where(:not(.mode-app)) .secondary, .app:where(:not(.mode-app)) .zone-action, .app:where(:not(.mode-app)) .chip, .app:where(:not(.mode-app)) .item-tabs button, .app:where(:not(.mode-app)) .inspector .secondary, .app:where(:not(.mode-app)) .inspector .text-button { border-color: #a9acb6; }
+  .app:where(:not(.mode-app)) .chip.active, .app:where(:not(.mode-app)) .item-tabs button.active { border-color: #555b67; }
+  :where(.app:not(.mode-app)) .website-guide-detail-art, :where(.app:not(.mode-app)) .website-guide-grades > div, .app:where(:not(.mode-app)) .summary-box { border: 1px solid #c1c3cb; }
+  :where(.app:not(.mode-app)) .website-nav-border, .app:where(:not(.mode-app)) .website-footer.desktop-only, .page-detail:where(:not(.mode-app)) .workspace, .page-protect:where(:not(.mode-app)) .workspace, .page-review:where(:not(.mode-app)) .workspace { border-color: var(--border); }
+  .page-detail:where(:not(.mode-app)) .workspace::after, .page-protect:where(:not(.mode-app)) .workspace::after, .page-review:where(:not(.mode-app)) .workspace::after { background: var(--border-strong); }
+}
+
+@media (min-width: 761px) {
+  .app:where(:not(.mode-app)) .detail-info .summary-box {
+    border: 0;
+    border-bottom: 1px solid var(--border-strong);
+    padding: var(--space-4) 0;
+    border-radius: 0;
+    background: transparent;
+  }
+  .app:where(:not(.mode-app)) .detail-info > .primary, .app:where(:not(.mode-app)) .detail-info > .secondary {
+    border: 1pt solid #a9acb6;
+  }
+}
+
+@media (min-width: 761px) {
+  .app:where(:not(.mode-app)) .website-footer.desktop-only { border-top: 0; }
+}
+
+/* The step count lives with the pagination instead of as an eyebrow over the heading. */
+.website-guide-count {
+  margin-right: auto;
+  color: var(--muted);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Narrow web window: the editor's title row stacks. */
+@media (max-width: 760px) {
+  .mode-web .editor-command-bar { display: flex; flex-direction: column; align-items: stretch; gap: var(--space-3); margin-bottom: var(--space-4); }
+  .mode-web .editor-command-bar h1 { font-size: var(--text-2xl); }
+  .mode-web .editor-command-bar > div:first-child > span { color: var(--muted); font-size: var(--text-sm); }
+  .mode-web .editor-command-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
+}
+/* app view: same phone rules at any window width */
+
+
+
+/* Direction pass (Taste · frontend-design · hallmark) on the landing page:
+   the headline is the first screen's focal point, and the guide tiles separate by tone, not outlines. */
+@media (min-width: 761px) {
+  :where(.app:not(.mode-app)) .website-hero h1 {
+    font-size: clamp(40px, 4.4vw, 64px);
+    line-height: 1.2;
+    letter-spacing: -0.03em;
+  }
+  :where(.app:not(.mode-app)) .website-hero-photo { min-height: 440px; }
+  :where(.app:not(.mode-app)) .website-guide-tile {
+    border-color: transparent;
+    background: var(--surface-subtle);
+  }
+  :where(.app:not(.mode-app)) .website-guide-tile .website-guide-visual { background: var(--surface-muted); }
+  :where(.app:not(.mode-app)) .website-guide-tile:hover { border-color: transparent; background: var(--accent-soft); }
+  :where(.app:not(.mode-app)) .website-guide-tile p { color: var(--muted); }
+}
+/* One primary-action style: the nav's "공간 등록" uses the same accent as the hero action. */
+@media (min-width: 761px) {
+  :where(.app:not(.mode-app)) .website-start { border-color: var(--accent); background: var(--accent); }
+  :where(.app:not(.mode-app)) .website-start:hover { border-color: var(--accent-hover); background: var(--accent-hover); }
+}

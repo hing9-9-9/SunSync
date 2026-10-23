@@ -1,0 +1,210 @@
+/* Product surfaces: same SunSync identity; restrained chrome, legible controls. */
+.app.award-app, .app.award-mobile {
+  --ui-ink: #29252f;
+  --ui-muted: #625d6c;
+  --ui-line: #c9c4d0;
+  --ui-hover: #f5f3f8;
+  --aw-muted: #625d6c;
+  --aw-label: #62576e;
+  --aw-line: #cec8d6;
+  --aw-control: #aaa2b7;
+}
+.app .page-subtitle { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 8px 0 0; font-size: 15px; color: var(--ui-muted); line-height: 1.5; }
+.app .page-subtitle span { color: var(--ui-ink); }
+.app.award-app .page-heading { margin-bottom: 24px; padding-bottom: 20px; }
+.app.award-app .page-heading h1 { font-size: clamp(28px, 2.6vw, 38px); line-height: 1.3; }
+.app.award-app .main { padding-top: 28px; }
+.app.award-app .space-context { margin-bottom: 20px; font-size: 14px; color: var(--ui-muted); }
+.app.award-app .space-workflow { margin-bottom: 24px; }
+.app.award-app .inspector { padding-top: 24px; }
+.app.award-app .inspector h2 { font-size: 24px; line-height: 1.4; }
+.app.award-app .inspector h3, .app.award-app .blocking-schedule h3 { font-size: 17px; line-height: 1.5; }
+.app.award-app .inspector .muted, .app.award-app .inspector .small,
+.app.award-app .grade-description, .app.award-app .grade-picker legend { font-size: 14px; color: var(--ui-muted); }
+.app.award-app .row > .grade-summary { font-size: 14px; color: #584971; line-height: 1.6; }
+.app.award-app .furniture-actions > button { font-size: 14px; min-height: 44px; }
+.app.award-app .editor-command-bar { position: sticky; top: 0; z-index: 30; padding: 14px 0; margin-bottom: 16px; border-bottom: 1px solid var(--ui-line); background: #fff; }
+.app.award-app .editor-command-bar h1 { font-size: clamp(26px, 2.4vw, 34px); margin-bottom: 4px; }
+.app.award-app .editor-command-bar > div > span,
+.app.award-app .editor-command-actions > .editor-save-status { font-size: 14px; color: var(--ui-muted); }
+.app.award-app .editor-command-actions > button { min-height: 44px; font-size: 15px; }
+.app.award-app .detail-layout, .app.award-app .editor-layout { border-top: 0; }
+.app.award-app .field, .app.award-mobile .field { border-color: var(--ui-line); }
+.app.award-app .field > span, .app.award-mobile .field > span { color: #62576e; font-size: 14px; line-height: 1.5; }
+.app.award-app .field[aria-invalid="true"], .app.award-mobile .field:has(input[aria-invalid="true"]) { border-color: #b02d3d; }
+.app.award-app .field:focus-within, .app.award-mobile .field:focus-within { border-color: var(--accent); }
+.app.award-app button:disabled, .app.award-mobile button:disabled { cursor: not-allowed; }
+.app.award-app .row.selected, .app.award-mobile .row.selected { background: #f0edf6; border-color: #8b7ba4; }
+.app.award-app .item-tabs > button, .app.award-mobile .item-tabs > button { font-size: 14px; font-weight: 500; min-height: 44px; }
+.app.award-app .item-tabs > button.active, .app.award-mobile .item-tabs > button.active { font-weight: 500; border-width: 1px; }
+.app.award-app .plan-caption, .app.award-mobile .plan-caption { color: #625d6c; font-size: 14px; line-height: 1.5; }
+.app.award-app .plan-legend, .app.award-mobile .plan-legend { font-size: 13px; color: #625d6c; }
+/* Mobile keeps its existing pastel canvas and persistent app navigation. */
+.app.award-mobile { line-height: 1.6; }
+.app.award-mobile .page-heading { margin-bottom: 16px; padding-bottom: 16px; }
+.app.award-mobile .page-heading h1 { font-size: 26px; font-weight: 700; letter-spacing: -.8px; }
+.app.award-mobile .page-subtitle { font-size: 14px; margin-top: 6px; }
+.app.award-mobile .section-label, .app.award-mobile .building-title { font-size: 15px; color: var(--ui-muted); }
+.app.award-mobile .room-card { padding: 16px; border-color: var(--ui-line); }
+.app.award-mobile .room-card strong { font-size: 19px; font-weight: 700; line-height: 1.4; }
+.app.award-mobile .room-card small, .app.award-mobile .server-sync-row,
+.app.award-mobile .status-card, .app.award-mobile .status-pill { font-size: 13px; }
+.app.award-mobile .server-sync-row { padding: 4px 0; margin-bottom: 16px; }
+.app.award-mobile .card, .app.award-mobile .inspector { border-radius: 8px; }
+.app.award-mobile .inspector h2 { font-size: 22px; font-weight: 700; }
+.app.award-mobile .inspector h3, .app.award-mobile .blocking-schedule h3 { font-size: 17px; font-weight: 700; }
+.app.award-mobile .primary, .app.award-mobile .secondary { min-height: 44px; font-size: 15px; }
+.app.award-mobile .detail-actions { gap: 10px; }
+.app.award-mobile .mobile-nav button { min-height: 52px; font-size: 14px; color: #625d6c; font-weight: 500; }
+.app.award-mobile .mobile-nav button.active { color: #554dca; font-weight: 500; background: #efedfb; }
+.app.award-mobile .mobile-nav svg { width: 22px; height: 22px; }
+.app.award-mobile .main > :not(.page-heading) { animation: none; }
+.app.award-mobile .app-action-bar .primary { min-height: 46px; }
+.app.award-mobile button:active:not(:disabled) { transform: none; filter: brightness(.97); }
+.app.award-mobile .row:active, .app.award-mobile .room-card:active { transform: none; }
+.app.award-mobile .field-warning { font-size: 13px; }
+.app :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+@media (hover: hover) {
+  .app.award-app .secondary:hover:not(:disabled), .app.award-app .item-tabs > button:hover:not(:disabled) { background: #f3f0f8; border-color: #9284a5; }
+  .app.award-app .row:hover { background: var(--ui-hover); }
+  .app.award-app .row.selected:hover { background: #ebe6f3; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app *, .app *::before, .app *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
+
+/* A validation message never moves neighbouring values to another baseline. */
+.app.award-app .dimensions, .app.award-mobile .dimensions { align-items: start; }
+.app.award-app .dimensions > .field, .app.award-mobile .dimensions > .field { justify-content: flex-start; }
+.app.award-app .dimensions > .field > input, .app.award-mobile .dimensions > .field > input { height: 36px; min-height: 36px; }
+.app.award-app .field-warning, .app.award-mobile .field-warning { color: #a3293c; line-height: 1.55; }
+.app.award-app .field:has(input[aria-invalid="true"]) { border-color: #b02d3d; }
+.app.award-app .shading-time .switch, .app.award-mobile .shading-time .switch { gap: 8px; flex-shrink: 0; }
+
+/* Palette pass: bright reading surfaces, tinted section fields, defined ink and rules. */
+.app.award-app {
+  --ap-ink: #24232c;
+  --ap-muted: #55515f;
+  --ap-line: #aaa6b5;
+  --ap-paper: #f3f3f8;
+  --muted: #55515f;
+  --line: #b8b3c2;
+  --border: #b8b3c2;
+  --border-strong: #938c9f;
+  --ui-muted: #55515f;
+  --ui-line: #b8b3c2;
+  background: #f3f3f8;
+  color: #24232c;
+}
+.app.award-app.page-home { background: #fff; }
+.app.award-app > .ap-header { background: transparent; }
+.app.award-app .ap-hero { background: #fff; }
+.app.award-app .ap-hero-visual { background: #eeebfa; border: 1px solid #c3badb; }
+.app.award-app .ap-visual-controls { background: #e4def3; border-top: 1px solid #b8aecb; }
+.app.award-app .ap-statement { background: #efedf7; color: #24232c; }
+.app.award-app .ap-process { background: #f1f3f6; }
+.app.award-app .ap-process-row { background: #fff; border: 1px solid #bbb8c5; }
+.app.award-app .ap-process-list { display: grid; gap: 12px; }
+.app.award-app .ap-process-row:hover { background: #ebe7f7; border-color: #9486b2; }
+.app.award-app .ap-screens { background: #fff; }
+.app.award-app .ap-final { background: #292633; color: #fff; }
+.app.award-app .ap-final h2 span { color: #c7befb; }
+.app.award-app .ap-final-disc, .app.award-app .ap-final-disc::before, .app.award-app .ap-final-disc::after { border-color: #746c88; }
+.app.award-app .ap-footer { background: #e8e6ef; color: #484451; border-top: 1px solid #b8b3c2; }
+.app.award-app .ap-hero-foot,
+.app.award-app .ap-hero-foot span,
+.app.award-app .ap-visual-label,
+.app.award-app .ap-hero-note p,
+.app.award-app .ap-process-row p,
+.app.award-app .ap-statement-bottom p { color: #4b4655; }
+.app.award-app .ap-object-label { color: #393340; background: #fff; border-color: #b8b3c2; }
+.app.award-app .ap-hero-foot { border-color: #aaa6b5; }
+/* Galleries and guide chapters use a tinted canvas and white content surfaces. */
+.app.award-app .award-space-intro { border-color: #aaa6b5; }
+.app.award-app .award-space-intro p,
+.app.award-app .award-room-copy small,
+.app.award-app .award-room-copy > span,
+.app.award-app .award-room-state { color: #55515f; }
+.app.award-app .award-room-card { background: #fff; border-color: #aaa3b8; }
+.app.award-app .award-room-card:hover { border-color: #786793; }
+.app.award-app .award-room-visual.award-art-0 { background: #e9e4f4; }
+.app.award-app .award-room-visual.award-art-1 { background: #e6efec; }
+.app.award-app .award-room-visual.award-art-2 { background: #f2eae1; }
+.app.award-app .award-search, .app.award-app .award-building-filter { background-color: #fff; border-color: #aaa3b8; }
+.app.award-app .ap-guide-page { background: #f3f3f8; }
+.app.award-app .ap-guide-page p, .app.award-app .ap-guide-page small { color: #55515f; }
+.app.award-app .ap-guide-page section { border-color: #b8b3c2; }
+.app.award-app .ap-guide-page .website-guide-art { background: #eae6f4; border: 1px solid #c3badb; }
+/* The plan and inspector are separate working surfaces rather than faint outlines. */
+.app.award-app .plan-card { background: #fff; border-color: #b5afbf; }
+.app.award-app .plan-wrap { background: #f3f3f8; border-color: #b5afbf; }
+.app.award-app .inspector { background: #fff; border-left-color: #aaa3b8; padding-left: 24px; padding-right: 24px; }
+.app.award-app .editor-command-bar { background: #f3f3f8; border-color: #aaa3b8; }
+.app.award-app .field { background: #fff; border-color: #aaa3b8; }
+.app.award-app .muted, .app.award-app .small,
+.app.award-app .field > span, .app.award-app .step-label,
+.app.award-app .space-context, .app.award-app .editing-help,
+.app.award-app .server-sync-row { color: #55515f; }
+.app.award-app .row { border-color: #b8b3c2; color: #292633; }
+.app.award-app .row > .grade-summary { color: #55436f; }
+.app.award-app .secondary, .app.award-app .chip,
+.app.award-app .item-tabs > button { border-color: #aaa3b8; color: #4f465d; }
+.app.award-app .chip.active, .app.award-app .item-tabs > button.active { background: #e5dff4; border-color: #8974ad; color: #49316e; }
+.app.award-app .status-card { background: #e8efec; border-color: #abbdb3; }
+.app.award-app .section-row .brand-text { color: #5543b9; }
+.app.award-app .field-warning { color: #a3293c; }
+/* Phone: move the title/actions inward as one row and reclaim bottom-bar space. */
+.app.award-mobile.mode-app > .main { padding-left: 24px; padding-right: 24px; }
+.app.award-mobile.mode-app > .app-header { padding-left: 24px; padding-right: 24px; }
+.app.award-mobile.mode-app .page-heading { align-items: center; gap: 16px; }
+.app.award-mobile.mode-app .page-heading > div { min-width: 0; }
+.app.award-mobile.mode-app .page-heading h1 { overflow-wrap: anywhere; }
+.app.award-mobile.mode-app .page-heading .plus { flex: 0 0 44px; margin: 0; }
+.app.award-mobile.mode-app .mobile-nav { height: calc(56px + env(safe-area-inset-bottom)); min-height: 0; padding: 4px 16px calc(4px + env(safe-area-inset-bottom)); border-top: 0; }
+.app.award-mobile.mode-app .mobile-nav button { min-height: 44px; height: 48px; padding: 2px 4px; gap: 2px; line-height: 1.2; font-size: 13px; }
+.app.award-mobile.mode-app .mobile-nav svg { width: 20px; height: 20px; }
+.app.award-mobile.mode-app .app-action-bar,
+.app.award-mobile.mode-app .capture-action { bottom: calc(56px + env(safe-area-inset-bottom)); padding: 10px 24px; }
+.app.award-mobile.mode-app { padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
+.app.award-mobile.mode-app.has-action-bar { padding-bottom: calc(144px + env(safe-area-inset-bottom)); }
+.app.award-mobile.mode-app.has-action-bar .toast { bottom: calc(132px + env(safe-area-inset-bottom)); }
+@media (max-width: 350px) {
+  .app.award-mobile.mode-app > .main,
+  .app.award-mobile.mode-app > .app-header { padding-left: 20px; padding-right: 20px; }
+  .app.award-mobile.mode-app .app-action-bar,
+  .app.award-mobile.mode-app .capture-action { padding-left: 20px; padding-right: 20px; }
+}
+@media (max-width: 900px) {
+  .app.award-app .inspector { border-left: 0; border-top: 1px solid #aaa3b8; padding: 24px; }
+}
+.app.award-app .ap-hero h1 > span,
+.app.award-app .ap-guide-heading h1 > span { color: #5c526d; }
+.app.award-app .ap-guide-step { background: #fff; border: 1px solid #b8b3c2; border-radius: 8px; padding: 28px; }
+.app.award-app .ap-guide-nav button { color: #554d60; border-color: #b8b3c2; }
+.app.award-app .ap-guide-nav button.active { color: #4f3d78; background: #e6e0f3; border-color: #9583b3; }
+.app.award-app .ap-guide-step-title > span,
+.app.award-app .ap-process-row > span { color: #6b587f; }
+.app.award-app .ap-guide-detail { color: #55515f; }
+.app.award-mobile.mode-app .mobile-nav button { font-size: 14px; }
+.app.award-app .award-space-intro h1 > span { color: #5c526d; }
+.app.award-app .award-room-copy > div,
+.app.award-app .award-room-copy > div > span,
+.app.award-app .award-space-stats span,
+.app.award-app .award-room-visual > span,
+.app.award-app .award-building-filter > select,
+.app.award-app .server-sync-row .text-button,
+.app.award-app .space-workflow li,
+.app.award-app .context-mode { color: #55515f; }
+.app.award-app .space-workflow { border-color: #b8b3c2; }
+.app.award-app .space-workflow li[aria-current="step"] { color: #5543b9; }
+.app.award-app .award-search input::placeholder { color: #67616f; opacity: 1; }
+.app.award-app .award-account,
+.app.award-app .award-account > span,
+.app.award-app .ap-guide-nav button > span { color: #55515f; }
+.app.award-app .card { background-color: #fff; border-color: #b8b3c2; }
+.app.award-app .account-content .card,
+.app.award-app .more-content .card { border: 1px solid #b8b3c2; }
+.app.award-app .account-content .small,
+.app.award-app .account-content .muted,
+.app.award-app .more-content .small,
+.app.award-app .more-content .muted { color: #55515f; }
