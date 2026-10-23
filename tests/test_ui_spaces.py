@@ -155,7 +155,10 @@ def test_window_dimensions_round_trip(client, payload):
     saved = response.json()
     assert saved["windowDimensions"]["width"] == 4
     assert saved["windowDimensions"]["height"] == 2
-    assert client.get(f"/api/ui/spaces/{saved['id']}").json()["windowDimensions"] == saved["windowDimensions"]
+    assert (
+        client.get(f"/api/ui/spaces/{saved['id']}").json()["windowDimensions"]
+        == saved["windowDimensions"]
+    )
 
 
 def test_window_position_marker_and_furniture_type_round_trip(client, payload):
@@ -214,7 +217,10 @@ def test_device_handoff_round_trip(client, payload):
     data = handoff.json()
     token = data["token"]
     assert client.get(f"/api/ui/handoffs/{token}").json()["status"] == "waiting"
-    assert client.post("/api/ui/handoffs/claim", json={"code": data["code"]}).json()["status"] == "connected"
+    assert (
+        client.post("/api/ui/handoffs/claim", json={"code": data["code"]}).json()["status"]
+        == "connected"
+    )
     assert client.post(f"/api/ui/handoffs/{token}/connect").json()["space"]["id"] == saved["id"]
     saved["furniture"][0]["x"] = 2
     saved["regions"][0]["x"] = 2
@@ -241,14 +247,18 @@ def test_handoff_rejects_wrong_space_expiry_and_stale_result(client, payload):
 
 def test_expired_handoff_cannot_connect_or_save(client, payload, monkeypatch):
     from datetime import UTC, datetime, timedelta
+
     from app.api import handoffs
+
     saved = client.post("/api/ui/spaces", json=payload).json()
     data = client.post("/api/ui/handoffs", json={"space_id": saved["id"]}).json()
     future = datetime.now(UTC) + timedelta(hours=1)
+
     class FutureClock(datetime):
         @classmethod
         def now(cls, tz=None):
             return future
+
     monkeypatch.setattr(handoffs, "datetime", FutureClock)
     assert client.get(f"/api/ui/handoffs/{data['token']}").status_code == 410
     assert client.post("/api/ui/handoffs/claim", json={"code": data["code"]}).status_code == 410
@@ -262,7 +272,10 @@ def test_measurement_jobs_sync_without_connection_code(client, payload):
     job = first.json()
     assert "code" not in job
     assert job["status"] == "waiting"
-    assert client.post("/api/ui/measurements", json={"space_id": saved["id"]}).json()["token"] == job["token"]
+    assert (
+        client.post("/api/ui/measurements", json={"space_id": saved["id"]}).json()["token"]
+        == job["token"]
+    )
     assert client.get("/api/ui/measurements").json()[0]["token"] == job["token"]
     token = job["token"]
     assert client.post(f"/api/ui/measurements/{token}/complete", json=saved).status_code == 409
@@ -274,7 +287,9 @@ def test_measurement_jobs_sync_without_connection_code(client, payload):
     assert result["space"]["name"] == "측정 완료 공간"
     assert client.get("/api/ui/measurements").json()[0]["status"] == "completed"
     assert client.post(f"/api/ui/measurements/{token}/connect").status_code == 409
-    assert client.post("/api/ui/measurements", json={"space_id": saved["id"]}).json()["token"] != token
+    assert (
+        client.post("/api/ui/measurements", json={"space_id": saved["id"]}).json()["token"] != token
+    )
 
 
 def test_standalone_protection_area_survives_server_save(client, payload):

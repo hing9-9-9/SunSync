@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import Engine
 from sqlmodel import Session
 
-from app.api import health, scenes, sunpath, ui_spaces, handoffs, measurements
+from app.api import handoffs, health, measurements, scenes, sunpath, ui_spaces
 from app.db import get_session, init_db
 
 

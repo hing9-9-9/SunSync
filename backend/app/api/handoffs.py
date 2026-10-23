@@ -1,11 +1,16 @@
 """Expiring cross-device measurement sessions for the development UI."""
-from datetime import UTC, datetime, timedelta
+
 import secrets
+from datetime import UTC, datetime, timedelta
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
-from sqlmodel import SQLModel, Field as DBField, select
+from sqlmodel import Field as DBField
+from sqlmodel import SQLModel, select
+
 from app.api.ui_spaces import DB, get_space, replace_space
 from app.ui_scene import UISpace
+
 
 class Handoff(SQLModel, table=True):
     token: str = DBField(primary_key=True)
@@ -14,13 +19,17 @@ class Handoff(SQLModel, table=True):
     status: str = "waiting"
     expires_at: str
 
+
 class Start(BaseModel):
     space_id: str
+
 
 class Claim(BaseModel):
     code: str = Field(min_length=8, max_length=8)
 
+
 router = APIRouter(prefix="/ui/handoffs", tags=["handoffs"])
+
 
 def current(token: str, session: DB) -> Handoff:
     row = session.get(Handoff, token)
@@ -30,18 +39,24 @@ def current(token: str, session: DB) -> Handoff:
         raise HTTPException(410, "연결 시간이 만료되었습니다. 웹에서 새 연결을 만들어 주세요.")
     return row
 
+
 @router.post("", status_code=201)
 def start(data: Start, session: DB):
     get_space(data.space_id, session)
     code = secrets.token_hex(4).upper()
     while session.exec(select(Handoff).where(Handoff.code == code)).first():
         code = secrets.token_hex(4).upper()
-    row = Handoff(token=secrets.token_urlsafe(32), code=code, space_id=data.space_id,
-                  expires_at=(datetime.now(UTC) + timedelta(minutes=30)).isoformat())
+    row = Handoff(
+        token=secrets.token_urlsafe(32),
+        code=code,
+        space_id=data.space_id,
+        expires_at=(datetime.now(UTC) + timedelta(minutes=30)).isoformat(),
+    )
     session.add(row)
     session.commit()
     session.refresh(row)
     return row
+
 
 @router.post("/claim")
 def claim(data: Claim, session: DB):
@@ -57,10 +72,12 @@ def claim(data: Claim, session: DB):
     session.refresh(row)
     return row
 
+
 @router.get("/{token}")
 def status(token: str, session: DB):
     row = current(token, session)
     return {**row.model_dump(), "space": get_space(row.space_id, session)}
+
 
 @router.post("/{token}/connect")
 def connect(token: str, session: DB):
@@ -72,6 +89,7 @@ def connect(token: str, session: DB):
     session.commit()
     session.refresh(row)
     return {**row.model_dump(), "space": get_space(row.space_id, session)}
+
 
 @router.post("/{token}/complete")
 def complete(token: str, space: UISpace, session: DB):

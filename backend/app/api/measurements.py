@@ -1,11 +1,15 @@
 """Persistent measurement jobs; user identity is supplied by the account API layer."""
-from datetime import UTC, datetime
+
 import secrets
+from datetime import UTC, datetime
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from sqlmodel import SQLModel, Field, select
+from sqlmodel import Field, SQLModel, col, select
+
 from app.api.ui_spaces import DB, get_space, replace_space
 from app.ui_scene import UISpace
+
 
 class MeasurementJob(SQLModel, table=True):
     token: str = Field(primary_key=True)
@@ -13,10 +17,13 @@ class MeasurementJob(SQLModel, table=True):
     status: str = "waiting"
     created_at: str
 
+
 class Start(BaseModel):
     space_id: str
 
+
 router = APIRouter(prefix="/ui/measurements", tags=["measurements"])
+
 
 def get_job(token: str, session: DB):
     row = session.get(MeasurementJob, token)
@@ -25,26 +32,40 @@ def get_job(token: str, session: DB):
     get_space(row.space_id, session)
     return row
 
+
 @router.get("")
 def list_jobs(session: DB):
-    return session.exec(select(MeasurementJob).order_by(MeasurementJob.created_at.desc())).all()
+    return session.exec(
+        select(MeasurementJob).order_by(col(MeasurementJob.created_at).desc())
+    ).all()
+
 
 @router.post("", status_code=201)
 def start(data: Start, session: DB):
     get_space(data.space_id, session)
-    existing = session.exec(select(MeasurementJob).where(MeasurementJob.space_id == data.space_id, MeasurementJob.status != "completed")).first()
+    existing = session.exec(
+        select(MeasurementJob).where(
+            MeasurementJob.space_id == data.space_id, MeasurementJob.status != "completed"
+        )
+    ).first()
     if existing:
         return existing
-    row = MeasurementJob(token=secrets.token_urlsafe(32), space_id=data.space_id, created_at=datetime.now(UTC).isoformat())
+    row = MeasurementJob(
+        token=secrets.token_urlsafe(32),
+        space_id=data.space_id,
+        created_at=datetime.now(UTC).isoformat(),
+    )
     session.add(row)
     session.commit()
     session.refresh(row)
     return row
 
+
 @router.get("/{token}")
 def status(token: str, session: DB):
     row = get_job(token, session)
     return {**row.model_dump(), "space": get_space(row.space_id, session)}
+
 
 @router.post("/{token}/connect")
 def connect(token: str, session: DB):
@@ -56,6 +77,7 @@ def connect(token: str, session: DB):
     session.commit()
     session.refresh(row)
     return {**row.model_dump(), "space": get_space(row.space_id, session)}
+
 
 @router.post("/{token}/complete")
 def complete(token: str, space: UISpace, session: DB):
