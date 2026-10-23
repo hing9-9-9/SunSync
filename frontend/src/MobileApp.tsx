@@ -37,7 +37,7 @@ import {
 import type { WebsiteDestination } from "./Website";
 
 import { useSpaceApp, titles } from "./useSpaceApp";
-import { Icon, Card } from "./ShellParts";
+import { Icon, Card, SyncBadge, SyncRetry } from "./ShellParts";
 function MobileApp() {
   const {
     isApp,
@@ -142,6 +142,8 @@ function MobileApp() {
     draftWindow,
     changeWindow,
     draftSite,
+    syncFailed,
+    retryUpload,
   } = useSpaceApp();
   function websiteNavigate(next: WebsiteDestination) {
     if (next === "home" || next === "guide") {
@@ -190,13 +192,12 @@ function MobileApp() {
                               <span className="status-pill todo">보호 설정 전</span>
                             )}
                             <small>보호영역 {s.regions.filter((r) => r.grade !== "D").length}개</small>
-                            {!s.serverRevision && (
-                              <small className="saved-local">이 브라우저에만 저장</small>
-                            )}
+                            <SyncBadge space={s} />
                           </span>
                         </span>
                         <span aria-hidden="true">›</span>
                       </button>
+                      <SyncRetry space={s} failed={syncFailed} onRetry={retryUpload} />
                       {(() => {
                         const job = measurementJobs.find(j => j.space_id === s.id);
                         if (!job) return null;

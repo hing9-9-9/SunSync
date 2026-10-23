@@ -121,11 +121,21 @@ export function saveServerSpace(space: Space) {
 export function getServerSpace(id: string) {
   return request<Space>(`/api/ui/spaces/${encodeURIComponent(id)}`);
 }
-export function mergeServerSpaces(current: Space[], remote: Space[]) {
-  const ids = new Set(remote.map((s) => s.id));
+/**
+ * Server spaces first, then every local space the server does not have. A space the server
+ * has lost keeps its content and drops its server stamps, so it is uploaded again as new.
+ */
+export function mergeServerSpaces(
+  current: Space[],
+  remote: Space[],
+  unavailable: UnavailableScene[] = [],
+) {
+  const ids = new Set([...remote.map((s) => s.id), ...unavailable.map((s) => s.scene_id)]);
   return [
     ...remote,
-    ...current.filter((s) => !s.serverRevision && !ids.has(s.id)),
+    ...current
+      .filter((s) => !ids.has(s.id))
+      .map(({ serverRevision: _r, serverSceneId: _s, ...s }) => s),
   ];
 }
 

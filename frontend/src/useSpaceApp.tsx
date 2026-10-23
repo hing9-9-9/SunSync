@@ -4,6 +4,7 @@ import { blockingSchedule } from "./sunlight";
 import { useEffect, useCallback, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { editorExample, exampleState } from "./exampleSpace";
+import { saveErrorMessage, syncStatus, uploadLocalSpaces } from "./spaceSync";
 import Plan from "./Plan";
 import {
   blankSpace,
@@ -166,7 +167,7 @@ export function useSpaceApp() {
     let stopped = false; let timer: ReturnType<typeof setTimeout>;
     const controller = new AbortController();
     async function refreshJobs() {
-      try { const [jobs, remote] = await Promise.all([listMeasurements(controller.signal), listServerSpaces(controller.signal)]); if (!stopped) { setMeasurementJobs(jobs);setSpaces(current=>mergeServerSpaces(current,remote.spaces));setServerState("online"); } }
+      try { const [jobs, remote] = await Promise.all([listMeasurements(controller.signal), listServerSpaces(controller.signal)]); if (!stopped) { setMeasurementJobs(jobs);setSpaces(current=>mergeServerSpaces(current,remote.spaces,remote.unavailable));setServerState("online"); } }
       catch (error) { if(!stopped) {setServerState("offline");setServerError(userMessage(error, "측정 상태를 불러오지 못했습니다. 잠시 후 자동으로 다시 확인합니다."));} }
       if (!stopped) timer = setTimeout(refreshJobs, 3000);
     }
@@ -301,6 +302,23 @@ export function useSpaceApp() {
   const rememberQrReturn = (next: Page) => {
     qrReturnPage.current = next;
   };
+  // Every space belongs on the server: spaces left only on this device are uploaded once it is reachable.
+  const [syncFailed, setSyncFailed] = useState<string[]>([]);
+  const uploading = useRef(false);
+  const pendingUploads = spaces.filter((s) => syncStatus(s) === "pending" && !syncFailed.includes(s.id));
+  useEffect(() => {
+    if (editorExample || serverState !== "online" || !pendingUploads.length || uploading.current) return;
+    uploading.current = true;
+    void uploadLocalSpaces(pendingUploads).then(({ saved, failed }) => {
+      uploading.current = false;
+      if (saved.length) {
+        setSpaces((current) => saved.reduce(upsertSpace, current));
+        setToast(`이 기기에만 있던 공간 ${saved.length}개를 서버에 저장했습니다.`);
+      }
+      if (failed.length) setSyncFailed((current) => [...current, ...failed]);
+    });
+  }, [serverState, pendingUploads]);
+  const retryUpload = (id: string) => setSyncFailed((current) => current.filter((x) => x !== id));
   const active = spaces.find((s) => s.id === activeId) ?? spaces[0];
   const editing = [
     "register",
@@ -312,11 +330,14 @@ export function useSpaceApp() {
   useEffect(() => {
     if (page !== "detail" || !active?.serverRevision) return;
     let stopped = false; let timer: ReturnType<typeof setTimeout>;
-    const id = active.id;
+    const id = active.id, seen = active.serverRevision;
     async function refreshDetail() {
       try {
         const saved = await getServerSpace(id);
-        if (!stopped) setSpaces(current => current.map(old => old.id !== id || old.serverRevision === saved.serverRevision ? old : {...saved, zone: saved.zones.includes(old.zone) ? old.zone : saved.zone}));
+        if (!stopped && saved.serverRevision !== seen) {
+          setSpaces(current => current.map(old => old.id !== id ? old : {...saved, zone: saved.zones.includes(old.zone) ? old.zone : saved.zone}));
+          setToast("다른 기기에서 바뀐 내용을 불러왔습니다.");
+        }
       } catch { /* Preserve the visible space during a temporary network failure. */ }
       if (!stopped) timer = setTimeout(refreshDetail, 3000);
     }
@@ -407,7 +428,7 @@ export function useSpaceApp() {
     listServerSpaces(controller.signal)
       .then((result) => {
         if (controller.signal.aborted) return;
-        setSpaces((current) => mergeServerSpaces(current, result.spaces));
+        setSpaces((current) => mergeServerSpaces(current, result.spaces, result.unavailable));
         setUnavailable(result.unavailable);
         setServerState("online");
         setServerError("");
@@ -426,7 +447,7 @@ export function useSpaceApp() {
     setServerState("loading");
     try {
       const result = await listServerSpaces();
-      setSpaces((current) => mergeServerSpaces(current, result.spaces));
+      setSpaces((current) => mergeServerSpaces(current, result.spaces, result.unavailable));
       setUnavailable(result.unavailable);
       setServerState("online");
       setServerError("");
@@ -534,7 +555,7 @@ export function useSpaceApp() {
       setHandoffLink(url.toString());
       setToast("연결할 공간을 서버에 저장했습니다.");
     } catch (error) {
-      setError(userMessage(error, "공간을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요."));
+      setError(saveErrorMessage(error, "공간을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요."));
     } finally {
       setSaving(false);
     }
@@ -673,7 +694,7 @@ export function useSpaceApp() {
           : "차단 시간을 끄고 저장했습니다.",
       );
     } catch (error) {
-      setError(userMessage(error, "차단 시간을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요."));
+      setError(saveErrorMessage(error, "차단 시간을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요."));
     } finally {
       setSaving(false);
     }
@@ -761,7 +782,7 @@ export function useSpaceApp() {
       return true;
     } catch (error) {
       setError(
-        userMessage(error, "서버에 저장하지 못했습니다."),
+        saveErrorMessage(error, "서버에 저장하지 못했습니다."),
       );
       setConflict(error instanceof SpaceApiError && error.status === 409);
       if (error instanceof SpaceApiError && error.status === 0)
@@ -1036,6 +1057,8 @@ export function useSpaceApp() {
   };
 
   return {
+    syncFailed,
+    retryUpload,
     initial,
     initialNavigation,
     isApp,

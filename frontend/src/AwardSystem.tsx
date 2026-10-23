@@ -6,6 +6,7 @@ import type { HandoffSession } from "./spaceApi";
 import { GuideIllustration } from "./MoodIcons";
 import { guideSteps } from "./guideContent";
 import AwardPreview, { Arrow, Scribble, SunMark } from "./AwardPreview";
+import { SyncBadge, SyncRetry } from "./ShellParts";
 import "./AwardSystem.css";
 
 type Destination = "home" | "spaces" | "guide" | "account";
@@ -171,9 +172,13 @@ export function AwardSpaces({
   onSelect,
   onStart,
   onMeasurement,
+  syncFailed,
+  onRetrySync,
 }: {
   spaces: Space[];
   jobs: HandoffSession[];
+  syncFailed: string[];
+  onRetrySync: (id: string) => void;
   onSelect: (s: Space) => void;
   onStart: () => void;
   onMeasurement: (job: HandoffSession) => void;
@@ -280,6 +285,7 @@ export function AwardSpaces({
                       {s.building} · {s.floor}
                     </span>
                     <h3>{s.name}</h3>
+                    <SyncBadge space={s} />
                     <div>
                       <span>
                         {s.zones.length}개 구역 <b>·</b> 보호영역 {regionCount}
@@ -289,6 +295,7 @@ export function AwardSpaces({
                     </div>
                   </div>
                 </button>
+                <SyncRetry space={s} failed={syncFailed} onRetry={onRetrySync} />
                 {job && (
                   <div className="award-measurement-row">
                     <span>

@@ -128,6 +128,8 @@ function App() {
     draftWindow,
     changeWindow,
     draftSite,
+    syncFailed,
+    retryUpload,
   } = useSpaceApp();
   return (
     <>
@@ -272,7 +274,7 @@ function App() {
                       {serverError} 기존 브라우저 자료는 유지됩니다.
                     </p>
                   )}
-                  {<AwardSpaces spaces={spaces} jobs={measurementJobs} onSelect={selectSpace} onStart={begin} onMeasurement={job=>{const s=spaces.find(s=>s.id===job.space_id);if(isApp && job.status!=="completed")joinMeasurement(job);else if(s){selectSpace(s);if(job.status!=="completed"){setDraft(structuredClone(s));setPage("capture");}}}}/>}
+                  {<AwardSpaces spaces={spaces} jobs={measurementJobs} syncFailed={syncFailed} onRetrySync={retryUpload} onSelect={selectSpace} onStart={begin} onMeasurement={job=>{const s=spaces.find(s=>s.id===job.space_id);if(isApp && job.status!=="completed")joinMeasurement(job);else if(s){selectSpace(s);if(job.status!=="completed"){setDraft(structuredClone(s));setPage("capture");}}}}/>}
                   {unavailable.length > 0 && (
                     <section className="external-spaces">
                       <h2>다른 형식의 공간</h2>
