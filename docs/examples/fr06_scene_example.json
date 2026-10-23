@@ -433,7 +433,12 @@
         0,
         0,
         1
-      ]
+      ],
+      "window_id": null,
+      "start_row": null,
+      "start_col": null,
+      "marker_rows": null,
+      "marker_cols": null
     }
   ],
   "observations": [

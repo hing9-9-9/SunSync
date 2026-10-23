@@ -286,7 +286,10 @@
           "type": "number"
         },
         "plane": {
-          "const": "floor",
+          "enum": [
+            "floor",
+            "window"
+          ],
           "title": "Plane",
           "type": "string"
         },
@@ -298,6 +301,71 @@
           "minItems": 16,
           "title": "T Enu Marker",
           "type": "array"
+        },
+        "window_id": {
+          "anyOf": [
+            {
+              "pattern": "^[a-zA-Z][a-zA-Z0-9_]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Window Id"
+        },
+        "start_row": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Start Row"
+        },
+        "start_col": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Start Col"
+        },
+        "marker_rows": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Marker Rows"
+        },
+        "marker_cols": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Marker Cols"
         }
       },
       "required": [

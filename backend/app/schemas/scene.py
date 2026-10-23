@@ -307,11 +307,16 @@ class Marker(Model):
     dictionary: Literal["DICT_4X4_50"]
     code_id: Annotated[int, Field(ge=0, lt=50)]
     side_length_m: Positive
-    plane: Literal["floor"]
+    plane: Literal["floor", "window"]
     T_ENU_marker: Annotated[list[Number], Field(min_length=16, max_length=16)]
+    window_id: Identifier | None = None
+    start_row: Annotated[int, Field(ge=0)] | None = None
+    start_col: Annotated[int, Field(ge=0)] | None = None
+    marker_rows: Annotated[int, Field(ge=1)] | None = None
+    marker_cols: Annotated[int, Field(ge=1)] | None = None
 
     @model_validator(mode="after")
-    def rigid_floor_transform(self) -> Self:
+    def rigid_transform_and_plane(self) -> Self:
         matrix = self.T_ENU_marker
         rows = [matrix[0:3], matrix[4:7], matrix[8:11]]
         require(close(matrix[12:16], (0, 0, 0, 1)), "transform last row must be [0,0,0,1]")
@@ -324,10 +329,33 @@ class Marker(Model):
             and abs(dot(rows[0], cross(rows[1], rows[2])) - 1) <= EPS,
             "marker transform must be a right-handed rigid transform",
         )
-        require(
-            close(rows[2], (0, 0, 1)) and abs(matrix[11]) <= EPS,
-            "marker frame must lie on the z=0 floor",
-        )
+        if self.plane == "floor":
+            require(
+                self.window_id is None
+                and self.start_row is None
+                and self.start_col is None
+                and self.marker_rows is None
+                and self.marker_cols is None,
+                "floor marker cannot declare window cell placement",
+            )
+            require(
+                close(rows[2], (0, 0, 1)) and abs(matrix[11]) <= EPS,
+                "marker frame must lie on the z=0 floor",
+            )
+        else:
+            require(self.window_id is not None, "window marker requires window_id")
+            if self.start_row is None:
+                self.start_row = 2
+            if self.start_col is None:
+                self.start_col = 2
+            if self.marker_rows is None:
+                self.marker_rows = 6
+            if self.marker_cols is None:
+                self.marker_cols = 6
+            require(
+                self.marker_rows == 6 and self.marker_cols == 6,
+                "ArUco 4x4 window marker must occupy 6x6 cells including border",
+            )
         return self
 
 
@@ -736,13 +764,50 @@ class Scene(Model):
             )
 
     def _validate_measurements(self) -> None:
+        windows = {window.window_id: window for window in self.windows}
+        for marker in self.markers:
+            if marker.plane == "window":
+                require(
+                    marker.window_id in windows, f"{marker.marker_id}: missing window reference"
+                )
+                assert marker.window_id is not None
+                window = windows[marker.window_id]
+                assert (
+                    marker.start_row is not None
+                    and marker.start_col is not None
+                    and marker.marker_rows is not None
+                    and marker.marker_cols is not None
+                )
+                require(
+                    marker.start_row + marker.marker_rows <= window.film_rows
+                    and marker.start_col + marker.marker_cols <= window.film_cols,
+                    f"{marker.marker_id}: marker cells exceed window film grid",
+                )
+                expected_w = marker.marker_cols * window.cell_width_m
+                expected_h = marker.marker_rows * window.cell_height_m
+                require(
+                    abs(marker.side_length_m - expected_w) <= EPS
+                    and abs(marker.side_length_m - expected_h) <= EPS,
+                    f"{marker.marker_id}: side_length_m disagrees with window cell size",
+                )
+                matrix = marker.T_ENU_marker
+                origin = (matrix[3], matrix[7], matrix[11])
+                u_m, v_m = window.enu_to_uv(origin)
+                require(
+                    -EPS <= u_m <= window.width_m + EPS and -EPS <= v_m <= window.height_m + EPS,
+                    f"{marker.marker_id}: marker transform origin outside window",
+                )
         markers = {marker.marker_id: marker for marker in self.markers}
         objects = self._geometry_objects()
         for observation in self.observations:
             if not isinstance(observation, ArucoObservation):
                 continue
             require(observation.marker_id in markers, "ArUco marker reference missing")
-            matrix = markers[observation.marker_id].T_ENU_marker
+            marker = markers[observation.marker_id]
+            require(
+                marker.plane == "floor", "ArUco planar floor observation requires a floor marker"
+            )
+            matrix = marker.T_ENU_marker
             for local, exported in zip(
                 observation.points_marker_m, observation.points_enu_m, strict=True
             ):

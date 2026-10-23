@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 from app.schemas.scene import (
+    Marker,
     ProtectedRegion,
     Scene,
     Window,
@@ -558,3 +559,194 @@ def test_window_coordinate_conversions_large_multimodule_window(scene_data):
     assert math.isclose(u_tl, 0.05) and math.isclose(v_tl, 1.45)
     u_br, v_br = window.cell_to_uv(14, 29)
     assert math.isclose(u_br, 2.95) and math.isclose(v_br, 0.05)
+
+
+def test_window_marker_registration_and_defaults(scene_data):
+    # Set window to 1m x 1m (10 rows x 10 cols)
+    scene_data["windows"][0]["vertices_m"] = [
+        [4, 0, 1],
+        [3, 0, 1],
+        [3, 0, 2],
+        [4, 0, 2],
+    ]
+    scene_data["windows"][0]["film_rows"] = 10
+    scene_data["windows"][0]["film_cols"] = 10
+
+    # Window marker with explicit fields
+    # Window vertices: origin (4, 0, 1), u_axis: (-1, 0, 0), v_axis: (0, 0, 1), normal: (0, 1, 0)
+    # Origin at center of window: u=0.5, v=0.5 -> ENU (3.5, 0.0, 1.5)
+    # Rotation matrix: row0=(-1, 0, 0), row1=(0, 0, 1), row2=(0, 1, 0) (right-handed rigid transform)
+    marker_dict = {
+        "marker_id": "marker_win_001",
+        "family": "aruco",
+        "dictionary": "DICT_4X4_50",
+        "code_id": 12,
+        "side_length_m": 0.6,
+        "plane": "window",
+        "window_id": "window_001",
+        "start_row": 2,
+        "start_col": 2,
+        "marker_rows": 6,
+        "marker_cols": 6,
+        "T_ENU_marker": [-1, 0, 0, 3.5, 0, 0, 1, 0.0, 0, 1, 0, 1.5, 0, 0, 0, 1],
+    }
+    scene_data["markers"].append(marker_dict)
+    scene = Scene.model_validate(scene_data)
+    win_marker = next(m for m in scene.markers if m.marker_id == "marker_win_001")
+    assert win_marker.plane == "window"
+    assert win_marker.window_id == "window_001"
+    assert win_marker.start_row == 2
+    assert win_marker.start_col == 2
+    assert win_marker.marker_rows == 6
+    assert win_marker.marker_cols == 6
+
+    # Test defaults: start_row, start_col, marker_rows, marker_cols omitted
+    marker_with_defaults = {
+        "marker_id": "marker_win_002",
+        "family": "aruco",
+        "dictionary": "DICT_4X4_50",
+        "code_id": 13,
+        "side_length_m": 0.6,
+        "plane": "window",
+        "window_id": "window_001",
+        "T_ENU_marker": [-1, 0, 0, 3.5, 0, 0, 1, 0.0, 0, 1, 0, 1.5, 0, 0, 0, 1],
+    }
+    validated_marker = Marker.model_validate(marker_with_defaults)
+    assert validated_marker.start_row == 2
+    assert validated_marker.start_col == 2
+    assert validated_marker.marker_rows == 6
+    assert validated_marker.marker_cols == 6
+
+
+def test_window_marker_rejection_cases(scene_data):
+    # Set window to 1m x 1m (10 rows x 10 cols)
+    scene_data["windows"][0]["vertices_m"] = [
+        [4, 0, 1],
+        [3, 0, 1],
+        [3, 0, 2],
+        [4, 0, 2],
+    ]
+    scene_data["windows"][0]["film_rows"] = 10
+    scene_data["windows"][0]["film_cols"] = 10
+
+    base_win_marker = {
+        "marker_id": "marker_win_001",
+        "family": "aruco",
+        "dictionary": "DICT_4X4_50",
+        "code_id": 12,
+        "side_length_m": 0.6,
+        "plane": "window",
+        "window_id": "window_001",
+        "start_row": 2,
+        "start_col": 2,
+        "marker_rows": 6,
+        "marker_cols": 6,
+        "T_ENU_marker": [-1, 0, 0, 3.5, 0, 0, 1, 0.0, 0, 1, 0, 1.5, 0, 0, 0, 1],
+    }
+
+    # 1. start_row + marker_rows > film_rows (5 + 6 = 11 > 10)
+    data = copy.deepcopy(scene_data)
+    m = copy.deepcopy(base_win_marker)
+    m["start_row"] = 5
+    data["markers"].append(m)
+    with pytest.raises(ValidationError, match="marker cells exceed window film grid"):
+        Scene.model_validate(data)
+
+    # 2. start_col + marker_cols > film_cols (5 + 6 = 11 > 10)
+    data = copy.deepcopy(scene_data)
+    m = copy.deepcopy(base_win_marker)
+    m["start_col"] = 5
+    data["markers"].append(m)
+    with pytest.raises(ValidationError, match="marker cells exceed window film grid"):
+        Scene.model_validate(data)
+
+    # 3. side_length_m disagrees with 6 cells (expected 0.6m, got 0.5m)
+    data = copy.deepcopy(scene_data)
+    m = copy.deepcopy(base_win_marker)
+    m["side_length_m"] = 0.5
+    data["markers"].append(m)
+    with pytest.raises(ValidationError, match="side_length_m disagrees with window cell size"):
+        Scene.model_validate(data)
+
+    # 4. Unknown window reference
+    data = copy.deepcopy(scene_data)
+    m = copy.deepcopy(base_win_marker)
+    m["window_id"] = "window_nonexistent"
+    data["markers"].append(m)
+    with pytest.raises(ValidationError, match="missing window reference"):
+        Scene.model_validate(data)
+
+    # 5. Marker origin off window plane (y = 0.1 instead of 0.0)
+    data = copy.deepcopy(scene_data)
+    m = copy.deepcopy(base_win_marker)
+    m["T_ENU_marker"][7] = 0.1
+    data["markers"].append(m)
+    with pytest.raises(ValidationError, match="point is not on window plane"):
+        Scene.model_validate(data)
+
+    # 6. Marker origin outside window rectangle (x = 1.0 -> u = 3.0 > 1.0)
+    data = copy.deepcopy(scene_data)
+    m = copy.deepcopy(base_win_marker)
+    m["T_ENU_marker"][3] = 1.0
+    data["markers"].append(m)
+    with pytest.raises(ValidationError, match="marker transform origin outside window"):
+        Scene.model_validate(data)
+
+    # 7. Non 6x6 marker size rejected
+    m = copy.deepcopy(base_win_marker)
+    m["marker_rows"] = 5
+    with pytest.raises(ValidationError, match="ArUco 4x4 window marker must occupy 6x6 cells"):
+        Marker.model_validate(m)
+
+    # 8. Missing window_id on window marker
+    m = copy.deepcopy(base_win_marker)
+    m["window_id"] = None
+    with pytest.raises(ValidationError, match="window marker requires window_id"):
+        Marker.model_validate(m)
+
+
+def test_floor_marker_rejects_window_placement_fields(scene_data):
+    # Floor marker cannot declare window placement
+    marker = copy.deepcopy(scene_data["markers"][0])
+    marker["window_id"] = "window_001"
+    with pytest.raises(ValidationError, match="floor marker cannot declare window cell placement"):
+        Marker.model_validate(marker)
+
+    marker = copy.deepcopy(scene_data["markers"][0])
+    marker["start_row"] = 2
+    with pytest.raises(ValidationError, match="floor marker cannot declare window cell placement"):
+        Marker.model_validate(marker)
+
+
+def test_aruco_observation_rejects_window_marker(scene_data):
+    # ArUco planar floor observation referencing a window marker is rejected
+    scene_data["windows"][0]["vertices_m"] = [
+        [4, 0, 1],
+        [3, 0, 1],
+        [3, 0, 2],
+        [4, 0, 2],
+    ]
+    scene_data["windows"][0]["film_rows"] = 10
+    scene_data["windows"][0]["film_cols"] = 10
+    win_marker = {
+        "marker_id": "marker_win_001",
+        "family": "aruco",
+        "dictionary": "DICT_4X4_50",
+        "code_id": 12,
+        "side_length_m": 0.6,
+        "plane": "window",
+        "window_id": "window_001",
+        "start_row": 2,
+        "start_col": 2,
+        "marker_rows": 6,
+        "marker_cols": 6,
+        "T_ENU_marker": [-1, 0, 0, 3.5, 0, 0, 1, 0.0, 0, 1, 0, 1.5, 0, 0, 0, 1],
+    }
+    scene_data["markers"].append(win_marker)
+    for obs in scene_data["observations"]:
+        if obs["method"] == "aruco_planar":
+            obs["marker_id"] = "marker_win_001"
+    with pytest.raises(
+        ValidationError, match="ArUco planar floor observation requires a floor marker"
+    ):
+        Scene.model_validate(scene_data)
