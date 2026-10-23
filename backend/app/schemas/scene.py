@@ -105,6 +105,7 @@ class Room(Model):
     floor_vertices_m: Ring
     height_m: Positive
     quality: Quality
+    floor_level: Annotated[int, Field(ge=-100, le=1000)] | None = None
 
     @model_validator(mode="after")
     def valid_floor(self) -> Self:

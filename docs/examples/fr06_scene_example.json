@@ -49,7 +49,8 @@
         "obs_manual_room"
       ],
       "confirmed": true
-    }
+    },
+    "floor_level": 1
   },
   "windows": [
     {

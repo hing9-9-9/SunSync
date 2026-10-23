@@ -10,6 +10,7 @@ from app.schemas.scene import (
     Marker,
     Occluder,
     ProtectedRegion,
+    Room,
     Scene,
     Window,
     window_cell_to_uv,
@@ -771,3 +772,23 @@ def test_occluder_furniture_type(scene_data):
         occluder_raw["type"] = disallowed
         with pytest.raises(ValidationError):
             Occluder.model_validate(occluder_raw)
+
+
+def test_room_floor_level(scene_data):
+    # Backward compatibility: omitted floor_level defaults to None
+    room_raw = copy.deepcopy(scene_data["room"])
+    room_raw.pop("floor_level", None)
+    room = Room.model_validate(room_raw)
+    assert room.floor_level is None
+
+    # Valid integer floor levels
+    for level in (1, 5, -1, 0, -100, 1000):
+        room_raw["floor_level"] = level
+        room_valid = Room.model_validate(room_raw)
+        assert room_valid.floor_level == level
+
+    # Invalid types and out-of-range values raise ValidationError
+    for invalid in (True, False, 1.5, "3", 1001, -101):
+        room_raw["floor_level"] = invalid
+        with pytest.raises(ValidationError):
+            Room.model_validate(room_raw)

@@ -446,6 +446,17 @@
           "title": "Kind",
           "type": "string"
         },
+        "type": {
+          "default": "other",
+          "enum": [
+            "bookshelf",
+            "desk",
+            "chair",
+            "other"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
         "base_center_m": {
           "maxItems": 3,
           "minItems": 3,
@@ -816,6 +827,20 @@
         },
         "quality": {
           "$ref": "#/$defs/Quality"
+        },
+        "floor_level": {
+          "anyOf": [
+            {
+              "maximum": 1000,
+              "minimum": -100,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Floor Level"
         }
       },
       "required": [
