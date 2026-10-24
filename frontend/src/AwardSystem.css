@@ -353,7 +353,7 @@
 }
 .app.award-app .muted,
 .app.award-app small {
-  color: #807289;
+  color: var(--c-muted);
 }
 .app.award-app .small,
 .app.award-app small {
@@ -368,7 +368,7 @@
 }
 .app.award-app .step-label {
   font-size: 12px;
-  color: #9d8baa;
+  color: var(--c-muted);
   margin: 8px 0 18px;
 }
 .app.award-app .two-column {
@@ -593,7 +593,7 @@
 }
 .app.award-app .summary-box p {
   font-size: 12px;
-  color: #8c7b9a;
+  color: var(--c-muted);
   margin: 8px 0 0;
 }
 .app.award-app .row {
@@ -802,7 +802,7 @@
   background: #f7f4fb;
   border-radius: 20px;
   padding: 5px 10px;
-  color: #9885a9;
+  color: var(--c-muted);
 }
 .app.award-app .section-row {
   display: flex;
@@ -813,7 +813,7 @@
 }
 .app.award-app .range-labels {
   font-size: 12px;
-  color: #9a8aa8;
+  color: var(--c-muted);
 }
 .app.award-app .section-label {
   font-size: 14px;
@@ -1710,7 +1710,7 @@
 }
 .app.award-app .server-sync-row > span {
   font-size: 12px;
-  color: #8b779b;
+  color: var(--c-muted);
 }
 .app.award-app .workspace .card {
   border-radius: 5px;

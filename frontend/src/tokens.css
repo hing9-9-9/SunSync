@@ -1,0 +1,90 @@
+/* Phase 4 design system (2026-10-24): one set of values for the web (.award-app) and app
+   (.award-mobile) shells. Loaded last; earlier files keep their layout and only meanings,
+   corners, contrast and motion are unified here. Rules below use !important on purpose: older
+   files style the same parts with deeper selectors, and this layer is the one source of truth. */
+:root {
+  --c-action: #6660e5; /* actions, selection, protection areas */
+  --c-action-ink: #554ed0; /* purple text on light purple */
+  --c-sun: #ff7426; /* sun and sunlight areas, never text */
+  --c-sun-ink: #c2520f; /* sunlight numbers and labels */
+  --c-protect: #c1e28a; /* "보호 중 / 설정 완료" only */
+  --c-protect-ink: #343434;
+  --c-block: #e9e9e9;
+  --c-muted: #5f5b66; /* secondary text, 6.4:1 on white */
+  --radius-plan: 0;
+  --radius-card: 12px;
+  --radius-pill: 999px;
+  --dur-hover: 200ms;
+  --dur-text: 600ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+}
+.app.award-app {
+  --mb-sun: var(--c-sun);
+  --mb-sun-ink: var(--c-sun-ink);
+  --mb-lime: var(--c-protect);
+  --mb-block: var(--c-block);
+  --mb-ink: var(--c-protect-ink);
+  --mb-muted: var(--c-muted);
+}
+
+/* Corners: square plans, 12px cards, pill buttons and chips. */
+:is(.app.award-app, .app.award-mobile) .card,
+:is(.app.award-app, .app.award-mobile) .plan-card,
+.app.award-app .award-room-card,
+.app.award-mobile .room-card,
+.app.award-mobile .guide-card {
+  border-radius: var(--radius-card) !important;
+}
+:is(.app.award-app, .app.award-mobile) .pill,
+:is(.app.award-app, .app.award-mobile) .status-pill,
+:is(.app.award-app, .app.award-mobile) .chip,
+:is(.app.award-app, .app.award-mobile) .item-tabs button,
+:is(.app.award-app, .app.award-mobile) button.primary,
+:is(.app.award-app, .app.award-mobile) button.secondary {
+  border-radius: var(--radius-pill) !important;
+}
+
+/* Same meaning, same colour: sunlight is orange and "설정 완료" is lime in the app too. */
+.app.award-mobile svg polygon[fill="#FFF2D3"] {
+  fill: var(--c-sun) !important;
+  fill-opacity: 0.2 !important;
+}
+.app.award-mobile .plan-legend .yellow {
+  background: var(--c-sun) !important;
+}
+.app.award-mobile .status-pill.done {
+  background: var(--c-protect) !important;
+  color: var(--c-protect-ink) !important;
+}
+:is(.app.award-app, .app.award-mobile) .status-pill.todo {
+  color: var(--c-action-ink) !important;
+}
+
+/* Contrast (WCAG AA): status labels are neutral blocks with dark text. */
+:is(.app.award-app, .app.award-mobile) .pill,
+.app.award-app .status-card .pill {
+  background: var(--c-block) !important;
+  color: var(--c-protect-ink) !important;
+}
+
+/* Touch targets: at least 44px tall. The slider grows its hit area without moving the layout. */
+:is(.app.award-app, .app.award-mobile) .chip,
+:is(.app.award-app, .app.award-mobile) .item-tabs button {
+  min-height: 44px !important;
+}
+.app.award-app input[type="range"] {
+  height: 44px !important;
+  margin-block: -2px !important; /* was 4px tall with 18px margins: same 40px box */
+}
+
+/* Motion: one hover speed, and everything settles instantly with "reduce motion". */
+@media (prefers-reduced-motion: reduce) {
+  .app *,
+  .app *::before,
+  .app *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

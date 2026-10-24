@@ -5,6 +5,7 @@ import App from "./App.tsx";
 import MobileApp from "./MobileApp.tsx";
 import "./ProductPolish.css";
 import "./Moodboard.css";
+import "./tokens.css";
 
 const mode = new URLSearchParams(location.search).get("mode");
 const mobile = mode === "app" || (mode !== "web" && matchMedia("(max-width: 760px)").matches);
