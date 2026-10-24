@@ -66,6 +66,10 @@ export const titles: Record<Page, string> = {
 };
 
 
+// Off until real building data is connected: the status screen shows the simplified simulation.
+// Turning it on shows FR-01 sun times with loading, error and retry states.
+const USE_FR01 = false;
+
 // State, persistence and server sync shared by the web (App) and mobile (MobileApp) shells.
 export function useSpaceApp() {
   const [initial] = useState(() => {
@@ -351,7 +355,7 @@ export function useSpaceApp() {
   // FR-01: the saved space's real sun times for today. Results are keyed by scene revision, so a
   // result for an older save is never shown after the space changes.
   const predictionKey =
-    page === "detail" && !editorExample && active?.serverSceneId && active.serverRevision && active.site && active.regions.length
+    USE_FR01 && page === "detail" && !editorExample && active?.serverSceneId && active.serverRevision && active.site && active.regions.length
       ? `${active.serverSceneId}:${active.serverRevision}`
       : null;
   const [prediction, setPrediction] = useState<{ key: string; result?: SunpathPrediction; error?: string } | null>(null);
