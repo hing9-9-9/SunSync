@@ -43,28 +43,16 @@ export function SunMark() {
     </svg>
   );
 }
-// 0 at night, 1 in daylight; sunrise eases over 05:00-06:30 and sunset over 17:30-19:30.
-const smoothstep = (a: number, b: number, x: number) => {
-  const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
-  return t * t * (3 - 2 * t);
-};
-const daylight = (hour: number) => smoothstep(5, 6.5, hour) * (1 - smoothstep(17.5, 19.5, hour));
-// Sunlight text colour (#c2520f) blends to charcoal (#343434) as daylight fades.
-const sunInk = (d: number) =>
-  `rgb(${[[0xc2, 0x34], [0x52, 0x34], [0x0f, 0x34]].map(([a, b]) => Math.round(b + (a - b) * d)).join(",")})`;
-// Autoplay plays 05:00 -> 20:00 once over 14s and stops on the evening frame. Time runs on one
-// smooth speed curve (slowest around 17:00) so the protection scene and the 3s sunset read calmly.
-const DAY_MS = 14000;
-const SLOW_AT = 0.8,
-  SLOWDOWN = 0.6;
+// Autoplay is a staged effect, not a sun path: one progress value runs 0 -> 1 over 11s on a single
+// ease-in-out curve, moving the sun from the left end to the right end and stopping there.
+const PLAY_MS = 11000;
 const sceneAt = (ms: number) => {
-  const u = Math.min(1, ms / DAY_MS);
-  const eased =
-    u - (SLOWDOWN * (Math.sin(2 * Math.PI * (u - SLOW_AT)) + Math.sin(2 * Math.PI * SLOW_AT))) / (2 * Math.PI);
+  const u = Math.min(1, ms / PLAY_MS);
+  const eased = (1 - Math.cos(Math.PI * u)) / 2;
   return { hour: 5 + 15 * eased, progress: u };
 };
-// The beam's far edge first overlaps the shelf footprint at about 16:30 and is gone by 18:45.
-const beamOnShelf = (hour: number) => hour >= 16.5 && hour < 18.75;
+// From the moment the beam reaches the shelf (about 16:30) the film stays on, so the last frame shows it.
+const beamOnShelf = (hour: number) => hour >= 16.5;
 function Room({
   hour,
   protectedOn,
@@ -181,7 +169,6 @@ function Room({
       <path
         d={`M176 325 351 229 ${572 + shift} 358 ${389 + shift} 465Z`}
         fill="url(#ap-ray)"
-        opacity={daylight(hour)}
         className="ap-light"
       />
       <g
@@ -358,17 +345,19 @@ export default function AwardPreview({
   embedded?: boolean;
 }) {
   // Reduced motion keeps the original still: 14:00 with the shelf protected.
-  const [scene, setScene] = useState<{ hour: number; progress: number } | null>(null),
+  const [scene, setScene] = useState<{ hour: number; progress: number } | null>(() =>
+      matchMedia("(prefers-reduced-motion: reduce)").matches ? null : sceneAt(0),
+    ),
     [photoProtected, setPhotoProtected] = useState(true),
     [selected, setSelected] = useState(0),
     visualRef = useRef<HTMLDivElement>(null);
-  const hour = scene?.hour ?? 14,
+  // Reduced motion shows the last frame: sun at the right end, shelf protected.
+  const hour = scene?.hour ?? 20,
     protectedOn = scene ? beamOnShelf(hour) : true;
   const studio = onStart,
     openGuide = onGuide;
   const minutes = Math.floor((hour * 60) / 10) * 10;
   const time = `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
-  const day = daylight(hour);
   useEffect(() => {
     const el = visualRef.current;
     const reduced = matchMedia("(prefers-reduced-motion: reduce)");
@@ -378,13 +367,13 @@ export default function AwardPreview({
       last = 0,
       onScreen = false;
     const tick = (now: number) => {
-      elapsed = Math.min(DAY_MS, elapsed + Math.min(100, now - (last || now)));
+      elapsed = Math.min(PLAY_MS, elapsed + Math.min(100, now - (last || now)));
       last = now;
       setScene(sceneAt(elapsed));
-      frame = elapsed < DAY_MS ? requestAnimationFrame(tick) : 0;
+      frame = elapsed < PLAY_MS ? requestAnimationFrame(tick) : 0;
     };
     const sync = () => {
-      const run = onScreen && !document.hidden && !reduced.matches && elapsed < DAY_MS;
+      const run = onScreen && !document.hidden && !reduced.matches && elapsed < PLAY_MS;
       if (reduced.matches) setScene(null);
       if (run && !frame) {
         last = 0;
@@ -491,7 +480,7 @@ export default function AwardPreview({
             </div>
             <div
               className="ap-sun-glow"
-              style={{ "--sun": Math.min(1, Math.max(0, (hour - 6) / 12)), "--day": day } as CSSProperties}
+              style={{ "--sun": (hour - 5) / 15 } as CSSProperties}
               aria-hidden="true"
             />
             <div className="ap-visual-label">
@@ -518,18 +507,11 @@ export default function AwardPreview({
                 </span>
               </div>
             </div>
-            <div className="ap-night" style={{ opacity: (1 - day) * 0.07 }} aria-hidden="true" />
             <div className="ap-visual-controls">
-              <div className="ap-time" style={{ "--day": day } as CSSProperties}>
-                <span className="ap-time-icons" aria-hidden="true">
-                  <SunMark />
-                  <SunMark />
-                </span>
-                <strong style={{ color: sunInk(day) }}>{time}</strong>
+              <div className="ap-time">
+                <SunMark />
+                <strong>{time}</strong>
                 <span>햇빛 미리보기</span>
-                <em className="ap-night-note" style={{ opacity: 1 - day }} aria-hidden={day > 0.5}>
-                  해가 진 시간
-                </em>
               </div>
               <div className="ap-slider ap-progress" aria-hidden="true">
                 <span>05시</span>
@@ -537,12 +519,6 @@ export default function AwardPreview({
                   <b style={{ transform: `scaleX(${scene?.progress ?? 0.6})` }} />
                 </i>
                 <span>20시</span>
-              </div>
-              <div className={`ap-toggle ${protectedOn ? "on" : ""}`} aria-hidden="true">
-                <span>부분 차단</span>
-                <i>
-                  <b />
-                </i>
               </div>
             </div>
           </div>
@@ -555,7 +531,7 @@ export default function AwardPreview({
               </div>
               <div>
                 <dt>햇빛 미리보기</dt>
-                <dd className="is-sun" style={{ color: sunInk(day) }}>{time}</dd>
+                <dd className="is-sun">{time}</dd>
               </div>
               <div>
                 <dt>선택한 가구</dt>
