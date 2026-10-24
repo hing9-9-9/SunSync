@@ -43,34 +43,25 @@ export function SunMark() {
     </svg>
   );
 }
-// 0 at night, 1 in daylight; eases over the hour before sunrise (05-06) and after sunset (18-19).
+// 0 at night, 1 in daylight; sunrise eases over 05:00-06:30 and sunset over 17:30-19:30.
 const smoothstep = (a: number, b: number, x: number) => {
   const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
   return t * t * (3 - 2 * t);
 };
-const daylight = (hour: number) => smoothstep(5, 6, hour) * (1 - smoothstep(18, 19, hour));
+const daylight = (hour: number) => smoothstep(5, 6.5, hour) * (1 - smoothstep(17.5, 19.5, hour));
 // Sunlight text colour (#c2520f) blends to charcoal (#343434) as daylight fades.
 const sunInk = (d: number) =>
   `rgb(${[[0xc2, 0x34], [0x52, 0x34], [0x0f, 0x34]].map(([a, b]) => Math.round(b + (a - b) * d)).join(",")})`;
-// Autoplay: 05:00 -> 20:00 over 14s, then 2s through the night back to 05:00.
-// Time slows while the beam reaches the shelf (16:30-18:45) so the protection scene can be read.
-const DAY_MS = 14000,
-  NIGHT_MS = 2000;
-const dayKeys = [
-  [0, 5],
-  [6000, 15.5],
-  [11500, 18.5],
-  [DAY_MS, 20],
-];
+// Autoplay plays 05:00 -> 20:00 once over 14s and stops on the evening frame. Time runs on one
+// smooth speed curve (slowest around 17:00) so the protection scene and the 3s sunset read calmly.
+const DAY_MS = 14000;
+const SLOW_AT = 0.8,
+  SLOWDOWN = 0.6;
 const sceneAt = (ms: number) => {
-  const t = ms % (DAY_MS + NIGHT_MS);
-  if (t >= DAY_MS) {
-    const n = (t - DAY_MS) / NIGHT_MS;
-    return { hour: (20 + 9 * n) % 24, progress: 1 - n };
-  }
-  const k = dayKeys.findIndex(([at]) => at > t);
-  const [[t0, h0], [t1, h1]] = [dayKeys[k - 1], dayKeys[k]];
-  return { hour: h0 + ((h1 - h0) * (t - t0)) / (t1 - t0), progress: t / DAY_MS };
+  const u = Math.min(1, ms / DAY_MS);
+  const eased =
+    u - (SLOWDOWN * (Math.sin(2 * Math.PI * (u - SLOW_AT)) + Math.sin(2 * Math.PI * SLOW_AT))) / (2 * Math.PI);
+  return { hour: 5 + 15 * eased, progress: u };
 };
 // The beam's far edge first overlaps the shelf footprint at about 16:30 and is gone by 18:45.
 const beamOnShelf = (hour: number) => hour >= 16.5 && hour < 18.75;
@@ -183,7 +174,7 @@ function Room({
                 : "#e0e5eb"
             }
             opacity={protectedOn ? ".9" : ".48"}
-            style={{ transition: `fill 600ms ${i * 3}ms` }}
+            style={{ transition: `fill 800ms ${i * 3}ms, opacity 800ms ${i * 3}ms` }}
           />
         ))}
       </g>
@@ -231,9 +222,12 @@ function Room({
             ))}
           </g>
         ))}
-        {protectedOn && (
-          <path d="M456 224v139l147 85V308Z" fill="#6660e5" opacity=".18" />
-        )}
+        <path
+          d="M456 224v139l147 85V308Z"
+          fill="#6660e5"
+          opacity={protectedOn ? 0.18 : 0}
+          style={{ transition: "opacity 800ms ease" }}
+        />
         <circle
           cx="552"
           cy="242"
@@ -384,13 +378,13 @@ export default function AwardPreview({
       last = 0,
       onScreen = false;
     const tick = (now: number) => {
-      elapsed += Math.min(100, now - (last || now));
+      elapsed = Math.min(DAY_MS, elapsed + Math.min(100, now - (last || now)));
       last = now;
       setScene(sceneAt(elapsed));
-      frame = requestAnimationFrame(tick);
+      frame = elapsed < DAY_MS ? requestAnimationFrame(tick) : 0;
     };
     const sync = () => {
-      const run = onScreen && !document.hidden && !reduced.matches;
+      const run = onScreen && !document.hidden && !reduced.matches && elapsed < DAY_MS;
       if (reduced.matches) setScene(null);
       if (run && !frame) {
         last = 0;

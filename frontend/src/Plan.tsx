@@ -1,4 +1,7 @@
 import { sunlightPolygon } from "./sunlight";
+
+// The drawn light fades in and out around sunrise and sunset instead of switching at 06:00 / 18:00.
+const duskFade = (hour: number) => Math.max(0, Math.min(1, hour - 5.5, 18.5 - hour));
 import { useEffect, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { clamp, isWidthWall, resolveWindow, uid } from "./model";
@@ -239,8 +242,9 @@ export default function Plan({
           vectorEffect="non-scaling-stroke"
         />
         <polygon
-          points={sunlightPolygon(space, hour).map(p => `${p.x + left},${p.y + top}`).join(" ")}
+          points={sunlightPolygon(space, Math.min(Math.max(hour, 6), 17.99)).map(p => `${p.x + left},${p.y + top}`).join(" ")}
           fill="#FFF2D3"
+          opacity={duskFade(hour)}
           pointerEvents="none"
         />
         {shownFurniture
