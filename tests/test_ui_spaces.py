@@ -321,3 +321,16 @@ def test_user_shading_schedule_round_trip(client, payload):
 def test_invalid_shading_schedule_is_rejected(client, payload, start, end):
     payload["shadingSchedule"] = {"enabled": True, "start": start, "end": end}
     assert client.post("/api/ui/spaces", json=payload).status_code == 422
+
+
+def test_delete_removes_space_and_blocks_reupload(client, payload):
+    assert client.post("/api/ui/spaces", json=payload).status_code == 201
+    assert client.delete("/api/ui/spaces/test-space").status_code == 204
+    listed = client.get("/api/ui/spaces").json()
+    assert listed["spaces"] == []
+    assert listed["deleted"] == ["test-space"]
+    assert client.get("/api/scenes").json() == []
+    assert client.get("/api/ui/spaces/test-space").status_code == 404
+    # A copy left on another device must not come back.
+    assert client.post("/api/ui/spaces", json=payload).status_code == 409
+    assert client.delete("/api/ui/spaces/test-space").status_code == 204

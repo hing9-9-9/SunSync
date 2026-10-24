@@ -33,6 +33,7 @@ import type {
   Space,
   } from "./model";
 import {
+  deleteServerSpace,
   getServerSpace,
   listServerSpaces,
   mergeServerSpaces,
@@ -128,6 +129,7 @@ export function useSpaceApp() {
     | "discard"
     | "add-furniture"
     | "reload-server"
+    | "delete-space"
     | null
   >(null);
   const [error, setError] = useState("");
@@ -173,7 +175,7 @@ export function useSpaceApp() {
     let stopped = false; let timer: ReturnType<typeof setTimeout>;
     const controller = new AbortController();
     async function refreshJobs() {
-      try { const [jobs, remote] = await Promise.all([listMeasurements(controller.signal), listServerSpaces(controller.signal)]); if (!stopped) { setMeasurementJobs(jobs);setSpaces(current=>mergeServerSpaces(current,remote.spaces,remote.unavailable));setServerState("online"); } }
+      try { const [jobs, remote] = await Promise.all([listMeasurements(controller.signal), listServerSpaces(controller.signal)]); if (!stopped) { setMeasurementJobs(jobs);setSpaces(current=>mergeServerSpaces(current,remote.spaces,remote.unavailable,remote.deleted));setServerState("online"); } }
       catch (error) { if(!stopped) {setServerState("offline");setServerError(userMessage(error, "측정 상태를 불러오지 못했습니다. 잠시 후 자동으로 다시 확인합니다."));} }
       if (!stopped) timer = setTimeout(refreshJobs, 3000);
     }
@@ -483,7 +485,7 @@ export function useSpaceApp() {
     listServerSpaces(controller.signal)
       .then((result) => {
         if (controller.signal.aborted) return;
-        setSpaces((current) => mergeServerSpaces(current, result.spaces, result.unavailable));
+        setSpaces((current) => mergeServerSpaces(current, result.spaces, result.unavailable, result.deleted));
         setUnavailable(result.unavailable);
         setServerState("online");
         setServerError("");
@@ -502,7 +504,7 @@ export function useSpaceApp() {
     setServerState("loading");
     try {
       const result = await listServerSpaces();
-      setSpaces((current) => mergeServerSpaces(current, result.spaces, result.unavailable));
+      setSpaces((current) => mergeServerSpaces(current, result.spaces, result.unavailable, result.deleted));
       setUnavailable(result.unavailable);
       setServerState("online");
       setServerError("");
@@ -809,6 +811,30 @@ export function useSpaceApp() {
     const r = regionForFurniture(furniture);
     change({ regions: [...draft.regions, r] });
     setSelectedRegion(r.id);
+  }
+  // Deletes on the server first, so a failed delete leaves the space everywhere as it was.
+  const [deleting, setDeleting] = useState(false);
+  async function deleteSpace() {
+    if (!active || deleting) return;
+    setDeleting(true);
+    try {
+      if (!editorExample) await deleteServerSpace(active.id);
+      setSpaces((current) => current.filter((s) => s.id !== active.id));
+      setActiveId(null);
+      setDraft(null);
+      setModal(null);
+      setPageState("spaces");
+      setToast("공간을 삭제했습니다.");
+    } catch (error) {
+      setModal(null);
+      setError(
+        error instanceof SpaceApiError && error.status === 0
+          ? "서버에 연결할 수 없어 삭제하지 못했습니다. 서버 연결 후 다시 시도해 주세요."
+          : userMessage(error, "공간을 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요."),
+      );
+    } finally {
+      setDeleting(false);
+    }
   }
   async function save() {
     if (!draft || saving) return false;
@@ -1137,6 +1163,8 @@ export function useSpaceApp() {
   };
 
   return {
+    deleteSpace,
+    deleting,
     continueManually,
     sunSource,
     predictionPill,

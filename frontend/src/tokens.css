@@ -118,3 +118,9 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* Delete is a quiet outlined action with red text; the red fill is kept for the final confirm. */
+:is(.app.award-app, .app.award-mobile) button.secondary.destructive {
+  background: #fff !important;
+  color: #a3293c !important;
+}

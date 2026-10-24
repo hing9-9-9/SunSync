@@ -132,6 +132,8 @@ function App() {
     sunSource,
     predictionPill,
     continueManually,
+    deleteSpace,
+    deleting,
   } = useSpaceApp();
   return (
     <>
@@ -1241,6 +1243,9 @@ function App() {
                       >
                         공간 정보 수정
                       </button>
+                      <button className="secondary destructive" onClick={() => setModal("delete-space")}>
+                        공간 삭제
+                      </button>
                       {isApp && (
                         <button
                           className="secondary"
@@ -1375,6 +1380,20 @@ function App() {
                 취소
               </button>
             </form>
+          )}
+          {modal === "delete-space" && active && (
+            <>
+              <h2>'{active.name}'을 삭제할까요?</h2>
+              <p className="muted">
+                이 공간의 가구·보호구역 정보도 함께 사라지고 되돌릴 수 없습니다.
+              </p>
+              <button className="primary destructive" disabled={deleting} onClick={deleteSpace}>
+                {deleting ? "삭제 중…" : "삭제"}
+              </button>
+              <button className="secondary" onClick={dismissModal}>
+                취소
+              </button>
+            </>
           )}
           {modal === "reload-server" && (
             <>

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { blankSpace } from "./model.ts";
-import { mergeServerSpaces, SpaceApiError } from "./spaceApi.ts";
+import { deleteServerSpace, mergeServerSpaces, SpaceApiError } from "./spaceApi.ts";
 import { saveErrorMessage, syncStatus, uploadLocalSpaces } from "./spaceSync.ts";
 import type { Space } from "./model.ts";
 
@@ -64,4 +64,27 @@ test("offline stops the upload and leaves spaces pending", async () => {
 test("offline save message tells people their edits are kept", () => {
   assert.match(saveErrorMessage(new SpaceApiError(0, "x"), "f"), /서버가 돌아오면 다시 저장/);
   assert.equal(saveErrorMessage(new SpaceApiError(409, "충돌"), "f"), "충돌");
+});
+
+test("deleted spaces are dropped from every device instead of uploaded again", () => {
+  const gone = { ...local("gone"), serverRevision: 2 };
+  const kept = local("kept");
+  assert.deepEqual(mergeServerSpaces([gone, kept], [], [], [gone.id]).map((s) => s.name), ["kept"]);
+});
+
+test("delete uses DELETE and accepts an empty 204 reply", async (t) => {
+  let method = "";
+  t.mock.method(globalThis, "fetch", async (_url: string, init?: RequestInit) => {
+    method = init?.method ?? "";
+    return new Response(null, { status: 204 });
+  });
+  await deleteServerSpace("space-1");
+  assert.equal(method, "DELETE");
+});
+
+test("delete while offline fails without touching local spaces", async (t) => {
+  t.mock.method(globalThis, "fetch", async () => {
+    throw new TypeError("offline");
+  });
+  await assert.rejects(deleteServerSpace("space-1"), (e: unknown) => e instanceof SpaceApiError && e.status === 0);
 });

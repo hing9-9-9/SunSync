@@ -179,6 +179,14 @@ class UISpaceRecord(SQLModel, table=True):
     payload_json: str = SQLField(sa_column=Column(Text, nullable=False))
 
 
+class DeletedSpaceRecord(SQLModel, table=True):
+    """Tombstone: a deleted space id, so copies left on other devices are dropped, not re-uploaded."""
+
+    __tablename__ = "ui_deleted_spaces"
+    space_id: str = SQLField(primary_key=True)
+    deleted_at: str
+
+
 def canonical_id(kind: str, identifier: str) -> str:
     return f"ui_{kind}_{sha256(identifier.encode()).hexdigest()}"
 

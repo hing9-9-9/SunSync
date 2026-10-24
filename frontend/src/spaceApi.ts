@@ -8,6 +8,7 @@ export type UnavailableScene = {
 type SpacePage = {
   spaces: Space[];
   unavailable: UnavailableScene[];
+  deleted?: string[];
   has_more: boolean;
 };
 export class SpaceApiError extends Error {
@@ -93,7 +94,8 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
 }
 export async function listServerSpaces(signal?: AbortSignal) {
   const spaces: Space[] = [],
-    unavailable: UnavailableScene[] = [];
+    unavailable: UnavailableScene[] = [],
+    deleted: string[] = [];
   for (let offset = 0; ; offset += 100) {
     const page = await request<SpacePage>(
       `/api/ui/spaces?offset=${offset}&limit=100`,
@@ -103,9 +105,10 @@ export async function listServerSpaces(signal?: AbortSignal) {
       throw new SpaceApiError(0, "서버의 공간 응답 형식을 확인해 주세요.");
     spaces.push(...page.spaces);
     unavailable.push(...page.unavailable);
+    deleted.push(...(page.deleted ?? []));
     if (!page.has_more) break;
   }
-  return { spaces, unavailable };
+  return { spaces, unavailable, deleted };
 }
 export function saveServerSpace(space: Space) {
   return request<Space>(
@@ -118,6 +121,9 @@ export function saveServerSpace(space: Space) {
     },
   );
 }
+export function deleteServerSpace(id: string) {
+  return request<null>(`/api/ui/spaces/${encodeURIComponent(id)}`, { method: "DELETE" });
+}
 export function getServerSpace(id: string) {
   return request<Space>(`/api/ui/spaces/${encodeURIComponent(id)}`);
 }
@@ -129,8 +135,10 @@ export function mergeServerSpaces(
   current: Space[],
   remote: Space[],
   unavailable: UnavailableScene[] = [],
+  deleted: string[] = [],
 ) {
-  const ids = new Set([...remote.map((s) => s.id), ...unavailable.map((s) => s.scene_id)]);
+  // Spaces deleted on any device are dropped here instead of being uploaded again.
+  const ids = new Set([...remote.map((s) => s.id), ...unavailable.map((s) => s.scene_id), ...deleted]);
   return [
     ...remote,
     ...current

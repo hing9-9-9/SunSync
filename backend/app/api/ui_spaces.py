@@ -12,7 +12,7 @@ from sqlmodel import Session, col, select
 from app.db import get_session
 from app.models.scene import SceneRecord
 from app.schemas.scene import Scene
-from app.ui_scene import UISpace, UISpaceRecord, canonical_id, to_scene
+from app.ui_scene import DeletedSpaceRecord, UISpace, UISpaceRecord, canonical_id, to_scene
 
 router = APIRouter(prefix="/ui/spaces", tags=["ui-spaces"])
 DB = Annotated[Session, Depends(get_session)]
@@ -51,7 +51,13 @@ def list_spaces(
             )
         else:
             spaces.append(UISpace.model_validate_json(record.payload_json).model_dump())
-    return {"spaces": spaces, "unavailable": unavailable, "has_more": len(scenes) == limit}
+    deleted = [row.space_id for row in session.exec(select(DeletedSpaceRecord)).all()]
+    return {
+        "spaces": spaces,
+        "unavailable": unavailable,
+        "deleted": deleted,
+        "has_more": len(scenes) == limit,
+    }
 
 
 @router.get("/{space_id}", response_model=UISpace)
@@ -71,6 +77,8 @@ def get_space(space_id: str, session: DB) -> UISpace:
 def create_space(space: UISpace, session: DB) -> UISpace:
     if space.serverRevision is not None:
         raise HTTPException(409, "이미 서버에 저장한 공간입니다. 최신 버전으로 수정해 주세요.")
+    if session.get(DeletedSpaceRecord, space.id) is not None:
+        raise HTTPException(409, "삭제된 공간입니다. 새 공간으로 등록해 주세요.")
     scene = checked_scene(space, 1)
     saved = space.model_copy(
         update={
@@ -142,3 +150,16 @@ def replace_space(space_id: str, space: UISpace, session: DB) -> UISpace:
     session.add(record)
     session.commit()
     return saved
+
+
+@router.delete("/{space_id}", status_code=204)
+def delete_space(space_id: str, session: DB) -> None:
+    """Removes the space and its Scene; repeating it is harmless."""
+    record = session.get(UISpaceRecord, space_id)
+    scene = session.get(SceneRecord, canonical_id("scene", space_id))
+    for row in (record, scene):
+        if row is not None:
+            session.delete(row)
+    if session.get(DeletedSpaceRecord, space_id) is None:
+        session.add(DeletedSpaceRecord(space_id=space_id, deleted_at=datetime.now(UTC).isoformat()))
+    session.commit()
