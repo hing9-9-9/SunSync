@@ -5,6 +5,7 @@ import type { BlockingSchedule } from "./sunlight";
 import { useEffect, useCallback, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { editorExample, exampleState } from "./exampleSpace";
+import { markInvalidFields } from "./formIssues";
 import { saveErrorMessage, syncStatus, uploadLocalSpaces } from "./spaceSync";
 import Plan from "./Plan";
 import {
@@ -629,15 +630,25 @@ export function useSpaceApp() {
       setStorageError(true);
     }
   }, [account, spaces]);
+  // Errors take focus so they are read out; a form error focuses its first wrong field instead.
+  const fieldFocus = useRef<HTMLElement | null>(null);
   useEffect(() => {
     if (error) {
-      errorRef.current?.focus();
-      errorRef.current?.scrollIntoView({ block: "center" });
+      const target = fieldFocus.current ?? errorRef.current;
+      fieldFocus.current = null;
+      target?.focus();
+      target?.scrollIntoView({ block: "center" });
     }
   }, [error]);
+  // A new page moves keyboard and screen-reader focus to its content (not on first load).
+  const shownPage = useRef(page);
   useEffect(() => {
     window.scrollTo({ top: 0 });
     document.title = `${titles[page]} · SunSync`;
+    if (shownPage.current !== page) {
+      shownPage.current = page;
+      document.querySelector<HTMLElement>("#main, #ap-main, #award-guide-main")?.focus({ preventScroll: true });
+    }
     if (["register", "capture", "review", "protect"].includes(page))
       draftPage.current = page;
   }, [page]);
@@ -1013,14 +1024,29 @@ export function useSpaceApp() {
       change({ regions: [...draft.regions, r] });
     setSelectedRegion(r.id);
   }
-  function registerSubmit(e: FormEvent) {
-    e.preventDefault();
-    if (!draft) return;
+  // Marks wrong fields under each input, focuses the first and summarises them in the error banner.
+  function checkRegistration(form: HTMLFormElement | null, checkValidity: boolean) {
+    if (!draft) return false;
     const m = validateSpace(draft);
+    const issues = form ? markInvalidFields(form, m ?? undefined, checkValidity) : [];
+    if (issues.length) {
+      fieldFocus.current = issues[0].input;
+      setError(`입력값 ${issues.length}곳을 확인해 주세요: ${issues.map((i) => i.label).join(", ")}`);
+      return false;
+    }
     if (m) {
       setError(m);
-      return;
+      return false;
     }
+    return true;
+  }
+  // "직접 가구 추가·수정": the window size is optional here, so only the space checks apply.
+  function continueManually(form: HTMLFormElement | null) {
+    if (checkRegistration(form, false)) setPage("review");
+  }
+  function registerSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!draft || !checkRegistration(e.currentTarget, true)) return;
     if (
       !draft.windowDimensions ||
       draft.windowDimensions.width <= 0 ||
@@ -1111,6 +1137,7 @@ export function useSpaceApp() {
   };
 
   return {
+    continueManually,
     sunSource,
     predictionPill,
     syncFailed,

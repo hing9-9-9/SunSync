@@ -77,6 +77,36 @@
   margin-block: -2px !important; /* was 4px tall with 18px margins: same 40px box */
 }
 
+/* Field errors: one style, written under the field (NumberField writes its own). */
+:is(.app.award-app, .app.award-mobile) label.field[data-issue] {
+  border-color: #b02d3d !important;
+}
+:is(.app.award-app, .app.award-mobile) label.field[data-issue]::after {
+  content: attr(data-issue);
+  display: block;
+  color: #a3293c;
+  font-size: 13px;
+  line-height: 1.55;
+  font-weight: 500;
+}
+
+/* Keyboard focus: 2px action purple everywhere (the hero link keeps its approved fill style). */
+:is(.app.award-app, .app.award-mobile) :focus-visible:not(.ap-round-link, main) {
+  outline: 2px solid var(--c-action) !important;
+  outline-offset: 2px !important;
+}
+
+/* Page containers take focus on navigation only to move screen readers; they draw no ring. */
+:is(#main, #ap-main, #award-guide-main):focus {
+  outline: none !important;
+}
+
+/* Skip link: readable when it appears on keyboard focus. */
+.app.award-app .skip-link {
+  background: var(--c-protect-ink) !important;
+  color: #fff !important;
+}
+
 /* Motion: one hover speed, and everything settles instantly with "reduce motion". */
 @media (prefers-reduced-motion: reduce) {
   .app *,

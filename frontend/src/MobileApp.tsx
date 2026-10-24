@@ -11,7 +11,6 @@ import {
   isWidthWall,
   resolveWindow,
   upsertSpace,
-  validateSpace,
   walls,
 } from "./model";
 import type {
@@ -37,6 +36,7 @@ import {
 import type { WebsiteDestination } from "./Website";
 
 import { useSpaceApp, titles } from "./useSpaceApp";
+import { clearFieldIssue } from "./formIssues";
 import { Icon, Card, SyncBadge, SyncRetry } from "./ShellParts";
 function MobileApp() {
   const {
@@ -146,6 +146,7 @@ function MobileApp() {
     retryUpload,
     sunSource,
     predictionPill,
+    continueManually,
   } = useSpaceApp();
   function websiteNavigate(next: WebsiteDestination) {
     if (next === "home" || next === "guide") {
@@ -475,8 +476,8 @@ function MobileApp() {
                 </div>
               )}
               {page === "register" && draft && (
-                <form id="register-form" onSubmit={registerSubmit} className="registration">
-                  <p className="step-label">1 / 5 · 공간 준비</p>
+                <form id="register-form" noValidate onSubmit={registerSubmit} onInput={(e) => clearFieldIssue(e.target)} className="registration">
+                  <p className="step-label">1 / 3 · 공간 정보</p>
                   <h2>건물과 공간 등록</h2>
                   <div className="two-column">
                     <Card>
@@ -740,14 +741,7 @@ function MobileApp() {
                       <button
                         type="button"
                         className="secondary"
-                        onClick={() => {
-                          const m = validateSpace(draft);
-                          if (m) {
-                            setError(m);
-                            return;
-                          }
-                          setPage("review");
-                        }}
+                        onClick={(e) => continueManually(e.currentTarget.form)}
                       >
                         직접 가구 추가·수정
                       </button>
@@ -811,7 +805,7 @@ function MobileApp() {
               {page === "capture" && draft && isApp && (
                 <div className="capture-layout">
                   <div>
-                    <p className="step-label">2 / 5 · 공간 촬영</p>
+                    <p className="step-label">2 / 3 · 휴대폰 측정 · 공간 촬영</p>
                     <h2>
                       {addingByQr
                         ? "추가 가구 모서리 촬영"
@@ -861,7 +855,7 @@ function MobileApp() {
               )}
               {page === "processing" && (
                 <Card className="processing">
-                  <p className="step-label">3 / 5 · 사진 분석</p>
+                  <p className="step-label">2 / 3 · 휴대폰 측정 · 사진 분석</p>
                   <h2>측정 도면 생성 중</h2>
                   <strong className="progress-number">
                     {progress}
@@ -918,8 +912,8 @@ function MobileApp() {
                   </p>
                   <p className="step-label editor-step-label">
                     {page === "review"
-                      ? "4 / 5 · 가구 선택·치수 수정 · 촬영한 가구 치수는 예시값(FR-03 연결 전)"
-                      : "5 / 5 · 보호면·높이 확인"}
+                      ? "3 / 3 · 가구·보호구역 편집 · 가구 선택·치수 · 촬영한 가구 치수는 예시값(FR-03 연결 전)"
+                      : "3 / 3 · 가구·보호구역 편집 · 보호면·높이 확인"}
                   </p>
                   <div className="workspace editor-workspace">
                     <div className="workspace-main">
