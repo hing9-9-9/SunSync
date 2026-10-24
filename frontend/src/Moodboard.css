@@ -751,3 +751,7 @@
 
 /* The autoplay sets the sun position every frame; a CSS transition on top only lags behind it. */
 .app.award-app .ap-sun-glow { transition: none; }
+/* Last frame: the sun glow breathes slowly instead of freezing (reduced motion stops it). */
+.app.award-app .ap-sun-glow.is-resting { animation: ap-sun-breathe 3.5s ease-in-out infinite alternate; }
+.app.award-app .ap-hero-visual.is-unseen .ap-sun-glow { animation-play-state: paused; }
+@keyframes ap-sun-breathe { from { opacity: 1; scale: 1; } to { opacity: .96; scale: 1.035; } }

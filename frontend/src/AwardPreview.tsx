@@ -372,10 +372,15 @@ export default function AwardPreview({
       setScene(sceneAt(elapsed));
       frame = elapsed < PLAY_MS ? requestAnimationFrame(tick) : 0;
     };
-    // Plays once per visit to the page (like Linear and Vercel): off screen or in a hidden tab it only
-    // pauses, and once finished it stays on the last frame.
+    // Plays once per visit. Scrolling away only pauses it, and once finished it rests on the last
+    // frame with a slow glow. Leaving the browser tab rewinds it, so returning plays it again.
     const sync = () => {
+      if (document.hidden && elapsed > 0 && !reduced.matches) {
+        elapsed = 0;
+        setScene(sceneAt(0));
+      }
       const run = onScreen && !document.hidden && !reduced.matches && elapsed < PLAY_MS;
+      el.classList.toggle("is-unseen", !onScreen || document.hidden);
       if (reduced.matches) setScene(null);
       if (run && !frame) {
         last = 0;
@@ -481,7 +486,7 @@ export default function AwardPreview({
               SunSync
             </div>
             <div
-              className="ap-sun-glow"
+              className={`ap-sun-glow ${scene?.progress === 1 ? "is-resting" : ""}`}
               style={{ "--sun": (hour - 5) / 15 } as CSSProperties}
               aria-hidden="true"
             />
