@@ -748,3 +748,6 @@
 .sync-badge.pending, .sync-badge.needs-site { color: #c2520f; }
 .sync-retry { margin-top: 8px; font-size: 13px; color: #c2520f; background: #fff; border: 1px solid #e9e9e9; border-radius: 999px; padding: 6px 12px; transition: filter .2s, box-shadow .2s, translate .2s; }
 .sync-retry:hover { filter: brightness(.97); box-shadow: 0 2px 8px rgba(52, 48, 64, .08); translate: 0 -1px; }
+
+/* The autoplay sets the sun position every frame; a CSS transition on top only lags behind it. */
+.app.award-app .ap-sun-glow { transition: none; }

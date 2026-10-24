@@ -372,8 +372,15 @@ export default function AwardPreview({
       setScene(sceneAt(elapsed));
       frame = elapsed < PLAY_MS ? requestAnimationFrame(tick) : 0;
     };
+    // Leaving the screen (another tab, or scrolled fully out) rewinds to the first frame while
+    // unseen, so the next time it shows it plays again from the start without a visible jump.
     const sync = () => {
-      const run = onScreen && !document.hidden && !reduced.matches && elapsed < PLAY_MS;
+      const seen = onScreen && !document.hidden;
+      if (!seen && elapsed > 0 && !reduced.matches) {
+        elapsed = 0;
+        setScene(sceneAt(0));
+      }
+      const run = seen && !reduced.matches && elapsed < PLAY_MS;
       if (reduced.matches) setScene(null);
       if (run && !frame) {
         last = 0;
