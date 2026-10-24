@@ -1,5 +1,6 @@
 import { filmGrid, isWidthWall, resolveWindow, timeToMinute, wallLength } from "./model.ts";
 import type { Region, ShadingTime, Space } from "./model.ts";
+import type { SunpathPrediction } from "./spaceApi.ts";
 type Point = { x: number; y: number };
 
 // Shared by the drawing and the preview schedule; replace both together with FR-01 output.
@@ -110,6 +111,42 @@ export function shadedCells(space: Space, schedule: BlockingSchedule, hour: numb
       for (let col = first; col <= last; col++) cells.add(row * cols + col);
   }
   return cells;
+}
+/** Midnight today in the space's time zone, as the ISO start FR-01 expects, and its label. */
+export function predictionDay(timeZone: string, now = new Date()) {
+  const date = new Intl.DateTimeFormat("en-CA", { timeZone }).format(now);
+  const offset = new Intl.DateTimeFormat("en-US", { timeZone, timeZoneName: "longOffset" })
+    .formatToParts(now)
+    .find((p) => p.type === "timeZoneName")!
+    .value.replace("GMT", "") || "+00:00";
+  const [, month, day] = date.split("-").map(Number);
+  return { start: `${date}T00:00:00${offset}`, label: `${month}월 ${day}일 기준` };
+}
+
+// FR-01 output in the shape the preview already uses. Regions come back in the saved space's
+// order; each run of exposed samples becomes a period that starts ADVANCE_MINUTES early.
+export function scheduleFromPrediction(space: Space, prediction: SunpathPrediction): BlockingSchedule {
+  if (prediction.regions.length !== space.regions.length)
+    throw new Error("prediction regions do not match the saved space");
+  const start = Date.parse(prediction.start_time);
+  const minuteOf = (t: string) => Math.round((Date.parse(t) - start) / 60000);
+  return new Map(space.regions.map((region, i) => {
+    const periods: BlockingPeriod[] = [];
+    let arrival: number | null = null;
+    for (const t of [...prediction.regions[i].timeline, null]) {
+      const minute = t ? minuteOf(t.timestamp) : DAY_MINUTES;
+      if (t?.status === "exposed") {
+        arrival ??= minute;
+        continue;
+      }
+      if (arrival === null) continue;
+      const begin = Math.max(0, arrival - ADVANCE_MINUTES), last = periods.at(-1);
+      if (last && begin <= last.end) last.end = minute;
+      else periods.push({ arrival, start: begin, end: Math.min(minute, DAY_MINUTES) });
+      arrival = null;
+    }
+    return [region.id, periods];
+  }));
 }
 export function formatMinute(minute: number): string {
   return `${String(Math.floor(minute / 60)).padStart(2, "0")}:${String(minute % 60).padStart(2, "0")}`;

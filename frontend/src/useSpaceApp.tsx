@@ -1,6 +1,7 @@
-import { createHandoff, connectHandoff, completeHandoff, listMeasurements } from "./spaceApi";
-import type { HandoffSession } from "./spaceApi";
-import { blockingSchedule } from "./sunlight";
+import { createHandoff, connectHandoff, completeHandoff, listMeasurements, predictSunpath } from "./spaceApi";
+import type { HandoffSession, SunpathPrediction } from "./spaceApi";
+import { blockingSchedule, predictionDay, scheduleFromPrediction } from "./sunlight";
+import type { BlockingSchedule } from "./sunlight";
 import { useEffect, useCallback, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { editorExample, exampleState } from "./exampleSpace";
@@ -347,14 +348,63 @@ export function useSpaceApp() {
   const space = editing ? draft : active;
   // When sunlight reaches each protected area (simplified demo calculation). Blocking itself only
   // happens inside the time range the user sets.
+  // FR-01: the saved space's real sun times for today. Results are keyed by scene revision, so a
+  // result for an older save is never shown after the space changes.
+  const predictionKey =
+    page === "detail" && !editorExample && active?.serverSceneId && active.serverRevision && active.site && active.regions.length
+      ? `${active.serverSceneId}:${active.serverRevision}`
+      : null;
+  const [prediction, setPrediction] = useState<{ key: string; result?: SunpathPrediction; error?: string } | null>(null);
+  const [predictionRun, setPredictionRun] = useState(0);
+  const sceneId = active?.serverSceneId, sceneRevision = active?.serverRevision, timeZone = active?.site?.timezone;
+  useEffect(() => {
+    if (!predictionKey || !sceneId || !sceneRevision || !timeZone) return;
+    let stopped = false;
+    predictSunpath(sceneId, sceneRevision, predictionDay(timeZone).start).then(
+      (result) => !stopped && setPrediction({ key: predictionKey, result }),
+      (error) => !stopped && setPrediction({ key: predictionKey, error: userMessage(error, "햇빛 예측을 불러오지 못했습니다. 다시 계산해 주세요.") }),
+    );
+    return () => {
+      stopped = true;
+    };
+  }, [predictionKey, predictionRun, sceneId, sceneRevision, timeZone]);
+  const currentPrediction = prediction?.key === predictionKey ? prediction : null;
+  let predicted: BlockingSchedule | undefined, predictionError = currentPrediction?.error;
+  if (currentPrediction?.result && active) {
+    try {
+      predicted = scheduleFromPrediction(active, currentPrediction.result);
+    } catch {
+      predictionError = "예측 결과와 저장된 보호영역이 맞지 않습니다. 다시 계산해 주세요.";
+    }
+  }
+  const retryPrediction = () => {
+    setPrediction(null);
+    setPredictionRun((n) => n + 1);
+  };
+  const sunSource = predictionKey && active?.site
+    ? {
+        label: `햇빛 닿는 시간(FR-01 · ${predictionDay(active.site.timezone).label})`,
+        note: predictionError ? (
+          <p className="error" role="alert">
+            {predictionError}{" "}
+            <button type="button" className="text-button" onClick={retryPrediction}>다시 계산</button>
+          </p>
+        ) : !predicted ? (
+          <p className="muted small" role="status">FR-01로 오늘 햇빛을 계산하는 중…</p>
+        ) : null,
+      }
+    : undefined;
+  const predictionPill = !predictionKey ? "시뮬레이션" : predictionError ? "예측 실패" : predicted ? "FR-01 예측" : "계산 중";
   const sunSchedule = useMemo(
     () =>
       page === "detail" && active
-        ? blockingSchedule(active)
+        ? predictionKey
+          ? (predicted ?? new Map())
+          : blockingSchedule(active)
         : page === "protect" && draft
           ? blockingSchedule(draft)
           : new Map(),
-    [page, active, draft],
+    [page, active, draft, predictionKey, predicted],
   );
   // Detail page: the user's unsaved edit of the blocking time (null = showing the saved value).
   // Keyed by space so an unsaved edit never carries over to another space.
@@ -1057,6 +1107,8 @@ export function useSpaceApp() {
   };
 
   return {
+    sunSource,
+    predictionPill,
     syncFailed,
     retryUpload,
     initial,

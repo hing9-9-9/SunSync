@@ -130,6 +130,8 @@ function App() {
     draftSite,
     syncFailed,
     retryUpload,
+    sunSource,
+    predictionPill,
   } = useSpaceApp();
   return (
     <>
@@ -736,7 +738,7 @@ function App() {
                   </p>
                   <p className="step-label editor-step-label">
                     {page === "review"
-                      ? "4 / 5 · 가구 선택·치수 수정"
+                      ? "4 / 5 · 가구 선택·치수 수정 · 촬영한 가구 치수는 예시값(FR-03 연결 전)"
                       : "5 / 5 · 보호면·높이 확인"}
                   </p>
                   <div className="workspace editor-workspace">
@@ -1109,7 +1111,7 @@ function App() {
                           {activeRegionCount}개
                         </p>
                       </div>
-                      <span className="pill">시뮬레이션</span>
+                      <span className="pill">{predictionPill}</span>
                     </Card>
                     <Card className="plan-card">{plan}</Card>
                     <div className="item-tabs">
@@ -1218,6 +1220,7 @@ function App() {
                       sunSchedule={sunSchedule}
                       hour={hour}
                       onSave={saveShadingTime}
+                      sunSource={sunSource}
                       dirty={
                         !!shadingEdit &&
                         JSON.stringify(shadingEdit) !==

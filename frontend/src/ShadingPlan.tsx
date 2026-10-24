@@ -2,6 +2,7 @@ import { filmGrid, resolveWindow, timeToMinute, validateShadingTime, validateWin
 import type { ShadingTime, Space } from "./model";
 import { DAY_MINUTES, formatMinute, protectedRegions, shadedCells } from "./sunlight";
 import type { BlockingSchedule as Schedule } from "./sunlight";
+import type { ReactNode } from "react";
 
 // Surface gap between cells, in cell units: white space separates the cells instead of grid lines.
 const GAP = 0.14;
@@ -43,13 +44,14 @@ export function FilmGrid({ space, schedule, hour, marker = false }: { space: Spa
       </span>
       {walls[win.wall]} · {win.width} × {win.height} m · {cols}×{rows}칸
       {showShading && ` · 가림 ${shaded.size}칸`}
+      {showShading && <span className="example-note"> · 칸 배치는 예시값(FR-02 연결 전)</span>}
     </figcaption>
   </figure>;
 }
 
 // WAR4.2: the user chooses when light may be blocked. The 24-hour bar shows that range and the
 // time picked on the slider; the simplified sun times stay as small reference text only.
-export function ShadingTimeControl({ space, value, onChange, sunSchedule, hour, onSave, dirty = false, saving = false }: {
+export function ShadingTimeControl({ space, value, onChange, sunSchedule, hour, onSave, dirty = false, saving = false, sunSource }: {
   space: Space;
   value: ShadingTime;
   onChange: (time: ShadingTime) => void;
@@ -58,6 +60,8 @@ export function ShadingTimeControl({ space, value, onChange, sunSchedule, hour, 
   onSave?: () => void;
   dirty?: boolean;
   saving?: boolean;
+  // Where the sun times come from; without it they are the simplified preview calculation.
+  sunSource?: { label: string; note?: ReactNode };
 }) {
   const minute = Math.round(hour * 60);
   const regions = protectedRegions(space);
@@ -98,11 +102,11 @@ export function ShadingTimeControl({ space, value, onChange, sunSchedule, hour, 
     <p className="blocking-status" role="status">
       {active ? `${value.start} ~ ${value.end} 차단 · 지금 선택한 ${formatMinute(minute)}은 ${minute >= start && minute < end ? "차단 시간" : "차단 시간 밖"}` : "차단 시간이 설정되지 않음"}
     </p>
-    {regions.length > 0 ? <ul className="sun-reference muted small">
+    {regions.length > 0 ? sunSource?.note ?? <ul className="sun-reference muted small">
       {regions.map((r) => {
         const periods = sunSchedule.get(r.id) ?? [];
         return <li key={r.id}>
-          {r.name} · 햇빛 닿는 시간(간이 계산) {periods.length ? periods.map((p) => `${formatMinute(p.arrival)}~${formatMinute(p.end)}`).join(", ") : "없음"}
+          {r.name} · {sunSource?.label ?? "햇빛 닿는 시간(간이 계산)"} {periods.length ? periods.map((p) => `${formatMinute(p.arrival)}~${formatMinute(p.end)}`).join(", ") : sunSource ? "직사광이 닿지 않음" : "없음"}
         </li>;
       })}
     </ul> : <p className="muted small">보호영역이 없어 가릴 곳이 없습니다. D 등급은 채광을 우선해 가리지 않습니다.</p>}
