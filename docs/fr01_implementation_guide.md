@@ -8,7 +8,9 @@
 
 For a requested time range, calculate solar elevation/azimuth and determine whether direct sunlight can reach each selected FR-06 `ProtectedRegion.sample_points_m` through a `Window`, without earlier intersection with opaque `Occluder` or `Room` boundaries. Return sample-level paths, region-level time series, and the first **sampled** exposure timestamp.
 
-**Out of scope:** whole-room exposure maps, irradiance/DNI, weather and clouds, reflection/refraction, outdoor shading, ML/DL, FR-02 film-control decisions, frontend, prediction persistence.
+**Out of scope in this FR-01 MVP guide:** whole-room exposure maps, irradiance/DNI, weather and clouds, reflection/refraction, outdoor shading, ML/DL, FR-02 film-control decisions, frontend, prediction persistence.
+
+> **FR-01.4 범위 변경:** 이 guide가 작성될 때 명시적으로 제외했던 irradiance/DNI, weather, clouds는 이후 FR-01.4의 추가 확장 기능으로 선정되어 구현 범위에 포함됐다. 해당 구현은 이 guide를 확장하지 않고 [`FR-01.4_contract_v1.md`](FR-01.4_contract_v1.md)의 Stage 1·Stage 2 계약을 따른다.
 
 **Invariants:** FR-06's right-handed ENU (x East, y North, z Up; metres), geometry conventions, and Scene schema must not be changed. `exposed` means a *geometric direct path*, not measured light exposure. Never claim complete surface coverage or exact continuous-time first contact.
 

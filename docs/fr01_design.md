@@ -4,6 +4,8 @@
 
 FR-01 MVP는 구현 완료 상태다. 저장된 FR-06 `Scene`을 읽어 각 `ProtectedRegion.sample_points_m`의 기하학적 직사광선 도달 가능성을 미래 timestamp별로 계산한다. 결과는 저장하지 않으며, FR-06 Scene schema와 API 계약은 변경하지 않는다.
 
+> **문서 범위:** 이 문서는 FR-01.1~FR-01.3의 기하학 MVP만 다룬다. DNI·기상·직접일사량과 다중 source 미래 DNI 예측은 이후 FR-01.4 확장으로 선정되어 [`FR-01.4_contract_v1.md`](FR-01.4_contract_v1.md)에서 별도로 정의한다.
+
 | 경로 | 책임 |
 |---|---|
 | `engine/fr01/models.py` | FastAPI·DB와 독립적인 immutable DTO와 prediction result |
@@ -122,7 +124,7 @@ python -m mypy backend/app engine/fr01 tools/mock_validation
 
 - 연속적인 floor footprint, mesh 또는 정확한 노출 면적 계산
 - 반사, 산란, 굴절, penumbra, 창틀·벽 두께·recess
-- DNI·irradiance·weather prediction과 weather API
+- DNI·irradiance·weather prediction과 weather API — 이 MVP에서는 명시적으로 제외했으나, 이후 FR-01.4의 추가 확장 기능으로 선정되어 구현 범위에 포함됐다. 상세 계약은 `FR-01.4_contract_v1.md`를 따른다.
 - 실외 건물·수목·지형 차폐
 - ML/DL, FR-02 control logic, SGF cell mapping
 - prediction persistence, frontend visualization, background job

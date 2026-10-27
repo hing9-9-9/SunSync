@@ -1,6 +1,8 @@
 # FR-01 Sunpath Prediction API
 
-FR-01.4는 저장된 FR-06 `Scene`의 보호면 sample point에 대해 기하학적 direct-sun path와 직접일사량을 예측한다. 결과는 저장하지 않으며, DNI는 요청 단위에서 `Scene.weather` → Open-Meteo → pvlib clear-sky 순서로 선택한다. 창/필름 광학, 반사·굴절, 실외 차폐, 확산광 및 FR-02 제어는 적용하지 않는다.
+이 문서는 현재 구현된 FR-01.4 **Stage 1** API(v0.2.0)를 설명한다. 저장된 FR-06 `Scene`의 보호면 sample point에 대해 기하학적 direct-sun path와 직접일사량을 예측한다. 결과는 저장하지 않으며, DNI는 요청 단위에서 `Scene.weather` → Open-Meteo → pvlib clear-sky 순서로 선택한다. 창/필름 광학, 반사·굴절, 실외 차폐, 확산광 및 FR-02 제어는 적용하지 않는다.
+
+다중 source 기반 미래 DNI 예측 엔진(Stage 2)은 아직 이 API에 구현되지 않았으며, v0.3.0 확장 계약은 [`FR-01.4_contract_v1.md`](FR-01.4_contract_v1.md)를 따른다.
 
 ## Endpoint
 

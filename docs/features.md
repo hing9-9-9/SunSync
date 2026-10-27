@@ -33,7 +33,7 @@ FR-06 is the shared contract: every other FR reads the space model from it.
 - FR-01.1 Solar position for each time step from the location and a time zone-aware start time
 - FR-01.2 Direct-sun path tracing from sample points on each protected surface toward the sun
 - FR-01.3 Exposure timeline: exposure and reason per time step, first predicted exposure time
-- FR-01.4 Sunlight intensity from clear-sky conditions, replaced by forecasts such as Open-Meteo
+- FR-01.4 Sunlight intensity and future DNI prediction: Stage 1 selects DNI from Scene weather, Open-Meteo, or clear-sky; Stage 2 combines multi-source nowcasts and forecasts for future DNI
 
 ### FR-02 Selective Shading Decision
 - FR-02.1 Cell mapping: window crossing point to the film cell that contains it

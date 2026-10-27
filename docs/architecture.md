@@ -17,7 +17,9 @@ Web app (PWA)     -- protected areas, 3D view  -->     |
   scene with an atomic revision check (409 on conflict). See [FR06](fr06.md).
 - **Prediction (FR-01).** `engine/fr01/` computes solar positions with pvlib and traces direct-sun paths from
   protected sample points through windows. The backend reads `Scene` directly and exposes
-  `POST /api/scenes/{scene_id}/sunpath-predictions`. See the [FR-01 API](fr01_api.md).
+  `POST /api/scenes/{scene_id}/sunpath-predictions`. FR-01.1~FR-01.3 geometry and FR-01.4 Stage 1 DNI selection
+  are current API behavior; FR-01.4 Stage 2 multi-source future DNI nowcasting is a backend extension defined in
+  [the FR-01.4 contract](FR-01.4_contract_v1.md). See the [FR-01 API](fr01_api.md).
 - **Measurement (FR-03).** The app photographs the marker shown on the window film from each furniture corner;
   OpenCV ArUco and solvePnP give the camera position, which becomes the furniture corner in the scene.
 - **Shading (FR-02, FR-04, FR-05).** FR-02 maps window crossing points to the 10 x 10 film cells and decides cell
