@@ -13,7 +13,7 @@ from engine.fr01.models import (
     SolarPosition,
     Window,
 )
-from engine.fr01.predictor import evaluate_sample, predict_region_exposure
+from engine.fr01.predictor import direct_irradiance_W_m2, evaluate_sample, predict_region_exposure
 
 SUN_SOUTH = (0.0, -1 / sqrt(2), 1 / sqrt(2))
 SUN_NORTH = (0.0, 1 / sqrt(2), 1 / sqrt(2))
@@ -74,6 +74,20 @@ def test_evaluate_sample_returns_window_path_and_diagnostics():
         0, (3, 2, 0.5), region(), position(1, 45, SUN_NORTH), room(), (window(),), ()
     )
     assert back.reason is ExposureReason.BACK_FACING
+
+
+def test_direct_irradiance_distinguishes_blocked_from_unknown_dni():
+    clear = evaluate_sample(
+        0, (3, 2, 0.5), region(), position(0, 45, SUN_SOUTH), room(), (window(),), ()
+    )
+    blocked = evaluate_sample(
+        0, (3, 2, 0.5), region(), position(0, 0, SUN_SOUTH), room(), (window(),), ()
+    )
+    assert direct_irradiance_W_m2(clear, region().receiving_normal, SUN_SOUTH, None) is None
+    assert direct_irradiance_W_m2(blocked, region().receiving_normal, SUN_SOUTH, None) == 0
+    assert direct_irradiance_W_m2(clear, region().receiving_normal, SUN_SOUTH, 500) == pytest.approx(
+        500 / sqrt(2)
+    )
 
 
 def test_occluder_blocks_only_its_sample_and_nearest_blocker_is_reported():

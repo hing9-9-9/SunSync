@@ -3,7 +3,7 @@
 import copy
 import json
 from collections.abc import Iterator
-from datetime import datetime
+from datetime import UTC, datetime
 from itertools import pairwise
 from pathlib import Path
 from typing import Any
@@ -12,6 +12,7 @@ import pytest
 from app.main import create_app
 from app.models.scene import SceneRecord
 from app.schemas.scene import Scene
+from app.services import sunpath as sunpath_service
 from fastapi.testclient import TestClient
 from sqlalchemy import Engine
 from sqlmodel import Session, create_engine
@@ -69,16 +70,66 @@ def test_prediction_returns_scene_snapshot_timeline_and_sample_diagnostics(clien
     assert result["units"] == "m"
     assert result["exposure_basis"] == "geometric_direct_path"
     assert result["optics_applied"] is False
-    assert len(result["timestamps"]) == len(result["solar_positions"]) == 3
+    assert (
+        len(result["timestamps"])
+        == len(result["solar_positions"])
+        == len(result["irradiance"])
+        == 3
+    )
+    assert result["result_version"] == "0.2.0"
+    assert all(
+        irradiance["timestamp"] == timestamp
+        and irradiance["ml_applied"] is False
+        and irradiance["ml_reason"] == "stage2_not_enabled"
+        and irradiance["model_version"] is None
+        for timestamp, irradiance in zip(result["timestamps"], result["irradiance"], strict=True)
+    )
     assert [region["region_id"] for region in result["regions"]] == [
         region["region_id"] for region in scene_payload["protected_regions"]
     ]
     sample = result["regions"][0]["timeline"][0]["samples"][0]
-    assert {"sample_index", "point_m", "status", "reason", "candidate_path", "blocker"} <= set(
-        sample
-    )
+    assert {
+        "sample_index",
+        "point_m",
+        "status",
+        "reason",
+        "candidate_path",
+        "blocker",
+        "direct_irradiance_W_m2",
+    } <= set(sample)
     for timestamp in result["timestamps"]:
         assert datetime.fromisoformat(timestamp).utcoffset().total_seconds() == 0
+    assert client.get(f"/api/scenes/{scene_payload['scene_id']}").json() == original
+
+
+def test_prediction_uses_one_mock_weather_snapshot_without_mutating_scene(
+    client, scene_payload, monkeypatch
+):
+    scene_payload.pop("weather")
+    scene_payload.pop("scenario")
+    original = create_scene(client, scene_payload)
+    calls = 0
+
+    def snapshot(*_args):
+        nonlocal calls
+        calls += 1
+        fetched_at = datetime(2026, 10, 14, 3, tzinfo=UTC)
+        return {
+            datetime(2026, 10, 14, 4, tzinfo=UTC): (
+                500.0,
+                datetime(2026, 10, 14, 4, tzinfo=UTC),
+                fetched_at,
+            )
+        }
+
+    monkeypatch.setattr(sunpath_service, "_open_meteo_snapshot", snapshot)
+    response = client.post(
+        f"/api/scenes/{scene_payload['scene_id']}/sunpath-predictions",
+        json=request_body(duration_minutes=10, interval_seconds=300),
+    )
+    assert response.status_code == 200, response.text
+    assert calls == 1
+    assert {entry["source"] for entry in response.json()["irradiance"]} == {"open_meteo"}
     assert client.get(f"/api/scenes/{scene_payload['scene_id']}").json() == original
 
 

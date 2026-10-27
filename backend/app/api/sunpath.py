@@ -1,5 +1,6 @@
 """FR-01 synchronous prediction endpoint over stored FR-06 Scenes."""
 
+from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -28,6 +29,7 @@ def create_sunpath_prediction(
 ) -> SunpathPredictionResponse:
     """Predict direct-sun sample exposure from one immutable stored Scene snapshot."""
 
+    request_received_at = datetime.now(UTC)
     record = session.get(SceneRecord, scene_id)
     if record is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Scene not found.")
@@ -41,7 +43,7 @@ def create_sunpath_prediction(
         )
     try:
         scene = Scene.model_validate_json(record.scene_json)
-        return predict_scene(scene, request)
+        return predict_scene(scene, request, request_received_at=request_received_at)
     except (SunpathValidationError, ValidationError) as error:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(error)

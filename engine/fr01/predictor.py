@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from math import isfinite
 
 from .geometry import (
     ANGULAR_EPSILON,
@@ -55,6 +56,26 @@ def _not_exposed(
     blocker: Blocker | None = None,
 ) -> SampleResult:
     return SampleResult(sample_index, point, False, reason, blocker=blocker)
+
+
+def direct_irradiance_W_m2(
+    sample: SampleResult,
+    receiving_normal: Vector3,
+    sun_direction_enu: Vector3,
+    dni_W_m2: float | None,
+) -> float | None:
+    """Project request-scoped DNI onto a geometrically evaluated sample.
+
+    A geometrically blocked sample is physically zero even when DNI is unknown;
+    a clear path with unknown DNI remains unknown.
+    """
+    if not sample.exposed:
+        return 0.0
+    if dni_W_m2 is None:
+        return None
+    if not isfinite(dni_W_m2) or dni_W_m2 < 0:
+        raise ValueError("dni_W_m2 must be finite and nonnegative")
+    return dni_W_m2 * max(0.0, dot(receiving_normal, sun_direction_enu))
 
 
 def _candidate_windows(

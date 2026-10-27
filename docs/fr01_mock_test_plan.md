@@ -4,7 +4,7 @@
 
 이 계획은 FR-06 Scene 저장·검증과 FR-01 기하학적 직사광선 예측을 mock fixture로 end-to-end 확인하기 위한 것이다. 검증 도구는 production API 서버와 `sunsync.db`를 사용하지 않는다.
 
-대상은 FR-06 Scene validation/storage, FR-01 prediction timeline·sample diagnostic·window hit·blocker·최초 sampled exposure, 그리고 예측 전후 Scene JSON/revision 불변성이다. DNI, weather, optics, reflection, outdoor shading, FR-02 제어는 대상이 아니다.
+대상은 FR-06 Scene validation/storage, FR-01.4 prediction timeline·sample diagnostic·window hit·blocker·최초 sampled exposure, 그리고 예측 전후 Scene JSON/revision 불변성이다. Stage 1은 timestamp별 DNI/provenance와 표본점별 직접일사량도 검증한다. 창/필름 광학, reflection/refraction, outdoor shading, 확산광 및 FR-02 제어는 대상이 아니다.
 
 ## 확인된 실제 계약
 

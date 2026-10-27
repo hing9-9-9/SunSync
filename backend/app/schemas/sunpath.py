@@ -7,6 +7,21 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+DniSource = Literal["scene_weather", "open_meteo", "pvlib_clear_sky", "unknown"]
+FallbackReason = Literal[
+    "scene_weather_missing",
+    "scene_weather_stale",
+    "scene_weather_invalid",
+    "scene_weather_out_of_coverage",
+    "open_meteo_timeout",
+    "open_meteo_transport_error",
+    "open_meteo_invalid_response",
+    "open_meteo_out_of_coverage",
+    "clear_sky_error",
+    "none",
+]
+NonnegativeIrradiance = Annotated[float, Field(ge=0)]
+
 
 class SunpathModel(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True, allow_inf_nan=False)
@@ -66,6 +81,7 @@ class SampleResultResponse(SunpathModel):
     reason: str
     candidate_path: CandidatePathResponse | None
     blocker: BlockerResponse | None
+    direct_irradiance_W_m2: NonnegativeIrradiance | None = None
 
 
 class RegionTimeResponse(SunpathModel):
@@ -91,7 +107,7 @@ class SolarPositionResponse(SunpathModel):
 
 
 class SunpathPredictionResponse(SunpathModel):
-    result_version: Literal["0.1.0"] = "0.1.0"
+    result_version: Literal["0.2.0"] = "0.2.0"
     scene_id: str
     scene_revision: int
     coordinate_frame: Literal["ENU"] = "ENU"
@@ -103,5 +119,22 @@ class SunpathPredictionResponse(SunpathModel):
     interval_seconds: int
     timestamps: list[datetime]
     solar_positions: list[SolarPositionResponse]
+    irradiance: list[IrradianceResponse]
     regions: list[RegionPredictionResponse]
     assumptions: list[str]
+
+
+class IrradianceResponse(SunpathModel):
+    """Request-scoped DNI provenance for one prediction timestamp."""
+
+    timestamp: datetime
+    baseline_dni_W_m2: NonnegativeIrradiance | None
+    final_dni_W_m2: NonnegativeIrradiance | None
+    source: DniSource
+    fallback_used: bool
+    fallback_reason: FallbackReason | None
+    valid_time: datetime | None
+    fetched_at: datetime | None
+    ml_applied: Literal[False] = False
+    ml_reason: Literal["stage2_not_enabled"] = "stage2_not_enabled"
+    model_version: None = None

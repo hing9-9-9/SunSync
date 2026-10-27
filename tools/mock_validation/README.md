@@ -1,8 +1,9 @@
 # Mock validation tools
 
 `run_fr01_mock_validation.py` validates FR-06 storage and FR-01 prediction through
-an isolated `TestClient` and temporary SQLite database. It never starts Uvicorn and
-never opens the repository's `sunsync.db`.
+an isolated `TestClient` and temporary SQLite database. It never starts Uvicorn,
+never opens the repository's `sunsync.db`, and mocks the Open-Meteo adapter so the
+validation does not depend on external network availability.
 
 Run from the repository root:
 
