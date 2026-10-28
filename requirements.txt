@@ -5,4 +5,5 @@ sqlmodel
 pvlib
 shapely>=2
 opencv-contrib-python
+python-dotenv>=1,<2
 ruff
