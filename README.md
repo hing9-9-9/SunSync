@@ -16,7 +16,7 @@ docs/      requirements, architecture, decisions, data contracts, reports
 - [Decisions](docs/decisions.md): one line per team decision
 - [Architecture](docs/architecture.md): modules and data flow
 - [FR-06 space data](docs/fr06.md) and [JSON schema](docs/fr06_scene.schema.json)
-- FR-01 sunlight prediction: [API](docs/fr01_api.md), [design](docs/fr01_design.md), [geometry implementation guide](docs/fr01_implementation_guide.md), [FR-01.4 nowcast implementation guide](docs/fr01_4_nowcast_implementation_guide.md), [mock test plan](docs/fr01_mock_test_plan.md)
+- FR-01 sunlight prediction: [API](docs/fr01_api.md), [design](docs/fr01_design.md), [geometry implementation guide](docs/fr01_implementation_guide.md), [FR-01.4 Open-Meteo DNI design](docs/FR-01.4_open_meteo_dni_design.md), [deprecated multi-source guide](docs/DEPRECATED_fr01_4_nowcast_implementation_guide.md), [mock test plan](docs/fr01_mock_test_plan.md)
 - Requirement document: `docs/reports/SunSync_Requirements.pdf`
 - Meeting notes: shared Google document (not in the repository)
 

@@ -6,4 +6,5 @@ pvlib
 shapely>=2
 opencv-contrib-python
 python-dotenv>=1,<2
+h5py
 ruff

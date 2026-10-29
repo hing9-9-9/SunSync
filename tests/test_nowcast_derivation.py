@@ -2,7 +2,7 @@
 
 from datetime import UTC, datetime
 
-from app.nowcast.derivation import derive_dni_from_gk2a_dsr
+from app.nowcast.experimental.gk2a.derivation import derive_dni_from_gk2a_dsr
 
 from engine.fr01.models import Site
 

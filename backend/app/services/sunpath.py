@@ -10,6 +10,9 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import urlopen
 
+from sqlalchemy import Engine
+
+from app.nowcast.selection import select_and_record
 from app.schemas.scene import Scene
 from app.schemas.sunpath import (
     BlockerResponse,
@@ -19,6 +22,7 @@ from app.schemas.sunpath import (
     RegionTimeResponse,
     SampleResultResponse,
     SolarPositionResponse,
+    SourceSnapshotResponse,
     SunpathPredictionRequest,
     SunpathPredictionResponse,
 )
@@ -43,6 +47,14 @@ class SunpathValidationError(ValueError):
     """A request or stored Scene cannot be evaluated by the FR-01 MVP."""
 
 
+class OpenMeteoError(ValueError):
+    """Legacy parsing error retained while the Stage-1 helper is retired."""
+
+    def __init__(self, reason: str) -> None:
+        self.reason = reason
+        super().__init__(reason)
+
+
 @dataclass(frozen=True, slots=True)
 class SceneGeometry:
     site: Site
@@ -60,17 +72,14 @@ class DniValue:
     fallback_reason: str | None
     valid_time: datetime | None
     fetched_at: datetime | None
-
-
-class OpenMeteoError(ValueError):
-    def __init__(
-        self,
-        reason: Literal[
-            "open_meteo_timeout", "open_meteo_transport_error", "open_meteo_invalid_response"
-        ],
-    ):
-        self.reason = reason
-        super().__init__(reason)
+    nowcast_run_id: str | None = None
+    prediction_method: str = "stage1_weather_selection"
+    source_snapshot_id: str | None = None
+    source_provider: str | None = None
+    interval_start: datetime | None = None
+    interval_end: datetime | None = None
+    clear_sky_dni: float | None = None
+    provenance: dict[str, object] | None = None
 
 
 def _vector(value: tuple[float, float, float]) -> Vector3:
@@ -219,6 +228,13 @@ def _valid_dni(value: object) -> float | None:
     ):
         raise ValueError("DNI must be a finite nonnegative number")
     return float(value)
+
+
+def _provenance_float(provenance: dict[str, object] | None, key: str) -> float | None:
+    """Expose optional provider metadata without coercing booleans or strings."""
+
+    value = provenance.get(key) if provenance else None
+    return float(value) if isinstance(value, (int, float)) and not isinstance(value, bool) else None
 
 
 def _scene_dni(
@@ -402,7 +418,8 @@ def _select_dni(
 
 
 def predict_scene(
-    scene: Scene, request: SunpathPredictionRequest, request_received_at: datetime | None = None
+    scene: Scene, request: SunpathPredictionRequest, request_received_at: datetime | None = None,
+    nowcast_engine: Engine | None = None,
 ) -> SunpathPredictionResponse:
     """Calculate a non-persistent prediction from one validated Scene snapshot."""
 
@@ -432,7 +449,46 @@ def predict_scene(
     try:
         solar_positions = calculate_solar_positions(geometry.site, timestamps)
         received_at = _utc(request_received_at or datetime.now(UTC))
-        dni_values = _select_dni(scene, geometry.site, timestamps, received_at)
+        # Scene weather remains the first-priority source.  Only unresolved
+        # timestamps enter the durable Open-Meteo selector; API requests never
+        # collect from a provider or start a worker.
+        scene_values = [_scene_dni(scene, timestamp, received_at) for timestamp in timestamps]
+        unresolved = [(index, reason) for index, reason in enumerate(scene_values) if isinstance(reason, str)]
+        if nowcast_engine is not None:
+            run_id, selected = select_and_record(
+                nowcast_engine, geometry.site, tuple(timestamps[index] for index, _ in unresolved), received_at
+            ) if unresolved else (None, [])
+            selected_by_index = dict(zip((index for index, _ in unresolved), selected, strict=True))
+            dni_values = []
+            for index, timestamp in enumerate(timestamps):
+                scene_value = scene_values[index]
+                if isinstance(scene_value, tuple):
+                    value, valid_time, fetched_at = scene_value
+                    dni_values.append(DniValue(value, "scene_weather", False, None, valid_time, fetched_at))
+                    continue
+                item = selected_by_index[index]
+                dni_values.append(DniValue(item.value, cast(Literal["open_meteo", "pvlib_clear_sky", "unknown"], item.source),
+                    item.fallback_used, item.fallback_reason, item.valid_time, item.fetched_at, run_id,
+                    item.method, item.snapshot_id, item.provider, item.interval_start, item.interval_end,
+                    item.clear_sky_dni, item.provenance))
+        else:
+            # Library callers without a database still do not perform network
+            # I/O.  This is deliberately the same final fallback as a missing
+            # durable snapshot, rather than the old request-time provider path.
+            dni_values = []
+            for index, timestamp in enumerate(timestamps):
+                scene_value = scene_values[index]
+                if isinstance(scene_value, tuple):
+                    value, valid_time, fetched_at = scene_value
+                    dni_values.append(DniValue(value, "scene_weather", False, None, valid_time, fetched_at))
+                    continue
+                try:
+                    clear = _clear_sky_dni(geometry.site, timestamp)
+                    dni_values.append(DniValue(clear, "pvlib_clear_sky", True, "open_meteo_out_of_coverage", timestamp, None,
+                                               prediction_method="clear_sky_fallback", clear_sky_dni=clear))
+                except ValueError:
+                    dni_values.append(DniValue(None, "unknown", True, "clear_sky_error", None, None,
+                                               prediction_method="clear_sky_fallback"))
         predictions = tuple(
             predict_region_exposure(
                 geometry.room,
@@ -446,6 +502,7 @@ def predict_scene(
     except ValueError as error:
         raise SunpathValidationError(str(error)) from error
     return SunpathPredictionResponse(
+        result_version="0.3.0" if nowcast_engine is not None else "0.2.0",
         scene_id=scene.scene_id,
         scene_revision=scene.revision,
         start_time=timestamps[0],
@@ -470,7 +527,22 @@ def predict_scene(
                 fallback_used=dni.fallback_used,
                 fallback_reason=dni.fallback_reason,
                 valid_time=dni.valid_time,
+                interval_start=dni.interval_start,
+                interval_end=dni.interval_end,
+                request_latitude_deg=_provenance_float(dni.provenance, "request_latitude_deg"),
+                request_longitude_deg=_provenance_float(dni.provenance, "request_longitude_deg"),
+                grid_latitude_deg=_provenance_float(dni.provenance, "grid_latitude_deg"),
+                grid_longitude_deg=_provenance_float(dni.provenance, "grid_longitude_deg"),
+                grid_elevation_m=_provenance_float(dni.provenance, "grid_elevation_m"),
+                model_selection="best_match" if dni.provenance and dni.provenance.get("model_selection") == "best_match" else None,
+                resolved_model=dni.provenance.get("resolved_model") if dni.provenance and isinstance(dni.provenance.get("resolved_model"), str) else None,
                 fetched_at=dni.fetched_at,
+                prediction_method=cast(Literal["stage1_weather_selection", "deterministic_nowcast", "clear_sky_fallback"], dni.prediction_method),
+                nowcast_run_id=dni.nowcast_run_id,
+                nowcast_horizon_seconds=max(0, int((timestamp - received_at).total_seconds())) if dni.nowcast_run_id else None,
+                clear_sky_dni_W_m2=dni.clear_sky_dni,
+                clear_sky_index=(dni.value / dni.clear_sky_dni if dni.value is not None and dni.clear_sky_dni not in (None, 0) else None),
+                source_snapshots=[SourceSnapshotResponse(snapshot_id=dni.source_snapshot_id, provider=dni.source_provider, role="forecast", weight=1.0)] if dni.source_snapshot_id and dni.source_provider else [],
             )
             for timestamp, dni in zip(timestamps, dni_values, strict=True)
         ],

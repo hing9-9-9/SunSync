@@ -1,5 +1,4 @@
-"""FR-01.4 Implementation Step B — standalone GK2A DSR point-snapshot worker."""
-
+"""Standalone Step C GK2A SWRAD-to-DNI snapshot worker."""
 from __future__ import annotations
 
 import argparse
@@ -11,31 +10,25 @@ from sqlalchemy import Engine
 from sqlmodel import create_engine
 
 from app.db import DATABASE_URL, init_db
-from app.nowcast.adapters import Gk2aDsrAdapter, Gk2aDsrError
+from app.nowcast.adapters import Gk2aDsrError
+from app.nowcast.experimental.gk2a.swrad_dni_adapter import Gk2aSwradDniAdapter
 from app.nowcast.repository import SnapshotRepository
-from app.nowcast.worker import load_unique_sites
+from app.nowcast.sites import load_unique_sites
 
-LEASE_NAME = "gk2a_dsr_snapshot"
+LEASE_NAME = "gk2a_swrad_dni_snapshot"
 
 
 def run_once(engine: Engine, *, api_key: str | None, now: datetime | None = None, owner_id: str | None = None) -> dict[str, int]:
-    """Collect one 24-hour DSR window per unique site without exposing the key."""
-
-    current_input = now or datetime.now(UTC)
-    if current_input.tzinfo is None or current_input.utcoffset() is None:
-        raise ValueError("now must be UTC-aware")
-    current = current_input.astimezone(UTC)
+    current = (now or datetime.now(UTC)).astimezone(UTC)
     if not api_key:
         return {"sites": 0, "stored": 0, "failed": 0, "lease_acquired": 0, "blocked": 1}
     repository = SnapshotRepository(engine)
-    owner = owner_id or str(uuid4())
-    if not repository.acquire_lease(LEASE_NAME, owner, current):
+    if not repository.acquire_lease(LEASE_NAME, owner_id or str(uuid4()), current):
         return {"sites": 0, "stored": 0, "failed": 0, "lease_acquired": 0, "blocked": 0}
-    sites = load_unique_sites(engine)
-    stored = failed = 0
+    sites, stored, failed = load_unique_sites(engine), 0, 0
     for site in sites:
         try:
-            repository.store(Gk2aDsrAdapter(site, api_key).fetch(current), current)
+            repository.store(Gk2aSwradDniAdapter(site, api_key).fetch(current), current)
             stored += 1
         except (Gk2aDsrError, ValueError):
             failed += 1

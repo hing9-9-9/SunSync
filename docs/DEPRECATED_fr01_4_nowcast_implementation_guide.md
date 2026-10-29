@@ -1,4 +1,9 @@
-# FR-01.4 Stage 2 — 미래 DNI 구현 계획
+# **폐기된 설계** — FR-01.4 Stage 2 다중 source 미래 DNI 구현 계획
+
+> **폐기 상태:** 이 문서는 Open-Meteo와 GK2A DNI를 exact `valid_time`으로 비교·선택하는
+> 이전 설계를 보존하기 위한 기록이며, 더 이상 구현·운영의 기준이 아니다. 특히 5분·10분
+> prediction grid와 Open-Meteo의 hourly mean이 맞지 않는 문제를 해결하지 못한다.
+> 현재 기준 설계는 [FR-01.4 Open-Meteo 단일 source DNI 설계](FR-01.4_open_meteo_dni_design.md)다.
 
 > **상위 계약:** [FR-01.4 상세 개발 계약](FR-01.4_contract_v1.md)
 >
@@ -28,9 +33,9 @@
 | GK2A DSR 지점 API | **PARTIAL** | historical `int=10`/`int=2` 요청은 HTTP 200이며 실제 관측 간격은 10분으로 확인됐다. 최신 지연·응답 표의 실데이터 파싱은 로컬 API key로 재검증한다. |
 | GK2A 2-D 격자/NetCDF | **PARTIAL** | KO SWRAD NetCDF 실파일과 2 km 투영·DQF는 확인했다. 위·경도 매핑과 site crop 검증이 남아 있다. |
 | Implementation Step A — Open-Meteo DNI worker | **PASS** | 독립 worker, site dedup, hourly 평균 구간 정규화, lease와 실패 보존을 구현했다. |
-| Implementation Step B — GK2A DSR point worker | **PARTIAL** | 실제 가로 시간축 표 파서·worker를 구현했다. 원본 KO NetCDF는 2 km 격자임을 확인했지만, 지점과 격자를 대응시키는 위·경도 파일은 아직 확보·검증하지 않았다. |
-| Implementation Step C — DSR→DNI 추정 | **PARTIAL** | DISC 기반 순수 derivation은 구현됐고 원본 NetCDF의 품질 플래그도 확인했다. NetCDF adapter와 derived snapshot worker는 아직 없다. |
-| Implementation Step D — DNI 선택·provenance | **BLOCKED** | Step A·C 완료가 선행 조건이다. |
+| Implementation Step B — GK2A DSR point worker | **PARTIAL** | 가로 시간축 표 파서·worker와 24시간 분할 수집을 구현했다. 원본 KO NetCDF는 2 km 격자임을 확인했지만, 지점과 격자를 대응시키는 위·경도 파일은 아직 확보·검증하지 않았다. |
+| Implementation Step C — DSR→DNI 추정 | **PARTIAL** | DISC 기반 순수 derivation, DQF-gated NetCDF adapter 및 derived snapshot worker를 구현했다. 실제 KO SWRAD에는 위·경도 배열이 없으므로, companion 좌표 파일을 확보·검증하기 전 production 수집은 안전하게 제외된다. |
+| Implementation Step D — DNI 선택·provenance | **PASS** | 저장된 snapshot의 exact valid-time·freshness·quality를 결정론적으로 선택하고, ready run 및 additive v0.3 provenance를 반환한다. 후보가 하나라도 없으면 기존 v0.2 선택으로 fallback한다. |
 | Implementation Step E — 2-D advection | **BLOCKED** | 2-D data gate가 선행 조건이다. |
 | Implementation Step F — 통합 검증·FR-04 연계 | **BLOCKED** | Step D 및 FR-04 소비 계약이 선행 조건이다. |
 
@@ -230,7 +235,7 @@ GET https://apihub.kma.go.kr/api/typ01/url/gk2a_latlon_file_down.php?
   exclusion provenance가 재현 가능하다. 추정 불확실성 및 satellite DSR 오차를 문서화한다.
 - 테스트: DISC/DIRINT input 시간 일치, zenith 경계, 0/null, clip, DQF, raw DSR provenance,
   Open-Meteo 비교 결과가 선택/보정 규칙을 바꾸지 않음을 검증한다.
-- 상태: **PARTIAL — DISC derivation과 DQF/DSR/zenith/clear-sky exclusion gate는 구현됐다. 지점 응답에는 DQF가 없지만, 실제 원본 SWRAD NetCDF에서 `DSR_DQF1` 및 `SW_DQF`를 확인했다. 해당 NetCDF를 읽어 snapshot을 만들고 derived snapshot worker로 저장하는 구현은 아직 없다**.
+- 상태: **PARTIAL — DISC derivation과 DQF/DSR/zenith/clear-sky exclusion gate, NetCDF adapter 및 derived snapshot worker는 구현됐다. 지점 응답에는 DQF가 없고 실제 KO SWRAD NetCDF에는 위·경도 배열이 없으므로, companion 좌표 파일을 확보·검증하기 전 production 수집은 안전하게 제외된다**.
 
 ## 7. Implementation Step D — DNI 선택과 v0.3 provenance
 
@@ -250,7 +255,7 @@ quality, 시간 의미를 만족하는 후보만 결정론적으로 선택하여
   추적할 수 있고 v0.2 회귀 응답이 동일하게 유지된다.
 - 테스트: exact valid-time, stale/invalid/null/0, source 하나, 모든 source 실패, timestamp와
   irradiance 1:1, v0.2/v0.3 호환, provenance additive fields를 검증한다.
-- 상태: **BLOCKED — Step A·C 완료 전**.
+- 상태: **PASS — GK2A 우선·Open-Meteo 차순, provider별 freshness TTL과 exact valid-time을 적용한다. 유효한 모든 timestamp 후보가 있을 때만 ready run 및 v0.3 provenance를 만들고, 그 외에는 v0.2 선택 결과로 fallback한다.**
 
 ## 8. Implementation Step E — GK2A 2-D crop/advection
 

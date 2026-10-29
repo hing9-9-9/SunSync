@@ -1,7 +1,9 @@
-"""FR-01.4 Implementation Step A — standalone Open-Meteo snapshot worker.
+"""FR-01.4 Step A — Open-Meteo DNI snapshot worker only.
 
-Run with ``python -m app.nowcast.worker``.  It is intentionally not attached
-to FastAPI's lifespan: scheduling and process supervision belong to deployment.
+Run with ``python -m app.nowcast.open_meteo_worker``. This worker must not be
+used for GK2A DSR or SWRAD collection; those providers have their own workers.
+It is intentionally not attached to FastAPI's lifespan: scheduling and process
+supervision belong to deployment.
 """
 
 from __future__ import annotations
@@ -10,42 +12,18 @@ import argparse
 from datetime import UTC, datetime
 from uuid import uuid4
 
-from sqlalchemy import Engine, text
+from sqlalchemy import Engine
 from sqlmodel import create_engine
 
 from app.db import DATABASE_URL, init_db
 from app.nowcast.adapters import OpenMeteoDniAdapter, OpenMeteoSnapshotError
 from app.nowcast.repository import SnapshotRepository
-from app.schemas.scene import Scene
-from engine.fr01.models import Site
+from app.nowcast.sites import load_unique_sites
 
 LEASE_NAME = "open_meteo_dni_snapshot"
 
-
-def _site_key(site: Site) -> tuple[float, float]:
-    return (site.latitude_deg, site.longitude_deg)
-
-
-def load_unique_sites(engine: Engine) -> tuple[Site, ...]:
-    """Read only valid persisted scenes and deduplicate their physical sites."""
-
-    with engine.connect() as connection:
-        payloads = connection.execute(text("SELECT scene_json FROM scenes ORDER BY scene_id")).scalars()
-        sites: dict[tuple[float, float], Site] = {}
-        for payload in payloads:
-            try:
-                scene = Scene.model_validate_json(payload)
-            except ValueError:
-                # Scene writes are validated at the API boundary.  A manually
-                # corrupted legacy row cannot stop collection for other sites.
-                continue
-            site = Site(scene.site.latitude_deg, scene.site.longitude_deg, scene.site.timezone)
-            sites.setdefault(_site_key(site), site)
-    return tuple(sites.values())
-
-
 def run_once(engine: Engine, *, now: datetime | None = None, owner_id: str | None = None) -> dict[str, int]:
-    """Collect every distinct scene site once; provider errors preserve history."""
+    """Collect Open-Meteo DNI for every scene site; provider errors preserve history."""
 
     current_input = now or datetime.now(UTC)
     if current_input.tzinfo is None or current_input.utcoffset() is None:

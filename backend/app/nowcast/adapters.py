@@ -119,6 +119,27 @@ class OpenMeteoDniAdapter:
             if not times or len(times) != len(dnis) or len(times) != len(clouds):
                 raise ValueError
             points: list[RawPoint] = []
+            grid_latitude = document.get("latitude")
+            grid_longitude = document.get("longitude")
+            grid_elevation = document.get("elevation")
+            has_grid_metadata = grid_latitude is not None and grid_longitude is not None
+            if not has_grid_metadata:
+                # Older saved fixtures (and historical provider payloads) did
+                # not expose a grid centre.  Preserve them as explicitly legacy
+                # snapshots; Step D will not select them for v0.3.
+                grid_latitude, grid_longitude = self.site.latitude_deg, self.site.longitude_deg
+            if (
+                isinstance(grid_latitude, bool) or not isinstance(grid_latitude, (int, float))
+                or isinstance(grid_longitude, bool) or not isinstance(grid_longitude, (int, float))
+                or not isfinite(grid_latitude) or not isfinite(grid_longitude)
+                or not -90 <= grid_latitude <= 90 or not -180 <= grid_longitude <= 180
+            ):
+                raise ValueError
+            if grid_elevation is not None and (
+                isinstance(grid_elevation, bool) or not isinstance(grid_elevation, (int, float))
+                or not isfinite(grid_elevation)
+            ):
+                raise ValueError
             previous: datetime | None = None
             for epoch, dni, cloud in zip(times, dnis, clouds, strict=True):
                 if isinstance(epoch, bool) or not isinstance(epoch, (int, float)):
@@ -144,8 +165,8 @@ class OpenMeteoDniAdapter:
                 points.append(
                     RawPoint(
                         valid_time=end,
-                        latitude_deg=self.site.latitude_deg,
-                        longitude_deg=self.site.longitude_deg,
+                        latitude_deg=float(grid_latitude),
+                        longitude_deg=float(grid_longitude),
                         temporal_meaning="mean",
                         dni_W_m2=float(dni) if dni is not None else None,
                         cloud_cover_percent=float(cloud),
@@ -158,13 +179,23 @@ class OpenMeteoDniAdapter:
         return RawSnapshot(
             provider="open_meteo",
             product="hourly_direct_normal_irradiance",
-            model=None,
+            model=document.get("model") if isinstance(document.get("model"), str) else "unknown",
             payload=payload,
             points=tuple(points),
             # This is a forecast product, not an observation.  ``issued_at``
             # is deliberately absent until the provider exposes a reliable one.
             observed_at=None,
             issued_at=None,
+            provenance={
+                "spatial_provenance": "provider_grid" if has_grid_metadata else "legacy_request_coordinate",
+                "request_latitude_deg": self.site.latitude_deg,
+                "request_longitude_deg": self.site.longitude_deg,
+                "grid_latitude_deg": float(grid_latitude),
+                "grid_longitude_deg": float(grid_longitude),
+                "grid_elevation_m": float(grid_elevation) if grid_elevation is not None else None,
+                "model_selection": "best_match",
+                "resolved_model": document.get("model") if isinstance(document.get("model"), str) else "unknown",
+            },
         )
 
 
@@ -186,6 +217,8 @@ class Gk2aDsrAdapter:
     api_key: str
     timeout_seconds: float = 30.0
 
+    _MAX_WINDOW = timedelta(hours=3, minutes=50)
+
     def fetch(self, now: datetime) -> RawSnapshot:
         if now.tzinfo is None or now.utcoffset() is None:
             raise ValueError("now must be UTC-aware")
@@ -194,7 +227,45 @@ class Gk2aDsrAdapter:
         end = now.astimezone(UTC).replace(second=0, microsecond=0)
         # The endpoint caps a response at 24 timestamp columns.  A 3h50m
         # inclusive window yields exactly 24 ten-minute values.
-        start = end - timedelta(hours=3, minutes=50)
+        return self.fetch_range(end - self._MAX_WINDOW, end)
+
+    def fetch_recent_24_hours(self, now: datetime) -> RawSnapshot:
+        """Collect a full 24-hour history despite the endpoint's 24-column cap."""
+
+        end = now.astimezone(UTC).replace(second=0, microsecond=0)
+        start = end - timedelta(hours=24)
+        snapshots: list[RawSnapshot] = []
+        cursor = start
+        while cursor < end:
+            window_end = min(cursor + self._MAX_WINDOW, end)
+            snapshots.append(self.fetch_range(cursor, window_end))
+            cursor = window_end
+        first = snapshots[0]
+        points = {
+            point.valid_time: point
+            for snapshot in snapshots
+            for point in snapshot.points
+        }
+        ordered = tuple(points[key] for key in sorted(points))
+        provenance = dict(first.provenance)
+        provenance["collection_window_start"] = start.isoformat().replace("+00:00", "Z")
+        provenance["collection_window_end"] = end.isoformat().replace("+00:00", "Z")
+        provenance["request_count"] = len(snapshots)
+        return RawSnapshot(
+            provider=first.provider, product=first.product, model=first.model,
+            # The individual replies are the immutable input to this composite snapshot.
+            payload=b"\n--- SunSync GK2A request boundary ---\n".join(item.payload for item in snapshots),
+            points=ordered, observed_at=max(point.valid_time for point in ordered),
+            quality_status=first.quality_status, provenance=provenance,
+        )
+
+    def fetch_range(self, start: datetime, end: datetime) -> RawSnapshot:
+        """Fetch one inclusive provider window of no more than 24 columns."""
+        if start.tzinfo is None or start.utcoffset() is None or end.tzinfo is None or end.utcoffset() is None:
+            raise ValueError("range timestamps must be UTC-aware")
+        start, end = start.astimezone(UTC), end.astimezone(UTC)
+        if start > end or end - start > self._MAX_WINDOW:
+            raise ValueError("GK2A DSR range must be between zero and 3h50m")
         query = urlencode(
             {
                 "varn": "DSR",

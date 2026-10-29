@@ -9,7 +9,7 @@ from urllib.error import URLError
 import pytest
 from app.db import init_db
 from app.models.scene import SceneRecord
-from app.nowcast import worker
+from app.nowcast import open_meteo_worker
 from app.nowcast.adapters import OpenMeteoDniAdapter, OpenMeteoSnapshotError
 from sqlalchemy import text
 from sqlmodel import Session, create_engine
@@ -92,7 +92,7 @@ def test_open_meteo_timeout_is_not_stored(monkeypatch, tmp_path):
     monkeypatch.setattr(
         "app.nowcast.adapters.urlopen", lambda *_args, **_kwargs: (_ for _ in ()).throw(URLError("offline"))
     )
-    assert worker.run_once(engine, now=NOW, owner_id="a") == {
+    assert open_meteo_worker.run_once(engine, now=NOW, owner_id="a") == {
         "sites": 1, "stored": 0, "failed": 1, "lease_acquired": 1
     }
     with engine.connect() as connection:
@@ -111,20 +111,30 @@ def test_worker_deduplicates_sites_and_provider_hashes(monkeypatch, tmp_path):
         return Response(payload(dnis=(0, 200)))
 
     monkeypatch.setattr("app.nowcast.adapters.urlopen", open_url)
-    assert worker.run_once(engine, now=NOW, owner_id="one")["stored"] == 1
+    assert open_meteo_worker.run_once(engine, now=NOW, owner_id="one")["stored"] == 1
     # The lease is intentionally held by another process until its TTL expires.
-    assert worker.run_once(engine, now=NOW, owner_id="two")["lease_acquired"] == 0
-    assert worker.run_once(engine, now=NOW, owner_id="one")["stored"] == 1
+    assert open_meteo_worker.run_once(engine, now=NOW, owner_id="two")["lease_acquired"] == 0
+    assert open_meteo_worker.run_once(engine, now=NOW, owner_id="one")["stored"] == 1
     assert calls == 2
     with engine.connect() as connection:
         assert connection.execute(text("SELECT count(*) FROM weather_snapshot")).scalar_one() == 1
         assert connection.execute(text("SELECT count(*) FROM weather_point")).scalar_one() == 2
 
 
-def test_current_request_path_does_not_invoke_implementation_step_a_worker(monkeypatch):
-    # This guards the architectural boundary: the current path has its own adapter and
-    # no dependency on the persistent worker module.
+def test_request_path_does_not_invoke_open_meteo_collection_worker(monkeypatch):
+    # Step D may read durable snapshots, but API requests must never invoke the
+    # Open-Meteo collection process directly.
     from app.services import sunpath
 
-    monkeypatch.setattr(worker, "run_once", lambda *_args, **_kwargs: pytest.fail("worker invoked"))
-    assert "app.nowcast" not in inspect.getsource(sunpath)
+    monkeypatch.setattr(open_meteo_worker, "run_once", lambda *_args, **_kwargs: pytest.fail("worker invoked"))
+    assert "app.nowcast.open_meteo_worker" not in inspect.getsource(sunpath)
+
+
+def test_production_nowcast_path_does_not_depend_on_experimental_gk2a():
+    """The Open-Meteo API path must stay independently deployable."""
+    from app.api import sunpath as sunpath_api
+    from app.nowcast import selection
+    from app.services import sunpath
+
+    for module in (sunpath, sunpath_api, open_meteo_worker, selection):
+        assert "experimental.gk2a" not in inspect.getsource(module)

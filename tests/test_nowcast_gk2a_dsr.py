@@ -8,8 +8,8 @@ from urllib.error import URLError
 import pytest
 from app.db import init_db
 from app.models.scene import SceneRecord
-from app.nowcast import gk2a_worker
-from app.nowcast.adapters import Gk2aDsrAdapter, Gk2aDsrError
+from app.nowcast.experimental.gk2a import point_dsr_worker
+from app.nowcast.experimental.gk2a.point_dsr_adapter import Gk2aDsrAdapter, Gk2aDsrError
 from sqlalchemy import text
 from sqlmodel import Session, create_engine
 
@@ -82,11 +82,11 @@ def test_gk2a_classifies_non_data_and_malformed_responses(monkeypatch, body, rea
 
 def test_gk2a_transport_failure_and_missing_key_do_not_store(monkeypatch, tmp_path):
     engine = engine_with_scene(tmp_path)
-    assert gk2a_worker.run_once(engine, api_key=None, now=NOW)["blocked"] == 1
+    assert point_dsr_worker.run_once(engine, api_key=None, now=NOW)["blocked"] == 1
     monkeypatch.setattr(
         "app.nowcast.adapters.urlopen", lambda *_args, **_kwargs: (_ for _ in ()).throw(URLError("offline"))
     )
-    result = gk2a_worker.run_once(engine, api_key="secret", now=NOW, owner_id="one")
+    result = point_dsr_worker.run_once(engine, api_key="secret", now=NOW, owner_id="one")
     assert result == {"sites": 1, "stored": 0, "failed": 1, "lease_acquired": 1, "blocked": 0}
     with engine.connect() as connection:
         assert connection.execute(text("SELECT count(*) FROM weather_snapshot")).scalar_one() == 0
@@ -95,10 +95,11 @@ def test_gk2a_transport_failure_and_missing_key_do_not_store(monkeypatch, tmp_pa
 def test_gk2a_worker_stores_ghi_and_provenance_without_secret(monkeypatch, tmp_path):
     engine = engine_with_scene(tmp_path)
     monkeypatch.setattr("app.nowcast.adapters.urlopen", lambda *_args, **_kwargs: Response(valid_table()))
-    assert gk2a_worker.run_once(engine, api_key="secret", now=NOW, owner_id="one")["stored"] == 1
+    assert point_dsr_worker.run_once(engine, api_key="secret", now=NOW, owner_id="one")["stored"] == 1
     with engine.connect() as connection:
         point = connection.execute(text("SELECT dni_W_m2, ghi_W_m2 FROM weather_point")).first()
         provenance = connection.execute(text("SELECT provenance_json FROM weather_snapshot")).scalar_one()
         assert point == (None, 0.0)
         assert "secret" not in provenance
         assert json.loads(provenance)["spatial_representation"] == "representative_coordinate_from_response"
+        assert json.loads(provenance)["request_count"] == 7

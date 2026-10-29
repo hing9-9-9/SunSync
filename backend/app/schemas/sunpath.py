@@ -107,7 +107,7 @@ class SolarPositionResponse(SunpathModel):
 
 
 class SunpathPredictionResponse(SunpathModel):
-    result_version: Literal["0.2.0"] = "0.2.0"
+    result_version: Literal["0.2.0", "0.3.0"] = "0.2.0"
     scene_id: str
     scene_revision: int
     coordinate_frame: Literal["ENU"] = "ENU"
@@ -135,6 +135,28 @@ class IrradianceResponse(SunpathModel):
     fallback_reason: FallbackReason | None
     valid_time: datetime | None
     fetched_at: datetime | None
+    interval_start: datetime | None = None
+    interval_end: datetime | None = None
+    request_latitude_deg: float | None = None
+    request_longitude_deg: float | None = None
+    grid_latitude_deg: float | None = None
+    grid_longitude_deg: float | None = None
+    grid_elevation_m: float | None = None
+    model_selection: Literal["best_match"] | None = None
+    resolved_model: str | None = None
     ml_applied: Literal[False] = False
     ml_reason: Literal["stage2_not_enabled"] = "stage2_not_enabled"
     model_version: None = None
+    prediction_method: Literal["stage1_weather_selection", "deterministic_nowcast", "clear_sky_fallback"] = "stage1_weather_selection"
+    nowcast_run_id: str | None = None
+    nowcast_horizon_seconds: int | None = Field(default=None, ge=0)
+    clear_sky_dni_W_m2: NonnegativeIrradiance | None = None
+    clear_sky_index: NonnegativeIrradiance | None = None
+    source_snapshots: list[SourceSnapshotResponse] = Field(default_factory=list)
+
+
+class SourceSnapshotResponse(SunpathModel):
+    snapshot_id: str
+    provider: str
+    role: Literal["nowcast", "forecast"]
+    weight: float = Field(gt=0, le=1)
