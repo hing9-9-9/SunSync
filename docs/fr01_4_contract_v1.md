@@ -1,4 +1,8 @@
-# SunSync FR-01.4 상세 개발 계약 v1.2
+# SunSync FR-01.4 상세 개발 계약 v1.2 — 역사적 계약
+
+> **폐기됨:** 이 문서는 이전의 다중 source Stage 2 계약 기록이다. 현행 구현·운영 기준은
+> [FR-01.4 Open-Meteo 단일 source 미래 DNI 설계](fr01_4_open_meteo_dni_design.md)다.
+> 새 기능, API 계약 또는 검증 기준은 이 문서를 기준으로 추가·변경하지 않는다.
 
 ## 목적과 범위
 
@@ -11,8 +15,8 @@ Stage 1은 필수이며, 유효한 `Scene.weather`를 우선 사용하고 Open-M
 | 문서 | 범위 |
 | --- | --- |
 | `docs/fr01_design.md`, `docs/fr01_implementation_guide.md` | FR-01.1~FR-01.3 기하학적 햇빛 경로 MVP. DNI·weather는 최초 범위에서 명시적으로 제외했다. |
-| `docs/FR-01.4_contract_v1.md` (본 문서) | FR-01.4 확장. Stage 1의 DNI 선택·직접일사량과 Stage 2의 다중 source 미래 DNI 예측 계약을 정의한다. |
-| `docs/DEPRECATED_fr01_4_nowcast_implementation_guide.md` | **폐기된** 다중 source Stage 2 설계 기록이다. 현행 구현 기준은 `docs/FR-01.4_open_meteo_dni_design.md`다. |
+| `docs/fr01_4_contract_v1.md` (본 문서) | FR-01.4 확장. Stage 1의 DNI 선택·직접일사량과 Stage 2의 다중 source 미래 DNI 예측 계약을 정의한다. |
+| `docs/deprecated_fr01_4_nowcast_implementation_guide.md` | **폐기된** 다중 source Stage 2 설계 기록이다. 현행 구현 기준은 `docs/fr01_4_open_meteo_dni_design.md`다. |
 | `docs/fr01_api.md` | 현재 구현된 Stage 1 API v0.2.0 계약. Stage 2 v0.3.0은 본 문서의 향후 API 확장을 따른다. |
 
 ## 현행 계약 및 코드와의 정합성

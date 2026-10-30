@@ -52,3 +52,8 @@ def test_stale_or_out_of_interval_snapshot_uses_per_timestamp_clear_sky_fallback
     assert result is not None
     assert [value.source for value in result[1]] == ["pvlib_clear_sky", "pvlib_clear_sky"]
     assert all(value.fallback_used for value in result[1])
+    with engine.connect() as connection:
+        reasons = connection.exec_driver_sql(
+            "SELECT fallback_reason FROM nowcast_point ORDER BY valid_time"
+        ).scalars().all()
+    assert reasons == ["open_meteo_out_of_coverage", "open_meteo_out_of_coverage"]

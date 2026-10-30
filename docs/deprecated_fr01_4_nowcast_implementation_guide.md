@@ -3,9 +3,9 @@
 > **폐기 상태:** 이 문서는 Open-Meteo와 GK2A DNI를 exact `valid_time`으로 비교·선택하는
 > 이전 설계를 보존하기 위한 기록이며, 더 이상 구현·운영의 기준이 아니다. 특히 5분·10분
 > prediction grid와 Open-Meteo의 hourly mean이 맞지 않는 문제를 해결하지 못한다.
-> 현재 기준 설계는 [FR-01.4 Open-Meteo 단일 source DNI 설계](FR-01.4_open_meteo_dni_design.md)다.
+> 현재 기준 설계는 [FR-01.4 Open-Meteo 단일 source DNI 설계](fr01_4_open_meteo_dni_design.md)다.
 
-> **상위 계약:** [FR-01.4 상세 개발 계약](FR-01.4_contract_v1.md)
+> **상위 계약:** [FR-01.4 상세 개발 계약](fr01_4_contract_v1.md)
 >
 > **계획 상태:** 2026-10-27 개정. 이 문서는 구현 순서와 gate를 고정한다. 상위 계약의
 > source 우선순위·advection 가중치 표는 아래 충돌 사항을 해소하는 계약 개정 전까지
@@ -49,7 +49,7 @@
 | lead time별 source 가중 평균 및 “fusion” | 실제 기준 관측 또는 교정 데이터가 없는 가중치는 정확도 개선을 입증하지 못한다. | Step C~D는 검증 가능한 freshness·quality·유효시간 선택만 수행한다. 임의 보정·가중평균은 도입하지 않는다. |
 | 상위 계약의 초단기예보 우선표 | 초단기예보가 DNI를 직접 주는 것처럼 읽힐 수 있다. | 상위 계약은 후속 개정 대상으로 기록한다. 이번 구현은 현행 v0.2 fallback과 Open-Meteo/GK2A의 명시적 선택만 사용한다. |
 
-`docs/FR-01.4_contract_v1.md`와 `docs/fr01_api.md`는 현재 구현된 v0.2 계약을 설명한다.
+`docs/fr01_4_contract_v1.md`와 `docs/fr01_api.md`는 현재 구현된 v0.2 계약을 설명한다.
 v0.3 DTO/API를 실제로 도입하는 Step D에서 상위 계약과 API 문서를 additive 변경으로
 동기화한다. 이번 문서 개정은 기능 계약 또는 API를 변경하지 않는다.
 

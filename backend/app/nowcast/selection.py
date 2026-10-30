@@ -117,8 +117,9 @@ def select_and_record(engine: Engine, site: Site, timestamps: tuple[datetime, ..
              "snapshots": json.dumps(sorted(snapshot_ids)), "algorithm": ALGORITHM_VERSION, "expires": utc_z(expires)})
         for timestamp, item in zip(timestamps, candidates, strict=True):
             conn.execute(text("""INSERT INTO nowcast_point(run_id,valid_time,clear_sky_dni_W_m2,clear_sky_index,final_dni_W_m2,prediction_method,contributors_json,fallback_reason)
-                VALUES (:run,:time,:clear,:index,:final,:method,:contributors,NULL)"""),
+                VALUES (:run,:time,:clear,:index,:final,:method,:contributors,:fallback_reason)"""),
                 {"run": run_id, "time": utc_z(timestamp), "clear": item.clear_sky_dni, "index": (item.value / item.clear_sky_dni) if item.value is not None and item.clear_sky_dni not in (None, 0) else None,
                  "final": item.value, "method": item.method,
-                 "contributors": json.dumps([{ "snapshot_id": item.snapshot_id, "provider": item.provider, "role": "forecast", "weight": 1.0}]) if item.snapshot_id else "[]"})
+                 "contributors": json.dumps([{ "snapshot_id": item.snapshot_id, "provider": item.provider, "role": "forecast", "weight": 1.0}]) if item.snapshot_id else "[]",
+                 "fallback_reason": item.fallback_reason})
     return run_id, candidates

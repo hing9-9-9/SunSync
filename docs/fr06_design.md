@@ -127,7 +127,7 @@ PYTHONPATH=backend python -m app.scene_cli schema
 pytest -q
 ```
 
-[JSON Schema](fr06_scene.schema.json)는 Pydantic 모델에서 생성한다. CI는 체크인된
+[JSON Schema](fr06_scene_schema.json)는 Pydantic 모델에서 생성한다. CI는 체크인된
 파일과 모델의 일치를 검증한다. JSON Schema는 형식/범위를, 서버와 CLI는 추가로
 기하학·관측·객체 간 관계를 검사한다. UI의 JSON Schema 검증만으로 저장 승인을
 판단하지 말고 서버의 422 오류 위치와 설명을 표시한다.

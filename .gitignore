@@ -17,6 +17,7 @@ artifacts/mock_validation/*
 # Opt-in, redacted external-source diagnostic captures are local only.
 artifacts/gk2a_dsr/
 artifacts/gk2a_swrad_probe/
+artifacts/local/
 # Node
 node_modules/
 dist/

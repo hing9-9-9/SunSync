@@ -1,7 +1,7 @@
 # FR-01.4 — Open-Meteo 단일 source 미래 DNI 설계
 
 > **현행 기준 설계:** 이 문서는 FR-01.4의 구현·운영 기준이다. 기존 다중 source
-> Stage 2 설계는 [**폐기된 설계 문서**](DEPRECATED_fr01_4_nowcast_implementation_guide.md)에 보존한다.
+> Stage 2 설계는 [**폐기된 설계 문서**](deprecated_fr01_4_nowcast_implementation_guide.md)에 보존한다.
 
 ## 1. 목적과 경계
 
@@ -142,7 +142,7 @@ v0.2의 기존 fields는 삭제하거나 의미를 바꾸지 않는다. v0.3은 
 - KO SWRAD의 companion latitude/longitude grid 검증 전 production collection은 금지
 - 이 결과는 Open-Meteo와 혼합·가중평균하지 않는다
 
-### D. Open-Meteo interval projection과 provenance — 구현 대상
+### D. Open-Meteo interval projection과 provenance — 완료
 
 1. adapter가 response grid metadata와 Best Match policy를 snapshot provenance에 저장한다.
 2. selector가 exact `valid_time` 비교 대신 hourly interval containment를 사용한다.
@@ -156,10 +156,10 @@ v0.2의 기존 fields는 삭제하거나 의미를 바꾸지 않는다. v0.3은 
 상세 gate와 재도입 조건은 `docs/future_extensions/GK2A_cloud_state.md`에 기록한다. 이 작업은
 Open-Meteo DNI 운영 경로와 독립적이며, 검증 전에는 production selection에 연결하지 않는다.
 
-### F. GK2A experimental package 분리 — 향후 리팩터링
+### F. GK2A experimental package 분리 — 완료
 
-> **상태:** 지금 수행하지 않는다. Open-Meteo 기반 D가 안정화된 뒤, import·테스트·운영
-> schedule을 함께 점검하는 별도 리팩터링 작업으로 수행한다.
+> **상태:** GK2A worker·SWRAD adapter·derivation은 `nowcast/experimental/gk2a/`로 격리됐다.
+> Open-Meteo production 경로는 해당 package를 import하거나 조회하지 않는다.
 
 현재 `nowcast` 최상위에는 Open-Meteo adapter와 GK2A point/SWRAD 실험 코드가 함께 있다.
 GK2A를 보존하되 운영 source가 아니라는 사실을 코드 구조에서도 드러내기 위해 아래 구조로
@@ -220,3 +220,69 @@ production API dependency graph에 GK2A experimental worker가 남지 않는 것
 - API는 worker 실패를 5xx로 전파하지 않으며 timestamp별 fallback을 사용한다.
 - FR-04는 DNI 결과를 비동기로 소비할 수 있으나 hysteresis, hold time, 필름 상태 결정은
   FR-04의 책임이다.
+
+### 7.1 임시 worker 운영 계획 (배포 전 확정 필요)
+
+> 이 절은 구현 완료된 worker를 실제 운영에 연결하기 위한 **임시 계획**이다. 배포 플랫폼, FR-01의
+> 최대 예측 horizon, 관측·알림 체계가 확정되면 실행 주기와 수치 기준을 재검토하여 갱신한다.
+> API request는 이 계획의 어떤 단계에서도 worker를 직접 실행하거나 Open-Meteo에 HTTP 요청하지 않는다.
+
+#### 실행 주기와 실행 주체
+
+- scheduler가 `backend/`를 working directory로 하거나 `app` package를 설치한 환경에서
+  `python -m app.nowcast.open_meteo_worker --database-url <운영 DB URL>`을 별도 process로 실행한다.
+  API process와 worker process는 독립적으로 배포·재시작할 수 있어야 한다.
+- 배포 형태별 후보는 다음과 같다. 하나만 운영 표준으로 확정하며, 둘 이상을 동시에 같은 DB에
+  등록하지 않는다.
+
+  | 배포 환경 | 실행 주체 후보 | 비고 |
+  | --- | --- | --- |
+  | Windows 기반 개발/온프레미스 | Windows Task Scheduler | 전용 서비스 계정, 작업 이력과 실패 코드 기록 |
+  | Docker/Kubernetes | CronJob | API deployment와 분리된 Job, 동시 실행 제한 설정 |
+  | VM/리눅스 서버 | `cron` 또는 systemd timer | 운영 계정, 표준 출력·오류의 중앙 수집 설정 |
+
+- 정확한 실행 간격은 배포 전에 정한다. 간격은 Open-Meteo forecast 갱신 특성, `OPEN_METEO_FRESHNESS_SECONDS`,
+  FR-01 최대 예측 horizon 및 허용 가능한 fallback 비율을 함께 고려해야 한다.
+- repository의 lease는 중복 실행을 방지하는 보조 장치다. scheduler 설정에서도 이전 실행이 끝나기 전에
+  새 실행을 중첩하지 않도록 제한한다.
+
+#### Snapshot 보존과 예보 범위
+
+- 운영 retention은 최소한 **FR-01 최대 예측 horizon + worker 실행 간격 + 장애·재시도 여유**보다 길게
+  정한다. 재현·감사에 필요한 기간이 더 길면 그 기간을 우선한다.
+- worker가 새 snapshot을 저장하면 API는 요청 시점 이전에 수집된 유효 snapshot 중 timestamp를 포함하는
+  것을 선택한다. 새 snapshot이 있어도 과거 prediction의 근거 snapshot을 임의로 덮어쓰지 않는다.
+- provider가 제공하는 forecast horizon 자체를 벗어나거나, 유효 snapshot이 없거나 stale이면 API는
+  timestamp별 clear-sky fallback을 사용한다. fallback은 worker 즉시 실행 신호가 아니다.
+
+#### 실패, 재시도, 로그와 알림
+
+- 일시적 DNS·timeout·5xx 오류에는 scheduler 또는 worker wrapper에서 제한된 횟수의 exponential-backoff
+  재시도를 적용한다. 재시도가 끝나도 invalid snapshot은 저장하지 않는다.
+- 실행마다 시작·종료 시각, 실행 주체, 대상 site 수, 저장/중복/실패 수, 오류 분류, exit code를 구조화 로그로
+  남긴다. raw provider payload와 민감한 환경 변수 값은 로그에 남기지 않는다.
+- 연속 실패 횟수, 마지막 정상 snapshot의 age, fallback 비율의 임계값은 배포 전 확정하고, 초과 시 운영
+  알림 채널에 알린다. 알림 수신자와 채널은 배포 환경의 관측 도구에 맞춰 정한다.
+
+#### 운영 DB와 환경 변수
+
+- worker와 API는 **동일한 운영 DB**를 사용해야 한다. 개발용 `sunsync.db`, 로컬 검증 artifact DB와
+  운영 DB를 혼용하지 않는다.
+- DB 연결 정보는 scheduler의 secret/environment configuration 또는 배포 플랫폼의 secret store로 제공한다.
+  CLI에서는 `--database-url`로 명시적으로 전달한다. 연결 문자열이나 credential은 repository와 로그에
+  저장하지 않는다.
+- Open-Meteo production 수집에는 인증 API key가 필요하지 않지만, HTTP timeout·proxy·TLS 정책처럼
+  배포 환경에 따라 달라지는 설정은 환경 변수 또는 배포 설정으로 관리할 수 있다. 이름과 기본값은
+  도입 시 별도 운영 runbook에 확정한다.
+
+#### 배포 환경 smoke test
+
+- 배포 직후와 provider 응답 형식·수집 주기 변경이 의심될 때, 운영 DB와 분리된 test site/DB에서
+  `tools/run_fr01_4_open_meteo_integration.py`와 동등한 smoke test를 실행한다.
+- smoke test는 실제 Open-Meteo 응답이 snapshot/provenance/interval로 저장되는지, API가 provider HTTP나
+  worker를 호출하지 않고 snapshot만 선택하는지, 범위 밖 timestamp가 clear-sky fallback 되는지를 확인한다.
+- smoke test의 DB, raw 응답, 로그는 Git에 올리지 않는다. 실행 시각, 배포 버전, 결과 요약과 실패 분류만
+  운영 기록에 보관한다.
+
+배포 대상과 수치 기준이 확정되면 실행 명령, 주기, retention 값, retry/alert 임계값, secret 이름을
+`docs/fr01_4_open_meteo_operations.md`에 운영 runbook으로 분리한다.

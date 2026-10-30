@@ -1,6 +1,6 @@
 # SunSync FR-01 구현 분석: 햇빛 경로 및 직접일사량 예측
 
-> 분석 기준: 현재 작업 트리의 FR-01.1~FR-01.4 **Stage 1** 구현 코드. 이 문서는 구현 분석이며, 일반 이론을 구현 사실로 확장하지 않는다. FR-01.4 Stage 2 다중 source 미래 DNI 예측 엔진은 아직 구현되지 않았으며, 설계 계약은 [`FR-01.4_contract_v1.md`](FR-01.4_contract_v1.md)를 따른다.
+> 분석 기준: 현재 작업 트리의 FR-01.1~FR-01.4 구현 코드. 이 문서는 구현 분석이며, 일반 이론을 구현 사실로 확장하지 않는다. FR-01.4의 현행 계약은 durable Open-Meteo 단일 source DNI이며, 기준 설계는 [`fr01_4_open_meteo_dni_design.md`](fr01_4_open_meteo_dni_design.md)다.
 
 ## 1. 전체 계산 흐름
 
@@ -10,7 +10,7 @@
   → ENU 단위 태양방향 벡터 s 생성
   → 보호면 표본점마다 s 방향으로 광선 추적
   → 창문 면·실 경계·실내 직육면체 장애물 판정
-  → Scene.weather → Open-Meteo → pvlib clear-sky 순으로 DNI 선택
+  → Scene.weather → durable Open-Meteo snapshot → pvlib clear-sky 순으로 DNI 선택
   → clear path일 때만 DNI × max(0, n·s) 계산
 ```
 
@@ -173,11 +173,10 @@ DNI_{\mathrm{pvlib\ clear-sky}}(t),&\text{그 외}\\
 코드 근거:
 
 - `backend/app/services/sunpath.py` — `_scene_dni()`
-- 같은 파일 — `_open_meteo_snapshot()`
-- 같은 파일 — `_clear_sky_dni()`
-- 같은 파일 — `_select_dni()`
+- `backend/app/nowcast/open_meteo_worker.py` — Open-Meteo snapshot 수집
+- `backend/app/nowcast/selection.py` — interval/freshness 선택과 clear-sky fallback
 
-`Scene.weather`는 `W/m2`, `scene.site`, `max_age_s`, 요청 시각 coverage 등 검증을 통과해야 선택된다. `0`은 유효한 물리값이며, `null`은 미상이다. Open-Meteo 요청에는 `direct_normal_irradiance,cloud_cover`가 포함되지만, 현재 `cloud_cover`는 응답 유효성 검사에만 쓰이며 DNI 보정식에는 쓰이지 않는다. clear-sky DNI는 `pvlib.location.Location(...).get_clearsky()["dni"]`에 위임한다.
+`Scene.weather`는 `W/m2`, `scene.site`, `max_age_s`, 요청 시각 coverage 등 검증을 통과해야 선택된다. `0`은 유효한 물리값이며, `null`은 미상이다. API 요청은 Open-Meteo를 호출하지 않는다. worker가 `direct_normal_irradiance,cloud_cover` snapshot을 미리 저장하고, selector가 fresh한 `[interval_start, interval_end)` point만 사용한다. clear-sky DNI는 `pvlib.location.Location(...).get_clearsky()["dni"]`에 위임한다.
 
 ### 2.6 보호면 직접일사량
 
@@ -241,7 +240,7 @@ I_{\mathrm{direct}}=500\times0.7071\approx353.55\ \mathrm{W/m^2}
 | 창문 개구부 통과 | 반영 | 평면 교차 + 내부 직사각형 검사 |
 | 실 벽·바닥·천장 | 반영 | 최초 경계가 창문인지 검사 |
 | 실내 불투명 Cuboid | 반영 | 창문보다 앞선 교차면 차단 |
-| DNI | 반영 | Scene.weather → Open-Meteo → pvlib clear-sky |
+| DNI | 반영 | Scene.weather → durable Open-Meteo snapshot → pvlib clear-sky |
 | 보호면 입사각 | 반영 | \(\max(0,\mathbf{n}\cdot\mathbf{s})\) |
 | DHI/확산일사 | 제외 | 입력·계산·합산 없음 |
 | GHI | 제외 | 계산식에 없음 |
@@ -252,7 +251,7 @@ I_{\mathrm{direct}}=500\times0.7071\approx353.55\ \mathrm{W/m^2}
 | penumbra/부분 그림자 | 제외 | 광선 경로는 이진 노출/차단 |
 | 보호면 전체 연속 면적 | 제외 | 지정 sample point만 판정 |
 | FR-02 셀 제어 | 제외 | FR-01이 제어 계산을 하지 않음 |
-| FR-01.4 Stage 2 다중 source 미래 DNI 예측 | 미구현 | 현 구현은 Stage 1 단일 DNI 선택만 수행하며, Stage 2 계약은 `FR-01.4_contract_v1.md`에 정의됨 |
+| 다중 source/GK2A DNI fusion | 제외 | Open-Meteo가 유일한 운영 source이며, GK2A는 experimental package에만 보존 |
 
 응답 스키마도 `exposure_basis="geometric_direct_path"`, `optics_applied=false`로 고정된다.
 

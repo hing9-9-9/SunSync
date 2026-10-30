@@ -1,7 +1,7 @@
 # GK2A 관측 기반 구름 상태 확장 — 향후 설계
 
 > **상태:** 운영 DNI source가 아니다. 현재 기준 설계인
-> [Open-Meteo 단일 source 미래 DNI 설계](../FR-01.4_open_meteo_dni_design.md)와 독립적으로
+> [Open-Meteo 단일 source 미래 DNI 설계](../fr01_4_open_meteo_dni_design.md)와 독립적으로
 > 검증·개발한다.
 
 ## 목적
