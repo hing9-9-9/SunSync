@@ -88,8 +88,7 @@ def test_arbitrary_enu_rotation_preserves_window_cuboid_surface_and_marker(scene
         occluder["base_center_m"] = rotate(occluder["base_center_m"])
         occluder["yaw_deg_ccw_from_east"] += angle
     for region in scene_data["protected_regions"]:
-        for key in ("vertices_m", "sample_points_m"):
-            region[key] = [rotate(p) for p in region[key]]
+        region["vertices_m"] = [rotate(p) for p in region["vertices_m"]]
         region["receiving_normal"] = rotate(region["receiving_normal"])
     for marker in scene_data["markers"]:
         matrix = marker["T_ENU_marker"]
@@ -104,12 +103,12 @@ def test_arbitrary_enu_rotation_preserves_window_cuboid_surface_and_marker(scene
     assert scene.occluders[0].yaw_deg_ccw_from_east == 37
 
 
-def test_tilted_triangle_surface_is_supported(scene_data):
+def test_tilted_triangle_surface_is_rejected(scene_data):
     region = scene_data["protected_regions"][1]
     region["vertices_m"] = [[1, 1, 0.3], [2, 1, 0.3], [1, 2, 1.3]]
     region["receiving_normal"] = [0, -1 / math.sqrt(2), 1 / math.sqrt(2)]
-    region["sample_points_m"] = [[4 / 3, 4 / 3, 1.9 / 3]]
-    assert Scene.model_validate(scene_data).protected_regions[1].host_occluder_id is None
+    with pytest.raises(ValidationError):
+        Scene.model_validate(scene_data)
 
 
 @pytest.mark.parametrize("dni", [None, 0, 900])
@@ -191,8 +190,6 @@ def test_unknown_uncertainty_and_unconfirmed_draft_are_preserved(scene_data):
         (("protected_regions", 0, "host_occluder_id"), "missing"),
         (("protected_regions", 0, "policy_id"), "missing"),
         (("protected_regions", 0, "grade"), "E"),
-        (("protected_regions", 0, "sample_points_m", 0, 1), 2.8),
-        (("protected_regions", 0, "sample_points_m", 0, 0), 4.1),
         (("protected_regions", 1, "vertices_m", 0, 2), 0.8),
         (("protected_regions", 1, "quality", "observation_ids"), ["obs_aruco_floor"]),
         (("markers", 0, "T_ENU_marker", 0), 2),
@@ -312,9 +309,8 @@ def test_host_surface_normal_cannot_point_into_cuboid(scene_data):
 
 def test_host_region_cannot_float_away_from_surface(scene_data):
     region = scene_data["protected_regions"][0]
-    for key in ("vertices_m", "sample_points_m"):
-        for point in region[key]:
-            point[1] += 0.1
+    for point in region["vertices_m"]:
+        point[1] += 0.1
     with pytest.raises(ValidationError, match="host face"):
         Scene.model_validate(scene_data)
 
@@ -350,7 +346,6 @@ def test_all_vertices_inside_is_insufficient_for_concave_room(scene_data, kind):
     if kind == "region":
         region = copy.deepcopy(scene_data["protected_regions"][1])
         region["vertices_m"] = [[1, 3.5, 0], [7, 3.5, 0], [7, 5.5, 0], [1, 5.5, 0]]
-        region["sample_points_m"] = copy.deepcopy(region["vertices_m"])
         region["quality"]["observation_ids"] = ["obs_manual_room"]
         data["protected_regions"] = [region]
         data["policy"] = scene_data["policy"]
@@ -404,8 +399,8 @@ def test_open_meteo_requires_fetch_timestamp(scene_data):
         Scene.model_validate(scene_data)
 
 
-def test_surface_validation_applies_without_scene_wrapper(scene_data):
+def test_sample_points_are_not_accepted(scene_data):
     region = scene_data["protected_regions"][0]
-    region["sample_points_m"][0][2] = 2
-    with pytest.raises(ValidationError, match="evaluation surface"):
+    region["sample_points_m"] = [[1, 1, 1]]
+    with pytest.raises(ValidationError, match="Extra inputs"):
         ProtectedRegion.model_validate(region)

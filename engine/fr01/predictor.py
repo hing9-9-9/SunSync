@@ -20,6 +20,7 @@ from .models import (
     Blocker,
     CandidatePath,
     Cuboid,
+    ExposureInterval,
     ExposureReason,
     PredictionOptions,
     ProtectedRegion,
@@ -33,6 +34,27 @@ from .models import (
     Window,
 )
 from .solar import calculate_solar_positions, make_prediction_grid
+from .tiling import tile_centres
+
+
+def exposure_intervals(timeline: tuple[RegionTimeResult, ...]) -> tuple[ExposureInterval, ...]:
+    """Merge adjacent exposed grid entries without interpolating their boundaries."""
+    result: list[ExposureInterval] = []
+    start: datetime | None = None
+    previous: datetime | None = None
+    for entry in timeline:
+        if entry.exposed:
+            if start is None:
+                start = entry.timestamp
+            previous = entry.timestamp
+        elif start is not None:
+            assert previous is not None
+            result.append(ExposureInterval(start, previous))
+            start = previous = None
+    if start is not None:
+        assert previous is not None
+        result.append(ExposureInterval(start, previous))
+    return tuple(result)
 
 
 def _blocker(hit: RayHit) -> Blocker:
@@ -200,7 +222,8 @@ def predict_region_exposure(
                     windows,
                     occluders,
                 )
-                for sample_index, point in enumerate(region.sample_points_m)
+                for tile in tile_centres(region)
+                for sample_index, point in ((tile.sample_index, tile.point_m),)
             ),
         )
     )
@@ -210,6 +233,7 @@ def predict_region_exposure(
         first_predicted_exposure_time=first,
         exposed_at_start=bool(timeline and timeline[0].exposed),
         timeline=timeline,
+        exposure_intervals=exposure_intervals(timeline),
     )
 
 

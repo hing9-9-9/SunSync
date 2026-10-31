@@ -26,13 +26,13 @@ ArUco 검출, UI 화면 개발은 각 담당 모듈의 후속 작업이다.
 | Room | 바닥 다각형 `floor_vertices_m`, 양의 `height_m`, 이름, 출처 |
 | Window | 벽 위 직사각형 네 점, `inward_normal`, `u_axis`, `v_axis`, 실외 방위각, 광학 프로파일 |
 | Occluder | 직육면체 바닥 중심, `[가로, 깊이, 높이]`, 동쪽 기준 반시계방향 yaw |
-| ProtectedRegion | 평면 다각형, `receiving_normal`, A–D 등급, 면 위 평가점, 선택적 host 가림물 |
+| ProtectedRegion | 평면 직사각형 네 점, `receiving_normal`, A–D 등급, 면 위 평가점, 선택적 host 가림물 |
 | Observation | 수동 또는 `aruco_planar`, 시각, 확인 상태, 불확실성, 취득 내용 |
 
 - 단위 m, 오른손 ENU: x 동쪽, y 북쪽, z 위쪽. 방 바닥은 z=0.
 - 창 방위각은 **실외 법선** 기준 진북 0°, 시계방향이며 가림물 yaw와 다르다.
-- 다각형은 첫 점을 끝에 반복하지 않는다. 정점 순서는 해당 법선을 향해 오른손 법칙을 따른다.
-- 단순 평면 다각형, 유한수, 법선, 직사각 창, 방 안의 형상, 가림물의 실제 면,
+- Room 바닥은 첫 점을 끝에 반복하지 않는다. 정점 순서는 해당 법선을 향해 오른손 법칙을 따른다.
+- Room 바닥의 단순 평면 형상, 보호영역의 직사각형 형상, 유한수, 법선, 직사각 창, 방 안의 형상, 가림물의 실제 면,
   평가점 포함, 중복 ID와 누락 참조를 검증한다.
 - `quality.observation_ids`로 형상과 관측을 연결한다. 미측정 불확실성은 `null`이며 0이 아니다.
 - `confirmed`는 입력 검수 기록이다. 합성 예제의 `confirmed=true`는 현장 측정을 의미하지 않는다.

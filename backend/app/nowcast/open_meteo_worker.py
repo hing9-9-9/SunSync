@@ -1,9 +1,8 @@
 """FR-01.4 Step A — Open-Meteo DNI snapshot worker only.
 
-Run with ``python -m app.nowcast.open_meteo_worker``. This worker must not be
-used for GK2A DSR or SWRAD collection; those providers have their own workers.
-It is intentionally not attached to FastAPI's lifespan: scheduling and process
-supervision belong to deployment.
+Run with ``python -m app.nowcast.open_meteo_worker``. It is intentionally not
+attached to FastAPI's lifespan: scheduling and process supervision belong to
+deployment.
 """
 
 from __future__ import annotations

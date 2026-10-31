@@ -54,8 +54,8 @@ def select_and_record(engine: Engine, site: Site, timestamps: tuple[datetime, ..
     """Select fresh durable Open-Meteo hourly means independently per timestamp.
 
     The provider timestamp is the *end* of its one-hour mean.  A point applies
-    only when ``interval_start <= timestamp < interval_end``.  No GK2A source,
-    interpolation, or request-time provider call participates in this path.
+    only when ``interval_start <= timestamp < interval_end``. No interpolation
+    or request-time provider call participates in this path.
     """
     current = now.astimezone(UTC)
     candidates: list[SelectedDni] = []

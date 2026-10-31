@@ -174,23 +174,20 @@ class ProtectedRegion(Model):
     room_id: Identifier
     name: str
     host_occluder_id: Identifier | None = None
-    vertices_m: Ring
+    vertices_m: Annotated[list[Vector], Field(min_length=4, max_length=4)]
     receiving_normal: Vector
-    sample_points_m: Annotated[list[Vector], Field(min_length=1)]
     grade: Literal["A", "B", "C", "D"]
     policy_id: Identifier
     quality: Quality
 
     @model_validator(mode="after")
     def valid_surface(self) -> Self:
-        surface = polygon(self.vertices_m, self.receiving_normal, "protected region")
-        require(
-            all(
-                sample_on_surface(point, self.vertices_m, self.receiving_normal, surface)
-                for point in self.sample_points_m
-            ),
-            "sample point outside evaluation surface",
-        )
+        polygon(self.vertices_m, self.receiving_normal, "protected region")
+        p0, p1, p2, p3 = self.vertices_m
+        u_edge, v_edge = subtract(p1, p0), subtract(p3, p0)
+        require(dot(u_edge, u_edge) > EPS and dot(v_edge, v_edge) > EPS, "protected region edges must be nonzero")
+        require(abs(dot(u_edge, v_edge)) <= EPS, "protected region edges must be perpendicular")
+        require(close(subtract(p2, p1), v_edge) and close(subtract(p2, p3), u_edge), "protected region must be rectangular")
         return self
 
 
@@ -672,7 +669,7 @@ class Scene(Model):
                 elif isinstance(obj, ProtectedRegion) and all(
                     abs(point[2]) <= EPS for point in obj.vertices_m
                 ):
-                    allowed = {"vertices_m", "sample_points_m"}
+                    allowed = {"vertices_m"}
                 require(
                     attribute in allowed,
                     "ArUco planar derived fields cannot supply height or elevated geometry",

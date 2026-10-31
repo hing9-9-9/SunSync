@@ -153,7 +153,6 @@ def build_scene(spec: dict[str, Any]) -> dict[str, Any]:
                 "host_occluder_id": None,
                 "vertices_m": [[4.9, 1, 0.9], [5.1, 1, 0.9], [5.1, 1, 1.1], [4.9, 1, 1.1]],
                 "receiving_normal": [0, -1, 0],
-                "sample_points_m": [[5, 1, 1]],
                 "grade": "A",
                 "policy_id": "mock_policy",
                 "quality": _quality(),
@@ -205,7 +204,6 @@ def build_scene(spec: dict[str, Any]) -> dict[str, Any]:
                 "host_occluder_id": None,
                 "vertices_m": [[4.8, 1, 0.2], [5.2, 1, 0.2], [5.2, 1, 2.2], [4.8, 1, 2.2]],
                 "receiving_normal": [0, -1, 0],
-                "sample_points_m": [[5, 1, 0.5], [5, 1, 1.4], [5, 1, 2.08]],
                 "grade": "A",
                 "policy_id": "mock_policy",
                 "quality": _quality(),
@@ -275,11 +273,6 @@ def _verbose_scene(scene: dict[str, Any]) -> list[str]:
         lines.extend(
             f"        [{index}] {_format_point(point)}"
             for index, point in enumerate(region["vertices_m"])
-        )
-        lines.append("      sample points:")
-        lines.extend(
-            f"        [{index}] {_format_point(point)}"
-            for index, point in enumerate(region["sample_points_m"])
         )
     for occluder in scene["occluders"]:
         lines.extend(

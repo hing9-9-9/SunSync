@@ -91,11 +91,17 @@ class RegionTimeResponse(SunpathModel):
     samples: list[SampleResultResponse]
 
 
+class ExposureIntervalResponse(SunpathModel):
+    start_time: datetime
+    end_time: datetime
+
+
 class RegionPredictionResponse(SunpathModel):
     region_id: str
     aggregation: Literal["any_sample"] = "any_sample"
     first_predicted_exposure_time: datetime | None
     exposed_at_start: bool
+    exposure_intervals: list[ExposureIntervalResponse]
     timeline: list[RegionTimeResponse]
 
 

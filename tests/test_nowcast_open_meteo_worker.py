@@ -128,13 +128,3 @@ def test_request_path_does_not_invoke_open_meteo_collection_worker(monkeypatch):
 
     monkeypatch.setattr(open_meteo_worker, "run_once", lambda *_args, **_kwargs: pytest.fail("worker invoked"))
     assert "app.nowcast.open_meteo_worker" not in inspect.getsource(sunpath)
-
-
-def test_production_nowcast_path_does_not_depend_on_experimental_gk2a():
-    """The Open-Meteo API path must stay independently deployable."""
-    from app.api import sunpath as sunpath_api
-    from app.nowcast import selection
-    from app.services import sunpath
-
-    for module in (sunpath, sunpath_api, open_meteo_worker, selection):
-        assert "experimental.gk2a" not in inspect.getsource(module)

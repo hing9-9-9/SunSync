@@ -12,6 +12,7 @@ import pytest
 from app.main import create_app
 from app.models.scene import SceneRecord
 from app.schemas.scene import Scene
+from app.services import sunpath as sunpath_service
 from fastapi.testclient import TestClient
 from sqlalchemy import Engine
 from sqlmodel import Session, create_engine
@@ -160,7 +161,7 @@ def test_prediction_evaluates_every_sample_at_every_requested_timestamp(client, 
         for preceding, following in pairwise(timestamp_values)
     )
     for entry in region["timeline"]:
-        assert [sample["sample_index"] for sample in entry["samples"]] == [0, 1, 2, 3, 4]
+        assert [sample["sample_index"] for sample in entry["samples"]] == list(range(36 * 28))
         assert entry["exposed_sample_count"] == sum(
             sample["status"] == "exposed" for sample in entry["samples"]
         )
@@ -171,6 +172,7 @@ def test_prediction_evaluates_every_sample_at_every_requested_timestamp(client, 
     assert region["first_predicted_exposure_time"] == (
         first_exposed_entry["timestamp"] if first_exposed_entry is not None else None
     )
+    assert all(item["start_time"] <= item["end_time"] for item in region["exposure_intervals"])
 
 
 def test_prediction_reports_not_found_revision_and_request_validation_errors(client, scene_payload):
@@ -196,6 +198,22 @@ def test_prediction_reports_not_found_revision_and_request_validation_errors(cli
         client.post(path, json=request_body(duration_minutes=1440, interval_seconds=1)).status_code
         == 422
     )
+
+
+@pytest.mark.parametrize(
+    ("limit_name", "limit_value"),
+    [("MAX_SELECTED_SAMPLES", 1), ("MAX_INTERSECTION_CHECKS", 1)],
+)
+def test_prediction_rejects_auto_tile_resource_limit(
+    client, scene_payload, monkeypatch, limit_name, limit_value
+):
+    create_scene(client, scene_payload)
+    monkeypatch.setattr(sunpath_service, limit_name, limit_value)
+    response = client.post(
+        f"/api/scenes/{scene_payload['scene_id']}/sunpath-predictions",
+        json=request_body(),
+    )
+    assert response.status_code == 422
 
 
 def test_prediction_rejects_invalid_stored_scene_geometry_without_mutation(

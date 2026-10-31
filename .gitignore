@@ -10,13 +10,10 @@ venv/
 *.db
 .env
 .env.*
-!.env.example
 # Mock-validation output (keep the directory marker only)
 artifacts/mock_validation/*
 !artifacts/mock_validation/.gitkeep
-# Opt-in, redacted external-source diagnostic captures are local only.
-artifacts/gk2a_dsr/
-artifacts/gk2a_swrad_probe/
+# Local external-source diagnostic captures are never committed.
 artifacts/local/
 # Node
 node_modules/

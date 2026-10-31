@@ -9,11 +9,17 @@ from engine.fr01.models import (
     Cuboid,
     ExposureReason,
     ProtectedRegion,
+    RegionTimeResult,
     Room,
     SolarPosition,
     Window,
 )
-from engine.fr01.predictor import direct_irradiance_W_m2, evaluate_sample, predict_region_exposure
+from engine.fr01.predictor import (
+    direct_irradiance_W_m2,
+    evaluate_sample,
+    exposure_intervals,
+    predict_region_exposure,
+)
 
 SUN_SOUTH = (0.0, -1 / sqrt(2), 1 / sqrt(2))
 SUN_NORTH = (0.0, 1 / sqrt(2), 1 / sqrt(2))
@@ -34,13 +40,12 @@ def window() -> Window:
     )
 
 
-def region(samples=((3, 2, 0.5),), normal=(0, -1, 0)) -> ProtectedRegion:
+def region(samples=(), normal=(0, -1, 0)) -> ProtectedRegion:
     return ProtectedRegion(
         "region",
         "room",
-        ((2, 2, 0.5), (4, 2, 0.5), (3, 2, 1.5)),
+        ((2.975, 2, 0.475), (3.025, 2, 0.475), (3.025, 2, 0.525), (2.975, 2, 0.525)),
         normal,
-        samples,
     )
 
 
@@ -98,11 +103,10 @@ def test_occluder_blocks_only_its_sample_and_nearest_blocker_is_reported():
         room(), (window(),), (farther, blocking), target, (position(0, 45, SUN_SOUTH),)
     )
     entry = prediction.timeline[0]
-    assert entry.exposed
+    assert not entry.exposed
     assert entry.samples[0].reason is ExposureReason.OCCLUDER_BLOCKED
     assert entry.samples[0].blocker is not None
     assert entry.samples[0].blocker.object_id == "near"
-    assert entry.samples[1].exposed
 
 
 def test_predictor_timeline_first_sampled_exposure_and_multiple_periods():
@@ -121,6 +125,28 @@ def test_predictor_timeline_first_sampled_exposure_and_multiple_periods():
     ]
     assert not prediction.exposed_at_start
     assert prediction.first_predicted_exposure_time == positions[1].timestamp
+    assert [(item.start_time, item.end_time) for item in prediction.exposure_intervals] == [
+        (positions[1].timestamp, positions[1].timestamp),
+        (positions[3].timestamp, positions[3].timestamp),
+    ]
+
+
+def test_exposure_intervals_covers_empty_edge_and_contiguous_grid_runs():
+    timestamps = tuple(position(index, 45, SUN_SOUTH).timestamp for index in range(5))
+
+    def timeline(exposed: tuple[bool, ...]) -> tuple[RegionTimeResult, ...]:
+        return tuple(
+            RegionTimeResult(timestamp, is_exposed, ())
+            for timestamp, is_exposed in zip(timestamps, exposed, strict=True)
+        )
+
+    assert exposure_intervals(timeline((False, False, False, False, False))) == ()
+    assert [(item.start_time, item.end_time) for item in exposure_intervals(timeline((True, True, True, False, False)))] == [
+        (timestamps[0], timestamps[2])
+    ]
+    assert [(item.start_time, item.end_time) for item in exposure_intervals(timeline((False, False, True, True, True)))] == [
+        (timestamps[2], timestamps[4])
+    ]
 
 
 def test_predictor_true_from_start_never_exposed_and_rejects_interior_sample():

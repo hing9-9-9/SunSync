@@ -6,9 +6,6 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from math import isfinite
 from typing import Literal, cast
-from urllib.error import HTTPError, URLError
-from urllib.parse import urlencode
-from urllib.request import urlopen
 
 from sqlalchemy import Engine
 
@@ -17,6 +14,8 @@ from app.schemas.scene import Scene
 from app.schemas.sunpath import (
     BlockerResponse,
     CandidatePathResponse,
+    ExposureIntervalResponse,
+    FallbackReason,
     IrradianceResponse,
     RegionPredictionResponse,
     RegionTimeResponse,
@@ -37,22 +36,14 @@ from engine.fr01.models import (
 )
 from engine.fr01.predictor import direct_irradiance_W_m2, predict_region_exposure
 from engine.fr01.solar import calculate_solar_positions, make_prediction_grid
+from engine.fr01.tiling import tile_centres
 
 MAX_SELECTED_SAMPLES = 10_000
 MAX_INTERSECTION_CHECKS = 5_000_000
-OPEN_METEO_URL = "https://api.open-meteo.com/v1/forecast"
 
 
 class SunpathValidationError(ValueError):
     """A request or stored Scene cannot be evaluated by the FR-01 MVP."""
-
-
-class OpenMeteoError(ValueError):
-    """Legacy parsing error retained while the Stage-1 helper is retired."""
-
-    def __init__(self, reason: str) -> None:
-        self.reason = reason
-        super().__init__(reason)
 
 
 @dataclass(frozen=True, slots=True)
@@ -127,7 +118,6 @@ def adapt_scene(scene: Scene) -> SceneGeometry:
                     region.room_id,
                     tuple(_vector(vertex) for vertex in region.vertices_m),
                     _vector(region.receiving_normal),
-                    tuple(_vector(point) for point in region.sample_points_m),
                     region.host_occluder_id,
                 )
                 for region in scene.protected_regions
@@ -237,6 +227,11 @@ def _provenance_float(provenance: dict[str, object] | None, key: str) -> float |
     return float(value) if isinstance(value, (int, float)) and not isinstance(value, bool) else None
 
 
+def _provenance_str(provenance: dict[str, object] | None, key: str) -> str | None:
+    value = provenance.get(key) if provenance else None
+    return value if isinstance(value, str) else None
+
+
 def _scene_dni(
     scene: Scene, timestamp: datetime, received_at: datetime
 ) -> tuple[float | None, datetime | None, datetime | None] | str:
@@ -296,70 +291,6 @@ def _scene_dni(
         return "scene_weather_invalid"
 
 
-def _open_meteo_snapshot(
-    site: Site, received_at: datetime
-) -> dict[datetime, tuple[float | None, datetime, datetime]]:
-    query = urlencode(
-        {
-            "latitude": site.latitude_deg,
-            "longitude": site.longitude_deg,
-            "hourly": "direct_normal_irradiance,cloud_cover",
-            "timeformat": "unixtime",
-        }
-    )
-    try:
-        with urlopen(f"{OPEN_METEO_URL}?{query}", timeout=5) as response:  # nosec B310: fixed HTTPS URL
-            if response.status != 200:
-                raise OpenMeteoError("open_meteo_transport_error")
-            import json
-
-            payload = json.loads(response.read().decode("utf-8"))
-    except TimeoutError as error:
-        raise OpenMeteoError("open_meteo_timeout") from error
-    except (HTTPError, URLError, OSError) as error:
-        raise OpenMeteoError("open_meteo_transport_error") from error
-    except (UnicodeDecodeError, ValueError, TypeError) as error:
-        raise OpenMeteoError("open_meteo_invalid_response") from error
-    try:
-        hourly = payload["hourly"]
-        units = payload["hourly_units"]
-        if units["direct_normal_irradiance"] != "W/m²":
-            raise ValueError
-        times, dnis, cloud_cover = (
-            hourly["time"],
-            hourly["direct_normal_irradiance"],
-            hourly["cloud_cover"],
-        )
-        if (
-            not isinstance(times, list)
-            or not isinstance(dnis, list)
-            or not isinstance(cloud_cover, list)
-            or len(times) != len(dnis)
-            or len(times) != len(cloud_cover)
-        ):
-            raise ValueError
-        result: dict[datetime, tuple[float | None, datetime, datetime]] = {}
-        previous: datetime | None = None
-        for epoch, value, cloud in zip(times, dnis, cloud_cover, strict=True):
-            if isinstance(epoch, bool) or not isinstance(epoch, (int, float)):
-                raise TypeError
-            if (
-                isinstance(cloud, bool)
-                or not isinstance(cloud, (int, float))
-                or not isfinite(cloud)
-                or not 0 <= cloud <= 100
-            ):
-                raise ValueError
-            end = datetime.fromtimestamp(epoch, UTC)
-            if previous is not None and end <= previous:
-                raise ValueError
-            previous = end
-            result[end] = (_valid_dni(value), end, received_at)
-        return result
-    except (KeyError, TypeError, ValueError, OverflowError, OSError) as error:
-        raise OpenMeteoError("open_meteo_invalid_response") from error
-
-
 def _clear_sky_dni(site: Site, timestamp: datetime) -> float:
     try:
         import pandas as pd
@@ -373,48 +304,6 @@ def _clear_sky_dni(site: Site, timestamp: datetime) -> float:
         return _valid_dni(float(value)) or 0.0
     except Exception as error:
         raise ValueError("clear_sky_error") from error
-
-
-def _select_dni(
-    scene: Scene, site: Site, timestamps: tuple[datetime, ...], received_at: datetime
-) -> list[DniValue]:
-    selected: list[DniValue | None] = [None] * len(timestamps)
-    unresolved: list[tuple[int, str]] = []
-    for index, timestamp in enumerate(timestamps):
-        scene_value = _scene_dni(scene, timestamp, received_at)
-        if isinstance(scene_value, tuple):
-            value, valid_time, fetched_at = scene_value
-            selected[index] = DniValue(value, "scene_weather", False, None, valid_time, fetched_at)
-        else:
-            unresolved.append((index, scene_value))
-    snapshot: dict[datetime, tuple[float | None, datetime, datetime]] = {}
-    open_error: str | None = None
-    if unresolved:
-        try:
-            snapshot = _open_meteo_snapshot(site, received_at)
-        except OpenMeteoError as error:
-            open_error = error.reason
-    for index, scene_reason in unresolved:
-        timestamp = timestamps[index]
-        # Open-Meteo hourly values describe [end - 1 hour, end), including the end boundary's next hour.
-        matches = [
-            item for end, item in snapshot.items() if 0 < (end - timestamp).total_seconds() <= 3600
-        ]
-        if len(matches) == 1:
-            value, valid_time, fetched_at = matches[0]
-            if value is not None:
-                selected[index] = DniValue(
-                    value, "open_meteo", True, scene_reason, valid_time, fetched_at
-                )
-                continue
-            open_error = "open_meteo_invalid_response"
-        reason = open_error or "open_meteo_out_of_coverage"
-        try:
-            value = _clear_sky_dni(site, timestamp)
-            selected[index] = DniValue(value, "pvlib_clear_sky", True, reason, timestamp, None)
-        except ValueError:
-            selected[index] = DniValue(None, "unknown", True, "clear_sky_error", None, None)
-    return [value for value in selected if value is not None]
 
 
 def predict_scene(
@@ -431,7 +320,7 @@ def predict_scene(
         timestamps = make_prediction_grid(start, options)
     except ValueError as error:
         raise SunpathValidationError(str(error)) from error
-    samples = sum(len(region.sample_points_m) for region in regions)
+    samples = sum(len(tile_centres(region)) for region in regions)
     if samples > MAX_SELECTED_SAMPLES:
         raise SunpathValidationError("selected regions exceed the sample-point limit")
     work = (
@@ -525,7 +414,7 @@ def predict_scene(
                 final_dni_W_m2=dni.value,
                 source=dni.source,
                 fallback_used=dni.fallback_used,
-                fallback_reason=dni.fallback_reason,
+                fallback_reason=cast(FallbackReason | None, dni.fallback_reason),
                 valid_time=dni.valid_time,
                 interval_start=dni.interval_start,
                 interval_end=dni.interval_end,
@@ -535,7 +424,7 @@ def predict_scene(
                 grid_longitude_deg=_provenance_float(dni.provenance, "grid_longitude_deg"),
                 grid_elevation_m=_provenance_float(dni.provenance, "grid_elevation_m"),
                 model_selection="best_match" if dni.provenance and dni.provenance.get("model_selection") == "best_match" else None,
-                resolved_model=dni.provenance.get("resolved_model") if dni.provenance and isinstance(dni.provenance.get("resolved_model"), str) else None,
+                resolved_model=_provenance_str(dni.provenance, "resolved_model"),
                 fetched_at=dni.fetched_at,
                 prediction_method=cast(Literal["stage1_weather_selection", "deterministic_nowcast", "clear_sky_fallback"], dni.prediction_method),
                 nowcast_run_id=dni.nowcast_run_id,
@@ -551,6 +440,13 @@ def predict_scene(
                 region_id=prediction.region_id,
                 first_predicted_exposure_time=prediction.first_predicted_exposure_time,
                 exposed_at_start=prediction.exposed_at_start,
+                exposure_intervals=[
+                    ExposureIntervalResponse(
+                        start_time=interval.start_time,
+                        end_time=interval.end_time,
+                    )
+                    for interval in prediction.exposure_intervals
+                ],
                 timeline=[
                     RegionTimeResponse(
                         timestamp=entry.timestamp,

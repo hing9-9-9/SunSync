@@ -144,20 +144,17 @@ class Cuboid:
 
 @dataclass(frozen=True, slots=True)
 class ProtectedRegion:
-    """Planar protected surface and its sample points in metres."""
+    """Rectangular protected surface in metres."""
 
     region_id: str
     room_id: str
     vertices_m: tuple[Vector3, ...]
     receiving_normal: Vector3
-    sample_points_m: tuple[Vector3, ...]
     host_occluder_id: str | None = None
 
     def __post_init__(self) -> None:
-        if len(self.vertices_m) < 3:
-            raise ValueError("vertices_m must contain at least three vertices")
-        if not self.sample_points_m:
-            raise ValueError("sample_points_m must not be empty")
+        if len(self.vertices_m) != 4:
+            raise ValueError("vertices_m must contain exactly four vertices")
         if self.host_occluder_id is not None:
             _identifier(self.host_occluder_id, "host_occluder_id")
         object.__setattr__(self, "region_id", _identifier(self.region_id, "region_id"))
@@ -172,11 +169,13 @@ class ProtectedRegion:
             "receiving_normal",
             _unit_vector(self.receiving_normal, "receiving_normal"),
         )
-        object.__setattr__(
-            self,
-            "sample_points_m",
-            tuple(_vector(v, "sample point") for v in self.sample_points_m),
-        )
+        points = self.vertices_m
+        u = tuple(points[1][i] - points[0][i] for i in range(3))
+        v = tuple(points[3][i] - points[0][i] for i in range(3))
+        if sum(x * x for x in u) <= 1e-12 or sum(x * x for x in v) <= 1e-12 or abs(sum(a * b for a, b in zip(u, v, strict=True))) > 1e-9:
+            raise ValueError("protected region must have nonzero perpendicular edges")
+        if any(abs(points[2][i] - points[1][i] - v[i]) > 1e-9 for i in range(3)):
+            raise ValueError("protected region must be rectangular")
 
 
 @dataclass(frozen=True, slots=True)
@@ -272,8 +271,15 @@ class RegionTimeResult:
 
 
 @dataclass(frozen=True, slots=True)
+class ExposureInterval:
+    start_time: datetime
+    end_time: datetime
+
+
+@dataclass(frozen=True, slots=True)
 class RegionPrediction:
     region_id: str
     first_predicted_exposure_time: datetime | None
     exposed_at_start: bool
     timeline: tuple[RegionTimeResult, ...]
+    exposure_intervals: tuple[ExposureInterval, ...]

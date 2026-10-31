@@ -1,36 +1,20 @@
-"""Source adapter boundary plus deterministic and Open-Meteo adapters."""
+"""Provider adapter boundary for production Open-Meteo DNI snapshots."""
 
-import re
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
-from itertools import pairwise
-from math import asin, cos, isfinite, radians, sin, sqrt
+from math import isfinite
 from typing import Protocol
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
-from urllib.request import Request, urlopen
+from urllib.request import urlopen
 
 from engine.fr01.models import Site
 
 OPEN_METEO_URL = "https://api.open-meteo.com/v1/forecast"
-GK2A_DSR_URL = "https://apihub.kma.go.kr/api/typ01/cgi-bin/url/nph_sun_sat_txt"
-GK2A_ERROR = re.compile(
-    r"<\s*error\b|error|fail|denied|invalid|unauthori|option\s+required|"
-    r"\[옵션\s*필요\]|인증|오류|자료\s*없",
-    re.IGNORECASE,
-)
 
 
 class OpenMeteoSnapshotError(ValueError):
     """A provider failure which must not create an invalid durable snapshot."""
-
-    def __init__(self, reason: str) -> None:
-        self.reason = reason
-        super().__init__(reason)
-
-
-class Gk2aDsrError(ValueError):
-    """A classified GK2A provider failure; never persist it as a snapshot."""
 
     def __init__(self, reason: str) -> None:
         self.reason = reason
@@ -71,12 +55,7 @@ class SnapshotAdapter(Protocol):
 
 @dataclass(frozen=True)
 class OpenMeteoDniAdapter:
-    """Fetch one site's hourly DNI forecast as immutable normalized points.
-
-    Open-Meteo's hourly values are means for the preceding hour.  Each point
-    therefore uses its returned timestamp as ``interval_end`` and preserves
-    the half-open interval ``[end - 1 hour, end)``.
-    """
+    """Fetch one site's hourly DNI forecast as immutable normalized points."""
 
     site: Site
     timeout_seconds: float = 5.0
@@ -93,7 +72,7 @@ class OpenMeteoDniAdapter:
             }
         )
         try:
-            with urlopen(f"{OPEN_METEO_URL}?{query}", timeout=self.timeout_seconds) as response:  # nosec B310: fixed HTTPS URL
+            with urlopen(f"{OPEN_METEO_URL}?{query}", timeout=self.timeout_seconds) as response:  # nosec B310
                 if response.status != 200:
                     raise OpenMeteoSnapshotError("open_meteo_transport_error")
                 payload = response.read()
@@ -111,35 +90,41 @@ class OpenMeteoDniAdapter:
             hourly, units = document["hourly"], document["hourly_units"]
             if units["direct_normal_irradiance"] != "W/m²":
                 raise ValueError
-            times = hourly["time"]
-            dnis = hourly["direct_normal_irradiance"]
-            clouds = hourly["cloud_cover"]
-            if not all(isinstance(values, list) for values in (times, dnis, clouds)):
+            times, dnis, clouds = (
+                hourly["time"],
+                hourly["direct_normal_irradiance"],
+                hourly["cloud_cover"],
+            )
+            if not all(isinstance(values, list) for values in (times, dnis, clouds)) or not times:
                 raise ValueError
-            if not times or len(times) != len(dnis) or len(times) != len(clouds):
+            if len(times) != len(dnis) or len(times) != len(clouds):
                 raise ValueError
-            points: list[RawPoint] = []
-            grid_latitude = document.get("latitude")
-            grid_longitude = document.get("longitude")
-            grid_elevation = document.get("elevation")
+            grid_latitude, grid_longitude, grid_elevation = (
+                document.get("latitude"),
+                document.get("longitude"),
+                document.get("elevation"),
+            )
             has_grid_metadata = grid_latitude is not None and grid_longitude is not None
             if not has_grid_metadata:
-                # Older saved fixtures (and historical provider payloads) did
-                # not expose a grid centre.  Preserve them as explicitly legacy
-                # snapshots; Step D will not select them for v0.3.
                 grid_latitude, grid_longitude = self.site.latitude_deg, self.site.longitude_deg
             if (
-                isinstance(grid_latitude, bool) or not isinstance(grid_latitude, (int, float))
-                or isinstance(grid_longitude, bool) or not isinstance(grid_longitude, (int, float))
-                or not isfinite(grid_latitude) or not isfinite(grid_longitude)
-                or not -90 <= grid_latitude <= 90 or not -180 <= grid_longitude <= 180
+                isinstance(grid_latitude, bool)
+                or not isinstance(grid_latitude, (int, float))
+                or isinstance(grid_longitude, bool)
+                or not isinstance(grid_longitude, (int, float))
+                or not isfinite(grid_latitude)
+                or not isfinite(grid_longitude)
+                or not -90 <= grid_latitude <= 90
+                or not -180 <= grid_longitude <= 180
             ):
                 raise ValueError
             if grid_elevation is not None and (
-                isinstance(grid_elevation, bool) or not isinstance(grid_elevation, (int, float))
+                isinstance(grid_elevation, bool)
+                or not isinstance(grid_elevation, (int, float))
                 or not isfinite(grid_elevation)
             ):
                 raise ValueError
+            points: list[RawPoint] = []
             previous: datetime | None = None
             for epoch, dni, cloud in zip(times, dnis, clouds, strict=True):
                 if isinstance(epoch, bool) or not isinstance(epoch, (int, float)):
@@ -174,243 +159,41 @@ class OpenMeteoDniAdapter:
                         interval_end=end,
                     )
                 )
-        except (UnicodeDecodeError, json.JSONDecodeError, KeyError, TypeError, ValueError, OSError, OverflowError) as error:
+        except (
+            UnicodeDecodeError,
+            json.JSONDecodeError,
+            KeyError,
+            TypeError,
+            ValueError,
+            OSError,
+            OverflowError,
+        ) as error:
             raise OpenMeteoSnapshotError("open_meteo_invalid_response") from error
         return RawSnapshot(
             provider="open_meteo",
             product="hourly_direct_normal_irradiance",
-            model=document.get("model") if isinstance(document.get("model"), str) else "unknown",
             payload=payload,
             points=tuple(points),
-            # This is a forecast product, not an observation.  ``issued_at``
-            # is deliberately absent until the provider exposes a reliable one.
-            observed_at=None,
-            issued_at=None,
+            model=document.get("model") if isinstance(document.get("model"), str) else "unknown",
             provenance={
-                "spatial_provenance": "provider_grid" if has_grid_metadata else "legacy_request_coordinate",
+                "spatial_provenance": "provider_grid"
+                if has_grid_metadata
+                else "legacy_request_coordinate",
                 "request_latitude_deg": self.site.latitude_deg,
                 "request_longitude_deg": self.site.longitude_deg,
                 "grid_latitude_deg": float(grid_latitude),
                 "grid_longitude_deg": float(grid_longitude),
                 "grid_elevation_m": float(grid_elevation) if grid_elevation is not None else None,
                 "model_selection": "best_match",
-                "resolved_model": document.get("model") if isinstance(document.get("model"), str) else "unknown",
+                "resolved_model": document.get("model")
+                if isinstance(document.get("model"), str)
+                else "unknown",
             },
         )
-
-
-def _table_tokens(line: str) -> list[str]:
-    return [item for item in re.split(r"[\s,|]+", line.strip().lstrip("#").strip()) if item]
-
-
-@dataclass(frozen=True)
-class Gk2aDsrAdapter:
-    """Authenticated GK2A point DSR adapter.
-
-    The point endpoint is known to return a nearest-grid value, but its table
-    does not currently provide the representative coordinate or grid identity.
-    That limitation is retained in snapshot provenance rather than pretending
-    the request coordinate is an exact observation location.
-    """
-
-    site: Site
-    api_key: str
-    timeout_seconds: float = 30.0
-
-    _MAX_WINDOW = timedelta(hours=3, minutes=50)
-
-    def fetch(self, now: datetime) -> RawSnapshot:
-        if now.tzinfo is None or now.utcoffset() is None:
-            raise ValueError("now must be UTC-aware")
-        if not self.api_key or not self.api_key.strip():
-            raise Gk2aDsrError("gk2a_auth_missing")
-        end = now.astimezone(UTC).replace(second=0, microsecond=0)
-        # The endpoint caps a response at 24 timestamp columns.  A 3h50m
-        # inclusive window yields exactly 24 ten-minute values.
-        return self.fetch_range(end - self._MAX_WINDOW, end)
-
-    def fetch_recent_24_hours(self, now: datetime) -> RawSnapshot:
-        """Collect a full 24-hour history despite the endpoint's 24-column cap."""
-
-        end = now.astimezone(UTC).replace(second=0, microsecond=0)
-        start = end - timedelta(hours=24)
-        snapshots: list[RawSnapshot] = []
-        cursor = start
-        while cursor < end:
-            window_end = min(cursor + self._MAX_WINDOW, end)
-            snapshots.append(self.fetch_range(cursor, window_end))
-            cursor = window_end
-        first = snapshots[0]
-        points = {
-            point.valid_time: point
-            for snapshot in snapshots
-            for point in snapshot.points
-        }
-        ordered = tuple(points[key] for key in sorted(points))
-        provenance = dict(first.provenance)
-        provenance["collection_window_start"] = start.isoformat().replace("+00:00", "Z")
-        provenance["collection_window_end"] = end.isoformat().replace("+00:00", "Z")
-        provenance["request_count"] = len(snapshots)
-        return RawSnapshot(
-            provider=first.provider, product=first.product, model=first.model,
-            # The individual replies are the immutable input to this composite snapshot.
-            payload=b"\n--- SunSync GK2A request boundary ---\n".join(item.payload for item in snapshots),
-            points=ordered, observed_at=max(point.valid_time for point in ordered),
-            quality_status=first.quality_status, provenance=provenance,
-        )
-
-    def fetch_range(self, start: datetime, end: datetime) -> RawSnapshot:
-        """Fetch one inclusive provider window of no more than 24 columns."""
-        if start.tzinfo is None or start.utcoffset() is None or end.tzinfo is None or end.utcoffset() is None:
-            raise ValueError("range timestamps must be UTC-aware")
-        start, end = start.astimezone(UTC), end.astimezone(UTC)
-        if start > end or end - start > self._MAX_WINDOW:
-            raise ValueError("GK2A DSR range must be between zero and 3h50m")
-        query = urlencode(
-            {
-                "varn": "DSR",
-                "tm1": start.strftime("%Y%m%d%H%M"),
-                "tm2": end.strftime("%Y%m%d%H%M"),
-                "int": "10",
-                "lat": f"{self.site.latitude_deg:.6f}",
-                "lon": f"{self.site.longitude_deg:.6f}",
-                "authKey": self.api_key,
-            }
-        )
-        request = Request(
-            f"{GK2A_DSR_URL}?{query}",
-            headers={"User-Agent": "SunSync-GK2A-DSR-worker/1.0"},
-        )
-        try:
-            with urlopen(request, timeout=self.timeout_seconds) as response:
-                if response.status != 200:
-                    raise Gk2aDsrError("gk2a_http_error")
-                payload = response.read()
-        except TimeoutError as error:
-            raise Gk2aDsrError("gk2a_timeout") from error
-        except HTTPError as error:
-            raise Gk2aDsrError("gk2a_auth_error" if error.code in {401, 403} else "gk2a_http_error") from error
-        except (URLError, OSError) as error:
-            raise Gk2aDsrError("gk2a_transport_error") from error
-        return self._normalize(payload)
-
-    def _normalize(self, payload: bytes) -> RawSnapshot:
-        try:
-            body = payload.decode("utf-8")
-        except UnicodeDecodeError as error:
-            raise Gk2aDsrError("gk2a_invalid_response") from error
-        if GK2A_ERROR.search(body):
-            if re.search(r"denied|unauthori|인증", body, re.IGNORECASE):
-                reason = "gk2a_auth_error"
-            elif re.search(r"자료\s*없|no\s*data", body, re.IGNORECASE):
-                reason = "gk2a_no_data"
-            else:
-                reason = "gk2a_provider_error"
-            raise Gk2aDsrError(reason)
-        columns: list[str] | None = None
-        for line in body.splitlines():
-            candidate = [item.upper() for item in _table_tokens(line)]
-            if "VAR" in candidate and ("TMFC" in candidate or "TIME" in candidate):
-                columns = candidate
-                break
-        if columns is None:
-            raise Gk2aDsrError("gk2a_invalid_response")
-        try:
-            variable_index = columns.index("VAR")
-            longitude_index = columns.index("LON")
-            latitude_index = columns.index("LAT")
-            time_columns = [
-                (index, datetime.strptime(column, "%Y%m%d%H%M").replace(tzinfo=UTC))
-                for index, column in enumerate(columns)
-                if re.fullmatch(r"20\d{10}", column)
-            ]
-        except ValueError as error:
-            raise Gk2aDsrError("gk2a_invalid_response") from error
-        if not time_columns:
-            raise Gk2aDsrError("gk2a_no_data")
-        if any(later <= earlier for (_, earlier), (_, later) in pairwise(time_columns)):
-            raise Gk2aDsrError("gk2a_invalid_response")
-        points: list[RawPoint] = []
-        representative_location: tuple[float, float] | None = None
-        for line in body.splitlines():
-            if not line.strip() or line.lstrip().startswith("#"):
-                continue
-            fields = _table_tokens(line)
-            if len(fields) <= max(variable_index, longitude_index, latitude_index) or fields[variable_index].upper() != "DSR":
-                continue
-            try:
-                longitude, latitude = float(fields[longitude_index]), float(fields[latitude_index])
-            except ValueError as error:
-                raise Gk2aDsrError("gk2a_invalid_response") from error
-            if not isfinite(latitude) or not isfinite(longitude) or not -90 <= latitude <= 90 or not -180 <= longitude <= 180:
-                raise Gk2aDsrError("gk2a_invalid_response")
-            if representative_location is not None and representative_location != (latitude, longitude):
-                raise Gk2aDsrError("gk2a_invalid_response")
-            representative_location = (latitude, longitude)
-            for value_index, observed_at in time_columns:
-                if value_index >= len(fields):
-                    raise Gk2aDsrError("gk2a_invalid_response")
-                dsr = _parse_dsr(fields[value_index])
-                points.append(
-                    RawPoint(
-                        valid_time=observed_at,
-                        latitude_deg=latitude,
-                        longitude_deg=longitude,
-                        temporal_meaning="instant",
-                        ghi_W_m2=dsr,
-                    )
-                )
-        if not points:
-            raise Gk2aDsrError("gk2a_no_data")
-        assert representative_location is not None
-        latitude, longitude = representative_location
-        return RawSnapshot(
-            provider="kma_gk2a",
-            product="gk2a_dsr_point",
-            model="GK2A",
-            payload=payload,
-            points=tuple(points),
-            observed_at=max(point.valid_time for point in points),
-            provenance={
-                "unit": "W/m2",
-                "variable": "DSR",
-                "temporal_meaning": "instant_assumed_from_timestamp_columns",
-                "spatial_representation": "representative_coordinate_from_response",
-                "representative_latitude_deg": latitude,
-                "representative_longitude_deg": longitude,
-                "request_to_representative_distance_km": _great_circle_distance_km(
-                    self.site.latitude_deg, self.site.longitude_deg, latitude, longitude
-                ),
-                "grid_resolution_km": None,
-            },
-        )
-
-
-def _parse_dsr(value: str) -> float | None:
-    if value.upper() in {"", "-", "NA", "N/A", "NULL", "MISSING"}:
-        return None
-    try:
-        result = float(value)
-    except ValueError as error:
-        raise Gk2aDsrError("gk2a_invalid_response") from error
-    if not isfinite(result) or result < 0:
-        raise Gk2aDsrError("gk2a_invalid_response")
-    return result
-
-
-def _great_circle_distance_km(latitude_a: float, longitude_a: float, latitude_b: float, longitude_b: float) -> float:
-    """Great-circle distance for the request and API-representative locations."""
-
-    latitude_delta = radians(latitude_b - latitude_a)
-    longitude_delta = radians(longitude_b - longitude_a)
-    haversine = sin(latitude_delta / 2) ** 2 + cos(radians(latitude_a)) * cos(radians(latitude_b)) * sin(longitude_delta / 2) ** 2
-    return 2 * 6371.0088 * asin(sqrt(haversine))
 
 
 @dataclass
 class MockSnapshotAdapter:
-    """Returns supplied fixture snapshots without network or clock side effects."""
-
     snapshots: list[RawSnapshot] = field(default_factory=list)
     calls: list[datetime] = field(default_factory=list)
 
