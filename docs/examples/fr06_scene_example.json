@@ -49,7 +49,8 @@
         "obs_manual_room"
       ],
       "confirmed": true
-    }
+    },
+    "floor_level": 1
   },
   "windows": [
     {
@@ -100,7 +101,9 @@
         ],
         "confirmed": true
       },
-      "initial_film_direct_transmittance": 1.0
+      "initial_film_direct_transmittance": 1.0,
+      "film_rows": 10,
+      "film_cols": 10
     }
   ],
   "occluders": [
@@ -109,6 +112,7 @@
       "room_id": "room_001",
       "name": "가상 서가",
       "kind": "cuboid",
+      "type": "bookshelf",
       "base_center_m": [
         3,
         3,
@@ -323,7 +327,12 @@
         0,
         0,
         1
-      ]
+      ],
+      "window_id": null,
+      "start_row": null,
+      "start_col": null,
+      "marker_rows": null,
+      "marker_cols": null
     }
   ],
   "observations": [

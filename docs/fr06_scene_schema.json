@@ -286,7 +286,10 @@
           "type": "number"
         },
         "plane": {
-          "const": "floor",
+          "enum": [
+            "floor",
+            "window"
+          ],
           "title": "Plane",
           "type": "string"
         },
@@ -298,6 +301,71 @@
           "minItems": 16,
           "title": "T Enu Marker",
           "type": "array"
+        },
+        "window_id": {
+          "anyOf": [
+            {
+              "pattern": "^[a-zA-Z][a-zA-Z0-9_]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Window Id"
+        },
+        "start_row": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Start Row"
+        },
+        "start_col": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Start Col"
+        },
+        "marker_rows": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Marker Rows"
+        },
+        "marker_cols": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Marker Cols"
         }
       },
       "required": [
@@ -376,6 +444,17 @@
         "kind": {
           "const": "cuboid",
           "title": "Kind",
+          "type": "string"
+        },
+        "type": {
+          "default": "other",
+          "enum": [
+            "bookshelf",
+            "desk",
+            "chair",
+            "other"
+          ],
+          "title": "Type",
           "type": "string"
         },
         "base_center_m": {
@@ -727,6 +806,20 @@
         },
         "quality": {
           "$ref": "#/$defs/Quality"
+        },
+        "floor_level": {
+          "anyOf": [
+            {
+              "maximum": 1000,
+              "minimum": -100,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Floor Level"
         }
       },
       "required": [
@@ -1121,6 +1214,18 @@
         },
         "quality": {
           "$ref": "#/$defs/Quality"
+        },
+        "film_rows": {
+          "default": 10,
+          "minimum": 1,
+          "title": "Film Rows",
+          "type": "integer"
+        },
+        "film_cols": {
+          "default": 10,
+          "minimum": 1,
+          "title": "Film Cols",
+          "type": "integer"
         }
       },
       "required": [

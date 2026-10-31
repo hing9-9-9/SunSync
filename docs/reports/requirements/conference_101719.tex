@@ -1,0 +1,354 @@
+\documentclass[conference]{IEEEtran}
+\usepackage{cite}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{url}
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+
+% vertical gaps before headings (tune the values to change the spacing)
+\newcommand{\gapsection}{\vspace{1.2ex}}
+\newcommand{\gapsubsection}{\vspace{0.5ex}}
+\newcommand{\gapsubsub}{\vspace{0.4ex}}
+% numbered heading on its own line (IEEEtran's \subsubsection runs into the text)
+\newcommand{\subsubhead}[1]{\par\noindent\refstepcounter{subsubsection}%
+{\normalfont\normalsize\itshape\arabic{subsubsection})\ #1}\par\nopagebreak}
+
+\begin{document}
+\setlength{\parskip}{1pt plus 1pt}
+
+\title{SunSync: Proactive Daylight Control with\\Switchable Smart Film}
+
+\author{
+\IEEEauthorblockN{\footnotesize 1\textsuperscript{st} Jiyeon Kim}
+\IEEEauthorblockA{\footnotesize\textit{Dept. of Information Systems}\\
+\footnotesize\textit{Hanyang University}\\
+\footnotesize Seoul, South Korea\\
+\footnotesize kjy8402@hanyang.ac.kr}
+\and
+\IEEEauthorblockN{\footnotesize 2\textsuperscript{nd} Daeun Lee}
+\IEEEauthorblockA{\footnotesize\textit{Dept. of Information Systems}\\
+\footnotesize\textit{Hanyang University}\\
+\footnotesize Seoul, South Korea\\
+\footnotesize daeun4862@hanyang.ac.kr}
+\and
+\IEEEauthorblockN{\footnotesize 3\textsuperscript{rd} Dain Lee}
+\IEEEauthorblockA{\footnotesize\textit{Dept. of Information Systems}\\
+\footnotesize\textit{Hanyang University}\\
+\footnotesize Seoul, South Korea\\
+\footnotesize ldi0308@hanyang.ac.kr}
+\and
+\IEEEauthorblockN{\footnotesize 4\textsuperscript{th} Heegyeong Chung}
+\IEEEauthorblockA{\footnotesize\textit{Dept. of Information Systems}\\
+\footnotesize\textit{Hanyang University}\\
+\footnotesize Seoul, South Korea\\
+\footnotesize hgchung04@gmail.com}
+\and
+\IEEEauthorblockN{\footnotesize 5\textsuperscript{th} Misong Ha}
+\IEEEauthorblockA{\footnotesize\textit{Dept. of Information Systems}\\
+\footnotesize\textit{Hanyang University}\\
+\footnotesize Seoul, South Korea\\
+\footnotesize msha9865@hanyang.ac.kr}
+}
+
+\maketitle
+
+\begin{abstract}
+Libraries with large windows face a recurring trade-off: direct sunlight fades and weakens paper-based collections, yet closing blinds takes daylight away from the whole reading room. UV-filtering films reduce part of the damage, and dynamic glass can tint ahead of changing conditions, but neither decides shading based on where light-sensitive objects are located in the room. We propose SunSync, a system that predicts where direct sunlight will fall inside a space and makes opaque only the cells of a switchable smart film through which the light would reach a protected target, before it arrives. Users register a space and measure its furniture with a mobile application that recognizes a QR marker displayed on the window film, and then set protected areas and protection grades on the web. A server calculates future sun positions, traces direct-sun paths from each protected surface through the window, and plans the state of each film cell while avoiding frequent switching. All other cells stay transparent, so the space keeps its daylight. Building on segmented PDLC and SPD films, the film is modeled as a grid of independently switchable cells and simulated in software. Although a library reading room is used as the main scenario, the same approach applies to museums, showrooms and homes.
+\end{abstract}
+
+\begin{IEEEkeywords}
+proactive control, switchable smart film, daylighting, solar position, light damage, spatial measurement
+\end{IEEEkeywords}
+
+\begin{table}[!h]
+\caption{Role Assignments}
+\label{tab:roles}
+\centering
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{|L{0.2\columnwidth}|L{0.17\columnwidth}|L{0.48\columnwidth}|}
+\hline
+Roles & Name & Task description \\
+\hline
+Development Manager, Customer & Kim Jiyeon &
+Project Management: Manages the schedule, the repository and issues.\newline
+Requirements and Documentation: Breaks the functions down into detailed requirements and user stories, and leads the proposal, specification and design documents.\newline
+Customer: Represents the target users and approves the requirements and deliverables. \\
+\hline
+Software Developer & Lee Daeun &
+Spatial Measurement: Designs the QR-based measurement of furniture positions and sizes.\newline
+Data Integration: Converts the results into the space model and checks them against tape measurements. \\
+\hline
+User, UI/UX Designer & Lee Dain &
+User Representative: Writes usage scenarios from a space manager's point of view and reviews usability.\newline
+UI/UX Design: Designs the mobile and web screens in Figma. \\
+\hline
+Software Developer & Chung Heegyeong &
+Space Data: Designs the space model shared by all modules and implements its validation and versioned storage API (FR-06). \\
+\hline
+Software Developer & Ha Misong &
+Sunlight Prediction: Implements sun position calculation and direct-sun path tracing.\newline
+Prediction API: Provides the results to the applications and writes the verification scenarios. \\
+\hline
+\end{tabular}
+\end{table}
+
+\gapsection
+\section{Introduction}
+\gapsubsection
+\subsection{Motivation}
+This project is motivated by a conflict that many libraries face today: the need to protect their collections from light and the desire to offer readers a bright, daylit space.
+
+\gapsubsub
+\subsubhead{Light Damage Is Cumulative and Irreversible}
+\noindent\hspace*{\parindent}Paper, inks, dyes and bindings deteriorate when exposed to light. The damage depends on the total exposure, which is the product of light intensity and time, and faded materials do not recover even when they are moved back into the dark \cite{nedcc,cci}. For this reason, conservation guidelines recommend that light-sensitive materials receive no more than about 50,000 lux hours per year and that collections be kept away from direct sunlight \cite{nedcc}. Since direct sunlight through a window can reach tens of thousands of lux, a shelf in the sun can use up this yearly budget within a short period.
+
+\gapsubsub
+\subsubhead{Libraries Want Daylight}
+\noindent\hspace*{\parindent}At the same time, daylight and views are highly valued in library spaces. A study of library users found that readers appreciate windows that give visual relief from focused study, and concluded that the ideal library is ``a room with a view'' \cite{cam}. As a result, many libraries are designed with large glazed walls, and shelves and display cases are often placed near windows that receive direct sunlight for hours.
+
+\gapsubsub
+\subsubhead{Current Practice Solves Only Part of the Problem}
+\noindent\hspace*{\parindent}Libraries currently rely on several measures against light damage. Clear UV-filtering films are widely installed; for example, Brown University's Rockefeller Library applied about 15,000 square feet of UV-blocking film to protect its rare books while keeping its transparent design \cite{solargard}. However, ultraviolet radiation usually accounts for less than half of the fading, and often only one tenth of it \cite{cci}, so visible light still reaches the collection. Tinted films reduce visible light but darken the window permanently, even when there is no direct sun. Blinds and shades are recommended during the most intense hours of sunlight \cite{nedcc}, yet they must cover the entire window to protect a single shelf, and they depend on staff operating them in time. Dynamic glass can tint parts of a facade or a pane in advance based on the sun's path and weather forecasts, but its control is designed around occupant glare, heat and energy \cite{view}. None of these approaches connects where sunlight will fall inside the room with what is located there.
+
+\gapsubsub
+\subsubhead{From Reactive to Proactive Control}
+\noindent\hspace*{\parindent}Switchable films whose surface can be divided into independently controlled zones have appeared, such as LG Chem's switchable glazing film \cite{lgchem}, segmented PDLC and SPD glazing \cite{gauzyces} and films separated by thin laser-cut lines \cite{patent}. At the same time, the position of the sun can be calculated accurately for any future time \cite{pvlib,reda}, so the path of direct sunlight into a room can be predicted. What is still missing is software that decides which part of the window should be shaded, and when.
+
+Used together with a UV-filtering film, SunSync predicts where direct sunlight will fall and makes opaque only the film cells through which that light would reach a protected target.
+
+Although a library reading room is our main scenario, the same conflict exists wherever light-sensitive objects sit near windows, such as museums, cosmetics, perfume or wine showrooms, pop-up stores and homes. SunSync is therefore built on a general model of rooms, windows and protected targets that applies to these spaces without changing its core logic.
+
+\gapsubsection
+\subsection{Problem Statement}
+Three problems remain in protecting collections from direct sunlight.
+
+\gapsubsub
+\subsubhead{Reactive and Manual Operation}
+\noindent\hspace*{\parindent}In most reading rooms, blinds are lowered by staff when they notice sunlight on a shelf, which means the light has already reached the materials. Automated blinds that rely on light sensors also respond only after strong light is detected, and fixed schedules cannot follow the sun path, which shifts from day to day and season to season.
+
+\gapsubsub
+\subsubhead{All-or-Nothing Shading}
+\noindent\hspace*{\parindent}Blinds and curtains treat a whole window as a single unit, and dynamic glass divides a pane into at most a few large zones. To keep sunlight off one bookshelf, the entire window or a large part of it has to be covered, and the reading seats next to it lose their daylight as well. Librarians must choose between protecting the collection and keeping the room bright, even when only a small part of the window causes the problem.
+
+\gapsubsub
+\subsubhead{No Awareness of What Needs Protection}
+\noindent\hspace*{\parindent}Existing shading systems make decisions based on conditions outside or at the window, such as sun position, light level or glare on occupants. They do not know where valuable materials are placed in the room, how sensitive each one is, or which part of the window the harmful light passes through. As a result, they cannot shade selectively for the collection, and the decision of when and how much to shade is still left to the staff.
+
+\gapsubsection
+\subsection{Proposed Solution}
+SunSync addresses these problems with three corresponding solutions.
+
+\gapsubsub
+\subsubhead{Predictive Sunlight Path Analysis}
+\noindent\hspace*{\parindent}Instead of waiting for sunlight to appear, SunSync calculates the position of the sun for upcoming time steps and traces the path of direct sunlight from each protected surface back through the window. This tells the system in advance whether, when, and through which point of the window sunlight will reach each target, so that shading can be applied before exposure begins.
+
+\gapsubsub
+\subsubhead{Cell-Level Selective Shading}
+\noindent\hspace*{\parindent}SunSync maps the predicted light paths onto the cells of a switchable film and makes opaque only the cells that would let sunlight reach a protected target. All other cells stay transparent, so the rest of the room keeps its daylight. To avoid frequent switching, the plan fills short transparent gaps between shaded periods and keeps each cell in its state for a minimum time.
+
+\gapsubsub
+\subsubhead{Target-Aware Protection Settings}
+\noindent\hspace*{\parindent}The librarian measures the room with the mobile application, marks the areas to protect on the web, and gives each area a protection grade, from strict blocking of direct sunlight to daylight priority. SunSync uses these settings to decide which cells to shade and when.
+
+These solutions rely on switchable films that are commercially available. Polymer-dispersed liquid crystal (PDLC) film scatters light when unpowered and turns clear within about 10 to 150 ms when a voltage is applied \cite{gauzypdlc}. Suspended particle device (SPD) film absorbs light instead and can block up to 99\%, but it switches more slowly and keeps a slight tint when clear \cite{gauzypdlc,solarscreen}. Both are sold with zones, such as PDLC windows with segment control and SPD windows with five separately controlled segments \cite{gauzyces}, but since each segment needs its own electrical connection, current products remain at a few segments or strip patterns. SunSync assumes that this segmentation is extended to a grid of small cells, so that the shaded area for each target shrinks to the cells its sunlight passes through; in this project, a 1 m $\times$ 1 m window is divided into 10 $\times$ 10 cells of 10 cm. The main scenario uses PDLC, whose opaque state spreads the direct beam into diffuse light so that no concentrated sun patch reaches the target; SPD can be used where the light itself must be reduced. Because such cell grids are not yet sold, the film is simulated in software in this project, and sunlight intensity is estimated under clear-sky conditions when weather forecasts are not used.
+
+\gapsubsection
+\subsection{Research on Related Software}
+SunSync builds on several existing products and technologies that control or analyze daylight:
+
+\gapsubsub
+\subsubhead{Switchable Smart Films}
+\noindent\hspace*{\parindent}LG Chem has developed a switchable glazing film for vehicle sunroofs that stays opaque without power and becomes transparent when a voltage is applied, and the glass can be divided into zones that are set transparent or opaque separately \cite{lgchem}. Segmented films, in which thin laser-cut lines divide one film into independently switchable areas, are described in patents and offered commercially \cite{patent,gauzyces}. These films provide the zone-level hardware that SunSync assumes, but in current products the user chooses which zone to switch.
+
+\gapsubsub
+\subsubhead{Dynamic Glass with Zoned Tinting}
+\noindent\hspace*{\parindent}Electrochromic dynamic glass changes its tint automatically to manage daylight, glare and heat. View Intelligence combines the sun's path, rooftop sensors and weather forecasts to tint windows in advance, and windows can be grouped into zones or facades \cite{view}. SageGlass offers up to three tint zones, or a vertical tint gradient, within a single pane \cite{sageglass}. These systems control parts of a facade or a pane and act ahead of changing conditions, but their control is designed mainly around occupant comfort and energy and does not consider the location and sensitivity of objects inside the room.
+
+\gapsubsub
+\subsubhead{Automated Shading Systems}
+\noindent\hspace*{\parindent}Automated shade systems such as MechoSystems SolarTrac adjust motorized shades according to the sun's position, the direction of solar rays and the sky conditions measured by radiometers, aiming to maximize daylight while preserving views \cite{mecho}. They move a whole shade along the window, so a single shade position applies to the entire area behind it.
+
+\gapsubsub
+\subsubhead{Smart Home Platforms and AI Home Hubs}
+\noindent\hspace*{\parindent}Google Home and Apple Home let users close smart blinds with routines triggered by time, sunrise or sunset, and LG introduced ThinQ ON as a Matter-certified hub that connects devices from other manufacturers, learns usage patterns and runs automation routines \cite{thinq}. These platforms are moving toward proactive control of the whole home, but they rely on schedules, device states and usage patterns rather than on where sunlight falls in a room. SunSync can complement them by supplying sunlight prediction and protection logic, and its decisions could be delivered to such hubs through Matter, which already defines window coverings as a device type.
+
+\gapsubsub
+\subsubhead{Solar Position and Daylight Calculation Tools}
+\noindent\hspace*{\parindent}pvlib is an open-source Python library that implements the NREL Solar Position Algorithm and related solar models \cite{pvlib,reda}, and Radiance, developed at Lawrence Berkeley National Laboratory, is widely used to simulate daylight inside buildings \cite{radiance}. Such tools are mainly used for analysis and design. SunSync uses pvlib for its sun position calculations.
+
+\gapsection
+\section{Requirements}
+\gapsubsection
+\subsection{Mobile Application Requirements (MAR)}
+\gapsubsub
+\subsubhead{MAR1. Sign In}
+\noindent\hspace*{\parindent}Users sign in with a Google account. The same account is used in the mobile and web applications so that a space registered on one is available on the other.
+
+\gapsubsub
+\subsubhead{MAR2. Space Registration}
+\begin{itemize}
+\item \textit{MAR2.1 Space Information:} The user enters the building name, floor and space name, and the location of the building is filled in from the phone's current position.
+\item \textit{MAR2.2 Space Size:} The user enters the width, depth and height of the space in metres.
+\item \textit{MAR2.3 Zones:} A large space can be divided into several measurement zones, each of which is registered and measured separately. Zones can be added and deleted.
+\end{itemize}
+
+\gapsubsub
+\subsubhead{MAR3. QR-Based Measurement}
+\begin{itemize}
+\item \textit{MAR3.1 Start Measurement:} The user points the camera at the QR marker displayed on the window film and starts recognition while the whole marker is inside the frame.
+\item \textit{MAR3.2 Corner Capture:} The user stands at each of the four corners of a piece of furniture and takes a photo of the marker from there; the app shows whether the marker is recognized and asks for a retake when it is not fully visible.
+\item \textit{MAR3.3 Transfer:} The measurement data are sent to the server, and the progress of floor plan generation is displayed.
+\end{itemize}
+
+\gapsubsub
+\subsubhead{MAR4. Floor Plan Check}
+\noindent\hspace*{\parindent}The app shows the generated floor plan with windows and furniture. The user can save the result and open a link to continue setting protected areas on the web, or measure the zone again.
+
+\gapsubsub
+\subsubhead{MAR5. Space Status}
+\begin{itemize}
+\item \textit{MAR5.1 Sunlight by Time:} The floor plan shows the predicted sun patch, and a time slider lets the user see how it moves during the day.
+\item \textit{MAR5.2 Protected Areas:} The protected areas and their grades are displayed for viewing; they are edited only on the web.
+\item \textit{MAR5.3 Film State:} The window is displayed as a grid of film cells, and the cells to be shaded at the selected time are highlighted.
+\end{itemize}
+
+\gapsubsection
+\subsection{Web Application Requirements (WAR)}
+\gapsubsub
+\subsubhead{WAR1. Account and My Spaces}
+\noindent\hspace*{\parindent}Users sign in with the same Google account as in the mobile app. The web application lists the registered spaces, shows whether each is saved on the server, and lets the user add or open a space.
+
+\gapsubsub
+\subsubhead{WAR2. Space Registration}
+\noindent\hspace*{\parindent}The user enters the same space information, size and zones as in MAR2, and the web application creates a link that opens the capture screen of the mobile app.
+
+\gapsubsub
+\subsubhead{WAR3. Floor Plan and Protected Area Editing}
+\begin{itemize}
+\item \textit{WAR3.1 Furniture:} The user selects furniture on the floor plan and corrects its width, depth, height and position. Furniture can be added by QR capture or by direct input, and deleted.
+\item \textit{WAR3.2 Protected Areas:} The user creates a protected area by selecting furniture or by drawing an area on the floor plan, and sets its name, start and end height, and protection grade (A to D).
+\item \textit{WAR3.3 3D View:} The user can view the measured space in 3D, with a default shape for each furniture type, and move furniture by dragging it.
+\item \textit{WAR3.4 Saving:} Changes are saved to the server, with a warning before leaving unsaved changes or overwriting a newer version.
+\end{itemize}
+
+\gapsubsub
+\subsubhead{WAR4. Space Status}
+\begin{itemize}
+\item \textit{WAR4.1 Overview:} For each zone, the web application shows the floor plan or 3D view with furniture, protected areas, and the predicted sun patch.
+\item \textit{WAR4.2 Shading Schedule:} It shows the time at which light toward each protected area is expected to be blocked, and the user can request a recalculation.
+\item \textit{WAR4.3 Film State:} The window is displayed as a grid of film cells, and the cells to be shaded are highlighted.
+\end{itemize}
+
+\gapsubsection
+\subsection{Functional Requirements (FR)}
+\gapsubsub
+\subsubhead{FR-01. Future Sunlight Path Prediction}
+\noindent\hspace*{\parindent}The system must predict, for a future time window, whether direct sunlight reaches each protected area, when it first arrives, and through which point of the window.
+
+\begin{itemize}
+\item \textit{FR-01.1 Solar Position:} Calculate the elevation and azimuth of the sun for each time step from the location of the space and a time zone-aware start time.
+\item \textit{FR-01.2 Direct-Sun Path Tracing:} From sample points on each protected surface, trace a ray toward the sun and check whether it leaves the room through a window without being blocked by a wall or furniture.
+\item \textit{FR-01.3 Exposure Timeline:} Return, for each time step, whether each sample point is exposed and why, and the first predicted exposure time of each protected area.
+\item \textit{FR-01.4 Sunlight Intensity:} Estimate the direct sunlight intensity at protected surfaces from clear-sky conditions, and replace it with weather forecasts such as Open-Meteo when available.
+\end{itemize}
+
+\gapsubsub
+\subsubhead{FR-02. Selective Shading Decision}
+\noindent\hspace*{\parindent}The system must make opaque only the film cells through which direct sunlight would reach a protected area, and keep all other cells transparent.
+
+\begin{itemize}
+\item \textit{FR-02.1 Cell Mapping:} Map each predicted window crossing point to the film cell that contains it.
+\item \textit{FR-02.2 Grade-Based Decision:} Apply the protection grade of each area (FR-06.6). When a cell affects several areas, the stricter grade is applied.
+\item \textit{FR-02.3 Advance Shading:} Switch a cell before the predicted arrival time, allowing for the film switching time, processing delay and a safety margin.
+\item \textit{FR-02.4 Shading Schedule:} Provide the planned cell states over time to the mobile and web applications.
+\end{itemize}
+
+\gapsubsub
+\subsubhead{FR-03. QR-Based Spatial Measurement}
+\noindent\hspace*{\parindent}The system must estimate the positions and sizes of furniture from photos of the QR marker on the window taken at the furniture's corners.
+
+\begin{itemize}
+\item \textit{FR-03.1 Marker Detection:} Detect the marker displayed on the window film in each photo and check the image quality, such as blur or partial occlusion.
+\item \textit{FR-03.2 Camera Position Estimation:} For each photo, calculate the 3D position and orientation of the camera from the known marker size and its four corners, and reject photos in which the marker is not fully visible.
+\item \textit{FR-03.3 Furniture Output:} Use the camera positions of the four corner photos as the corners of the furniture, convert them into its width, depth and position relative to the window and walls, and save them for the user to review.
+\end{itemize}
+
+\gapsubsub
+\subsubhead{FR-04. Stable Control Against Temporary Changes}
+\noindent\hspace*{\parindent}The system must avoid frequent switching that would disturb people in the room.
+
+\begin{itemize}
+\item \textit{FR-04.1 Gap Filling:} When a cell would become transparent for less than a set time between two shaded periods, it stays opaque.
+\item \textit{FR-04.2 Minimum Holding Time:} A cell does not change again within a minimum holding time, except to strengthen protection.
+\item \textit{FR-04.3 Threshold Margin:} For grades B and C, a cell is switched to opaque above the intensity limit but returned to transparent only below a lower value, so that forecasts near the limit do not cause repeated switching.
+\item \textit{FR-04.4 Edge Margin:} When the predicted light path crosses a cell boundary, the neighboring cell is shaded as well.
+\end{itemize}
+
+\gapsubsub
+\subsubhead{FR-05. Film Control Interface}
+\noindent\hspace*{\parindent}The system must send its decisions to the film through a device interface. In this project, the film is simulated in software as a grid of independently switchable cells.
+
+\begin{itemize}
+\item \textit{FR-05.1 Cell Commands:} Apply the planned state of each cell at the scheduled time and record whether it was applied.
+\item \textit{FR-05.2 Marker Display:} Display the QR marker on a fixed group of cells during measurement and restore the previous cell states afterward.
+\item \textit{FR-05.3 Replaceable Device:} Keep the interface independent of the film hardware and film type, such as PDLC or SPD, so that the simulated film can later be replaced by a real controller.
+\end{itemize}
+
+\gapsubsub
+\subsubhead{FR-06. Space Information Management}
+\noindent\hspace*{\parindent}The system must store each space as a versioned model in metres, using a coordinate frame in which x points east, y points north and z points up, with the floor at z = 0.
+
+\begin{itemize}
+\item \textit{FR-06.1 Space Model:} Store the location, room size, zones, windows with their film cell layout, furniture as boxes with a furniture type, and protected areas with their surfaces, sample points and grades.
+\item \textit{FR-06.2 Window Specification:} Store the window size and position entered by the user, together with the size, position and orientation of the QR marker displayed on the window film.
+\item \textit{FR-06.3 Measurement Records:} Record whether each value was entered manually or measured with the QR marker.
+\item \textit{FR-06.4 Validation and Versioning:} Reject invalid geometry with an explanation, increase the version on every update, and prevent two users from overwriting each other's changes.
+\item \textit{FR-06.5 Synchronization:} Provide the same space data to the mobile and web applications.
+\item \textit{FR-06.6 Protection Grades:} Each protected area has one of four grades. Grade A requires every geometric direct-sun path to the surface to pass through an opaque cell, even when the predicted intensity is low or unknown. Grades B and C limit the direct sunlight intensity on the surface to a low and a higher configurable value, respectively. Grade D gives priority to daylight and makes no shading request.
+\end{itemize}
+
+\gapsubsection
+\subsection{Non-Functional Requirements (NFR)}
+\gapsubsub
+\subsubhead{NFR1. Accuracy and Stability}
+\begin{itemize}
+\item \textit{NFR1.1 Reference Agreement:} Predicted first exposure times must agree with hand-calculated reference cases within one time step, and all inputs must carry units, time zones and reference directions.
+\item \textit{NFR1.2 Switching Reduction:} Under changing weather forecasts, the number of cell switches must be lower than without stabilization, without weakening protection.
+\end{itemize}
+
+\gapsubsub
+\subsubhead{NFR2. Performance and Usability}
+\begin{itemize}
+\item \textit{NFR2.1 Calculation Time:} A two-hour plan for one zone must be calculated within 5 seconds.
+\item \textit{NFR2.2 Responsive and Guided Use:} The applications must work on phone and PC screens, and each step must explain what to do next.
+\end{itemize}
+
+\gapsubsub
+\subsubhead{NFR3. Data Consistency}
+\begin{itemize}
+\item \textit{NFR3.1 Shared and Reproducible Data:} A space saved on one device must appear the same on the other, and the same inputs must produce the same result.
+\end{itemize}
+
+\begin{thebibliography}{00}
+\bibitem{nedcc} Northeast Document Conservation Center, ``2.4 Protection from light damage,'' Preservation Leaflets. [Online]. Available: \url{https://nedcc.org/free-resources/preservation-leaflets/2.-the-environment/2.4-protection-from-light-damage}
+\bibitem{cci} Canadian Conservation Institute, ``Agent of deterioration: Light, ultraviolet and infrared,'' Government of Canada. [Online]. Available: \url{https://www.canada.ca/en/conservation-institute/services/agents-deterioration/light.html}
+\bibitem{cam} University of Cambridge, ``Libraries and light,'' Research News. [Online]. Available: \url{https://www.cam.ac.uk/research/news/libraries-and-light}
+\bibitem{solargard} Solar Gard, ``Brown University: Panorama window film success story,'' case study. [Online]. Available: \url{https://www.solargard.com/wp-content/uploads/2016/02/brown-university-panorama-success-story-pdf0163panl.pdf}
+\bibitem{view} View, Inc., ``Introducing View Intelligence 2.0.'' [Online]. Available: \url{https://www.view.com/blog/introducing-view-intelligence-2-0}
+\bibitem{lgchem} LG Corp., ``LG Chem enters the automotive switchable film market,'' press release, 2024. [Online]. Available: \url{https://www.lg.co.kr/media/release/27620}
+\bibitem{gauzyces} Gauzy, ``Gauzy's 2022 CES experience,'' 2022. [Online]. Available: \url{https://www.gauzy.com/internal_news/2022-ces-experience/}
+\bibitem{patent} ``Segmented multilayer film with electrically controllable optical properties,'' U.S. Patent 12 181 741.
+\bibitem{pvlib} W. F. Holmgren, C. W. Hansen, and M. A. Mikofski, ``pvlib python: A python package for modeling solar energy systems,'' J. Open Source Softw., vol. 3, no. 29, p. 884, 2018.
+\bibitem{reda} I. Reda and A. Andreas, ``Solar position algorithm for solar radiation applications,'' Solar Energy, vol. 76, no. 5, pp. 577--589, 2004.
+\bibitem{gauzypdlc} Gauzy, ``What's the difference between PDLC and SPD smart glass?'' [Online]. Available: \url{https://www.gauzy.com/liquid-crystal-spd-smart-glass-whats-the-difference/}
+\bibitem{solarscreen} Solarscreen, ``PDLC vs SPD smart glass differences.'' [Online]. Available: \url{https://solarscreen.eu/en/blog/pdlc-vs-spd-smart-glass-differences}
+\bibitem{sageglass} Saint-Gobain, ``SageGlass LightZone'' and ``SageGlass Harmony'' product pages. [Online]. Available: \url{https://www.saint-gobain.com.cn/en/glass/product/sageglass-lightzone}
+\bibitem{mecho} ``SolarTrac from MechoShade Systems,'' Architect Magazine. [Online]. Available: \url{https://www.architectmagazine.com/technology/solartrac-from-mechoshade-systems_o/}
+\bibitem{thinq} LG Electronics, ``LG opens new chapter in connected home living with `ThinQ ON' AI home hub at IFA 2024,'' press release, Aug. 2024. [Online]. Available: \url{https://www.aap.com.au/aapreleases/cision20240828ae93244/}
+\bibitem{radiance} G. J. Ward, ``The RADIANCE lighting simulation and rendering system,'' in Proc. SIGGRAPH, 1994, pp. 459--472.
+\end{thebibliography}
+
+\end{document}

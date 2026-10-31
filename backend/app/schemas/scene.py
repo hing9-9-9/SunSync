@@ -7,7 +7,7 @@ The schema describes structure; model validators also enforce geometry and refer
 from __future__ import annotations
 
 from datetime import datetime
-from math import atan2, degrees
+from math import atan2, degrees, floor
 from typing import Annotated, Literal, Self
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -104,6 +104,7 @@ class Room(Model):
     floor_vertices_m: Ring
     height_m: Positive
     quality: Quality
+    floor_level: Annotated[int, Field(ge=-100, le=1000)] | None = None
 
     @model_validator(mode="after")
     def valid_floor(self) -> Self:
@@ -126,6 +127,99 @@ class Window(Model):
     optical_profile_id: Identifier
     initial_film_direct_transmittance: Fraction
     quality: Quality
+    film_rows: Annotated[int, Field(ge=1)] = 10
+    film_cols: Annotated[int, Field(ge=1)] = 10
+
+    @property
+    def width_m(self) -> float:
+        return float(dot(subtract(self.vertices_m[1], self.vertices_m[0]), self.u_axis))
+
+    @property
+    def height_m(self) -> float:
+        return float(dot(subtract(self.vertices_m[3], self.vertices_m[0]), self.v_axis))
+
+    @property
+    def cell_width_m(self) -> float:
+        return self.width_m / self.film_cols
+
+    @property
+    def cell_height_m(self) -> float:
+        return self.height_m / self.film_rows
+
+    def grid_from_cell_size(self, cell_size_m: float = 0.1) -> tuple[int, int]:
+        require(cell_size_m > 0, "cell_size_m must be positive")
+        cols = round(self.width_m / cell_size_m)
+        rows = round(self.height_m / cell_size_m)
+        require(
+            cols >= 1 and abs(self.width_m - cols * cell_size_m) <= EPS,
+            "window width must be an integer multiple of cell_size_m",
+        )
+        require(
+            rows >= 1 and abs(self.height_m - rows * cell_size_m) <= EPS,
+            "window height must be an integer multiple of cell_size_m",
+        )
+        return (rows, cols)
+
+    def uv_to_cell(self, u_m: float, v_m: float) -> tuple[int, int]:
+        require(
+            -EPS <= u_m <= self.width_m + EPS and -EPS <= v_m <= self.height_m + EPS,
+            "point lies outside window bounds",
+        )
+        u_clamped = min(max(u_m, 0.0), self.width_m)
+        v_clamped = min(max(v_m, 0.0), self.height_m)
+        if u_clamped >= self.width_m - EPS:
+            col = self.film_cols - 1
+        else:
+            col_idx = floor((u_clamped + EPS) / self.cell_width_m)
+            col = min(max(col_idx, 0), self.film_cols - 1)
+
+        top_dist = self.height_m - v_clamped
+        if top_dist >= self.height_m - EPS:
+            row = self.film_rows - 1
+        elif top_dist <= EPS:
+            row = 0
+        else:
+            row_idx = floor((top_dist + EPS) / self.cell_height_m)
+            row = min(max(row_idx, 0), self.film_rows - 1)
+
+        return (row, col)
+
+    def cell_to_uv_bounds(
+        self, row: int, col: int
+    ) -> tuple[tuple[float, float], tuple[float, float]]:
+        require(
+            type(row) is int and type(col) is int,
+            "cell row and col must be integers",
+        )
+        require(
+            0 <= row < self.film_rows and 0 <= col < self.film_cols,
+            "cell row/col outside window film grid",
+        )
+        u_min = col * self.cell_width_m
+        u_max = (col + 1) * self.cell_width_m
+        v_max = self.height_m - row * self.cell_height_m
+        v_min = self.height_m - (row + 1) * self.cell_height_m
+        return ((u_min, u_max), (v_min, v_max))
+
+    def cell_to_uv(self, row: int, col: int) -> tuple[float, float]:
+        (u_min, u_max), (v_min, v_max) = self.cell_to_uv_bounds(row, col)
+        return ((u_min + u_max) / 2.0, (v_min + v_max) / 2.0)
+
+    def enu_to_uv(self, point_m: Vector) -> tuple[float, float]:
+        rel = subtract(point_m, self.vertices_m[0])
+        dist_normal = dot(rel, self.inward_normal)
+        require(abs(dist_normal) <= EPS, "point is not on window plane")
+        u_m = dot(rel, self.u_axis)
+        v_m = dot(rel, self.v_axis)
+        return (float(u_m), float(v_m))
+
+    def uv_to_enu(self, u_m: float, v_m: float) -> tuple[float, float, float]:
+        origin = self.vertices_m[0]
+        return (
+            float(origin[0] + u_m * self.u_axis[0] + v_m * self.v_axis[0]),
+            float(origin[1] + u_m * self.u_axis[1] + v_m * self.v_axis[1]),
+            float(origin[2] + u_m * self.u_axis[2] + v_m * self.v_axis[2]),
+        )
 
     @model_validator(mode="after")
     def valid_frame(self) -> Self:
@@ -156,11 +250,29 @@ class Window(Model):
         return self
 
 
+def window_uv_to_cell(window: Window, u_m: float, v_m: float) -> tuple[int, int]:
+    return window.uv_to_cell(u_m, v_m)
+
+
+def window_cell_to_uv_bounds(
+    window: Window, row: int, col: int
+) -> tuple[tuple[float, float], tuple[float, float]]:
+    return window.cell_to_uv_bounds(row, col)
+
+
+def window_cell_to_uv(window: Window, row: int, col: int) -> tuple[float, float]:
+    return window.cell_to_uv(row, col)
+
+
+FurnitureType = Literal["bookshelf", "desk", "chair", "other"]
+
+
 class Occluder(Model):
     occluder_id: Identifier
     room_id: Identifier
     name: str
     kind: Literal["cuboid"]
+    type: FurnitureType = "other"
     base_center_m: Vector
     dimensions_m: Dimensions
     yaw_deg_ccw_from_east: Number
@@ -202,11 +314,16 @@ class Marker(Model):
     dictionary: Literal["DICT_4X4_50"]
     code_id: Annotated[int, Field(ge=0, lt=50)]
     side_length_m: Positive
-    plane: Literal["floor"]
+    plane: Literal["floor", "window"]
     T_ENU_marker: Annotated[list[Number], Field(min_length=16, max_length=16)]
+    window_id: Identifier | None = None
+    start_row: Annotated[int, Field(ge=0)] | None = None
+    start_col: Annotated[int, Field(ge=0)] | None = None
+    marker_rows: Annotated[int, Field(ge=1)] | None = None
+    marker_cols: Annotated[int, Field(ge=1)] | None = None
 
     @model_validator(mode="after")
-    def rigid_floor_transform(self) -> Self:
+    def rigid_transform_and_plane(self) -> Self:
         matrix = self.T_ENU_marker
         rows = [matrix[0:3], matrix[4:7], matrix[8:11]]
         require(close(matrix[12:16], (0, 0, 0, 1)), "transform last row must be [0,0,0,1]")
@@ -219,10 +336,33 @@ class Marker(Model):
             and abs(dot(rows[0], cross(rows[1], rows[2])) - 1) <= EPS,
             "marker transform must be a right-handed rigid transform",
         )
-        require(
-            close(rows[2], (0, 0, 1)) and abs(matrix[11]) <= EPS,
-            "marker frame must lie on the z=0 floor",
-        )
+        if self.plane == "floor":
+            require(
+                self.window_id is None
+                and self.start_row is None
+                and self.start_col is None
+                and self.marker_rows is None
+                and self.marker_cols is None,
+                "floor marker cannot declare window cell placement",
+            )
+            require(
+                close(rows[2], (0, 0, 1)) and abs(matrix[11]) <= EPS,
+                "marker frame must lie on the z=0 floor",
+            )
+        else:
+            require(self.window_id is not None, "window marker requires window_id")
+            if self.start_row is None:
+                self.start_row = 2
+            if self.start_col is None:
+                self.start_col = 2
+            if self.marker_rows is None:
+                self.marker_rows = 6
+            if self.marker_cols is None:
+                self.marker_cols = 6
+            require(
+                self.marker_rows == 6 and self.marker_cols == 6,
+                "ArUco 4x4 window marker must occupy 6x6 cells including border",
+            )
         return self
 
 
@@ -631,13 +771,50 @@ class Scene(Model):
             )
 
     def _validate_measurements(self) -> None:
+        windows = {window.window_id: window for window in self.windows}
+        for marker in self.markers:
+            if marker.plane == "window":
+                require(
+                    marker.window_id in windows, f"{marker.marker_id}: missing window reference"
+                )
+                assert marker.window_id is not None
+                window = windows[marker.window_id]
+                assert (
+                    marker.start_row is not None
+                    and marker.start_col is not None
+                    and marker.marker_rows is not None
+                    and marker.marker_cols is not None
+                )
+                require(
+                    marker.start_row + marker.marker_rows <= window.film_rows
+                    and marker.start_col + marker.marker_cols <= window.film_cols,
+                    f"{marker.marker_id}: marker cells exceed window film grid",
+                )
+                expected_w = marker.marker_cols * window.cell_width_m
+                expected_h = marker.marker_rows * window.cell_height_m
+                require(
+                    abs(marker.side_length_m - expected_w) <= EPS
+                    and abs(marker.side_length_m - expected_h) <= EPS,
+                    f"{marker.marker_id}: side_length_m disagrees with window cell size",
+                )
+                matrix = marker.T_ENU_marker
+                origin = (matrix[3], matrix[7], matrix[11])
+                u_m, v_m = window.enu_to_uv(origin)
+                require(
+                    -EPS <= u_m <= window.width_m + EPS and -EPS <= v_m <= window.height_m + EPS,
+                    f"{marker.marker_id}: marker transform origin outside window",
+                )
         markers = {marker.marker_id: marker for marker in self.markers}
         objects = self._geometry_objects()
         for observation in self.observations:
             if not isinstance(observation, ArucoObservation):
                 continue
             require(observation.marker_id in markers, "ArUco marker reference missing")
-            matrix = markers[observation.marker_id].T_ENU_marker
+            marker = markers[observation.marker_id]
+            require(
+                marker.plane == "floor", "ArUco planar floor observation requires a floor marker"
+            )
+            matrix = marker.T_ENU_marker
             for local, exported in zip(
                 observation.points_marker_m, observation.points_enu_m, strict=True
             ):
