@@ -5,6 +5,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import ValidationError
+from sqlalchemy import Engine
 from sqlmodel import Session
 
 from app.db import get_session
@@ -43,11 +44,13 @@ def create_sunpath_prediction(
         )
     try:
         scene = Scene.model_validate_json(record.scene_json)
+        bind = session.get_bind()
+        nowcast_engine = bind if isinstance(bind, Engine) else bind.engine
         return predict_scene(
             scene,
             request,
             request_received_at=request_received_at,
-            nowcast_engine=session.get_bind(),
+            nowcast_engine=nowcast_engine,
         )
     except (SunpathValidationError, ValidationError) as error:
         raise HTTPException(
