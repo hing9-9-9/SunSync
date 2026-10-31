@@ -90,9 +90,9 @@ def test_direct_irradiance_distinguishes_blocked_from_unknown_dni():
     )
     assert direct_irradiance_W_m2(clear, region().receiving_normal, SUN_SOUTH, None) is None
     assert direct_irradiance_W_m2(blocked, region().receiving_normal, SUN_SOUTH, None) == 0
-    assert direct_irradiance_W_m2(clear, region().receiving_normal, SUN_SOUTH, 500) == pytest.approx(
-        500 / sqrt(2)
-    )
+    assert direct_irradiance_W_m2(
+        clear, region().receiving_normal, SUN_SOUTH, 500
+    ) == pytest.approx(500 / sqrt(2))
 
 
 def test_occluder_blocks_only_its_sample_and_nearest_blocker_is_reported():
@@ -141,12 +141,14 @@ def test_exposure_intervals_covers_empty_edge_and_contiguous_grid_runs():
         )
 
     assert exposure_intervals(timeline((False, False, False, False, False))) == ()
-    assert [(item.start_time, item.end_time) for item in exposure_intervals(timeline((True, True, True, False, False)))] == [
-        (timestamps[0], timestamps[2])
-    ]
-    assert [(item.start_time, item.end_time) for item in exposure_intervals(timeline((False, False, True, True, True)))] == [
-        (timestamps[2], timestamps[4])
-    ]
+    assert [
+        (item.start_time, item.end_time)
+        for item in exposure_intervals(timeline((True, True, True, False, False)))
+    ] == [(timestamps[0], timestamps[2])]
+    assert [
+        (item.start_time, item.end_time)
+        for item in exposure_intervals(timeline((False, False, True, True, True)))
+    ] == [(timestamps[2], timestamps[4])]
 
 
 def test_predictor_true_from_start_never_exposed_and_rejects_interior_sample():

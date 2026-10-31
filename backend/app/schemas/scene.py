@@ -184,9 +184,15 @@ class ProtectedRegion(Model):
         polygon(self.vertices_m, self.receiving_normal, "protected region")
         p0, p1, p2, p3 = self.vertices_m
         u_edge, v_edge = subtract(p1, p0), subtract(p3, p0)
-        require(dot(u_edge, u_edge) > EPS and dot(v_edge, v_edge) > EPS, "protected region edges must be nonzero")
+        require(
+            dot(u_edge, u_edge) > EPS and dot(v_edge, v_edge) > EPS,
+            "protected region edges must be nonzero",
+        )
         require(abs(dot(u_edge, v_edge)) <= EPS, "protected region edges must be perpendicular")
-        require(close(subtract(p2, p1), v_edge) and close(subtract(p2, p3), u_edge), "protected region must be rectangular")
+        require(
+            close(subtract(p2, p1), v_edge) and close(subtract(p2, p3), u_edge),
+            "protected region must be rectangular",
+        )
         return self
 
 

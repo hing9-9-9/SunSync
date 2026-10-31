@@ -17,19 +17,35 @@ def make_engine(tmp_path):
 
 def raw(issued_at, value=0.0):
     return RawSnapshot(
-        provider="mock", product="fixture", payload=f"payload-{value}".encode(), issued_at=issued_at,
-        points=(RawPoint(valid_time=issued_at, latitude_deg=37.5, longitude_deg=127.0, dni_W_m2=value),),
+        provider="mock",
+        product="fixture",
+        payload=f"payload-{value}".encode(),
+        issued_at=issued_at,
+        points=(
+            RawPoint(valid_time=issued_at, latitude_deg=37.5, longitude_deg=127.0, dni_W_m2=value),
+        ),
     )
 
 
 def test_migration_is_idempotent_and_preserves_existing_scene_table(tmp_path):
     engine = create_engine(f"sqlite:///{tmp_path / 'existing.db'}")
     with engine.begin() as conn:
-        conn.execute(text("CREATE TABLE scenes (scene_id TEXT PRIMARY KEY, revision INTEGER, scene_json TEXT)"))
+        conn.execute(
+            text(
+                "CREATE TABLE scenes (scene_id TEXT PRIMARY KEY, revision INTEGER, scene_json TEXT)"
+            )
+        )
         conn.execute(text("INSERT INTO scenes VALUES ('scene-1', 1, '{}')"))
     init_db(engine)
     init_db(engine)
-    assert {"scenes", "weather_snapshot", "weather_point", "nowcast_run", "nowcast_point", "worker_lease"} <= set(inspect(engine).get_table_names())
+    assert {
+        "scenes",
+        "weather_snapshot",
+        "weather_point",
+        "nowcast_run",
+        "nowcast_point",
+        "worker_lease",
+    } <= set(inspect(engine).get_table_names())
     with engine.connect() as conn:
         assert conn.execute(text("SELECT scene_id FROM scenes")).scalar_one() == "scene-1"
         assert conn.exec_driver_sql("PRAGMA user_version").scalar_one() == LATEST_VERSION
@@ -70,7 +86,9 @@ def test_retention_keeps_snapshot_referenced_by_unexpired_run(tmp_path):
     repository.add_run("current-run", [protected], old, now + timedelta(days=1))
     assert repository.prune(now) == {"nowcast_runs": 0, "weather_snapshots": 1}
     with engine.connect() as conn:
-        assert conn.execute(text("SELECT snapshot_id FROM weather_snapshot")).scalar_one() == protected
+        assert (
+            conn.execute(text("SELECT snapshot_id FROM weather_snapshot")).scalar_one() == protected
+        )
         assert conn.execute(text("SELECT count(*) FROM weather_point")).scalar_one() == 1
     assert disposable != protected
 

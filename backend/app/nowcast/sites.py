@@ -14,7 +14,9 @@ def load_unique_sites(engine: Engine) -> tuple[Site, ...]:
     """Read valid persisted scenes and deduplicate their physical sites."""
 
     with engine.connect() as connection:
-        payloads = connection.execute(text("SELECT scene_json FROM scenes ORDER BY scene_id")).scalars()
+        payloads = connection.execute(
+            text("SELECT scene_json FROM scenes ORDER BY scene_id")
+        ).scalars()
         sites: dict[tuple[float, float], Site] = {}
         for payload in payloads:
             try:

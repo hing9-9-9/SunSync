@@ -21,7 +21,10 @@ from app.nowcast.sites import load_unique_sites
 
 LEASE_NAME = "open_meteo_dni_snapshot"
 
-def run_once(engine: Engine, *, now: datetime | None = None, owner_id: str | None = None) -> dict[str, int]:
+
+def run_once(
+    engine: Engine, *, now: datetime | None = None, owner_id: str | None = None
+) -> dict[str, int]:
     """Collect Open-Meteo DNI for every scene site; provider errors preserve history."""
 
     current_input = now or datetime.now(UTC)

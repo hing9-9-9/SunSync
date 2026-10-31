@@ -60,12 +60,18 @@ def add_scene(engine, scene_id="scene_demo_001", latitude=None, longitude=None):
         document["site"]["latitude_deg"] = latitude
         document["site"]["longitude_deg"] = longitude
     with Session(engine) as session:
-        session.add(SceneRecord(scene_id=scene_id, revision=document["revision"], scene_json=json.dumps(document)))
+        session.add(
+            SceneRecord(
+                scene_id=scene_id, revision=document["revision"], scene_json=json.dumps(document)
+            )
+        )
         session.commit()
 
 
 def test_open_meteo_normalizes_preceding_hour_means_and_preserves_zero(monkeypatch):
-    monkeypatch.setattr("app.nowcast.adapters.urlopen", lambda *_args, **_kwargs: Response(payload()))
+    monkeypatch.setattr(
+        "app.nowcast.adapters.urlopen", lambda *_args, **_kwargs: Response(payload())
+    )
     raw = OpenMeteoDniAdapter(Site(37.5, 127.0, "Asia/Seoul")).fetch(NOW)
     assert raw.provider == "open_meteo"
     assert raw.points[0].dni_W_m2 == 0.0
@@ -90,10 +96,14 @@ def test_open_meteo_timeout_is_not_stored(monkeypatch, tmp_path):
     engine = make_engine(tmp_path)
     add_scene(engine)
     monkeypatch.setattr(
-        "app.nowcast.adapters.urlopen", lambda *_args, **_kwargs: (_ for _ in ()).throw(URLError("offline"))
+        "app.nowcast.adapters.urlopen",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(URLError("offline")),
     )
     assert open_meteo_worker.run_once(engine, now=NOW, owner_id="a") == {
-        "sites": 1, "stored": 0, "failed": 1, "lease_acquired": 1
+        "sites": 1,
+        "stored": 0,
+        "failed": 1,
+        "lease_acquired": 1,
     }
     with engine.connect() as connection:
         assert connection.execute(text("SELECT count(*) FROM weather_snapshot")).scalar_one() == 0
@@ -126,5 +136,7 @@ def test_request_path_does_not_invoke_open_meteo_collection_worker(monkeypatch):
     # Open-Meteo collection process directly.
     from app.services import sunpath
 
-    monkeypatch.setattr(open_meteo_worker, "run_once", lambda *_args, **_kwargs: pytest.fail("worker invoked"))
+    monkeypatch.setattr(
+        open_meteo_worker, "run_once", lambda *_args, **_kwargs: pytest.fail("worker invoked")
+    )
     assert "app.nowcast.open_meteo_worker" not in inspect.getsource(sunpath)

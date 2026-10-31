@@ -153,7 +153,9 @@ class IrradianceResponse(SunpathModel):
     ml_applied: Literal[False] = False
     ml_reason: Literal["stage2_not_enabled"] = "stage2_not_enabled"
     model_version: None = None
-    prediction_method: Literal["stage1_weather_selection", "deterministic_nowcast", "clear_sky_fallback"] = "stage1_weather_selection"
+    prediction_method: Literal[
+        "stage1_weather_selection", "deterministic_nowcast", "clear_sky_fallback"
+    ] = "stage1_weather_selection"
     nowcast_run_id: str | None = None
     nowcast_horizon_seconds: int | None = Field(default=None, ge=0)
     clear_sky_dni_W_m2: NonnegativeIrradiance | None = None

@@ -44,7 +44,10 @@ def create_sunpath_prediction(
     try:
         scene = Scene.model_validate_json(record.scene_json)
         return predict_scene(
-            scene, request, request_received_at=request_received_at, nowcast_engine=session.get_bind()
+            scene,
+            request,
+            request_received_at=request_received_at,
+            nowcast_engine=session.get_bind(),
         )
     except (SunpathValidationError, ValidationError) as error:
         raise HTTPException(

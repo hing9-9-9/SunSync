@@ -19,8 +19,17 @@ def snapshot(value: float, interval_start: datetime, interval_end: datetime) -> 
         provider="open_meteo",
         product="test",
         payload=f"open-meteo-{value}-{interval_end.isoformat()}".encode(),
-        points=(RawPoint(interval_end, SITE.latitude_deg, SITE.longitude_deg, temporal_meaning="mean",
-                         dni_W_m2=value, interval_start=interval_start, interval_end=interval_end),),
+        points=(
+            RawPoint(
+                interval_end,
+                SITE.latitude_deg,
+                SITE.longitude_deg,
+                temporal_meaning="mean",
+                dni_W_m2=value,
+                interval_start=interval_start,
+                interval_end=interval_end,
+            ),
+        ),
         provenance={"spatial_provenance": "provider_grid"},
     )
 
@@ -38,14 +47,26 @@ def test_fresh_open_meteo_interval_value_creates_traceable_run(tmp_path):
     assert values[0].value == 400
     assert values[0].source == "open_meteo"
     with engine.connect() as connection:
-        assert connection.exec_driver_sql("SELECT status FROM nowcast_run WHERE run_id=?", (run_id,)).scalar_one() == "ready"
-        assert connection.exec_driver_sql("SELECT final_dni_W_m2 FROM nowcast_point WHERE run_id=?", (run_id,)).scalar_one() == 400
+        assert (
+            connection.exec_driver_sql(
+                "SELECT status FROM nowcast_run WHERE run_id=?", (run_id,)
+            ).scalar_one()
+            == "ready"
+        )
+        assert (
+            connection.exec_driver_sql(
+                "SELECT final_dni_W_m2 FROM nowcast_point WHERE run_id=?", (run_id,)
+            ).scalar_one()
+            == 400
+        )
 
 
 def test_stale_or_out_of_interval_snapshot_uses_per_timestamp_clear_sky_fallback(tmp_path):
     engine = create_engine(f"sqlite:///{tmp_path / 'stale.db'}")
     init_db(engine)
-    SnapshotRepository(engine).store(snapshot(500, NOW, NOW + timedelta(hours=1)), NOW - timedelta(hours=3))
+    SnapshotRepository(engine).store(
+        snapshot(500, NOW, NOW + timedelta(hours=1)), NOW - timedelta(hours=3)
+    )
 
     result = select_and_record(engine, SITE, (NOW, NOW + timedelta(hours=2)), NOW)
 
@@ -53,7 +74,11 @@ def test_stale_or_out_of_interval_snapshot_uses_per_timestamp_clear_sky_fallback
     assert [value.source for value in result[1]] == ["pvlib_clear_sky", "pvlib_clear_sky"]
     assert all(value.fallback_used for value in result[1])
     with engine.connect() as connection:
-        reasons = connection.exec_driver_sql(
-            "SELECT fallback_reason FROM nowcast_point ORDER BY valid_time"
-        ).scalars().all()
+        reasons = (
+            connection.exec_driver_sql(
+                "SELECT fallback_reason FROM nowcast_point ORDER BY valid_time"
+            )
+            .scalars()
+            .all()
+        )
     assert reasons == ["open_meteo_out_of_coverage", "open_meteo_out_of_coverage"]
