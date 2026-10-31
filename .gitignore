@@ -9,9 +9,12 @@ venv/
 # DB / secrets
 *.db
 .env
+.env.*
 # Mock-validation output (keep the directory marker only)
 artifacts/mock_validation/*
 !artifacts/mock_validation/.gitkeep
+# Local external-source diagnostic captures are never committed.
+artifacts/local/
 # Node
 node_modules/
 dist/

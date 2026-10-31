@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from math import isfinite
 
 from .geometry import (
     ANGULAR_EPSILON,
@@ -19,6 +20,7 @@ from .models import (
     Blocker,
     CandidatePath,
     Cuboid,
+    ExposureInterval,
     ExposureReason,
     PredictionOptions,
     ProtectedRegion,
@@ -32,6 +34,27 @@ from .models import (
     Window,
 )
 from .solar import calculate_solar_positions, make_prediction_grid
+from .tiling import tile_centres
+
+
+def exposure_intervals(timeline: tuple[RegionTimeResult, ...]) -> tuple[ExposureInterval, ...]:
+    """Merge adjacent exposed grid entries without interpolating their boundaries."""
+    result: list[ExposureInterval] = []
+    start: datetime | None = None
+    previous: datetime | None = None
+    for entry in timeline:
+        if entry.exposed:
+            if start is None:
+                start = entry.timestamp
+            previous = entry.timestamp
+        elif start is not None:
+            assert previous is not None
+            result.append(ExposureInterval(start, previous))
+            start = previous = None
+    if start is not None:
+        assert previous is not None
+        result.append(ExposureInterval(start, previous))
+    return tuple(result)
 
 
 def _blocker(hit: RayHit) -> Blocker:
@@ -55,6 +78,26 @@ def _not_exposed(
     blocker: Blocker | None = None,
 ) -> SampleResult:
     return SampleResult(sample_index, point, False, reason, blocker=blocker)
+
+
+def direct_irradiance_W_m2(
+    sample: SampleResult,
+    receiving_normal: Vector3,
+    sun_direction_enu: Vector3,
+    dni_W_m2: float | None,
+) -> float | None:
+    """Project request-scoped DNI onto a geometrically evaluated sample.
+
+    A geometrically blocked sample is physically zero even when DNI is unknown;
+    a clear path with unknown DNI remains unknown.
+    """
+    if not sample.exposed:
+        return 0.0
+    if dni_W_m2 is None:
+        return None
+    if not isfinite(dni_W_m2) or dni_W_m2 < 0:
+        raise ValueError("dni_W_m2 must be finite and nonnegative")
+    return dni_W_m2 * max(0.0, dot(receiving_normal, sun_direction_enu))
 
 
 def _candidate_windows(
@@ -179,7 +222,8 @@ def predict_region_exposure(
                     windows,
                     occluders,
                 )
-                for sample_index, point in enumerate(region.sample_points_m)
+                for tile in tile_centres(region)
+                for sample_index, point in ((tile.sample_index, tile.point_m),)
             ),
         )
     )
@@ -189,6 +233,7 @@ def predict_region_exposure(
         first_predicted_exposure_time=first,
         exposed_at_start=bool(timeline and timeline[0].exposed),
         timeline=timeline,
+        exposure_intervals=exposure_intervals(timeline),
     )
 
 

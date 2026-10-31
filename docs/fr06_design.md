@@ -26,7 +26,7 @@ ArUco 검출, UI 화면 개발은 각 담당 모듈의 후속 작업이다.
 | Room | 바닥 다각형 `floor_vertices_m`, 양의 `height_m`, 선택적 층수 `floor_level` (-100~1000), 이름, 출처 |
 | Window | 벽 위 직사각형 네 점, `inward_normal`, `u_axis`, `v_axis`, 실외 방위각, 광학 프로파일, 필름 격자 `film_rows`/`film_cols` (기본 10×10) |
 | Occluder | 직육면체 바닥 중심, `[가로, 깊이, 높이]`, 동쪽 기준 반시계방향 yaw, 가구 종류 `type` (`bookshelf`/`desk`/`chair`/`other`, 기본 `other`) |
-| ProtectedRegion | 평면 다각형, `receiving_normal`, A–D 등급, 면 위 평가점, 선택적 host 가림물 |
+| ProtectedRegion | 평면 직사각형 네 점, `receiving_normal`, A–D 등급, 면 위 평가점, 선택적 host 가림물 |
 | Marker | 마커 종류·사전·ID, 한 변 길이, 평면 `plane` (`floor` 또는 `window`), ENU 4×4 강체 변환 행렬, 창 마커 격자 배치 (`window_id`, `start_row`, `start_col`, `marker_rows`, `marker_cols`) |
 | Observation | 수동 또는 `aruco_planar`, 시각, 확인 상태, 불확실성, 취득 내용 |
 
@@ -36,8 +36,8 @@ ArUco 검출, UI 화면 개발은 각 담당 모듈의 후속 작업이다.
 - `Occluder`: 가구 종류 `type` (`bookshelf`, `desk`, `chair`, `other`, 기본값 `other`). 기하 형상 `kind: cuboid`와 구분하여 용도와 의미론적 특성을 보존한다.
 - `Marker`: 평면 `plane` (`"floor"` 또는 `"window"`). 창 마커의 경우 `window_id`, `start_row`, `start_col` (기본 `(2, 2)`), `marker_rows=6`, `marker_cols=6` (ArUco 4×4 테두리 포함 6×6칸 = 0.6m)를 지정하며, 마커가 창 범위를 벗어나지 않도록 검증한다.
 - 창 방위각은 **실외 법선** 기준 진북 0°, 시계방향이며 가림물 yaw와 다르다.
-- 다각형은 첫 점을 끝에 반복하지 않는다. 정점 순서는 해당 법선을 향해 오른손 법칙을 따른다.
-- 단순 평면 다각형, 유한수, 법선, 직사각 창, 방 안의 형상, 가림물의 실제 면,
+- Room 바닥은 첫 점을 끝에 반복하지 않는다. 정점 순서는 해당 법선을 향해 오른손 법칙을 따른다.
+- Room 바닥의 단순 평면 형상, 보호영역의 직사각형 형상, 유한수, 법선, 직사각 창, 방 안의 형상, 가림물의 실제 면,
   평가점 포함, 중복 ID와 누락 참조를 검증한다.
 - `quality.observation_ids`로 형상과 관측을 연결한다. 미측정 불확실성은 `null`이며 0이 아니다.
 - `confirmed`는 입력 검수 기록이다. 합성 예제의 `confirmed=true`는 현장 측정을 의미하지 않는다.
@@ -132,7 +132,7 @@ PYTHONPATH=backend python -m app.scene_cli schema
 pytest -q
 ```
 
-[JSON Schema](fr06_scene.schema.json)는 Pydantic 모델에서 생성한다. CI는 체크인된
+[JSON Schema](fr06_scene_schema.json)는 Pydantic 모델에서 생성한다. CI는 체크인된
 파일과 모델의 일치를 검증한다. JSON Schema는 형식/범위를, 서버와 CLI는 추가로
 기하학·관측·객체 간 관계를 검사한다. UI의 JSON Schema 검증만으로 저장 승인을
 판단하지 말고 서버의 422 오류 위치와 설명을 표시한다.

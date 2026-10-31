@@ -621,7 +621,8 @@
             ],
             "type": "array"
           },
-          "minItems": 3,
+          "maxItems": 4,
+          "minItems": 4,
           "title": "Vertices M",
           "type": "array"
         },
@@ -640,27 +641,6 @@
             }
           ],
           "title": "Receiving Normal",
-          "type": "array"
-        },
-        "sample_points_m": {
-          "items": {
-            "maxItems": 3,
-            "minItems": 3,
-            "prefixItems": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "number"
-              },
-              {
-                "type": "number"
-              }
-            ],
-            "type": "array"
-          },
-          "minItems": 1,
-          "title": "Sample Points M",
           "type": "array"
         },
         "grade": {
@@ -688,7 +668,6 @@
         "name",
         "vertices_m",
         "receiving_normal",
-        "sample_points_m",
         "grade",
         "policy_id",
         "quality"

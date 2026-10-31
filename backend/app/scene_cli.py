@@ -8,7 +8,7 @@ from pydantic import ValidationError
 
 from app.schemas.scene import Scene
 
-SCHEMA_PATH = Path(__file__).resolve().parents[2] / "docs" / "fr06_scene.schema.json"
+SCHEMA_PATH = Path(__file__).resolve().parents[2] / "docs" / "fr06_scene_schema.json"
 
 
 def schema_document() -> dict:
@@ -20,7 +20,7 @@ def main() -> int:
     commands = parser.add_subparsers(dest="command", required=True)
     validate = commands.add_parser("validate", help="Check structure, geometry and references")
     validate.add_argument("file", type=Path)
-    schema = commands.add_parser("schema", help="Write docs/fr06_scene.schema.json")
+    schema = commands.add_parser("schema", help="Write docs/fr06_scene_schema.json")
     schema.add_argument(
         "--check", action="store_true", help="Fail if the checked-in schema differs"
     )

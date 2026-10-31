@@ -9,7 +9,7 @@
   "expected": {
     "timestamp_count": 13,
     "interval_seconds": 600,
-    "sample_count": 3,
+    "sample_count": 360,
     "window_id": "mock_window_south",
     "first_predicted_exposure_time": "2026-10-17T01:30:00+00:00",
     "requires_exposure_count_change": true

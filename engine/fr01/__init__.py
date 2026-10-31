@@ -21,16 +21,19 @@ from .solar import (
     make_prediction_grid,
     sun_direction_enu,
 )
+from .tiling import TILE_SIZE_M, TileCentre, tile_centres
 
 __all__ = [
     "DEFAULT_DURATION_MINUTES",
     "DEFAULT_INTERVAL_SECONDS",
+    "TILE_SIZE_M",
     "Cuboid",
     "PredictionOptions",
     "ProtectedRegion",
     "Room",
     "Site",
     "SolarPosition",
+    "TileCentre",
     "Window",
     "calculate_solar_positions",
     "evaluate_sample",
@@ -38,4 +41,5 @@ __all__ = [
     "predict_future_exposure",
     "predict_region_exposure",
     "sun_direction_enu",
+    "tile_centres",
 ]
