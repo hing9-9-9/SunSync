@@ -24,7 +24,6 @@ from app.schemas.geometry import (
     in_room,
     polygon,
     require,
-    sample_on_surface,
     subtract,
     unit,
 )
