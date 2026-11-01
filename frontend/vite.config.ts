@@ -49,6 +49,6 @@ self.addEventListener('fetch', event => {
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), offlineShell()],
-  server: { proxy: { "/api": "http://127.0.0.1:8000" } },
-  preview: { proxy: { "/api": "http://127.0.0.1:8000" } },
+  server: { proxy: { "/api": process.env.SUNSYNC_API_TARGET || "http://127.0.0.1:8000" } },
+  preview: { proxy: { "/api": process.env.SUNSYNC_API_TARGET || "http://127.0.0.1:8000" } },
 });

@@ -177,10 +177,15 @@ export const completeHandoff = (token: string, space: Space) =>
 
 export const listMeasurements = (signal?: AbortSignal) => request<HandoffSession[]>("/api/ui/measurements", {signal});
 
-type SunpathTimeline = { timestamp: string; status: "exposed" | "not_exposed" };
+type SunpathTimeline = {
+  timestamp: string; status: "exposed" | "not_exposed";
+  samples?: { direct_irradiance_W_m2: number | null }[];
+};
 export type SunpathPrediction = {
   scene_revision: number;
   start_time: string;
+  interval_seconds?: number;
+  irradiance?: { timestamp: string; source: string; final_dni_W_m2: number | null; fetched_at?: string | null; fallback_used: boolean }[];
   regions: { region_id: string; timeline: SunpathTimeline[] }[];
 };
 /** FR-01: direct-sun exposure of every protected region over one day, from the saved Scene. */
@@ -192,7 +197,7 @@ export function predictSunpath(sceneId: string, revision: number, startTime: str
       body: JSON.stringify({
         start_time: startTime,
         duration_minutes: 1440,
-        interval_seconds: 300,
+        interval_seconds: 1800,
         expected_scene_revision: revision,
       }),
     },

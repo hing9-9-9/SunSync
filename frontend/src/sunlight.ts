@@ -126,6 +126,8 @@ export function predictionDay(timeZone: string, now = new Date()) {
 // FR-01 output in the shape the preview already uses. Regions come back in the saved space's
 // order; each run of exposed samples becomes a period that starts ADVANCE_MINUTES early.
 export function scheduleFromPrediction(space: Space, prediction: SunpathPrediction): BlockingSchedule {
+  if (space.serverRevision && prediction.scene_revision !== space.serverRevision)
+    throw new Error("prediction revision does not match the saved space");
   if (prediction.regions.length !== space.regions.length)
     throw new Error("prediction regions do not match the saved space");
   const start = Date.parse(prediction.start_time);

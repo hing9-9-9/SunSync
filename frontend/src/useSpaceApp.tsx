@@ -1,3 +1,4 @@
+import PredictionSummary from "./PredictionSummary";
 import { createHandoff, connectHandoff, completeHandoff, listMeasurements, predictSunpath } from "./spaceApi";
 import type { HandoffSession, SunpathPrediction } from "./spaceApi";
 import { blockingSchedule, predictionDay, scheduleFromPrediction } from "./sunlight";
@@ -70,7 +71,7 @@ export const titles: Record<Page, string> = {
 
 // Off until real building data is connected: the status screen shows the simplified simulation.
 // Turning it on shows FR-01 sun times with loading, error and retry states.
-const USE_FR01 = false;
+const USE_FR01 = true;
 
 // State, persistence and server sync shared by the web (App) and mobile (MobileApp) shells.
 export function useSpaceApp() {
@@ -357,9 +358,13 @@ export function useSpaceApp() {
   // happens inside the time range the user sets.
   // FR-01: the saved space's real sun times for today. Results are keyed by scene revision, so a
   // result for an older save is never shown after the space changes.
+  const [predictionNow] = useState(() => new Date());
+  const [selectedPredictionDate, setSelectedPredictionDate] = useState("");
+  const predictionDate = selectedPredictionDate || (active?.site ? new Intl.DateTimeFormat("en-CA", { timeZone: active.site.timezone }).format(predictionNow) : "");
+  const windowReady = !!active?.windowDimensions && active.windowDimensions.wall != null && active.windowDimensions.offset != null && active.windowDimensions.sill != null;
   const predictionKey =
-    USE_FR01 && page === "detail" && !editorExample && active?.serverSceneId && active.serverRevision && active.site && active.regions.length
-      ? `${active.serverSceneId}:${active.serverRevision}`
+    USE_FR01 && page === "detail" && !editorExample && active?.serverSceneId && active.serverRevision && active.site && active.site.northConfirmed && windowReady && active.regions.length
+      ? `${active.serverSceneId}:${active.serverRevision}:${predictionDate}`
       : null;
   const [prediction, setPrediction] = useState<{ key: string; result?: SunpathPrediction; error?: string } | null>(null);
   const [predictionRun, setPredictionRun] = useState(0);
@@ -367,14 +372,14 @@ export function useSpaceApp() {
   useEffect(() => {
     if (!predictionKey || !sceneId || !sceneRevision || !timeZone) return;
     let stopped = false;
-    predictSunpath(sceneId, sceneRevision, predictionDay(timeZone).start).then(
+    predictSunpath(sceneId, sceneRevision, predictionDay(timeZone, new Date(`${predictionDate}T12:00:00Z`)).start).then(
       (result) => !stopped && setPrediction({ key: predictionKey, result }),
       (error) => !stopped && setPrediction({ key: predictionKey, error: userMessage(error, "햇빛 예측을 불러오지 못했습니다. 다시 계산해 주세요.") }),
     );
     return () => {
       stopped = true;
     };
-  }, [predictionKey, predictionRun, sceneId, sceneRevision, timeZone]);
+  }, [predictionKey, predictionRun, sceneId, sceneRevision, timeZone, predictionDate]);
   const currentPrediction = prediction?.key === predictionKey ? prediction : null;
   let predicted: BlockingSchedule | undefined, predictionError = currentPrediction?.error;
   if (currentPrediction?.result && active) {
@@ -390,17 +395,19 @@ export function useSpaceApp() {
   };
   const sunSource = predictionKey && active?.site
     ? {
-        label: `햇빛 닿는 시간(FR-01 · ${predictionDay(active.site.timezone).label})`,
-        note: predictionError ? (
+        label: `햇빛 닿는 시간(FR-01 · ${predictionDate})`,
+        note: <>
+          <PredictionSummary result={!predictionError ? currentPrediction?.result : undefined} space={active} date={predictionDate} onDate={setSelectedPredictionDate} onRetry={retryPrediction} />
+          {predictionError ? (
           <p className="error" role="alert">
             {predictionError}{" "}
             <button type="button" className="text-button" onClick={retryPrediction}>다시 계산</button>
           </p>
         ) : !predicted ? (
-          <p className="muted small" role="status">FR-01로 오늘 햇빛을 계산하는 중…</p>
-        ) : null,
+          <p className="muted small" role="status">선택한 날짜의 햇빛을 계산하는 중…</p>
+        ) : null}</>,
       }
-    : undefined;
+    : active && !editorExample ? { label: "예측 준비 필요", note: <p className="muted small">실제 예측에는 서버 저장, 보호영역, 창문 위치 및 진북 확인이 필요합니다. 공간 정보를 확인하고 다시 저장해 주세요. 현재 화면은 시뮬레이션입니다.</p> } : undefined;
   const predictionPill = !predictionKey ? "시뮬레이션" : predictionError ? "예측 실패" : predicted ? "FR-01 예측" : "계산 중";
   const sunSchedule = useMemo(
     () =>
@@ -1105,6 +1112,13 @@ export function useSpaceApp() {
       }
       tool={tool}
       hour={hour}
+      showDemoSun={!predictionKey}
+      exposedRegionIds={predictionKey && !predictionError && currentPrediction?.result
+        ? currentPrediction.result.regions.flatMap((region, index) => {
+            const target = Date.parse(currentPrediction.result!.start_time) + hour * 3600000;
+            const sample = region.timeline.filter(t => Date.parse(t.timestamp) <= target).at(-1);
+            return sample?.status === "exposed" && active?.regions[index] ? [active.regions[index].id] : [];
+          }) : []}
     />
   );
   const navItems: {

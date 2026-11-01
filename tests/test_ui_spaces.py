@@ -334,3 +334,65 @@ def test_delete_removes_space_and_blocks_reupload(client, payload):
     # A copy left on another device must not come back.
     assert client.post("/api/ui/spaces", json=payload).status_code == 409
     assert client.delete("/api/ui/spaces/test-space").status_code == 204
+
+
+@pytest.mark.parametrize(
+    "wall,normal,azimuth",
+    [
+        ("south", [0, 1, 0], 180),
+        ("north", [0, -1, 0], 0),
+        ("east", [-1, 0, 0], 90),
+        ("west", [1, 0, 0], 270),
+    ],
+)
+def test_positioned_window_is_shared_with_fr01(client, payload, wall, normal, azimuth):
+    payload["windowDimensions"] = {
+        "width": 2,
+        "height": 1.5,
+        "wall": wall,
+        "offset": 1,
+        "sill": 0.5,
+    }
+    payload["furniture"][0]["type"] = "bookcase"
+    saved = client.post("/api/ui/spaces", json=payload)
+    assert saved.status_code == 201, saved.text
+    scene = client.get(f"/api/scenes/{saved.json()['serverSceneId']}").json()
+    window = scene["windows"][0]
+    assert window["inward_normal"] == normal
+    assert window["azimuth_deg_true"] == azimuth
+    assert (window["film_rows"], window["film_cols"]) == (15, 20)
+    assert scene["room"]["floor_level"] == 2
+    assert scene["occluders"][0]["type"] == "bookshelf"
+    assert "sample_points_m" not in scene["protected_regions"][0]
+
+
+def test_ui_save_predict_edit_and_stale_prediction(client, payload):
+    payload["site"]["northConfirmed"] = True
+    payload["windowDimensions"] = {
+        "width": 4,
+        "height": 2.5,
+        "wall": "south",
+        "offset": 1,
+        "sill": 0,
+    }
+    created = client.post("/api/ui/spaces", json=payload)
+    assert created.status_code == 201, created.text
+    saved = created.json()
+    url = f"/api/scenes/{saved['serverSceneId']}/sunpath-predictions"
+    request = {
+        "start_time": "2026-11-01T10:00:00+09:00",
+        "duration_minutes": 120,
+        "interval_seconds": 1800,
+        "expected_scene_revision": 1,
+    }
+    result = client.post(url, json=request)
+    assert result.status_code == 200, result.text
+    prediction = result.json()
+    assert any(t["status"] == "exposed" for t in prediction["regions"][0]["timeline"])
+    assert len(prediction["irradiance"]) == len(prediction["timestamps"])
+    saved["name"] = "수정한 서재"
+    updated = client.put("/api/ui/spaces/test-space", json=saved)
+    assert updated.status_code == 200, updated.text
+    assert client.post(url, json=request).status_code == 409
+    request["expected_scene_revision"] = 2
+    assert client.post(url, json=request).status_code == 200

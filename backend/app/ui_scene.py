@@ -1,5 +1,7 @@
 """UI projection and its conversion into the unchanged FR06 Scene contract."""
 
+import math
+import re
 from datetime import UTC, datetime
 from hashlib import sha256
 from typing import Annotated, Literal, Self
@@ -237,7 +239,6 @@ def to_scene(space: UISpace, revision: int, created_at: str | None = None) -> Sc
     protected = []
     for region in space.regions:
         vertices, normal = region_surface(space, region)
-        center = [sum(point[axis] for point in vertices) / 4 for axis in range(3)]
         protected.append(
             {
                 "region_id": canonical_id("region", region.id),
@@ -248,7 +249,6 @@ def to_scene(space: UISpace, revision: int, created_at: str | None = None) -> Sc
                 else None,
                 "vertices_m": vertices,
                 "receiving_normal": normal,
-                "sample_points_m": [*vertices, center],
                 "grade": region.grade,
                 "policy_id": policy_id,
                 "quality": quality,
@@ -295,6 +295,56 @@ def to_scene(space: UISpace, revision: int, created_at: str | None = None) -> Sc
             },
         }
     )
+    windows = []
+    optical_profiles = []
+    w = space.windowDimensions
+    # Only explicitly positioned windows become calculation geometry. Legacy decorative
+    # windows must be reviewed and saved with their wall/offset/sill first.
+    if w and w.wall is not None and w.offset is not None and w.sill is not None:
+        o, z, width, height = w.offset, w.sill, w.width, w.height
+        frames = {
+            "south": ([o + width, 0, z], [-1, 0, 0], [0, 1, 0], 180),
+            "north": ([o, space.depth, z], [1, 0, 0], [0, -1, 0], 0),
+            "east": ([space.width, space.depth - o, z], [0, -1, 0], [-1, 0, 0], 90),
+            "west": ([0, space.depth - o - width, z], [0, 1, 0], [1, 0, 0], 270),
+        }
+        origin, u, normal, azimuth = frames[w.wall]
+        vertices = [
+            [origin[i] + u[i] * du + (dz if i == 2 else 0) for i in range(3)]
+            for du, dz in [(0, 0), (width, 0), (width, height), (0, height)]
+        ]
+        optics_id = canonical_id("optics", space.id)
+        windows.append(
+            {
+                "window_id": canonical_id("window", space.id),
+                "room_id": room_id,
+                "vertices_m": vertices,
+                "inward_normal": normal,
+                "u_axis": u,
+                "v_axis": [0, 0, 1],
+                "azimuth_deg_true": azimuth,
+                "optical_profile_id": optics_id,
+                "initial_film_direct_transmittance": 1,
+                "film_rows": max(1, math.floor(height / 0.1 + 0.5)),
+                "film_cols": max(1, math.floor(width / 0.1 + 0.5)),
+                "quality": quality,
+            }
+        )
+        optical_profiles.append(
+            {
+                "optical_profile_id": optics_id,
+                "status": "assumed",
+                "model": "direct_scalar_transmittance",
+                "glazing_direct_transmittance": 1,
+                "film_min_direct_transmittance": 0,
+                "film_max_direct_transmittance": 1,
+                "actual_sgf_properties": None,
+            }
+        )
+    floor_match = re.fullmatch(r"(-?\d+)\s*층?", space.floor)
+    floor_level = int(floor_match[1]) if floor_match else None
+    if floor_level is not None and not -100 <= floor_level <= 1000:
+        floor_level = None
     return Scene.model_validate(
         {
             "schema_version": "0.2.0",
@@ -326,6 +376,7 @@ def to_scene(space: UISpace, revision: int, created_at: str | None = None) -> Sc
                     [0, space.depth, 0],
                 ],
                 "height_m": space.height,
+                "floor_level": floor_level,
                 "quality": quality,
             },
             "occluders": [
@@ -334,6 +385,9 @@ def to_scene(space: UISpace, revision: int, created_at: str | None = None) -> Sc
                     "room_id": room_id,
                     "name": f.name,
                     "kind": "cuboid",
+                    "type": {"bookcase": "bookshelf", "desk": "desk", "table": "desk"}.get(
+                        f.type, "other"
+                    ),
                     "base_center_m": [f.x + f.width / 2, space.depth - f.y - f.depth / 2, 0],
                     "dimensions_m": [f.width, f.depth, f.height],
                     "yaw_deg_ccw_from_east": 0,
@@ -357,8 +411,8 @@ def to_scene(space: UISpace, revision: int, created_at: str | None = None) -> Sc
             ],
             "policy": policy,
             # The UI's decorative window has no measured geometry; never invent a window.
-            "windows": [],
+            "windows": windows,
             "markers": [],
-            "optical_profiles": [],
+            "optical_profiles": optical_profiles,
         }
     )

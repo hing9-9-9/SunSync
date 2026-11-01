@@ -56,3 +56,11 @@ test("prediction request pins the saved revision", async (t) => {
   assert.equal(body.expected_scene_revision, 4);
   assert.equal(body.duration_minutes, 1440);
 });
+
+test("a prediction from before a space edit is rejected", () => {
+  const space = { ...blankSpace(), serverRevision: 2, regions: [region("a")] };
+  assert.throws(() => scheduleFromPrediction(space, {
+    scene_revision: 1, start_time: start,
+    regions: [{ region_id: "x", timeline: [at(600, true)] }],
+  }), /revision/);
+});

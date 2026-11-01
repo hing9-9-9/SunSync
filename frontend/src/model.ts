@@ -94,10 +94,10 @@ export type SavedState = {
 };
 export const STORAGE_KEY = "sunsync-ui-v1";
 export const grades: Record<Grade, string> = {
-  A: "최우선 보호 구역",
-  B: "강한 햇빛 금지 구역",
-  C: "우선순위 낮은 구역",
-  D: "별도의 제약 없음",
+  A: "직사광선 경로 차단",
+  B: "낮은 햇빛 세기 상한",
+  C: "B보다 높은 세기 상한",
+  D: "추가 차광 없이 채광 우선",
 };
 export const furnitureTypes: Record<FurnitureType, string> = {
   bookcase: "책장",

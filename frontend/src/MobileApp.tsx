@@ -1331,7 +1331,7 @@ function MobileApp() {
                     </Card>
                     <Card>
                       <div className="section-row">
-                        <h3>필름 칸 상태</h3>
+                        <h3>필름 차광 시뮬레이션</h3>
                         <strong className="brand-text">
                           {formatMinute(Math.round(hour * 60))}
                         </strong>

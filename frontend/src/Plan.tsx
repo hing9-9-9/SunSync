@@ -17,6 +17,8 @@ type Props = {
   onFurnitureMove?: (furniture: Furniture) => void;
   tool?: "furniture" | "region";
   hour?: number;
+  showDemoSun?: boolean;
+  exposedRegionIds?: string[];
 };
 type Gesture =
   | { kind: "draw" | "move" | "resize"; x: number; y: number; region: Region }
@@ -55,6 +57,8 @@ export default function Plan({
   onFurnitureMove,
   tool = "furniture",
   hour = 14,
+  showDemoSun = true,
+  exposedRegionIds = [],
 }: Props) {
   const svg = useRef<SVGSVGElement>(null);
   const gesture = useRef<Gesture | null>(null);
@@ -241,12 +245,12 @@ export default function Plan({
           strokeWidth="1pt"
           vectorEffect="non-scaling-stroke"
         />
-        <polygon
+        {showDemoSun && <polygon
           points={sunlightPolygon(space, Math.min(Math.max(hour, 6), 17.99)).map(p => `${p.x + left},${p.y + top}`).join(" ")}
           fill="#FFF2D3"
           opacity={duskFade(hour)}
           pointerEvents="none"
-        />
+        />}
         {shownFurniture
           .filter((f) => f.zone === space.zone)
           .map((f, i) => (
@@ -312,7 +316,7 @@ export default function Plan({
                 y={top + r.y}
                 width={r.width}
                 height={r.depth}
-                fill="#8b7ef4"
+                fill={exposedRegionIds.includes(r.id) ? "#e8ad33" : "#8b7ef4"}
                 fillOpacity={r.id === selectedRegion ? ".28" : ".18"}
                 stroke={r.id === selectedRegion ? "#6659d8" : "#9c93e1"}
                 strokeDasharray={r.furnitureId ? ".08 .06" : undefined}
@@ -377,7 +381,7 @@ export default function Plan({
         </span>
         <span>
           <i className="yellow" />
-          예상 햇빛
+          {showDemoSun ? "예상 햇빛(시뮬레이션)" : "예측 시각의 직사광선 노출"}
         </span>
       </div>
     </div>
