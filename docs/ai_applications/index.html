@@ -111,18 +111,20 @@
   </style>
 </head>
 <body>
-<h1 id="ite-351-ai-applications-project-proposal-blog">ITE 351: AI &amp;
-Applications — Project Proposal Blog</h1>
+<h1
+id="sunsync-ai-machine-learning-driven-solar-nowcasting-and-computer-vision-for-proactive-smart-film-shading-control">SunSync-AI:
+Machine Learning-Driven Solar Nowcasting and Computer Vision for
+Proactive Smart Film Shading Control</h1>
 <blockquote>
-<p><strong>Course:</strong> ITE 351: AI &amp; Applications<br />
-<strong>Topic Track:</strong> Option B: Prototype Service using AIML
-Techniques (AIML + LG Appliance Ecosystem)<br />
-<strong>Project Repository:</strong> <a
+<p><strong>Project:</strong> SunSync-AI (AI &amp; Applications)<br />
+<strong>Track:</strong> Prototype Service with AIML Integration &amp;
+Smart Appliance Ecosystem<br />
+<strong>Repository:</strong> <a
 href="https://github.com/hing9-9-9/SunSync">https://github.com/hing9-9-9/SunSync</a><br />
 <strong>Date:</strong> November 2026</p>
 </blockquote>
 <hr />
-<h2 id="task-1-report-group-members">Task 1: Report Group Members</h2>
+<h2 id="project-team-members">Project Team &amp; Members</h2>
 <ul>
 <li><strong>Jiyeon Kim</strong>, Dept. of Information Systems, Hanyang
 University, kjy8402@hanyang.ac.kr</li>
@@ -136,35 +138,32 @@ Hanyang University, hgchung04@gmail.com</li>
 University, msha9865@hanyang.ac.kr</li>
 </ul>
 <hr />
-<h2 id="task-3-research-idea-200-words">Task 3: Research Idea (&lt; 200
-words)</h2>
-<h3 id="title">Title</h3>
-<p><strong>SunSync-AI: Machine Learning-Driven Solar Nowcasting and
-Computer Vision for Proactive Smart Film Shading Control</strong></p>
-<h3 id="proposal">Proposal</h3>
+<h2 id="research-proposal">Research Proposal</h2>
+<h3 id="motivation-core-concept">Motivation &amp; Core Concept</h3>
 <p>Libraries, museums, and smart homes with large windows face a
 recurring trade-off between preserving light-sensitive items from
 irreversible photodegradation and maintaining natural daylight. Existing
 motorized blinds and dynamic glass react only after glare occurs or
 darken entire panes without knowing where sensitive objects are located.
 Inspired by LG Chem’s switchable glazing film and LG ThinQ ON smart-home
-ecosystem (Option B), we propose <strong>SunSync-AI</strong>, an
-intelligent service that proactively switches only the specific <span
+ecosystem, we propose <strong>SunSync-AI</strong>, an intelligent
+service that proactively switches only the specific <span
 class="math inline">\(10 \times 10\)</span> window film cells whose
-sunlight rays would reach protected targets. To advance our software
-engineering prototype into an AI-driven system, we investigate three
-AIML applications: (1) <strong>Sub-Hourly Solar Irradiance
-Nowcasting</strong>, training regression and sequential models
-(Scikit-learn, LightGBM, PyTorch LSTM) on Open-Meteo and solar radiation
-datasets to predict short-term Direct Normal Irradiance (DNI) and
-cloud-induced fluctuations; (2) <strong>Vision-Based 3D Indoor
-Sensing</strong>, combining marker-based camera pose estimation with
-deep object detection and monocular depth estimation (YOLO, Depth
-Anything) to automatically classify and measure indoor furniture from
-smartphone photos; and (3) <strong>Uncertainty-Aware Switching
-Optimization</strong>, learning adaptive hysteresis thresholds from
-forecast residuals to eliminate film flickering while maximizing
-daylight. <em>(185 words including title)</em></p>
+sunlight rays would reach protected targets.</p>
+<h3 id="key-aiml-research-areas">Key AIML Research Areas</h3>
+<p>To advance our software engineering prototype into an AI-driven
+system, we investigate three core AIML applications: 1.
+<strong>Sub-Hourly Solar Irradiance Nowcasting</strong>: Training
+regression and sequential models (Scikit-learn, LightGBM, PyTorch LSTM)
+on Open-Meteo and solar radiation datasets to predict short-term Direct
+Normal Irradiance (DNI) and cloud-induced fluctuations. 2.
+<strong>Vision-Based 3D Indoor Sensing</strong>: Combining marker-based
+camera pose estimation with deep object detection and monocular depth
+estimation (YOLO, Depth Anything) to automatically classify and measure
+indoor furniture from smartphone photos. 3. <strong>Uncertainty-Aware
+Switching Optimization</strong>: Learning adaptive hysteresis thresholds
+from forecast residuals to eliminate film flickering while maximizing
+daylight.</p>
 <hr />
 <h2 id="technical-architecture-development-steps">Technical Architecture
 &amp; Development Steps</h2>
@@ -201,9 +200,8 @@ computer vision pipelines across three key development steps:</p>
 +-----------------------------------------------------------------------------------+</code></pre>
 <hr />
 <h3
-id="step-1-solar-irradiance-data-analysis-sub-hourly-nowcasting-option-a-step">Step
-1: Solar Irradiance Data Analysis &amp; Sub-Hourly Nowcasting (Option A
-Step)</h3>
+id="step-1-solar-irradiance-data-analysis-sub-hourly-nowcasting">Step 1:
+Solar Irradiance Data Analysis &amp; Sub-Hourly Nowcasting</h3>
 <ul>
 <li><strong>Dataset Investigation:</strong> We investigate solar
 irradiance records from Open-Meteo Forecast/Historical APIs alongside
@@ -246,9 +244,8 @@ bounding boxes with minimal user movement.</li>
 </ul>
 <hr />
 <h3
-id="step-3-prototype-service-integration-with-smart-home-ecosystem-option-b">Step
-3: Prototype Service Integration with Smart Home Ecosystem (Option
-B)</h3>
+id="step-3-prototype-service-integration-with-smart-home-ecosystem">Step
+3: Prototype Service Integration with Smart Home Ecosystem</h3>
 <ul>
 <li><strong>Adaptive Control Engine:</strong> Instead of fixed
 rule-based thresholds, the control engine balances three competing
