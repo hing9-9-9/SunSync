@@ -11,12 +11,14 @@ from .cell_mapping import (
     cells_for_hit,
     map_tiles_to_cells,
 )
+from .grade_a import build_grade_a_plan
 
 __all__ = [
     "CellCandidate",
     "CellCause",
     "ExposedTile",
     "FilmWindow",
+    "build_grade_a_plan",
     "cells_for_hit",
     "map_tiles_to_cells",
 ]

@@ -69,7 +69,18 @@ Unknown fields (`extra="forbid"`), values of the wrong type or a time without an
 5. a segment outside the period of the plan,
 6. an `opaque`, `infeasible` or `unknown` segment without a reason.
 
+## How grade A builds the segments
+
+FR-01 looks at fixed time steps. When a cell is needed by a grade A area at step `t`, the cell is shaded
+from `t - interval` to `t + interval`, cut at the period of the plan. The exposure may have started or
+ended anywhere between the neighbouring steps, so this covers it. Steps that follow each other become one
+segment, and the segment is split where the set of reasons changes. The intensity is never used.
+
+## Known limits
+
+- An exposure that starts and ends between two steps is not seen. A smaller interval reduces this.
+- A tile that FR-01 cannot decide (the crossing lies exactly on a window edge or a wall corner, reason `boundary_ambiguous`) has no crossing point and is skipped.
+
 ## Open points
 
-- How a prediction sampled at fixed time steps becomes segments (for example, whether an exposure at one step lasts until the next step) is decided in the grade A and grade B/C decision work of FR-02, not by this format.
 - How FR-04 and FR-05 treat `infeasible` and `unknown` cells is still to be agreed with them.

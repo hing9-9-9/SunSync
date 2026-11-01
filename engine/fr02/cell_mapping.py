@@ -56,12 +56,14 @@ class ExposedTile:
     sample_index: int
     window_id: str
     window_hit_m: Vector3
+    direct_irradiance_W_m2: float | None = None
 
 
 @dataclass(frozen=True, slots=True)
 class CellCause:
     region_id: str
     sample_index: int
+    direct_irradiance_W_m2: float | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -129,7 +131,9 @@ def map_tiles_to_cells(
             raise ValueError(f"tile refers to an unknown window: {tile.window_id}")
         for row, col in cells_for_hit(window, tile.window_hit_m):
             key = (tile.timestamp, tile.window_id, row, col)
-            causes[key].append(CellCause(tile.region_id, tile.sample_index))
+            causes[key].append(
+                CellCause(tile.region_id, tile.sample_index, tile.direct_irradiance_W_m2)
+            )
     return [
         CellCandidate(timestamp, window_id, row, col, tuple(found))
         for (timestamp, window_id, row, col), found in sorted(causes.items())
