@@ -1,0 +1,46 @@
+{
+  "plan_version": "0.1.0",
+  "scene_id": "scene_demo_001",
+  "scene_revision": 2,
+  "start_time": "2026-10-31T01:00:00Z",
+  "end_time": "2026-10-31T03:00:00Z",
+  "windows": [
+    {
+      "window_id": "window_001",
+      "film_rows": 15,
+      "film_cols": 30,
+      "cells": [
+        {
+          "row": 3,
+          "col": 3,
+          "segments": [
+            {
+              "start_time": "2026-10-31T01:00:00Z",
+              "end_time": "2026-10-31T01:25:00Z",
+              "state": "opaque",
+              "reasons": [{"region_id": "region_A", "grade": "A"}]
+            },
+            {
+              "start_time": "2026-10-31T02:00:00Z",
+              "end_time": "2026-10-31T02:20:00Z",
+              "state": "opaque",
+              "reasons": [{"region_id": "region_A", "grade": "A"}]
+            }
+          ]
+        },
+        {
+          "row": 3,
+          "col": 4,
+          "segments": [
+            {
+              "start_time": "2026-10-31T01:00:00Z",
+              "end_time": "2026-10-31T01:25:00Z",
+              "state": "opaque",
+              "reasons": [{"region_id": "region_A", "grade": "A"}]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
