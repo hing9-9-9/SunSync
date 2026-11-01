@@ -15,7 +15,7 @@
     "status": "exposed",
     "reason": "clear_path",
     "window_id": "mock_window_south",
-    "window_hit_m": [4.92621, 0.0, 1.93863],
+    "window_hit_m": [4.85121, 0.0, 1.86364],
     "first_predicted_exposure_time": "2026-10-17T03:30:00+00:00"
   }
 }

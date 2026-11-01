@@ -15,7 +15,7 @@
     "status": "not_exposed",
     "reason": "occluder_blocked",
     "blocker_id": "mock_occluder_blocker",
-    "blocker_hit_m": [4.97786, 0.7, 1.28179],
-    "first_predicted_exposure_time": null
+    "blocker_hit_m": [4.90286, 0.7, 1.20659],
+    "first_predicted_exposure_time": "2026-10-17T03:30:00+00:00"
   }
 }

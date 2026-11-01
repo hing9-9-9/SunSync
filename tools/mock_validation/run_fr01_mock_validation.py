@@ -13,6 +13,7 @@ from itertools import pairwise
 from math import cos, radians, sin
 from pathlib import Path
 from typing import Any
+from unittest.mock import patch
 from zoneinfo import ZoneInfo
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -23,6 +24,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from app.main import create_app
+from app.services import sunpath as sunpath_service
 from fastapi.testclient import TestClient
 from sqlmodel import create_engine
 
@@ -43,6 +45,14 @@ class ScenarioResult:
 
 class NumericalValidationError(AssertionError):
     """The API worked, but an independent numerical oracle did not match."""
+
+
+def _offline_open_meteo_snapshot(
+    *_args: object, **_kwargs: object
+) -> dict[datetime, tuple[float | None, datetime, datetime]]:
+    """Keep geometric regression fixtures deterministic and network-free."""
+
+    raise sunpath_service.OpenMeteoError("open_meteo_transport_error")
 
 
 def _quality() -> dict[str, Any]:
@@ -143,7 +153,6 @@ def build_scene(spec: dict[str, Any]) -> dict[str, Any]:
                 "host_occluder_id": None,
                 "vertices_m": [[4.9, 1, 0.9], [5.1, 1, 0.9], [5.1, 1, 1.1], [4.9, 1, 1.1]],
                 "receiving_normal": [0, -1, 0],
-                "sample_points_m": [[5, 1, 1]],
                 "grade": "A",
                 "policy_id": "mock_policy",
                 "quality": _quality(),
@@ -195,7 +204,6 @@ def build_scene(spec: dict[str, Any]) -> dict[str, Any]:
                 "host_occluder_id": None,
                 "vertices_m": [[4.8, 1, 0.2], [5.2, 1, 0.2], [5.2, 1, 2.2], [4.8, 1, 2.2]],
                 "receiving_normal": [0, -1, 0],
-                "sample_points_m": [[5, 1, 0.5], [5, 1, 1.4], [5, 1, 2.08]],
                 "grade": "A",
                 "policy_id": "mock_policy",
                 "quality": _quality(),
@@ -265,11 +273,6 @@ def _verbose_scene(scene: dict[str, Any]) -> list[str]:
         lines.extend(
             f"        [{index}] {_format_point(point)}"
             for index, point in enumerate(region["vertices_m"])
-        )
-        lines.append("      sample points:")
-        lines.extend(
-            f"        [{index}] {_format_point(point)}"
-            for index, point in enumerate(region["sample_points_m"])
         )
     for occluder in scene["occluders"]:
         lines.extend(
@@ -609,7 +612,9 @@ def main() -> int:
                 f"sqlite:///{database}", connect_args={"check_same_thread": False}
             )
             try:
-                with TestClient(create_app(engine)) as client:
+                with patch.object(
+                    sunpath_service, "_open_meteo_snapshot", _offline_open_meteo_snapshot
+                ), TestClient(create_app(engine)) as client:
                     for _, spec in specs:
                         scenario_dir = artifact_dir / spec["scenario"]
                         scenario_dir.mkdir()

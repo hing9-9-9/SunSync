@@ -49,7 +49,8 @@
         "obs_manual_room"
       ],
       "confirmed": true
-    }
+    },
+    "floor_level": 1
   },
   "windows": [
     {
@@ -100,7 +101,9 @@
         ],
         "confirmed": true
       },
-      "initial_film_direct_transmittance": 1.0
+      "initial_film_direct_transmittance": 1.0,
+      "film_rows": 10,
+      "film_cols": 10
     }
   ],
   "occluders": [
@@ -109,6 +112,7 @@
       "room_id": "room_001",
       "name": "가상 서가",
       "kind": "cuboid",
+      "type": "bookshelf",
       "base_center_m": [
         3,
         3,
@@ -172,34 +176,7 @@
           "obs_manual_regions"
         ],
         "confirmed": true
-      },
-      "sample_points_m": [
-        [
-          2.1,
-          2.7,
-          0.2
-        ],
-        [
-          3.9,
-          2.7,
-          0.2
-        ],
-        [
-          3.9,
-          2.7,
-          1.6
-        ],
-        [
-          2.1,
-          2.7,
-          1.6
-        ],
-        [
-          3.0,
-          2.7,
-          0.9
-        ]
-      ]
+      }
     },
     {
       "region_id": "region_B",
@@ -240,34 +217,7 @@
           "obs_manual_regions"
         ],
         "confirmed": true
-      },
-      "sample_points_m": [
-        [
-          5,
-          1,
-          0.75
-        ],
-        [
-          6.5,
-          1,
-          0.75
-        ],
-        [
-          6.5,
-          2,
-          0.75
-        ],
-        [
-          5,
-          2,
-          0.75
-        ],
-        [
-          5.75,
-          1.5,
-          0.75
-        ]
-      ]
+      }
     },
     {
       "region_id": "region_C",
@@ -308,34 +258,7 @@
           "obs_aruco_floor"
         ],
         "confirmed": true
-      },
-      "sample_points_m": [
-        [
-          5,
-          4,
-          0
-        ],
-        [
-          7,
-          4,
-          0
-        ],
-        [
-          7,
-          5,
-          0
-        ],
-        [
-          5,
-          5,
-          0
-        ],
-        [
-          6.0,
-          4.5,
-          0.0
-        ]
-      ]
+      }
     },
     {
       "region_id": "region_D",
@@ -376,34 +299,7 @@
           "obs_manual_regions"
         ],
         "confirmed": true
-      },
-      "sample_points_m": [
-        [
-          0.5,
-          4,
-          0
-        ],
-        [
-          2,
-          4,
-          0
-        ],
-        [
-          2,
-          5,
-          0
-        ],
-        [
-          0.5,
-          5,
-          0
-        ],
-        [
-          1.25,
-          4.5,
-          0.0
-        ]
-      ]
+      }
     }
   ],
   "markers": [
@@ -431,7 +327,12 @@
         0,
         0,
         1
-      ]
+      ],
+      "window_id": null,
+      "start_row": null,
+      "start_col": null,
+      "marker_rows": null,
+      "marker_cols": null
     }
   ],
   "observations": [

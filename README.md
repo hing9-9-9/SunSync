@@ -15,8 +15,8 @@ docs/      requirements, architecture, decisions, data contracts, reports
 - [Functional requirements](docs/features.md): FR-01 to FR-06, owners and sub-requirements
 - [Decisions](docs/decisions.md): one line per team decision
 - [Architecture](docs/architecture.md): modules and data flow
-- [FR-06 space data](docs/fr06.md) and [JSON schema](docs/fr06_scene.schema.json)
-- FR-01 sunlight prediction: [API](docs/fr01_api.md), [design](docs/fr01_design.md), [implementation guide](docs/fr01_implementation_guide.md), [mock test plan](docs/fr01_mock_test_plan.md)
+- [FR-06 space data](docs/fr06_design.md) and [JSON schema](docs/fr06_scene_schema.json)
+- FR-01 sunlight prediction: [FR-01.1 pvlib path design](docs/fr01_1_pvlib_design.md), [FR-01.4 Open-Meteo DNI design](docs/fr01_4_open_meteo_dni_design.md), [API](docs/fr01_api.md), [FR-01 → FR-02 tile contract](docs/fr01_fr02_tile_contract.md), [mock test plan](docs/fr01_mock_test_plan.md)
 - Requirement document: `docs/reports/SunSync_Requirements.pdf`
 - Meeting notes: shared Google document (not in the repository)
 
@@ -40,7 +40,7 @@ API docs: http://localhost:8000/docs
 The backend validates and stores versioned Room, Window, cuboid Occluder and
 ProtectedRegion data through `/api/scenes`. Manual input and ArUco floor-point
 exports share the same ENU JSON contract. Start with the
-[FR06 guide](docs/fr06.md), [complete synthetic example](docs/examples/fr06_scene_example.json),
+[FR06 guide](docs/fr06_design.md), [complete synthetic example](docs/examples/fr06_scene_example.json),
 or [room-only example](docs/examples/fr06_manual_room.json).
 
 From the repository root, after activating the venv:
@@ -60,11 +60,12 @@ GitHub Actions runs the backend checks on Python 3.11/3.12 and the frontend chec
 ### FR-01 future sunlight path prediction
 
 FR-01 predicts geometric direct-sun paths from a stored FR-06 Scene through
-`POST /api/scenes/{scene_id}/sunpath-predictions`. It evaluates every selected
-`ProtectedRegion.sample_points_m` at each requested timestamp and returns solar
-positions, sample-level window hits or blockers, exposure counts, and the first
-sampled exposure timestamp. See the [FR-01 MVP guide](docs/fr01_design.md) and
-[API contract](docs/fr01_api.md).
+`POST /api/scenes/{scene_id}/sunpath-predictions`. It deterministically divides
+each selected rectangular `ProtectedRegion` into 5 cm tiles, evaluates every
+tile centre at each requested timestamp, and returns solar positions, tile-level
+window hits or blockers, exposure counts, sampled exposure intervals, and the
+first sampled exposure timestamp. See the [FR-01.1 pvlib path design](docs/fr01_1_pvlib_design.md)
+and [API contract](docs/fr01_api.md).
 
 Run the isolated mock validation from the repository root:
 

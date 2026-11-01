@@ -31,15 +31,17 @@ FR-06 is the shared contract: every other FR reads the space model from it.
 
 ### FR-01 Future Sunlight Path Prediction
 - FR-01.1 Solar position for each time step from the location and a time zone-aware start time
-- FR-01.2 Direct-sun path tracing from sample points on each protected surface toward the sun
+- FR-01.2 Direct-sun path tracing from the centre sample of each 5 cm x 5 cm protected-region tile toward the sun; for a valid path, return `candidate_path.window_id` and `candidate_path.window_hit_m` in ENU, not a film-cell index
 - FR-01.3 Exposure timeline: exposure and reason per time step, first predicted exposure time
-- FR-01.4 Sunlight intensity from clear-sky conditions, replaced by forecasts such as Open-Meteo
+- FR-01.4 Sunlight intensity and future DNI prediction: select DNI from Scene weather, durable Open-Meteo hourly snapshots, or pvlib clear-sky fallback; Open-Meteo is the sole production provider
 
 ### FR-02 Selective Shading Decision
-- FR-02.1 Cell mapping: window crossing point to the film cell that contains it
+- FR-02.1 Cell mapping: convert every exposed 5 cm protected-region tile's FR-01 `candidate_path.window_hit_m` from ENU to the selected window's local coordinates, expand it by 2.5 cm in each local direction, then return every overlapping 10 cm x 10 cm film cell `(window_id, row, col)`. A film cell is a shading candidate when at least one exposed tile maps to it. This is the sole owner of point-to-cell mapping and the input to shading decisions.
 - FR-02.2 Grade-based decision; the stricter grade applies when a cell affects several areas
 - FR-02.3 Advance shading that allows for switching time, processing delay and a safety margin
 - FR-02.4 Shading schedule provided to the mobile and web applications
+
+The exact FR-01 → FR-02.1 tile contract is in [fr01_fr02_tile_contract.md](fr01_fr02_tile_contract.md).
 
 ### FR-03 QR-Based Spatial Measurement
 - FR-03.1 Marker detection and image quality check in each photo
