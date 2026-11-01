@@ -70,3 +70,18 @@ The exact FR-01 → FR-02.1 tile contract is in [fr01_fr02_tile_contract.md](fr0
 - FR-06.4 Validation and versioning (409 on conflicting updates)
 - FR-06.5 Synchronization between the mobile and web applications
 - FR-06.6 Protection grades A to D
+
+## Changes since the requirement document
+
+Numbers and titles are unchanged. The descriptions below differ from `docs/reports/SunSync_Requirements.pdf`
+and are applied to the report at its next revision.
+
+| ID | Requirement document | Current design |
+|---|---|---|
+| FR-01.2 | Trace a ray from sample points on each protected surface | The protected area is divided into 5 cm x 5 cm tiles and a ray is traced from each tile centre; a valid path returns `candidate_path.window_id` and `candidate_path.window_hit_m` |
+| FR-01.4 | Clear-sky intensity, replaced by forecasts such as Open-Meteo when available | Final DNI per timestamp: Scene weather, then a stored Open-Meteo snapshot, then pvlib clear-sky, otherwise unknown; converted to a per-tile surface irradiance |
+| FR-02.1 | Map each window crossing point to the film cell that contains it | The crossing point is expanded by 2.5 cm in each window direction and every overlapping film cell is returned |
+| FR-02.2 | Apply the grade of each area; the stricter grade wins | Adds the grade A rule (shade regardless of intensity), the per-cell maximum irradiance check for grades B and C, and the `infeasible` and `unknown` states |
+| FR-02.4 | Provide the planned cell states over time | The plan is a `ShadingPlan` returned by `POST /api/scenes/{scene_id}/shading-plans` |
+| FR-06.1 | Protected areas with their surfaces, sample points and grades | Protected areas are rectangles of four vertices without stored sample points; adds the film grid (`film_rows`, `film_cols`), the furniture type and an optional floor level |
+| FR-06.2 | Size, position and orientation of the QR marker on the window film | The marker is placed on a fixed block of film cells (start row and column, 6 x 6) and its size follows from the cell size |
