@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>ITE 351: AI & Applications — Project Proposal Blog</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 20mm 18mm 20mm 18mm;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-size: 10.5pt;
+      line-height: 1.55;
+      color: #24292f;
+      background-color: #ffffff;
+      margin: 0 auto;
+      max-width: 820px;
+      padding: 10px 20px;
+    }
+    h1 {
+      font-size: 20pt;
+      font-weight: 700;
+      color: #0969da;
+      border-bottom: 2px solid #eaecef;
+      padding-bottom: 8px;
+      margin-top: 0;
+      margin-bottom: 14px;
+    }
+    h2 {
+      font-size: 14pt;
+      font-weight: 600;
+      color: #1f2328;
+      border-bottom: 1px solid #eaecef;
+      padding-bottom: 5px;
+      margin-top: 24px;
+      margin-bottom: 12px;
+    }
+    h3 {
+      font-size: 11.5pt;
+      font-weight: 600;
+      color: #1f2328;
+      margin-top: 16px;
+      margin-bottom: 8px;
+    }
+    p {
+      margin-top: 0;
+      margin-bottom: 10px;
+      text-align: justify;
+    }
+    blockquote {
+      margin: 12px 0;
+      padding: 8px 16px;
+      color: #57606a;
+      background-color: #f6f8fa;
+      border-left: 4px solid #0969da;
+      border-radius: 0 4px 4px 0;
+    }
+    blockquote p {
+      margin: 4px 0;
+    }
+    ul, ol {
+      margin-top: 0;
+      margin-bottom: 10px;
+      padding-left: 24px;
+    }
+    li {
+      margin-bottom: 4px;
+    }
+    pre {
+      background-color: #f6f8fa;
+      border: 1px solid #d0d7de;
+      border-radius: 6px;
+      padding: 12px;
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+      font-size: 8.5pt;
+      line-height: 1.35;
+      overflow-x: auto;
+      margin-top: 10px;
+      margin-bottom: 14px;
+    }
+    code {
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+      font-size: 9pt;
+      background-color: rgba(175, 184, 193, 0.2);
+      padding: 2px 5px;
+      border-radius: 4px;
+    }
+    pre code {
+      background-color: transparent;
+      padding: 0;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #d0d7de;
+      margin: 20px 0;
+    }
+    a {
+      color: #0969da;
+      text-decoration: none;
+    }
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      font-size: 8pt;
+      font-weight: 600;
+      border-radius: 12px;
+      background-color: #ddf4ff;
+      color: #0969da;
+    }
+  </style>
+</head>
+<body>
+<h1 id="ite-351-ai-applications-project-proposal-blog">ITE 351: AI &amp;
+Applications — Project Proposal Blog</h1>
+<blockquote>
+<p><strong>Course:</strong> ITE 351: AI &amp; Applications<br />
+<strong>Topic Track:</strong> Option B: Prototype Service using AIML
+Techniques (AIML + LG Appliance Ecosystem)<br />
+<strong>Project Repository:</strong> <a
+href="https://github.com/hing9-9-9/SunSync">https://github.com/hing9-9-9/SunSync</a><br />
+<strong>Date:</strong> November 2026</p>
+</blockquote>
+<hr />
+<h2 id="task-1-report-group-members">Task 1: Report Group Members</h2>
+<ul>
+<li><strong>Jiyeon Kim</strong>, Dept. of Information Systems, Hanyang
+University, kjy8402@hanyang.ac.kr</li>
+<li><strong>Daeun Lee</strong>, Dept. of Information Systems, Hanyang
+University, daeun4862@hanyang.ac.kr</li>
+<li><strong>Dain Lee</strong>, Dept. of Information Systems, Hanyang
+University, ldi0308@hanyang.ac.kr</li>
+<li><strong>Heegyeong Chung</strong>, Dept. of Information Systems,
+Hanyang University, hgchung04@gmail.com</li>
+<li><strong>Misong Ha</strong>, Dept. of Information Systems, Hanyang
+University, msha9865@hanyang.ac.kr</li>
+</ul>
+<hr />
+<h2 id="task-3-research-idea-200-words">Task 3: Research Idea (&lt; 200
+words)</h2>
+<h3 id="title">Title</h3>
+<p><strong>SunSync-AI: Machine Learning-Driven Solar Nowcasting and
+Computer Vision for Proactive Smart Film Shading Control</strong></p>
+<h3 id="proposal">Proposal</h3>
+<p>Libraries, museums, and smart homes with large windows face a
+recurring trade-off between preserving light-sensitive items from
+irreversible photodegradation and maintaining natural daylight. Existing
+motorized blinds and dynamic glass react only after glare occurs or
+darken entire panes without knowing where sensitive objects are located.
+Inspired by LG Chem’s switchable glazing film and LG ThinQ ON smart-home
+ecosystem (Option B), we propose <strong>SunSync-AI</strong>, an
+intelligent service that proactively switches only the specific <span
+class="math inline">\(10 \times 10\)</span> window film cells whose
+sunlight rays would reach protected targets. To advance our software
+engineering prototype into an AI-driven system, we investigate three
+AIML applications: (1) <strong>Sub-Hourly Solar Irradiance
+Nowcasting</strong>, training regression and sequential models
+(Scikit-learn, LightGBM, PyTorch LSTM) on Open-Meteo and solar radiation
+datasets to predict short-term Direct Normal Irradiance (DNI) and
+cloud-induced fluctuations; (2) <strong>Vision-Based 3D Indoor
+Sensing</strong>, combining marker-based camera pose estimation with
+deep object detection and monocular depth estimation (YOLO, Depth
+Anything) to automatically classify and measure indoor furniture from
+smartphone photos; and (3) <strong>Uncertainty-Aware Switching
+Optimization</strong>, learning adaptive hysteresis thresholds from
+forecast residuals to eliminate film flickering while maximizing
+daylight. <em>(185 words including title)</em></p>
+<hr />
+<h2 id="technical-architecture-development-steps">Technical Architecture
+&amp; Development Steps</h2>
+<p>While the core <strong>SunSync</strong> project provides
+deterministic 3D geometry and space management,
+<strong>SunSync-AI</strong> introduces empirical machine learning and
+computer vision pipelines across three key development steps:</p>
+<pre class="text"><code>+-----------------------------------------------------------------------------------+
+|                            SunSync-AI Pipeline Flow                               |
++-----------------------------------------------------------------------------------+
+|  1. Vision AI (Mobile / FR-03 &amp; FR-06)                                            |
+|     Smartphone Photo (Window ArUco Marker + Room)                                 |
+|       ==&gt; ArUco solvePnP Metric Pose + YOLOv8 Furniture Detection &amp; Depth Fusion  |
+|       ==&gt; Auto-Classified 3D Bounding Boxes (Bookshelves, Desks, Protected Zones) |
++-----------------------------------------------------------------------------------+
+                                      │
+                                      ▼
++-----------------------------------------------------------------------------------+
+|  2. Solar ML Nowcasting &amp; Data Analysis (Backend / FR-01.4)                       |
+|     Open-Meteo Hourly Forecasts + Historical Solar Radiation Datasets            |
+|       ==&gt; Feature Engineering (Clear-Sky Index, Sun Elevation, Lagged DNI, Clouds)|
+|       ==&gt; ML Nowcaster (Scikit-learn, LightGBM Quantile Regression, PyTorch LSTM)  |
+|       ==&gt; 15-Minute Sub-Hourly DNI Predictions with Uncertainty Bounds (P10 - P90) |
++-----------------------------------------------------------------------------------+
+                                      │
+                                      ▼
++-----------------------------------------------------------------------------------+
+|  3. Uncertainty-Aware Intelligent Shading Control (Engine / FR-02 &amp; FR-04)        |
+|     Deterministic 3D Ray Tracing (Tile Path -&gt; Window Crossing)                   |
+|       + Predicted DNI Quantiles &amp; Exceedance Probability                          |
+|       ==&gt; Multi-Objective Cost Optimization (Preservation vs Daylight vs Flicker)|
+|       ==&gt; Target-Specific 10x10 Film Cell Switching Commands                      |
+|       ==&gt; Integrated with LG Chem Switchable Glazing Film &amp; LG ThinQ ON Ecosystem |
++-----------------------------------------------------------------------------------+</code></pre>
+<hr />
+<h3
+id="step-1-solar-irradiance-data-analysis-sub-hourly-nowcasting-option-a-step">Step
+1: Solar Irradiance Data Analysis &amp; Sub-Hourly Nowcasting (Option A
+Step)</h3>
+<ul>
+<li><strong>Dataset Investigation:</strong> We investigate solar
+irradiance records from Open-Meteo Forecast/Historical APIs alongside
+physical solar radiation datasets (e.g., NSRDB / KMA solar
+records).</li>
+<li><strong>Feature Engineering:</strong> We construct domain-specific
+features, including clear-sky index (<span class="math inline">\(k_t =
+\text{DNI} / \text{DNI}_{\text{clear}}\)</span>), solar elevation and
+azimuth angles, relative humidity, cloud cover stratification (low, mid,
+high), and lagged temporal deltas.</li>
+<li><strong>Model Benchmark:</strong>
+<ol type="1">
+<li><em>Baseline:</em> ElasticNet &amp; Ridge Regression
+(<code>scikit-learn</code>)</li>
+<li><em>Tree Ensembles:</em> LightGBM &amp; XGBoost with Quantile Loss
+to generate probabilistic prediction intervals (<span
+class="math inline">\(\alpha = 0.1, 0.5, 0.9\)</span>)</li>
+<li><em>Deep Sequence Model:</em> 1D-CNN / LSTM (<code>PyTorch</code>)
+for short-term temporal sequence forecasting</li>
+</ol></li>
+</ul>
+<hr />
+<h3
+id="step-2-computer-vision-for-marker-anchored-3d-spatial-sensing">Step
+2: Computer Vision for Marker-Anchored 3D Spatial Sensing</h3>
+<ul>
+<li><strong>Automated Furniture Categorization:</strong> Using transfer
+learning on lightweight object detection models (YOLOv8 nano/small),
+user photos taken from reading rooms are classified into categories
+(<code>bookshelf</code>, <code>desk</code>, <code>chair</code>,
+<code>other</code>) to remove manual tagging overhead.</li>
+<li><strong>Metric Depth &amp; Pose Fusion:</strong> The <span
+class="math inline">\(6 \times 6\)</span> window-film ArUco marker
+provides an exact scale and camera pose matrix (<span
+class="math inline">\(T_{\text{ENU}}^{\text{marker}}\)</span> via OpenCV
+<code>solvePnP</code>). Monocular depth estimation models (Depth
+Anything V2 / MiDaS) predict pixel-level relative depths, which are
+calibrated against the known metric marker dimensions to recover 3D
+bounding boxes with minimal user movement.</li>
+</ul>
+<hr />
+<h3
+id="step-3-prototype-service-integration-with-smart-home-ecosystem-option-b">Step
+3: Prototype Service Integration with Smart Home Ecosystem (Option
+B)</h3>
+<ul>
+<li><strong>Adaptive Control Engine:</strong> Instead of fixed
+rule-based thresholds, the control engine balances three competing
+objectives: minimizing light damage on Grade A/B/C materials, maximizing
+room illuminance, and minimizing film state switching frequency under
+cloud uncertainty.</li>
+<li><strong>LG Smart Appliance Synergy:</strong> Designed to interface
+with <strong>LG Chem Switchable Glazing Film (SGF)</strong> and
+<strong>LG ThinQ ON</strong> AI Home Hub routines via standard protocols
+(Matter / REST APIs), providing an intelligent proactive shading
+appliance for next-generation smart buildings.</li>
+</ul>
+
+</body>
+</html>
