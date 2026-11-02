@@ -1,0 +1,67 @@
+{
+  "plan_version": "0.1.0",
+  "scene_id": "scene_demo_001",
+  "scene_revision": 2,
+  "start_time": "2026-10-31T01:00:00Z",
+  "end_time": "2026-10-31T03:00:00Z",
+  "windows": [
+    {
+      "window_id": "window_001",
+      "film_rows": 15,
+      "film_cols": 30,
+      "cells": [
+        {
+          "row": 5,
+          "col": 7,
+          "segments": [
+            {
+              "start_time": "2026-10-31T01:00:00Z",
+              "end_time": "2026-10-31T01:15:00Z",
+              "state": "opaque",
+              "reasons": [{"region_id": "region_C", "grade": "C"}]
+            },
+            {
+              "start_time": "2026-10-31T01:15:00Z",
+              "end_time": "2026-10-31T01:30:00Z",
+              "state": "unknown",
+              "reasons": [{"region_id": "region_C", "grade": "C"}]
+            },
+            {
+              "start_time": "2026-10-31T01:30:00Z",
+              "end_time": "2026-10-31T01:45:00Z",
+              "state": "transparent",
+              "reasons": []
+            }
+          ]
+        },
+        {
+          "row": 2,
+          "col": 2,
+          "segments": [
+            {
+              "start_time": "2026-10-31T01:00:00Z",
+              "end_time": "2026-10-31T01:20:00Z",
+              "state": "infeasible",
+              "reasons": [{"region_id": "region_B", "grade": "B"}]
+            }
+          ]
+        },
+        {
+          "row": 5,
+          "col": 8,
+          "segments": [
+            {
+              "start_time": "2026-10-31T01:00:00Z",
+              "end_time": "2026-10-31T01:15:00Z",
+              "state": "opaque",
+              "reasons": [
+                {"region_id": "region_A", "grade": "A"},
+                {"region_id": "region_C", "grade": "C"}
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

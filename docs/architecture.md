@@ -12,4 +12,4 @@ Mobile / Web PWA → FastAPI backend → SQLite Scene storage → FR-01 predicti
 - **Shading (FR-02, FR-04, FR-05).** FR-02 maps window crossings to film cells, FR-04 smooths the schedule, and FR-05 applies it to the virtual film.
 - **Frontend.** React + Vite PWA provides a 2D mobile view and a Three.js web view.
 
-Module boundaries and data formats between FR-02, FR-04, and FR-05 remain to be agreed in `decisions.md`.
+The FR-02 output, the `ShadingPlan`, is described in [fr02_schedule.md](fr02_schedule.md) (format), [fr02_design.md](fr02_design.md), [fr02_api.md](fr02_api.md). How FR-04 and FR-05 use it remains to be agreed in `decisions.md`.

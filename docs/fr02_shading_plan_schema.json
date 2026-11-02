@@ -1,0 +1,183 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "CellPlan": {
+      "additionalProperties": false,
+      "properties": {
+        "row": {
+          "minimum": 0,
+          "title": "Row",
+          "type": "integer"
+        },
+        "col": {
+          "minimum": 0,
+          "title": "Col",
+          "type": "integer"
+        },
+        "segments": {
+          "items": {
+            "$ref": "#/$defs/Segment"
+          },
+          "minItems": 1,
+          "title": "Segments",
+          "type": "array"
+        }
+      },
+      "required": [
+        "row",
+        "col",
+        "segments"
+      ],
+      "title": "CellPlan",
+      "type": "object"
+    },
+    "Reason": {
+      "additionalProperties": false,
+      "properties": {
+        "region_id": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_]*$",
+          "title": "Region Id",
+          "type": "string"
+        },
+        "grade": {
+          "enum": [
+            "A",
+            "B",
+            "C",
+            "D"
+          ],
+          "title": "Grade",
+          "type": "string"
+        }
+      },
+      "required": [
+        "region_id",
+        "grade"
+      ],
+      "title": "Reason",
+      "type": "object"
+    },
+    "Segment": {
+      "additionalProperties": false,
+      "properties": {
+        "start_time": {
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})$",
+          "title": "Start Time",
+          "type": "string"
+        },
+        "end_time": {
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})$",
+          "title": "End Time",
+          "type": "string"
+        },
+        "state": {
+          "enum": [
+            "opaque",
+            "transparent",
+            "infeasible",
+            "unknown"
+          ],
+          "title": "State",
+          "type": "string"
+        },
+        "reasons": {
+          "items": {
+            "$ref": "#/$defs/Reason"
+          },
+          "title": "Reasons",
+          "type": "array"
+        }
+      },
+      "required": [
+        "start_time",
+        "end_time",
+        "state"
+      ],
+      "title": "Segment",
+      "type": "object"
+    },
+    "WindowPlan": {
+      "additionalProperties": false,
+      "properties": {
+        "window_id": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_]*$",
+          "title": "Window Id",
+          "type": "string"
+        },
+        "film_rows": {
+          "minimum": 1,
+          "title": "Film Rows",
+          "type": "integer"
+        },
+        "film_cols": {
+          "minimum": 1,
+          "title": "Film Cols",
+          "type": "integer"
+        },
+        "cells": {
+          "items": {
+            "$ref": "#/$defs/CellPlan"
+          },
+          "title": "Cells",
+          "type": "array"
+        }
+      },
+      "required": [
+        "window_id",
+        "film_rows",
+        "film_cols"
+      ],
+      "title": "WindowPlan",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "plan_version": {
+      "const": "0.1.0",
+      "title": "Plan Version",
+      "type": "string"
+    },
+    "scene_id": {
+      "pattern": "^[a-zA-Z][a-zA-Z0-9_]*$",
+      "title": "Scene Id",
+      "type": "string"
+    },
+    "scene_revision": {
+      "maximum": 9223372036854775807,
+      "minimum": 1,
+      "title": "Scene Revision",
+      "type": "integer"
+    },
+    "start_time": {
+      "format": "date-time",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})$",
+      "title": "Start Time",
+      "type": "string"
+    },
+    "end_time": {
+      "format": "date-time",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})$",
+      "title": "End Time",
+      "type": "string"
+    },
+    "windows": {
+      "items": {
+        "$ref": "#/$defs/WindowPlan"
+      },
+      "title": "Windows",
+      "type": "array"
+    }
+  },
+  "required": [
+    "plan_version",
+    "scene_id",
+    "scene_revision",
+    "start_time",
+    "end_time"
+  ],
+  "title": "ShadingPlan",
+  "type": "object"
+}
