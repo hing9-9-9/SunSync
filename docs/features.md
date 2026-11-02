@@ -3,12 +3,16 @@
 Numbering follows the requirement document (`docs/reports/SunSync_Requirements.pdf`, updated 2026-10-21).
 This term covers FR-01 to FR-06. Features outside this scope will be added later with new numbers.
 
+FR numbers and titles follow the requirement document. The descriptions follow the current design, which changed after the report;
+the differences are listed in [Changes since the requirement document](#changes-since-the-requirement-document)
+and are merged into the report at its next revision.
+
 ## Overview
 
 | ID | Requirement | Owner | Previous ID |
 |---|---|---|---|
 | FR-01 | Future sunlight path prediction | Misong Ha | FR-01 |
-| FR-02 | Selective shading decision | Heegyeong Chung | FR-02 |
+| FR-02 | Selective shading decision | Jiyeon Kim | FR-02 |
 | FR-03 | QR-based spatial measurement | Daeun Lee | New |
 | FR-04 | Stable control against temporary changes | - | FR-04 |
 | FR-05 | Film control interface | - | New |
@@ -37,9 +41,9 @@ FR-06 is the shared contract: every other FR reads the space model from it.
 
 ### FR-02 Selective Shading Decision
 - FR-02.1 Cell mapping: convert every exposed 5 cm protected-region tile's FR-01 `candidate_path.window_hit_m` from ENU to the selected window's local coordinates, expand it by 2.5 cm in each local direction, then return every overlapping 10 cm x 10 cm film cell `(window_id, row, col)`. A film cell is a shading candidate when at least one exposed tile maps to it. This is the sole owner of point-to-cell mapping and the input to shading decisions.
-- FR-02.2 Grade-based decision; the stricter grade applies when a cell affects several areas
+- FR-02.2 Grade-based decision: grade A shades every cell that a direct-sun path crosses, even when the intensity is zero or unknown; grades B and C compare the largest per-tile surface irradiance (`direct_irradiance_W_m2`) of an area in a cell with the grade's cap, and record `infeasible` when the film cannot meet the cap or `unknown` when the intensity is unknown; the stricter grade applies when a cell affects several areas
 - FR-02.3 Advance shading that allows for switching time, processing delay and a safety margin
-- FR-02.4 Shading schedule provided to the mobile and web applications
+- FR-02.4 Shading schedule provided to the mobile and web applications as a `ShadingPlan` (cells, time segments, state and reason) through `POST /api/scenes/{scene_id}/shading-plans`; the format will be documented in `docs/fr02_schedule.md`
 
 The exact FR-01 → FR-02.1 tile contract is in [fr01_fr02_tile_contract.md](fr01_fr02_tile_contract.md).
 
@@ -60,9 +64,24 @@ The exact FR-01 → FR-02.1 tile contract is in [fr01_fr02_tile_contract.md](fr0
 - FR-05.3 Replaceable device, independent of film hardware and type (PDLC or SPD)
 
 ### FR-06 Space Information Management
-- FR-06.1 Space model: location, room size, zones, windows with film cell layout, furniture as boxes with a type, protected areas
-- FR-06.2 Window and marker specification
+- FR-06.1 Space model: location, room size, zones, windows with film cell layout (`film_rows`, `film_cols`), furniture as boxes with a furniture type, an optional building floor level, and protected areas given as rectangles of four vertices (FR-01 divides them into 5 cm tiles, so no sample points are stored)
+- FR-06.2 Window and marker specification: the marker occupies a fixed block of film cells (start row and column, 6 x 6 cells with border) and its physical size follows from the window's cell size
 - FR-06.3 Measurement records (manual or marker-based)
 - FR-06.4 Validation and versioning (409 on conflicting updates)
 - FR-06.5 Synchronization between the mobile and web applications
 - FR-06.6 Protection grades A to D
+
+## Changes since the requirement document
+
+Numbers and titles are unchanged. The descriptions below differ from `docs/reports/SunSync_Requirements.pdf`
+and are applied to the report at its next revision.
+
+| ID | Requirement document | Current design |
+|---|---|---|
+| FR-01.2 | Trace a ray from sample points on each protected surface | The protected area is divided into 5 cm x 5 cm tiles and a ray is traced from each tile centre; a valid path returns `candidate_path.window_id` and `candidate_path.window_hit_m` |
+| FR-01.4 | Clear-sky intensity, replaced by forecasts such as Open-Meteo when available | Final DNI per timestamp: Scene weather, then a stored Open-Meteo snapshot, then pvlib clear-sky, otherwise unknown; converted to a per-tile surface irradiance |
+| FR-02.1 | Map each window crossing point to the film cell that contains it | The crossing point is expanded by 2.5 cm in each window direction and every overlapping film cell is returned |
+| FR-02.2 | Apply the grade of each area; the stricter grade wins | Adds the grade A rule (shade regardless of intensity), the per-cell maximum irradiance check for grades B and C, and the `infeasible` and `unknown` states |
+| FR-02.4 | Provide the planned cell states over time | The plan is a `ShadingPlan` returned by `POST /api/scenes/{scene_id}/shading-plans` |
+| FR-06.1 | Protected areas with their surfaces, sample points and grades | Protected areas are rectangles of four vertices without stored sample points; adds the film grid (`film_rows`, `film_cols`), the furniture type and an optional floor level |
+| FR-06.2 | Size, position and orientation of the QR marker on the window film | The marker is placed on a fixed block of film cells (start row and column, 6 x 6) and its size follows from the cell size |
