@@ -85,12 +85,36 @@ between the neighbouring steps. Steps that follow each other become one segment.
   because a darker cell never hurts another area's need. Every active area is listed as a reason, strictest
   grade first. The segment is split where the state or the reasons change.
 
+## API
+
+`POST /api/scenes/{scene_id}/shading-plans` returns the `ShadingPlan` of a stored Scene.
+
+| Request field | Meaning |
+|---|---|
+| `start_time` | ISO 8601 time with seconds and a time zone offset, for example `2026-10-14T04:30:00Z` |
+| `duration_minutes` | Length of the plan, 1 to 1440, default 120 |
+| `interval_seconds` | Time step, 1 to 3600, default 60 |
+| `expected_scene_revision` | Optional; a different stored revision gives 409 |
+
+All protected areas are planned; there is no area filter, because a plan for some areas would leave the others
+unprotected. Errors: 404 (no such Scene), 409 (revision differs), 422 (invalid input, or a Scene without
+protected areas). The endpoint runs the FR-01 prediction with the same limits and applies the FR-02 rules to
+it, using the period and the time step that the FR-01 result reports. Only the DNI selection record that FR-01
+already keeps is stored.
+
+```bash
+curl -sS -X POST http://localhost:8000/api/scenes/scene_demo_001/shading-plans \
+  -H 'Content-Type: application/json' \
+  -d '{"start_time": "2026-10-14T04:30:00Z", "duration_minutes": 30, "interval_seconds": 60}'
+```
+
 ## Known limits
 
 - An exposure that starts and ends between two steps is not seen. A smaller interval reduces this.
 - A tile that FR-01 cannot decide (the crossing lies exactly on a window edge or a wall corner, reason `boundary_ambiguous`) has no crossing point and is skipped.
 - The intensity is compared with the cap as FR-01 gives it, without glass or film. The glass and film
   transmittances in a Scene are assumed values, not measurements.
+- The default time step is 60 seconds. The `max_time_step_s` of the Scene policy (10 seconds in the example) is not enforced.
 - The film is assumed to have two states, opaque and transparent. Dimming would add an `opacity` field
   (0 to 1) to the segments and raise `plan_version`.
 

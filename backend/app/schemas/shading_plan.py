@@ -115,6 +115,15 @@ class ShadingPlan(PlanModel):
         return self
 
 
+class ShadingPlanRequest(PlanModel):
+    """Request for the plan of one stored Scene; all of its protected areas are planned."""
+
+    start_time: Timestamp
+    duration_minutes: Annotated[int, Field(ge=1, le=1440)] = 120
+    interval_seconds: Annotated[int, Field(ge=1, le=3600)] = 60
+    expected_scene_revision: Annotated[int, Field(ge=1, le=2**63 - 1)] | None = None
+
+
 def schema_document() -> dict:
     return {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
