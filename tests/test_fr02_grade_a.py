@@ -10,7 +10,8 @@ from engine.fr02 import (
     CellCause,
     ExposedTile,
     FilmWindow,
-    build_grade_a_plan,
+    build_plan,
+    grade_a_needs,
     map_tiles_to_cells,
 )
 
@@ -20,8 +21,8 @@ STEP_SECONDS = 300
 GRADES = {"region_A": "A", "region_A2": "A", "region_B": "B", "region_C": "C"}
 
 
-def window() -> FilmWindow:
-    return FilmWindow("window_001", (0, 0, 0), (1, 0, 0), (0, 0, 1), 1.0, 1.0, 10, 10)
+def window(film_min: float = 0.0) -> FilmWindow:
+    return FilmWindow("window_001", (0, 0, 0), (1, 0, 0), (0, 0, 1), 1.0, 1.0, 10, 10, film_min)
 
 
 def at(minutes: int) -> datetime:
@@ -37,16 +38,23 @@ def candidate(minutes: int, *regions: str, row: int = 3, col: int = 4) -> CellCa
     return CellCandidate(at(minutes), "window_001", row, col, causes)
 
 
-def build(candidates) -> dict:
-    plan = build_grade_a_plan(
-        scene_id="scene_demo_001",
-        scene_revision=2,
-        windows=[window()],
+def build(candidates, film_min: float = 0.0) -> dict:
+    windows = [window(film_min)]
+    needs = grade_a_needs(
+        windows=windows,
         candidates=candidates,
         grades=GRADES,
         start_time=START,
         end_time=END,
         interval_seconds=STEP_SECONDS,
+    )
+    plan = build_plan(
+        scene_id="scene_demo_001",
+        scene_revision=2,
+        windows=windows,
+        needs=needs,
+        start_time=START,
+        end_time=END,
     )
     ShadingPlan.model_validate(plan)
     return plan
@@ -138,3 +146,10 @@ def test_unknown_window_is_rejected():
     stray = CellCandidate(at(20), "other_window", 0, 0, (CellCause("region_A", 0),))
     with pytest.raises(ValueError, match="unknown window"):
         build([stray])
+
+
+def test_a_film_that_cannot_block_fully_cannot_meet_grade_a():
+    plan = build([candidate(20, "region_A")], film_min=0.1)
+    segment = plan["windows"][0]["cells"][0]["segments"][0]
+    assert segment["state"] == "infeasible"
+    assert segment["reasons"] == [{"region_id": "region_A", "grade": "A"}]

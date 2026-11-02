@@ -27,7 +27,11 @@ EPSILON = 1e-9
 
 @dataclass(frozen=True, slots=True)
 class FilmWindow:
-    """The film grid of one window, in the window's own frame."""
+    """The film grid of one window, in the window's own frame.
+
+    `film_min_transmittance` is the share of the direct sunlight that the film still lets through
+    when it is as dark as it gets (0 means it can block fully).
+    """
 
     window_id: str
     origin_m: Vector3
@@ -37,6 +41,7 @@ class FilmWindow:
     height_m: float
     film_rows: int
     film_cols: int
+    film_min_transmittance: float
 
     def __post_init__(self) -> None:
         if not self.window_id:
@@ -45,6 +50,8 @@ class FilmWindow:
             raise ValueError("window width and height must be positive")
         if self.film_rows < 1 or self.film_cols < 1:
             raise ValueError("the film grid needs at least one row and one column")
+        if not 0 <= self.film_min_transmittance <= 1:
+            raise ValueError("film_min_transmittance must be between 0 and 1")
 
 
 @dataclass(frozen=True, slots=True)

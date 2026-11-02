@@ -23,7 +23,7 @@ LATER = datetime(2026, 10, 31, 12, 5, tzinfo=UTC)
 def unit_window() -> FilmWindow:
     """A 1 m x 1 m window in the x-z plane with a 10 x 10 film grid of 10 cm cells."""
 
-    return FilmWindow("window_001", (0, 0, 0), (1, 0, 0), (0, 0, 1), 1.0, 1.0, 10, 10)
+    return FilmWindow("window_001", (0, 0, 0), (1, 0, 0), (0, 0, 1), 1.0, 1.0, 10, 10, 0.0)
 
 
 def hit(u: float, v: float) -> tuple[float, float, float]:
@@ -122,6 +122,7 @@ def test_cell_numbers_agree_with_the_scene_window():
         window.height_m,
         window.film_rows,
         window.film_cols,
+        0.0,
     )
     for row in range(window.film_rows):
         for col in range(window.film_cols):

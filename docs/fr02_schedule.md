@@ -69,17 +69,28 @@ Unknown fields (`extra="forbid"`), values of the wrong type or a time without an
 5. a segment outside the period of the plan,
 6. an `opaque`, `infeasible` or `unknown` segment without a reason.
 
-## How grade A builds the segments
+## How the decisions are built
 
-FR-01 looks at fixed time steps. When a cell is needed by a grade A area at step `t`, the cell is shaded
-from `t - interval` to `t + interval`, cut at the period of the plan. The exposure may have started or
-ended anywhere between the neighbouring steps, so this covers it. Steps that follow each other become one
-segment, and the segment is split where the set of reasons changes. The intensity is never used.
+FR-01 looks at fixed time steps. When a cell is needed at step `t`, it is shaded from `t - interval` to
+`t + interval`, cut at the period of the plan, because the exposure may have started or ended anywhere
+between the neighbouring steps. Steps that follow each other become one segment.
+
+- **Grade A:** every cell that a direct-sun path reaches is shaded, whatever the intensity. If the film
+  cannot block fully (its minimum transmittance is above zero) the need cannot be met and is `infeasible`.
+- **Grades B and C:** for one cell, one area and one step, the strongest tile intensity is compared with the
+  cap of the grade. At or below the cap nothing is needed. Above it, the cell is `opaque` when the darkest
+  film brings the intensity to the cap or below, and `infeasible` when it cannot. When an intensity is
+  unknown the need is `unknown` (never zero), unless a known tile is already above the cap.
+- **Several areas in one cell:** the strictest grade present decides the state (when that grade has several
+  needs, `infeasible` beats `opaque` beats `unknown`), and every active area is listed as a reason. The
+  segment is split where the state or the reasons change.
 
 ## Known limits
 
 - An exposure that starts and ends between two steps is not seen. A smaller interval reduces this.
 - A tile that FR-01 cannot decide (the crossing lies exactly on a window edge or a wall corner, reason `boundary_ambiguous`) has no crossing point and is skipped.
+- The intensity is compared with the cap as FR-01 gives it, without glass or film. The glass and film
+  transmittances in a Scene are assumed values, not measurements.
 
 ## Open points
 
