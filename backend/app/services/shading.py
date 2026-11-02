@@ -41,11 +41,11 @@ def _film_windows(scene: Scene) -> list[FilmWindow]:
 def _caps(scene: Scene) -> dict[str, float]:
     if scene.policy is None:
         raise SunpathValidationError("scene has no protection policy")
-    caps = {
-        "B": scene.policy.grades.B.max_direct_irradiance_W_m2,
-        "C": scene.policy.grades.C.max_direct_irradiance_W_m2,
-    }
-    return {grade: cap for grade, cap in caps.items() if cap is not None}
+    b = scene.policy.grades.B.max_direct_irradiance_W_m2
+    c = scene.policy.grades.C.max_direct_irradiance_W_m2
+    if b is None or c is None:
+        raise SunpathValidationError("grades B and C need max_direct_irradiance_W_m2")
+    return {"B": b, "C": c}
 
 
 def _exposed_tiles(prediction: SunpathPredictionResponse) -> list[ExposedTile]:

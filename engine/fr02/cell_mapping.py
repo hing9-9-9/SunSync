@@ -37,14 +37,12 @@ def _cell_range(low: float, high: float, size: float, count: int) -> range:
     return range(max(first, 0), min(last, count - 1) + 1)
 
 
-def cells_for_hit(
-    window: FilmWindow, hit_m: Vector3, half_size_m: float = HALF_TILE_M
-) -> tuple[tuple[int, int], ...]:
-    """Return the (row, col) of every cell that the point, widened by half_size_m, overlaps."""
+def cells_for_hit(window: FilmWindow, hit_m: Vector3) -> tuple[tuple[int, int], ...]:
+    """Return the (row, col) of every cell that the hit point, widened to one tile, overlaps."""
 
     u, v = _window_position(window, hit_m)
-    u_low, u_high = max(u - half_size_m, 0.0), min(u + half_size_m, window.width_m)
-    v_low, v_high = max(v - half_size_m, 0.0), min(v + half_size_m, window.height_m)
+    u_low, u_high = max(u - HALF_TILE_M, 0.0), min(u + HALF_TILE_M, window.width_m)
+    v_low, v_high = max(v - HALF_TILE_M, 0.0), min(v + HALF_TILE_M, window.height_m)
     if u_high - u_low <= EPSILON or v_high - v_low <= EPSILON:
         return ()
     cols = _cell_range(u_low, u_high, window.width_m / window.film_cols, window.film_cols)

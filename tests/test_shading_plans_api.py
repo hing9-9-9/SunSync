@@ -8,7 +8,7 @@ from typing import Any
 
 import pytest
 from app.main import create_app
-from app.schemas.shading_plan import ShadingPlan
+from app.schemas.shading_plan import ShadingPlan, ShadingPlanRequest
 from fastapi.testclient import TestClient
 from sqlalchemy import Engine
 from sqlmodel import create_engine
@@ -138,6 +138,19 @@ def test_no_sun_on_the_protected_areas_gives_an_empty_plan(client, scene_payload
     assert plan.status_code == 200, plan.text
     assert segments(plan.json()) == []
     assert len(plan.json()["windows"]) == 1
+
+
+def test_start_time_accepts_the_same_formats_as_fr01(client, scene_payload):
+    create_scene(client, scene_payload)
+    response = client.post(
+        plan_url(scene_payload), json=request_body(start_time="2026-10-14T04:30+00:00")
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["start_time"] == "2026-10-14T04:30:00Z"
+
+
+def test_the_default_time_step_is_the_one_of_fr01():
+    assert ShadingPlanRequest(start_time="2026-10-14T04:30:00Z").interval_seconds == 300
 
 
 def test_unknown_scene_is_404(client):

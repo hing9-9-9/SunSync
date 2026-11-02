@@ -38,7 +38,7 @@ def grade_a_needs(
         }
         span = widened(candidate.timestamp, interval, start_time, end_time)
         if regions and span:
-            state = "opaque" if window.film_min_transmittance == 0 else "infeasible"
+            state = "infeasible" if window.film_min_transmittance > 0 else "opaque"
             needs.extend(
                 Need(window.window_id, candidate.row, candidate.col, *span, state, region, GRADE)
                 for region in sorted(regions)

@@ -3,7 +3,11 @@
 A `Need` says that one film cell must be in one state for a stretch of time because of one
 protected region. Needs on one cell can overlap; they are cut into time-ordered pieces and the
 most severe state of a piece wins (`infeasible`, then `opaque`, then `unknown`). Every region
-active in a piece is listed as a reason.
+active in a piece is listed as a reason. Example for one cell:
+
+    region_B opaque   |---------|
+    region_C opaque        |---------|
+    pieces            |----|-----|----|     reasons: B / B and C / C
 """
 
 from __future__ import annotations
@@ -12,7 +16,7 @@ from collections import Counter, defaultdict
 from collections.abc import Iterable, Mapping
 from datetime import UTC, datetime, timedelta
 from itertools import groupby
-from typing import Any
+from typing import Any, NamedTuple
 
 from .models import FilmWindow, Need
 
@@ -20,8 +24,18 @@ PLAN_VERSION = "0.1.0"
 
 _STATE_SEVERITY = {"unknown": 1, "opaque": 2, "infeasible": 3}
 
-_Key = tuple[str, str, str]
-_Piece = tuple[datetime, datetime, str, tuple[tuple[str, str], ...]]
+
+class _Key(NamedTuple):
+    state: str
+    region_id: str
+    grade: str
+
+
+class _Piece(NamedTuple):
+    start: datetime
+    end: datetime
+    state: str
+    reasons: tuple[tuple[str, str], ...]  # (region_id, grade)
 
 
 def widened(
@@ -53,12 +67,12 @@ def _resolve(active: Iterable[_Key]) -> tuple[str, tuple[tuple[str, str], ...]]:
     """Return the most severe state (darker never hurts another need) and all active regions."""
 
     keys = list(active)
-    state = max((state for state, _, _ in keys), key=_STATE_SEVERITY.__getitem__)
-    reasons = sorted({(region, grade) for _, region, grade in keys}, key=lambda r: (r[1], r[0]))
+    state = max((key.state for key in keys), key=_STATE_SEVERITY.__getitem__)
+    reasons = sorted({(key.region_id, key.grade) for key in keys}, key=lambda r: (r[1], r[0]))
     return state, tuple(reasons)
 
 
-def _pieces(intervals: list[tuple[datetime, datetime, _Key]]) -> list[_Piece]:
+def _cut(intervals: list[tuple[datetime, datetime, _Key]]) -> list[_Piece]:
     """Cut overlapping intervals into ordered pieces; equal neighbours are joined."""
 
     events = sorted(
@@ -72,10 +86,10 @@ def _pieces(intervals: list[tuple[datetime, datetime, _Key]]) -> list[_Piece]:
         if previous is not None and active:
             state, reasons = _resolve(active)
             last = pieces[-1] if pieces else None
-            if last and last[1] == previous and last[2:] == (state, reasons):
-                pieces[-1] = (last[0], moment, state, reasons)
+            if last and last.end == previous and (last.state, last.reasons) == (state, reasons):
+                pieces[-1] = last._replace(end=moment)
             else:
-                pieces.append((previous, moment, state, reasons))
+                pieces.append(_Piece(previous, moment, state, reasons))
         for _, change, key in group:
             active[key] += change
             if active[key] == 0:
@@ -103,7 +117,7 @@ def build_plan(
             raise ValueError(f"need refers to an unknown window: {need.window_id}")
         key = (need.window_id, need.row, need.col)
         grouped[key].append(
-            (need.start_time, need.end_time, (need.state, need.region_id, need.grade))
+            (need.start_time, need.end_time, _Key(need.state, need.region_id, need.grade))
         )
 
     window_plans = []
@@ -121,7 +135,7 @@ def build_plan(
                             {"region_id": region, "grade": grade} for region, grade in reasons
                         ],
                     }
-                    for start, end, state, reasons in _pieces(intervals)
+                    for start, end, state, reasons in _cut(intervals)
                 ],
             }
             for (window_id, row, col), intervals in sorted(grouped.items())

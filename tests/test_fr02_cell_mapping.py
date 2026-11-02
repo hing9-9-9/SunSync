@@ -128,4 +128,4 @@ def test_cell_numbers_agree_with_the_scene_window():
         for col in range(window.film_cols):
             u, v = window.cell_to_uv(row, col)
             point = window.uv_to_enu(u, v)
-            assert cells_for_hit(film, point, half_size_m=1e-4) == ((row, col),)
+            assert cells_for_hit(film, point) == ((row, col),)

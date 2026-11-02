@@ -12,7 +12,7 @@ from itertools import pairwise
 from pathlib import Path
 from typing import Annotated, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.schemas.geometry import require
 from app.schemas.scene import Identifier, Timestamp
@@ -118,10 +118,22 @@ class ShadingPlan(PlanModel):
 class ShadingPlanRequest(PlanModel):
     """Request for the plan of one stored Scene; all of its protected areas are planned."""
 
-    start_time: Timestamp
+    start_time: str
     duration_minutes: Annotated[int, Field(ge=1, le=1440)] = 120
-    interval_seconds: Annotated[int, Field(ge=1, le=3600)] = 60
+    interval_seconds: Annotated[int, Field(ge=1, le=3600)] = 300
     expected_scene_revision: Annotated[int, Field(ge=1, le=2**63 - 1)] | None = None
+
+    @field_validator("start_time")
+    @classmethod
+    def timezone_aware_start(cls, value: str) -> str:
+        # Same rule as the FR-01 request, which receives this value.
+        try:
+            parsed = datetime.fromisoformat(value)
+        except ValueError as error:
+            raise ValueError("start_time must be an ISO 8601 timestamp") from error
+        if parsed.utcoffset() is None:
+            raise ValueError("start_time must include a timezone offset")
+        return value
 
 
 def schema_document() -> dict:
