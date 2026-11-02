@@ -1,19 +1,14 @@
-"""FR-02.1: map the window crossings of exposed protected-region tiles to film cells.
+"""FR-02.1: map the window crossings of exposed tiles to film cells.
 
-Window-local coordinates (u, v) are in metres from the window corner `origin_m`, with u along
-`u_axis` and v along `v_axis`. Row 0 is the row with the largest v (the top of a vertical window)
-and column 0 starts at u = 0 (the left when looking from inside), as in the Scene's Window.
-
-Assumptions: the window geometry comes from a validated Scene window (unit, perpendicular axes),
-and each `window_hit_m` lies on its window plane, as FR-01 guarantees; the distance to the plane
-is not checked.
+Window coordinates (u, v) are metres from `origin_m` along `u_axis` and `v_axis`. Row 0 has the
+largest v and column 0 starts at u = 0, as in the Scene's Window. The window geometry comes from a
+validated Scene, and each `window_hit_m` is assumed to lie on its window plane, as FR-01 gives it.
 """
 
 from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Iterable
-from dataclasses import dataclass
 from datetime import datetime
 from math import ceil, floor
 
@@ -21,67 +16,10 @@ from engine.fr01.geometry import dot, subtract
 from engine.fr01.models import Vector3
 from engine.fr01.tiling import TILE_SIZE_M
 
+from .models import CellCandidate, CellCause, ExposedTile, FilmWindow
+
 HALF_TILE_M = TILE_SIZE_M / 2
 EPSILON = 1e-9
-
-
-@dataclass(frozen=True, slots=True)
-class FilmWindow:
-    """The film grid of one window, in the window's own frame.
-
-    `film_min_transmittance` is the share of the direct sunlight that the film still lets through
-    when it is as dark as it gets (0 means it can block fully).
-    """
-
-    window_id: str
-    origin_m: Vector3
-    u_axis: Vector3
-    v_axis: Vector3
-    width_m: float
-    height_m: float
-    film_rows: int
-    film_cols: int
-    film_min_transmittance: float
-
-    def __post_init__(self) -> None:
-        if not self.window_id:
-            raise ValueError("window_id must be a non-empty string")
-        if self.width_m <= 0 or self.height_m <= 0:
-            raise ValueError("window width and height must be positive")
-        if self.film_rows < 1 or self.film_cols < 1:
-            raise ValueError("the film grid needs at least one row and one column")
-        if not 0 <= self.film_min_transmittance <= 1:
-            raise ValueError("film_min_transmittance must be between 0 and 1")
-
-
-@dataclass(frozen=True, slots=True)
-class ExposedTile:
-    """A tile that sunlight reaches through a window (FR-01 `clear_path`)."""
-
-    timestamp: datetime
-    region_id: str
-    sample_index: int
-    window_id: str
-    window_hit_m: Vector3
-    direct_irradiance_W_m2: float | None = None
-
-
-@dataclass(frozen=True, slots=True)
-class CellCause:
-    region_id: str
-    sample_index: int
-    direct_irradiance_W_m2: float | None = None
-
-
-@dataclass(frozen=True, slots=True)
-class CellCandidate:
-    """A film cell that must be considered for shading at one timestamp."""
-
-    timestamp: datetime
-    window_id: str
-    row: int
-    col: int
-    causes: tuple[CellCause, ...]
 
 
 def _window_position(window: FilmWindow, point_m: Vector3) -> tuple[float, float]:
@@ -92,7 +30,7 @@ def _window_position(window: FilmWindow, point_m: Vector3) -> tuple[float, float
 
 
 def _cell_range(low: float, high: float, size: float, count: int) -> range:
-    """Indices of the cells that overlap the interval (low, high) with a positive length."""
+    """Indices of the cells that overlap (low, high) with a positive length."""
 
     first = floor((low + EPSILON) / size)
     last = ceil((high - EPSILON) / size) - 1
@@ -102,12 +40,7 @@ def _cell_range(low: float, high: float, size: float, count: int) -> range:
 def cells_for_hit(
     window: FilmWindow, hit_m: Vector3, half_size_m: float = HALF_TILE_M
 ) -> tuple[tuple[int, int], ...]:
-    """Return the (row, col) of every film cell that the widened crossing point overlaps.
-
-    The point grows into a square of side 2 * half_size_m, which is cut at the window edges.
-    A square that no longer overlaps the window with any area gives no cells, so a point less
-    than half_size_m outside the window edge still gives the cells along that edge.
-    """
+    """Return the (row, col) of every cell that the point, widened by half_size_m, overlaps."""
 
     u, v = _window_position(window, hit_m)
     u_low, u_high = max(u - half_size_m, 0.0), min(u + half_size_m, window.width_m)
@@ -127,7 +60,7 @@ def cells_for_hit(
 
 def map_tiles_to_cells(
     tiles: Iterable[ExposedTile], windows: Iterable[FilmWindow]
-) -> list[CellCandidate]:
+) -> tuple[CellCandidate, ...]:
     """Merge the cells of all tiles by (timestamp, window, row, col), keeping every cause."""
 
     by_id = {window.window_id: window for window in windows}
@@ -141,7 +74,7 @@ def map_tiles_to_cells(
             causes[key].append(
                 CellCause(tile.region_id, tile.sample_index, tile.direct_irradiance_W_m2)
             )
-    return [
+    return tuple(
         CellCandidate(timestamp, window_id, row, col, tuple(found))
         for (timestamp, window_id, row, col), found in sorted(causes.items())
-    ]
+    )

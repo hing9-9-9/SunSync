@@ -1,14 +1,7 @@
-"""FR-02.2 grade A: shade every film cell that a direct-sun path reaches, whatever the intensity.
+"""FR-02.2 grade A: shade every cell that a direct-sun path reaches, whatever the intensity.
 
-FR-01 looks at fixed time steps. A step at time t where a cell is needed shades the cell from
-t - interval to t + interval, because the exposure may have started or ended anywhere between
-the neighbouring steps. The shading is cut at the plan period.
-
-Grade A allows no light at all, so a film that cannot block fully (minimum transmittance above
-zero) cannot meet it and the need is `infeasible` instead of `opaque`.
-
-Tiles that FR-01 could not decide (`boundary_ambiguous`) carry no crossing point and never reach
-this module.
+A film that cannot block fully (minimum transmittance above zero) cannot meet grade A, so the
+need is `infeasible` instead of `opaque`.
 """
 
 from __future__ import annotations
@@ -16,8 +9,8 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping
 from datetime import datetime, timedelta
 
-from .cell_mapping import CellCandidate, FilmWindow
-from .plan import Need, grade_of, widened, window_of
+from .models import CellCandidate, FilmWindow, Need
+from .plan import grade_of, widened, window_of
 
 GRADE = "A"
 
@@ -30,12 +23,8 @@ def grade_a_needs(
     start_time: datetime,
     end_time: datetime,
     interval_seconds: int,
-) -> list[Need]:
-    """Return the needs of the cells that grade A areas require.
-
-    `grades` maps every region_id to its grade; candidates caused only by other grades are left
-    to the grade B/C decision.
-    """
+) -> tuple[Need, ...]:
+    """Return the needs of the cells that grade A areas require (`grades`: region_id to grade)."""
 
     by_id = {window.window_id: window for window in windows}
     interval = timedelta(seconds=interval_seconds)
@@ -54,4 +43,4 @@ def grade_a_needs(
                 Need(window.window_id, candidate.row, candidate.col, *span, state, region, GRADE)
                 for region in sorted(regions)
             )
-    return needs
+    return tuple(needs)

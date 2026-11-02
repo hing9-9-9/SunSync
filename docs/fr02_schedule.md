@@ -81,9 +81,9 @@ between the neighbouring steps. Steps that follow each other become one segment.
   cap of the grade. At or below the cap nothing is needed. Above it, the cell is `opaque` when the darkest
   film brings the intensity to the cap or below, and `infeasible` when it cannot. When an intensity is
   unknown the need is `unknown` (never zero), unless a known tile is already above the cap.
-- **Several areas in one cell:** the strictest grade present decides the state (when that grade has several
-  needs, `infeasible` beats `opaque` beats `unknown`), and every active area is listed as a reason. The
-  segment is split where the state or the reasons change.
+- **Several areas in one cell:** the most severe state wins (`infeasible`, then `opaque`, then `unknown`),
+  because a darker cell never hurts another area's need. Every active area is listed as a reason, strictest
+  grade first. The segment is split where the state or the reasons change.
 
 ## Known limits
 
@@ -91,6 +91,8 @@ between the neighbouring steps. Steps that follow each other become one segment.
 - A tile that FR-01 cannot decide (the crossing lies exactly on a window edge or a wall corner, reason `boundary_ambiguous`) has no crossing point and is skipped.
 - The intensity is compared with the cap as FR-01 gives it, without glass or film. The glass and film
   transmittances in a Scene are assumed values, not measurements.
+- The film is assumed to have two states, opaque and transparent. Dimming would add an `opacity` field
+  (0 to 1) to the segments and raise `plan_version`.
 
 ## Open points
 

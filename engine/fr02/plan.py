@@ -1,50 +1,33 @@
 """Build a ShadingPlan from the shading needs that the grade rules produce.
 
 A `Need` says that one film cell must be in one state for a stretch of time because of one
-protected region. Several needs on one cell can overlap; this module cuts them into time-ordered
-pieces and decides the state of each piece: the strictest grade present decides, and when that
-grade has several needs, the most severe state wins (`infeasible`, then `opaque`, then `unknown`).
-Every region active in a piece is listed as a reason.
+protected region. Needs on one cell can overlap; they are cut into time-ordered pieces and the
+most severe state of a piece wins (`infeasible`, then `opaque`, then `unknown`). Every region
+active in a piece is listed as a reason.
 """
 
 from __future__ import annotations
 
 from collections import Counter, defaultdict
 from collections.abc import Iterable, Mapping
-from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from itertools import groupby
 from typing import Any
 
-from .cell_mapping import FilmWindow
+from .models import FilmWindow, Need
 
 PLAN_VERSION = "0.1.0"
 
-_GRADE_RANK = {"A": 0, "B": 1, "C": 2, "D": 3}
 _STATE_SEVERITY = {"unknown": 1, "opaque": 2, "infeasible": 3}
 
 _Key = tuple[str, str, str]
 _Piece = tuple[datetime, datetime, str, tuple[tuple[str, str], ...]]
 
 
-@dataclass(frozen=True, slots=True)
-class Need:
-    """One film cell must be in `state` from `start_time` to `end_time` because of one region."""
-
-    window_id: str
-    row: int
-    col: int
-    start_time: datetime
-    end_time: datetime
-    state: str
-    region_id: str
-    grade: str
-
-
 def widened(
     moment: datetime, interval: timedelta, start_time: datetime, end_time: datetime
 ) -> tuple[datetime, datetime] | None:
-    """Return [moment - interval, moment + interval) cut at the plan period, or None if empty."""
+    """Return [moment - interval, moment + interval) cut at the plan period, or None."""
 
     low, high = max(moment - interval, start_time), min(moment + interval, end_time)
     return (low, high) if low < high else None
@@ -67,25 +50,16 @@ def _iso(moment: datetime) -> str:
 
 
 def _resolve(active: Iterable[_Key]) -> tuple[str, tuple[tuple[str, str], ...]]:
+    """Return the most severe state (darker never hurts another need) and all active regions."""
+
     keys = list(active)
-    strictest = min(_GRADE_RANK[grade] for _, _, grade in keys)
-    state = max(
-        (state for state, _, grade in keys if _GRADE_RANK[grade] == strictest),
-        key=_STATE_SEVERITY.__getitem__,
-    )
-    reasons = sorted(
-        {(region, grade) for _, region, grade in keys},
-        key=lambda reason: (_GRADE_RANK[reason[1]], reason[0]),
-    )
+    state = max((state for state, _, _ in keys), key=_STATE_SEVERITY.__getitem__)
+    reasons = sorted({(region, grade) for _, region, grade in keys}, key=lambda r: (r[1], r[0]))
     return state, tuple(reasons)
 
 
 def _pieces(intervals: list[tuple[datetime, datetime, _Key]]) -> list[_Piece]:
-    """Cut overlapping (start, end, need) intervals into time-ordered pieces.
-
-    Each piece has the state and the reasons that hold in it; neighbouring pieces that have the
-    same state and reasons are joined.
-    """
+    """Cut overlapping intervals into ordered pieces; equal neighbours are joined."""
 
     events = sorted(
         [(start, 1, key) for start, _, key in intervals]

@@ -3,17 +3,11 @@
 Like engine.fr01, this package has no dependency on FastAPI, SQLModel, or the backend package.
 """
 
-from .cell_mapping import (
-    CellCandidate,
-    CellCause,
-    ExposedTile,
-    FilmWindow,
-    cells_for_hit,
-    map_tiles_to_cells,
-)
+from .cell_mapping import cells_for_hit, map_tiles_to_cells
 from .grade_a import grade_a_needs
 from .grade_bc import grade_bc_needs
-from .plan import Need, build_plan
+from .models import CellCandidate, CellCause, ExposedTile, FilmWindow, Need
+from .plan import build_plan
 
 __all__ = [
     "CellCandidate",

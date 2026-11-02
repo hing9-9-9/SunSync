@@ -1,15 +1,4 @@
-"""FR-02.2 grades B and C: shade a cell only when the sunlight is stronger than the grade allows.
-
-For one cell, one region and one time step, the strongest tile intensity (W/m2, as FR-01 gives it,
-without glass or film) is compared with the cap of the region's grade:
-
-- at or below the cap: nothing is needed;
-- above the cap and the film at its darkest brings it to the cap or below: `opaque`;
-- above the cap and even the darkest film cannot: `infeasible`;
-- no intensity is known (and none of the known ones is above the cap): `unknown`, never zero.
-
-The time rule is the same as for grade A: a step shades from t - interval to t + interval.
-"""
+"""FR-02.2 grades B and C: shade a cell only when the sunlight is stronger than the grade allows."""
 
 from __future__ import annotations
 
@@ -17,8 +6,8 @@ from collections import defaultdict
 from collections.abc import Iterable, Mapping, Sequence
 from datetime import datetime, timedelta
 
-from .cell_mapping import CellCandidate, FilmWindow
-from .plan import Need, grade_of, widened, window_of
+from .models import CellCandidate, FilmWindow, Need
+from .plan import grade_of, widened, window_of
 
 CAPPED_GRADES = ("B", "C")
 
@@ -39,11 +28,12 @@ def grade_bc_needs(
     start_time: datetime,
     end_time: datetime,
     interval_seconds: int,
-) -> list[Need]:
+) -> tuple[Need, ...]:
     """Return the needs of the cells that grade B and C areas require.
 
-    `grades` maps every region_id to its grade and `caps` maps "B" and "C" to their intensity
-    caps in W/m2. Regions of other grades are left to their own rules.
+    `caps` maps "B" and "C" to their intensity caps (W/m2). For one cell, region and step the
+    strongest tile intensity is compared with the cap: `opaque` if the darkest film brings it to
+    the cap, `infeasible` if not, `unknown` if it is not known; at or below the cap nothing.
     """
 
     for grade in CAPPED_GRADES:
@@ -70,4 +60,4 @@ def grade_bc_needs(
                         window.window_id, candidate.row, candidate.col, *span, state, region, grade
                     )
                 )
-    return needs
+    return tuple(needs)

@@ -10,7 +10,6 @@ from engine.fr02 import (
     CellCause,
     FilmWindow,
     build_plan,
-    grade_a_needs,
     grade_bc_needs,
 )
 
@@ -38,7 +37,7 @@ def candidate(minutes: int, *causes: tuple[str, float | None]) -> CellCandidate:
     return CellCandidate(at(minutes), "window_001", 3, 4, found)
 
 
-def build(candidates, film_min: float = 0.0, with_grade_a: bool = False) -> dict:
+def build(candidates, film_min: float = 0.0) -> dict:
     windows = [window(film_min)]
     common = {
         "windows": windows,
@@ -49,8 +48,6 @@ def build(candidates, film_min: float = 0.0, with_grade_a: bool = False) -> dict
         "interval_seconds": STEP_SECONDS,
     }
     needs = grade_bc_needs(caps=CAPS, **common)
-    if with_grade_a:
-        needs += grade_a_needs(**common)
     plan = build_plan(
         scene_id="scene_demo_001",
         scene_revision=2,
@@ -133,21 +130,11 @@ def test_regions_of_grade_a_and_d_are_not_decided_here():
     assert segments(plan) == []
 
 
-def test_the_stricter_grade_decides_the_state_and_every_region_is_a_reason():
+def test_two_regions_in_one_cell_give_the_most_severe_state_and_both_reasons():
     plan = build([candidate(20, ("region_B", 480.0), ("region_C", 100.0))], film_min=0.1)
     only = segments(plan)
     assert [s["state"] for s in only] == ["infeasible"]
     assert [r["region_id"] for r in only[0]["reasons"]] == ["region_B", "region_C"]
-
-
-def test_grade_a_decides_over_grade_b_in_the_same_cell():
-    plan = build([candidate(20, ("region_A", None), ("region_B", 25.0))], with_grade_a=True)
-    only = segments(plan)
-    assert [s["state"] for s in only] == ["opaque"]
-    assert [(r["region_id"], r["grade"]) for r in only[0]["reasons"]] == [
-        ("region_A", "A"),
-        ("region_B", "B"),
-    ]
 
 
 def test_unknown_region_is_rejected():

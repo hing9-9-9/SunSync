@@ -1,8 +1,11 @@
 """FR-02.2 grade A tests: every needed cell is shaded, whatever the intensity."""
 
+import json
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 import pytest
+from app.schemas.scene import Scene
 from app.schemas.shading_plan import ShadingPlan
 
 from engine.fr02 import (
@@ -15,6 +18,7 @@ from engine.fr02 import (
     map_tiles_to_cells,
 )
 
+EXAMPLE = Path(__file__).resolve().parents[1] / "docs" / "examples" / "fr06_scene_example.json"
 START = datetime(2026, 10, 31, 10, 0, tzinfo=UTC)
 END = datetime(2026, 10, 31, 11, 0, tzinfo=UTC)
 STEP_SECONDS = 300
@@ -153,3 +157,68 @@ def test_a_film_that_cannot_block_fully_cannot_meet_grade_a():
     segment = plan["windows"][0]["cells"][0]["segments"][0]
     assert segment["state"] == "infeasible"
     assert segment["reasons"] == [{"region_id": "region_A", "grade": "A"}]
+
+
+def test_example_scene_gives_the_expected_cells_and_times():
+    """Hand-computed on docs/examples/fr06_scene_example.json.
+
+    Window_001 starts at (4, 0, 1), its u axis is -x and its v axis is up, and it is 3 m x 1.5 m
+    with a 10 x 10 grid, so a cell is 0.3 m x 0.15 m. A crossing at x = 2.55, z = 1.30 is at
+    u = 1.45 m, v = 0.30 m. Its 5 cm square lies in column 4 and straddles the boundary between
+    rows 7 and 8 (1.2 m below the top), so cells (7, 4) and (8, 4) are needed. A lit step at 03:20
+    shades 03:15 to 03:25. The grade B region lit at the same time is left to the grade B/C rule.
+    """
+
+    scene = Scene.model_validate(json.loads(EXAMPLE.read_text(encoding="utf-8")))
+    scene_window = scene.windows[0]
+    profile = next(
+        p for p in scene.optical_profiles if p.optical_profile_id == scene_window.optical_profile_id
+    )
+    film = FilmWindow(
+        scene_window.window_id,
+        tuple(scene_window.vertices_m[0]),
+        tuple(scene_window.u_axis),
+        tuple(scene_window.v_axis),
+        scene_window.width_m,
+        scene_window.height_m,
+        scene_window.film_rows,
+        scene_window.film_cols,
+        profile.film_min_direct_transmittance,
+    )
+    grades = {region.region_id: region.grade for region in scene.protected_regions}
+    start = datetime(2026, 10, 14, 3, 0, tzinfo=UTC)
+    end = datetime(2026, 10, 14, 4, 0, tzinfo=UTC)
+    lit = start + timedelta(minutes=20)
+    tiles = [
+        ExposedTile(lit, "region_A", 0, film.window_id, (2.55, 0.0, 1.30)),
+        ExposedTile(lit, "region_B", 0, film.window_id, (1.50, 0.0, 2.00), 40.0),
+    ]
+    needs = grade_a_needs(
+        windows=[film],
+        candidates=map_tiles_to_cells(tiles, [film]),
+        grades=grades,
+        start_time=start,
+        end_time=end,
+        interval_seconds=300,
+    )
+    plan = build_plan(
+        scene_id=scene.scene_id,
+        scene_revision=scene.revision,
+        windows=[film],
+        needs=needs,
+        start_time=start,
+        end_time=end,
+    )
+    ShadingPlan.model_validate(plan)
+
+    segment = {
+        "start_time": "2026-10-14T03:15:00Z",
+        "end_time": "2026-10-14T03:25:00Z",
+        "state": "opaque",
+        "reasons": [{"region_id": "region_A", "grade": "A"}],
+    }
+    assert plan["scene_id"] == scene.scene_id
+    assert plan["windows"][0]["cells"] == [
+        {"row": 7, "col": 4, "segments": [segment]},
+        {"row": 8, "col": 4, "segments": [segment]},
+    ]
