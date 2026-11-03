@@ -386,7 +386,7 @@ def to_scene(space: UISpace, revision: int, created_at: str | None = None) -> Sc
                     "name": f.name,
                     "kind": "cuboid",
                     "type": {"bookcase": "bookshelf", "desk": "desk", "table": "desk"}.get(
-                        f.type, "other"
+                        f.type or "other", "other"
                     ),
                     "base_center_m": [f.x + f.width / 2, space.depth - f.y - f.depth / 2, 0],
                     "dimensions_m": [f.width, f.depth, f.height],
