@@ -3,7 +3,7 @@
   /* One family everywhere (Hangul, Latin and numerals), as in the Figma and HomeQuest references. */
   font-family: "Noto Sans KR", sans-serif;
   color: var(--ink);
-  background: #fff;
+  background: var(--c-white);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -78,7 +78,7 @@ button:focus-visible,
 input:focus-visible,
 select:focus-visible,
 svg g:focus-visible {
-  outline: 2px solid #737883;
+  outline: 2px solid var(--c-737883);
   outline-offset: 3px;
 }
 button {

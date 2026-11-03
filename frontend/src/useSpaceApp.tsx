@@ -1,5 +1,7 @@
+import { validateShadingPlan } from "./shading";
+import type { ShadingResult } from "./shading";
 import PredictionSummary from "./PredictionSummary";
-import { createHandoff, connectHandoff, completeHandoff, listMeasurements, predictSunpath } from "./spaceApi";
+import { createHandoff, connectHandoff, completeHandoff, listMeasurements, predictSunpath, predictShadingPlan } from "./spaceApi";
 import type { HandoffSession, SunpathPrediction } from "./spaceApi";
 import { blockingSchedule, predictionDay, scheduleFromPrediction } from "./sunlight";
 import type { BlockingSchedule } from "./sunlight";
@@ -61,11 +63,11 @@ export const titles: Record<Page, string> = {
   capture: "QR 측정",
   processing: "공간 구성",
   review: "도면 확인",
-  protect: "도면과 보호구역",
+  protect: "도면과 보호 영역",
   detail: "공간 현황",
   guide: "사용 가이드",
   more: "더보기",
-  account: "내 계정 정보",
+  account: "내 계정",
 };
 
 
@@ -380,13 +382,34 @@ export function useSpaceApp() {
       stopped = true;
     };
   }, [predictionKey, predictionRun, sceneId, sceneRevision, timeZone, predictionDate]);
+  const [shadingPrediction, setShadingPrediction] = useState<(ShadingResult & { key: string; run: number }) | null>(null);
+  useEffect(() => {
+    if (!predictionKey || !sceneId || !sceneRevision || !timeZone) return;
+    let stopped = false;
+    const start = predictionDay(timeZone, new Date(`${predictionDate}T12:00:00Z`)).start;
+    predictShadingPlan(sceneId, sceneRevision, start).then(
+      plan => {
+        const checked = validateShadingPlan(plan, sceneId, sceneRevision, start);
+        if (!stopped) setShadingPrediction({ key: predictionKey, run: predictionRun, plan: checked });
+      },
+    ).catch(error => {
+      if (stopped) return;
+      if (error instanceof SpaceApiError && error.status === 404) setShadingPrediction({ key: predictionKey, run: predictionRun, empty: true });
+      else setShadingPrediction({ key: predictionKey, run: predictionRun,
+        error: userMessage(error, "차광 계획을 불러오지 못했습니다. 다시 계산해 주세요.") });
+    });
+    return () => { stopped = true; };
+  }, [predictionKey, predictionRun, sceneId, sceneRevision, timeZone, predictionDate]);
+  const filmPrediction: ShadingResult | undefined = predictionKey
+    ? shadingPrediction?.key === predictionKey && shadingPrediction.run === predictionRun ? shadingPrediction : {}
+    : undefined;
   const currentPrediction = prediction?.key === predictionKey ? prediction : null;
   let predicted: BlockingSchedule | undefined, predictionError = currentPrediction?.error;
   if (currentPrediction?.result && active) {
     try {
       predicted = scheduleFromPrediction(active, currentPrediction.result);
     } catch {
-      predictionError = "예측 결과와 저장된 보호영역이 맞지 않습니다. 다시 계산해 주세요.";
+      predictionError = "예측 결과와 저장된 보호 영역이 맞지 않습니다. 다시 계산해 주세요.";
     }
   }
   const retryPrediction = () => {
@@ -395,7 +418,7 @@ export function useSpaceApp() {
   };
   const sunSource = predictionKey && active?.site
     ? {
-        label: `햇빛 닿는 시간(FR-01 · ${predictionDate})`,
+        label: `햇빛이 닿는 시간 (${predictionDate})`,
         note: <>
           <PredictionSummary result={!predictionError ? currentPrediction?.result : undefined} space={active} date={predictionDate} onDate={setSelectedPredictionDate} onRetry={retryPrediction} />
           {predictionError ? (
@@ -407,8 +430,8 @@ export function useSpaceApp() {
           <p className="muted small" role="status">선택한 날짜의 햇빛을 계산하는 중…</p>
         ) : null}</>,
       }
-    : active && !editorExample ? { label: "예측 준비 필요", note: <p className="muted small">실제 예측에는 서버 저장, 보호영역, 창문 위치 및 진북 확인이 필요합니다. 공간 정보를 확인하고 다시 저장해 주세요. 현재 화면은 시뮬레이션입니다.</p> } : undefined;
-  const predictionPill = !predictionKey ? "시뮬레이션" : predictionError ? "예측 실패" : predicted ? "FR-01 예측" : "계산 중";
+    : active && !editorExample ? { label: "예측 준비 필요", note: <p className="muted small">햇빛 예측을 사용하려면 보호 영역과 창문 위치·북쪽 방향을 확인한 뒤 공간을 저장하세요. 현재는 간이 계산으로 표시합니다.</p> } : undefined;
+  const predictionPill = !predictionKey ? "시뮬레이션" : predictionError ? "예측 실패" : predicted ? "햇빛 예측" : "계산 중";
   const sunSchedule = useMemo(
     () =>
       page === "detail" && active
@@ -851,7 +874,7 @@ export function useSpaceApp() {
       return false;
     }
     if (page !== "register" && !draft.furniture.length && !draft.regions.length) {
-      setError("가구 또는 보호영역을 추가해 주세요.");
+      setError("가구 또는 보호 영역을 추가해 주세요.");
       return false;
     }
     if (!draft.site) {
@@ -875,7 +898,7 @@ export function useSpaceApp() {
       setToast(
         editorExample
           ? "둘러보기 공간 저장 완료"
-          : "공간과 보호구역을 서버에 저장했습니다.",
+          : "공간과 보호 영역을 서버에 저장했습니다.",
       );
       return true;
     } catch (error) {
@@ -928,6 +951,7 @@ export function useSpaceApp() {
           type="button"
           key={z}
           className={`chip ${z === space.zone ? "active" : ""}`}
+          aria-pressed={z === space.zone}
           onClick={() => switchZone(z)}
         >
           {z}
@@ -950,7 +974,7 @@ export function useSpaceApp() {
               const regionCount = draft.regions.filter((r) => r.zone === draft.zone).length;
               deleteWithUndo(
                 next,
-                `${draft.zone} 삭제됨 · 가구 ${furnitureCount}개, 보호영역 ${regionCount}개`,
+                `${draft.zone} 삭제됨 · 가구 ${furnitureCount}개, 보호 영역 ${regionCount}개`,
               );
               setSelectedFurniture(
                 next.furniture.find((f) => f.zone === next.zone)?.id ?? null,
@@ -1009,7 +1033,7 @@ export function useSpaceApp() {
     if (!draft) return;
     const r: Region = {
       id: uid(),
-      name: `보호영역 ${draft.regions.filter((r) => !r.furnitureId).length + 1}`,
+      name: `보호 영역 ${draft.regions.filter((r) => !r.furnitureId).length + 1}`,
       zone: draft.zone,
       furnitureId: null,
       x: 0,
@@ -1153,11 +1177,11 @@ export function useSpaceApp() {
         ? <button type="button" className="primary" disabled={saving || !!draftWarning} onClick={save}>{saving ? "저장 중…" : "변경사항 저장"}</button>
         : <button type="submit" form="register-form" className="primary">QR 인식으로 계속</button>
       : page === "review" && draft
-        ? <button type="button" className="primary" onClick={confirmReview}>확인하고 보호구역 지정</button>
+        ? <button type="button" className="primary" onClick={confirmReview}>확인하고 보호 영역 지정</button>
         : page === "protect" && draft
-          ? <button type="button" className="primary" disabled={saving || !!draftWarning} onClick={save}>{saving ? "저장 중…" : "보호구역 저장"}</button>
+          ? <button type="button" className="primary" disabled={saving || !!draftWarning} onClick={save}>{saving ? "저장 중…" : "보호 영역 저장"}</button>
           : page === "detail" && active
-            ? <button type="button" className="primary" onClick={() => editSpace(active)}>가구·도면·보호구역 수정</button>
+            ? <button type="button" className="primary" onClick={() => editSpace(active)}>가구·도면·보호 영역 수정</button>
             : null;
   const draftWindow = draft && resolveWindow(draft);
   function changeWindow(patch: Partial<NonNullable<Space["windowDimensions"]>>) {
@@ -1182,6 +1206,7 @@ export function useSpaceApp() {
     continueManually,
     sunSource,
     predictionPill,
+    filmPrediction,
     syncFailed,
     retryUpload,
     initial,

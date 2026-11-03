@@ -6,7 +6,7 @@
     display: block;
   }
   .app:where(:not(.mode-app)), .app:where(:not(.mode-app)).auth-page, .app:where(:not(.mode-app)).more-page {
-    background: #fff;
+    background: var(--c-white);
     padding-bottom: 0;
   }
   .app:where(:not(.mode-app)) > .demo-banner, .app:where(:not(.mode-app)) > .auth, .app:where(:not(.mode-app)) > .app-header, .app:where(:not(.mode-app)) > .desktop-nav {
@@ -97,7 +97,7 @@
   }
   :where(.app:not(.mode-app)) .website-nav-border {
     border-top: 1px solid var(--surface-muted);
-    border-bottom: 1px solid #e6e6ea;
+    border-bottom: 1px solid var(--c-e6e6ea);
   }
   :where(.app:not(.mode-app)) .website-nav {
     max-width: 1400px;
@@ -128,12 +128,12 @@
     font-weight: 500;
   }
   :where(.app:not(.mode-app)) .website-nav-links button:hover {
-    border-bottom-color: #777777;
+    border-bottom-color: var(--c-777777);
   }
   :where(.app:not(.mode-app)) .website-start {
     border: 1px solid var(--ink);
     background: var(--ink);
-    color: white;
+    color: var(--c-white);
     padding: var(--space-2) var(--space-4);
     font-size: var(--text-base);
     display: flex;
@@ -144,7 +144,7 @@
     white-space: nowrap;
   }
   :where(.app:not(.mode-app)) .website-start:hover {
-    background: #43434b;
+    background: var(--c-43434b);
   }
   :where(.app:not(.mode-app)) .website-home {
     width: 100%;
@@ -156,7 +156,7 @@
     max-width: 1920px;
     margin: auto;
     overflow: hidden;
-    background: #e8dfd1;
+    background: var(--c-e8dfd1);
     isolation: isolate;
   }
   :where(.app:not(.mode-app)) .website-hero-photo {
@@ -174,9 +174,9 @@
     z-index: -1;
     background: linear-gradient(
       90deg,
-      #f2eee7f5 0%,
-      #f2eee7d9 24%,
-      #f2eee788 40%,
+      var(--c-f2eee7-a96) 0%,
+      var(--c-f2eee7-a85) 24%,
+      var(--c-f2eee7-a53) 40%,
       transparent 58%
     );
   }
@@ -189,12 +189,12 @@
     font-size: var(--text-sm);
     letter-spacing: 1px;
     font-weight: 500;
-    color: #6b6573;
+    color: var(--c-6b6573);
     line-height: 1.6;
   }
   :where(.app:not(.mode-app)) .website-hero h1 {
-    font-size: clamp(36px, 3.2vw, 50px);
-    line-height: 1.38;
+    font-size: var(--fs-h1);
+    line-height: var(--lh-h1);
     letter-spacing: -2px;
     font-weight: 700;
     margin: var(--space-4) 0;
@@ -203,7 +203,7 @@
   :where(.app:not(.mode-app)) .website-hero-description {
     font-size: var(--text-lg);
     line-height: 1.8;
-    color: #555258;
+    color: var(--c-555258);
   }
   :where(.app:not(.mode-app)) .website-hero-actions {
     display: flex;
@@ -228,20 +228,20 @@
     white-space: nowrap;
   }
   :where(.app:not(.mode-app)) .website-button.filled {
-    color: white;
-    background: #2c2c32;
-    border-color: #2c2c32;
+    color: var(--c-white);
+    background: var(--c-2c2c32);
+    border-color: var(--c-2c2c32);
   }
   :where(.app:not(.mode-app)) .website-button.filled:hover {
-    background: #454545;
+    background: var(--c-454545);
   }
   :where(.app:not(.mode-app)) .website-button.outlined {
-    color: #35353b;
-    background: #ffffff8a;
-    border-color: #66636b;
+    color: var(--c-35353b);
+    background: var(--c-ffffff-a54);
+    border-color: var(--c-66636b);
   }
   :where(.app:not(.mode-app)) .website-button.outlined:hover {
-    background: #fff;
+    background: var(--c-white);
   }
   :where(.app:not(.mode-app)) .website-button:disabled {
     cursor: not-allowed;
@@ -251,8 +251,8 @@
     position: absolute;
     bottom: 15px;
     right: 32px;
-    color: white;
-    background: #00000066;
+    color: var(--c-white);
+    background: var(--c-000000-a40);
     padding: var(--space-1) var(--space-2);
     border-radius: 4px;
     font-size: var(--text-xs);
@@ -285,7 +285,7 @@
     padding: var(--space-2) 0;
     font-size: var(--text-sm);
     font-weight: 500;
-    color: #454545;
+    color: var(--c-454545);
     min-height: 36px;
     white-space: nowrap;
   }
@@ -298,7 +298,7 @@
     gap: var(--space-6);
   }
   :where(.app:not(.mode-app)) .website-guide-tile {
-    background: #fff;
+    background: var(--c-white);
     text-align: left;
     padding: 0;
     display: flex;
@@ -308,7 +308,7 @@
   }
   :where(.app:not(.mode-app)) .website-guide-visual {
     position: relative;
-    background: #f5f5f7;
+    background: var(--c-f5f5f7);
     border-radius: 8px;
     overflow: hidden;
     width: 100%;
@@ -319,7 +319,7 @@
     height: auto;
   }
   :where(.app:not(.mode-app)) .website-guide-tile:hover .website-guide-visual {
-    background: #ebebed;
+    background: var(--c-ebebed);
   }
   :where(.app:not(.mode-app)) .website-step-number {
     position: absolute;
@@ -327,7 +327,7 @@
     top: 11px;
     font-size: var(--text-sm);
     font-weight: 500;
-    color: #6f6a80;
+    color: var(--c-6f6a80);
   }
   :where(.app:not(.mode-app)) .website-guide-tile-copy {
     padding: var(--space-5) 0 0;
@@ -354,9 +354,9 @@
     min-height: 30px;
   }
   :where(.app:not(.mode-app)) .website-footer {
-    border-top: 1px solid #e8e8ec;
+    border-top: 1px solid var(--c-e8e8ec);
     background: var(--surface-subtle);
-    padding: 30px max(40px, calc((100vw - 1272px) / 2));
+    padding: 30px max(var(--space-10), calc((100vw - 1272px) / 2));
     color: var(--muted);
   }
   :where(.app:not(.mode-app)) .website-footer > div {
@@ -367,7 +367,7 @@
   :where(.app:not(.mode-app)) .website-footer strong {
     font-size: var(--text-xl);
     font-weight: 700;
-    color: #52515d;
+    color: var(--c-52515d);
   }
   :where(.app:not(.mode-app)) .website-footer span {
     font-size: var(--text-sm);
@@ -375,7 +375,7 @@
   :where(.app:not(.mode-app)) .website-footer p {
     font-size: var(--text-xs);
     margin-top: var(--space-4);
-    color: #9996a2;
+    color: var(--c-9996a2);
   }
   :where(.app:not(.mode-app)) .website-guide-page {
     max-width: 1400px;
@@ -398,27 +398,27 @@
   :where(.app:not(.mode-app)) .website-guide-steps {
     display: flex;
     flex-direction: column;
-    border-top: 1px solid #e4e2e9;
+    border-top: 1px solid var(--c-e4e2e9);
   }
   :where(.app:not(.mode-app)) .website-guide-steps button {
     display: flex;
     align-items: center;
     gap: var(--space-4);
     padding: var(--space-4) var(--space-4);
-    border-bottom: 1px solid #e4e2e9;
-    background: #fff;
+    border-bottom: 1px solid var(--c-e4e2e9);
+    background: var(--c-white);
     text-align: left;
     font-size: var(--text-base);
     line-height: 1.7;
   }
   :where(.app:not(.mode-app)) .website-guide-steps span {
     font-size: var(--text-sm);
-    color: #918b9c;
+    color: var(--c-918b9c);
   }
   :where(.app:not(.mode-app)) .website-guide-steps [aria-current="step"] {
     color: var(--ink);
     font-weight: 500;
-    background: #f2f2f3;
+    background: var(--c-f2f2f3);
   }
   :where(.app:not(.mode-app)) .website-guide-body {
     max-width: 780px;
@@ -431,7 +431,7 @@
   :where(.app:not(.mode-app)) .website-guide-detail-art {
     max-width: 600px;
     border-radius: 12px;
-    background: #f5f5f8;
+    background: var(--c-f5f5f8);
     padding: var(--space-3) var(--space-16);
     margin-bottom: var(--space-6);
   }
@@ -442,7 +442,7 @@
     word-break: keep-all;
   }
   :where(.app:not(.mode-app)) .website-guide-detail-text {
-    color: #77717f;
+    color: var(--c-77717f);
     font-size: var(--text-base);
     margin-top: var(--space-4);
     word-break: keep-all;
@@ -467,13 +467,13 @@
     align-items: center;
     gap: var(--space-4);
     font-size: var(--text-base);
-    background: #f5f5f5;
+    background: var(--c-f5f5f5);
     padding: var(--space-4);
     border-radius: 6px;
   }
   :where(.app:not(.mode-app)) .website-guide-grades dt {
     font-size: var(--text-lg);
-    color: #454545;
+    color: var(--c-454545);
   }
   :where(.app:not(.mode-app)) .website-guide-grades dd {
     margin: 0;
@@ -498,18 +498,18 @@
     font-size: var(--text-base);
   }
   :where(.app:not(.mode-app)) .primary {
-    background: #303038;
+    background: var(--c-303038);
   }
   :where(.app:not(.mode-app)) .primary:hover {
-    background: #454545;
+    background: var(--c-454545);
   }
   :where(.app:not(.mode-app)) .secondary {
-    background: #fff;
-    border: 1px solid #d8d5df;
-    color: #454545;
+    background: var(--c-white);
+    border: 1px solid var(--c-d8d5df);
+    color: var(--c-454545);
   }
   :where(.app:not(.mode-app)) .secondary:hover {
-    background: #f2f2f3;
+    background: var(--c-f2f2f3);
   }
   :where(.app:not(.mode-app)) .actions {
     flex-direction: row;
@@ -545,7 +545,7 @@
     position: sticky;
     top: 20px;
     border-radius: 12px;
-    border: 1px solid #eae8ee;
+    border: 1px solid var(--c-eae8ee);
     background: var(--surface-subtle);
     max-height: calc(100svh - 40px);
     overflow-y: auto;
@@ -618,7 +618,7 @@
     margin: var(--space-10) 0;
     max-width: none;
     background: var(--surface-subtle);
-    border: 1px solid #e8e6ed;
+    border: 1px solid var(--c-e8e6ed);
     align-items: flex-start;
     padding: var(--space-10);
   }
@@ -695,9 +695,9 @@
   :where(.app:not(.mode-app)) .website-hero-shade {
     background: linear-gradient(
       90deg,
-      #f2eee7fc 0%,
-      #f2eee7de 33%,
-      #f2eee750 65%,
+      var(--c-f2eee7-a99) 0%,
+      var(--c-f2eee7-a87) 33%,
+      var(--c-f2eee7-a31) 65%,
       transparent 85%
     );
   }
@@ -777,27 +777,27 @@
 /* Web controls use neutral selection states; the mobile palette is unchanged. */
 @media (min-width: 761px) {
   .app:where(:not(.mode-app)) {
-    --brand: #303038;
+    --brand: var(--c-303038);
     --soft: var(--surface-muted);
   }
   .app:where(:not(.mode-app)) .field:focus-within {
     background: var(--surface-subtle);
-    border-color: #777;
+    border-color: var(--c-777777);
   }
   :where(.app:not(.mode-app)) .chip.active, :where(.app:not(.mode-app)) .item-tabs button.active {
-    background: #efeff1;
+    background: var(--c-efeff1);
     color: var(--ink);
-    border-color: #b7b7bd;
+    border-color: var(--c-b7b7bd);
     font-weight: 500;
     box-shadow: none;
-    border: 1pt solid #68686f;
+    border: 1pt solid var(--c-68686f);
   }
   :where(.app:not(.mode-app)) .chip:not(.active):hover, :where(.app:not(.mode-app)) .item-tabs button:not(.active):hover, :where(.app:not(.mode-app)) .room-card:hover, :where(.app:not(.mode-app)) .row:hover {
-    background: #f6f6f7;
+    background: var(--c-f6f6f7);
   }
   :where(.app:not(.mode-app)) .grade-picker .active {
-    background: #303038;
-    color: #fff;
+    background: var(--c-303038);
+    color: var(--c-white);
     font-weight: 500;
   }
   :where(.app:not(.mode-app)) .row.selected {
@@ -816,21 +816,21 @@
     --brand: var(--accent);
   }
   :where(.app:not(.mode-app)) .website-guide-steps [aria-current="step"] {
-    color: #655a97;
-    background: #f6f4fa;
-    border-left: 2px solid #8276bf;
+    color: var(--c-655a97);
+    background: var(--c-f6f4fa);
+    border-left: 2px solid var(--c-8276bf);
   }
   :where(.app:not(.mode-app)) .website-guide-grades {
-    color: #655a97;
+    color: var(--c-655a97);
   }
   :where(.app:not(.mode-app)) .website-guide-grades > div {
-    background: #f7f5fa;
+    background: var(--c-f7f5fa);
   }
   :where(.app:not(.mode-app)) .website-guide-grades dt {
-    color: #75689d;
+    color: var(--c-75689d);
   }
   .app:where(:not(.mode-app)) .more-content, .app:where(:not(.mode-app)).more-page {
-    background: #fff;
+    background: var(--c-white);
   }
 }
 
@@ -854,17 +854,17 @@
     gap: var(--space-3);
   }
   :where(.app:not(.mode-app)) .zone-action {
-    border: 1pt solid #b7b7bd;
+    border: 1pt solid var(--c-b7b7bd);
     border-radius: 6px;
-    background: #fff;
-    color: #303038;
+    background: var(--c-white);
+    color: var(--c-303038);
     font-size: var(--text-base);
     padding: var(--space-2) var(--space-4);
     min-height: 38px;
   }
   :where(.app:not(.mode-app)) .zone-action:not(:disabled):hover {
     background: var(--surface-muted);
-    border-color: #68686f;
+    border-color: var(--c-68686f);
   }
   :where(.app:not(.mode-app)) .zone-delete {
     margin-left: auto;
@@ -899,12 +899,12 @@
    All rules stay above the app breakpoint to preserve the mobile UI. */
 @media (min-width: 761px) {
   :where(.app:not(.mode-app)) .website-header {
-    background: #fff;
+    background: var(--c-white);
   }
   :where(.app:not(.mode-app)) .website-topbar, :where(.app:not(.mode-app)) .website-nav, :where(.app:not(.mode-app)) .website-guide-section, :where(.app:not(.mode-app)) .website-guide-page, .app:where(:not(.mode-app)) > .main {
     max-width: 1440px;
-    padding-left: clamp(32px, 5vw, 72px);
-    padding-right: clamp(32px, 5vw, 72px);
+    padding-left: clamp(var(--space-8), 5vw, 72px);
+    padding-right: clamp(var(--space-8), 5vw, 72px);
   }
   :where(.app:not(.mode-app)) .website-topbar { height: 80px; }
   :where(.app:not(.mode-app)) .website-nav { height: 60px; }
@@ -929,7 +929,7 @@
   }
   :where(.app:not(.mode-app)) .website-nav-links button[aria-current="page"] {
     color: var(--ink);
-    background: #f4f4f5;
+    background: var(--c-f4f4f5);
     font-weight: 500;
   }
   :where(.app:not(.mode-app)) .website-nav-links button[aria-current="page"]::after, :where(.app:not(.mode-app)) .website-nav-links button:hover::after { transform: scaleX(1); }
@@ -950,8 +950,8 @@
     grid-template-columns: 1fr 1fr;
     max-width: 1440px;
     min-height: 400px;
-    background: #fff;
-    padding: 32px clamp(32px, 5vw, 72px);
+    background: var(--c-white);
+    padding: var(--space-8) clamp(var(--space-8), 5vw, 72px);
     gap: var(--space-10);
     align-items: stretch;
   }
@@ -975,16 +975,16 @@
     margin: 0;
     align-self: center;
   }
-  :where(.app:not(.mode-app)) .website-eyebrow { color: #6660a0; font-size: var(--text-sm); }
+  :where(.app:not(.mode-app)) .website-eyebrow { color: var(--c-6660a0); font-size: var(--text-sm); }
   :where(.app:not(.mode-app)) .website-hero h1 {
-    font-size: clamp(32px, 3.1vw, 46px);
-    line-height: 1.35;
+    font-size: var(--fs-h1);
+    line-height: var(--lh-h1);
     letter-spacing: -1.8px;
     margin: var(--space-4) 0;
     font-weight: 700;
     word-break: keep-all;
   }
-  :where(.app:not(.mode-app)) .website-hero-description { color: #5e6068; font-size: var(--text-lg); line-height: 1.7; }
+  :where(.app:not(.mode-app)) .website-hero-description { color: var(--c-5e6068); font-size: var(--text-lg); line-height: 1.7; }
   :where(.app:not(.mode-app)) .website-hero-actions { margin-top: var(--space-6); }
   :where(.app:not(.mode-app)) .website-hero-actions .filled { background: var(--accent); border-color: var(--accent); }
   :where(.app:not(.mode-app)) .website-hero-actions .filled:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
@@ -1007,9 +1007,9 @@
   :where(.app:not(.mode-app)) .website-guide-art { transition: transform 240ms ease; }
   :where(.app:not(.mode-app)) .website-guide-tile-copy { padding: var(--space-5); gap: var(--space-3); }
   :where(.app:not(.mode-app)) .website-guide-tile h2, :where(.app:not(.mode-app)) .website-guide-tile h3 { font-size: var(--text-xl); line-height: 1.5; }
-  :where(.app:not(.mode-app)) .website-guide-tile p { color: #656771; font-size: var(--text-base); }
-  :where(.app:not(.mode-app)) .website-guide-tile .website-inline-link { font-size: var(--text-base); color: #6660a0; }
-  :where(.app:not(.mode-app)) .website-guide-tile:hover { border-color: #9c96ca; background: #fcfbff; }
+  :where(.app:not(.mode-app)) .website-guide-tile p { color: var(--c-656771); font-size: var(--text-base); }
+  :where(.app:not(.mode-app)) .website-guide-tile .website-inline-link { font-size: var(--text-base); color: var(--c-6660a0); }
+  :where(.app:not(.mode-app)) .website-guide-tile:hover { border-color: var(--c-9c96ca); background: var(--c-fcfbff); }
   :where(.app:not(.mode-app)) .website-guide-tile:hover .website-guide-visual { background: var(--accent-soft); }
   :where(.app:not(.mode-app)) .website-guide-tile:hover .website-guide-art { transform: scale(1.025); }
   :where(.app:not(.mode-app)) .website-guide-tile:active { background: var(--accent-soft); border-color: var(--accent); }
@@ -1026,27 +1026,27 @@
     font-size: var(--text-base);
     transition: background-color 160ms ease, color 160ms ease;
   }
-  :where(.app:not(.mode-app)) .website-guide-steps button:hover { background: #f7f6fb; color: #655a97; }
+  :where(.app:not(.mode-app)) .website-guide-steps button:hover { background: var(--c-f7f6fb); color: var(--c-655a97); }
   :where(.app:not(.mode-app)) .website-guide-steps [aria-current="step"] { border-left: 1pt solid var(--accent); background: var(--accent-soft); font-weight: 500; }
   :where(.app:not(.mode-app)) .website-guide-detail-art { border-radius: 12px; }
   .app:where(:not(.mode-app)) .card, .app:where(:not(.mode-app)) .inspector { border-radius: 12px; box-shadow: none; }
   .app:where(:not(.mode-app)) .field { border: 1px solid var(--border); background: var(--surface-subtle); border-radius: 8px; }
-  .app:where(:not(.mode-app)) .field:focus-within { border-color: #6660a0; background: #fff; }
+  .app:where(:not(.mode-app)) .field:focus-within { border-color: var(--c-6660a0); background: var(--c-white); }
   .app:where(:not(.mode-app)) .primary, .app:where(:not(.mode-app)) .secondary, .app:where(:not(.mode-app)) .file-button, .app:where(:not(.mode-app)) .zone-action, .app:where(:not(.mode-app)) .inspector .text-button, .app:where(:not(.mode-app)) .inspector .primary, .app:where(:not(.mode-app)) .inspector .secondary { border-radius: 8px; min-height: 44px; box-shadow: none; }
-  .app:where(:not(.mode-app)) .chip, .app:where(:not(.mode-app)) .item-tabs button { border-radius: 8px; background: #fff; border: 1pt solid #d5d5dc; }
-  .app:where(:not(.mode-app)) .chip.active, .app:where(:not(.mode-app)) .item-tabs button.active { border-color: #55555f; background: #ededf0; font-weight: 500; }
-  .app:where(:not(.mode-app)) .grade-picker .chip.active { background: #303038; color: #fff; }
+  .app:where(:not(.mode-app)) .chip, .app:where(:not(.mode-app)) .item-tabs button { border-radius: 8px; background: var(--c-white); border: 1pt solid var(--c-d5d5dc); }
+  .app:where(:not(.mode-app)) .chip.active, .app:where(:not(.mode-app)) .item-tabs button.active { border-color: var(--c-55555f); background: var(--c-ededf0); font-weight: 500; }
+  .app:where(:not(.mode-app)) .grade-picker .chip.active { background: var(--c-303038); color: var(--c-white); }
   .app:where(:not(.mode-app)) .row, .app:where(:not(.mode-app)) .row.selected { border-radius: 8px; border: 1pt solid transparent; font-weight: 400; }
-  .app:where(:not(.mode-app)) .row.selected { border-color: #9a9aa3; background: var(--surface-muted); }
+  .app:where(:not(.mode-app)) .row.selected { border-color: var(--c-9a9aa3); background: var(--surface-muted); }
   .app:where(:not(.mode-app)) .room-card { border: 1px solid var(--border); border-radius: 12px; padding: var(--space-6); min-height: 116px; box-shadow: none; }
-  .app:where(:not(.mode-app)) .room-card:hover { border-color: #7f7f8b; background: var(--surface-subtle); }
-  .app:where(:not(.mode-app)) .room-card:active { background: #ededf0; }
+  .app:where(:not(.mode-app)) .room-card:hover { border-color: var(--c-7f7f8b); background: var(--surface-subtle); }
+  .app:where(:not(.mode-app)) .room-card:active { background: var(--c-ededf0); }
   .app:where(:not(.mode-app)) .room-card > span:last-child { transition: transform 180ms ease; }
   .app:where(:not(.mode-app)) .room-card:hover > span:last-child { transform: translateX(4px); }
   .app:where(:not(.mode-app)) button:not(:disabled), .app:where(:not(.mode-app)) .file-button { transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease; }
   .app:where(:not(.mode-app)) button:not(:disabled):active { filter: brightness(.95); }
   .app:where(:not(.mode-app)) button:disabled { filter: none; transform: none; }
-  .app:where(:not(.mode-app)) .danger:not(:disabled):hover { background: #fff1f1; color: var(--danger); border-color: #b87171; }
+  .app:where(:not(.mode-app)) .danger:not(:disabled):hover { background: var(--c-fff1f1); color: var(--danger); border-color: var(--c-b87171); }
   :where(.app:not(.mode-app)) .website-footer { padding-top: var(--space-8); padding-bottom: var(--space-8); background: var(--surface-subtle); }
 }
 @media (min-width: 761px) and (max-width: 1050px) {
@@ -1064,28 +1064,28 @@
 /* Space selection owns registration and editing; commands remain outside the inspector. */
 @media (min-width: 761px) {
   :where(.app:not(.mode-app)) .space-context.desktop-only { display: flex; align-items: center; gap: var(--space-3); font-size: var(--text-sm); color: var(--muted); margin-bottom: var(--space-4); }
-  :where(.app:not(.mode-app)) .space-context strong { color: #303038; font-weight: 500; }
+  :where(.app:not(.mode-app)) .space-context strong { color: var(--c-303038); font-weight: 500; }
   :where(.app:not(.mode-app)) .context-mode { border-left: 1px solid var(--border); padding-left: var(--space-3); }
   :where(.app:not(.mode-app)) .space-workflow.desktop-only { display: flex; padding: 0; margin: 0 0 var(--space-6); gap: var(--space-6); list-style: none; }
-  :where(.app:not(.mode-app)) .space-workflow li { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-sm); color: #6d6d78; }
+  :where(.app:not(.mode-app)) .space-workflow li { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-sm); color: var(--c-6d6d78); }
   :where(.app:not(.mode-app)) .space-workflow li > span { display: grid; place-items: center; width: 26px; height: 26px; border: 1px solid var(--border); border-radius: 50%; }
   :where(.app:not(.mode-app)) .space-workflow [aria-current="step"] { color: var(--accent); }
-  :where(.app:not(.mode-app)) .space-workflow [aria-current="step"] > span { background: var(--accent); color: white; border-color: var(--accent); }
-  :where(.app:not(.mode-app)) .space-workflow .complete { color: #55555f; }
-  :where(.app:not(.mode-app)) .editor-command-bar { position: sticky; top: 0; z-index: 5; display: flex; justify-content: space-between; align-items: center; gap: var(--space-5); background: #fff; border: 1px solid var(--border); border-radius: 12px 12px 0 0; padding: var(--space-4) var(--space-5); }
+  :where(.app:not(.mode-app)) .space-workflow [aria-current="step"] > span { background: var(--accent); color: var(--c-white); border-color: var(--accent); }
+  :where(.app:not(.mode-app)) .space-workflow .complete { color: var(--c-55555f); }
+  :where(.app:not(.mode-app)) .editor-command-bar { position: sticky; top: 0; z-index: 5; display: flex; justify-content: space-between; align-items: center; gap: var(--space-5); background: var(--c-white); border: 1px solid var(--border); border-radius: 12px 12px 0 0; padding: var(--space-4) var(--space-5); }
   :where(.app:not(.mode-app)) .editor-command-bar > div:first-child { display: flex; flex-direction: column; gap: var(--space-1); }
   :where(.app:not(.mode-app)) .editor-command-bar strong { font-size: var(--text-lg); }
   :where(.app:not(.mode-app)) .editor-command-bar > div:first-child > span, :where(.app:not(.mode-app)) .editor-save-status { font-size: var(--text-sm); color: var(--muted); }
   :where(.app:not(.mode-app)) .editor-command-actions { display: flex; gap: var(--space-3); align-items: center; }
-  .app:where(:not(.mode-app)) .editor-command-actions .primary { background: var(--accent); color: #fff; min-width: 88px; }
+  .app:where(:not(.mode-app)) .editor-command-actions .primary { background: var(--accent); color: var(--c-white); min-width: 88px; }
   .app:where(:not(.mode-app)) .editor-command-actions .primary:hover { background: var(--accent-hover); }
-  :where(.app:not(.mode-app)) .editor-workspace { background: #f4f4f6; border: 1px solid var(--border); border-top: 0; padding: var(--space-6); border-radius: 0 0 12px 12px; gap: var(--space-6); align-items: start; }
+  :where(.app:not(.mode-app)) .editor-workspace { background: var(--c-f4f4f6); border: 1px solid var(--border); border-top: 0; padding: var(--space-6); border-radius: 0 0 12px 12px; gap: var(--space-6); align-items: start; }
   :where(.app:not(.mode-app)) .editor-workspace > .workspace-main { min-width: 0; }
-  :where(.app:not(.mode-app)) .editor-workspace .plan-card { background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: var(--space-4); }
+  :where(.app:not(.mode-app)) .editor-workspace .plan-card { background: var(--c-white); border: 1px solid var(--border); border-radius: 8px; padding: var(--space-4); }
   :where(.app:not(.mode-app)) .editor-workspace .plan { min-height: 350px; }
-  :where(.app:not(.mode-app)) .editor-workspace .inspector { background: #fff; border-radius: 10px; top: 88px; max-height: calc(100svh - 110px); }
+  :where(.app:not(.mode-app)) .editor-workspace .inspector { background: var(--c-white); border-radius: 10px; top: 88px; max-height: calc(100svh - 110px); }
   :where(.app:not(.mode-app)) .editor-workspace .save-protection, :where(.app:not(.mode-app)) .editor-step-label { display: none; }
-  :where(.app:not(.mode-app)) .editor-workspace .region-list { padding: var(--space-4); background: #fff; border-radius: 8px; }
+  :where(.app:not(.mode-app)) .editor-workspace .region-list { padding: var(--space-4); background: var(--c-white); border-radius: 8px; }
   .page-protect:where(:not(.mode-app)) .website-footer, .page-review:where(:not(.mode-app)) .website-footer { display: none; }
 }
 @media (min-width: 761px) and (max-width: 1050px) {
@@ -1111,7 +1111,7 @@
   .page-detail:where(:not(.mode-app)) .workspace, .page-protect:where(:not(.mode-app)) .workspace, .page-review:where(:not(.mode-app)) .workspace {
     grid-template-columns: minmax(0, 1fr) 350px;
     gap: 0;
-    background: #fff;
+    background: var(--c-white);
     border: 0;
     border-top: 1px solid var(--border);
     border-radius: 0;
@@ -1124,7 +1124,7 @@
     border-left: 1px solid var(--border);
     border-radius: 0;
     box-shadow: none;
-    background: #fff;
+    background: var(--c-white);
     margin: 0;
     padding: var(--space-6);
     top: 0;
@@ -1133,7 +1133,7 @@
     min-height: calc(100svh - 220px);
   }
   .page-protect:where(:not(.mode-app)) .inspector, .page-review:where(:not(.mode-app)) .inspector { top: 76px; max-height: calc(100svh - 76px); }
-  .page-detail:where(:not(.mode-app)) .plan-card, .page-protect:where(:not(.mode-app)) .plan-card, .page-review:where(:not(.mode-app)) .plan-card { padding: 0; border: 0; border-radius: 0; background: #fff; }
+  .page-detail:where(:not(.mode-app)) .plan-card, .page-protect:where(:not(.mode-app)) .plan-card, .page-review:where(:not(.mode-app)) .plan-card { padding: 0; border: 0; border-radius: 0; background: var(--c-white); }
   .page-detail:where(:not(.mode-app)) .plan, .page-protect:where(:not(.mode-app)) .plan, .page-review:where(:not(.mode-app)) .plan { width: 100%; height: auto; max-height: none; min-height: 0; }
   .page-detail:where(:not(.mode-app)) .plan-caption, .page-protect:where(:not(.mode-app)) .plan-caption, .page-review:where(:not(.mode-app)) .plan-caption { margin: 0 0 var(--space-2); padding: 0; }
   .page-detail:where(:not(.mode-app)) .plan-legend, .page-protect:where(:not(.mode-app)) .plan-legend, .page-review:where(:not(.mode-app)) .plan-legend { margin-top: var(--space-3); }
@@ -1197,11 +1197,11 @@
 }
 
 @media (min-width: 761px) {
-  .app:where(:not(.mode-app)) .field { border-color: #b9bbc4; }
-  .app:where(:not(.mode-app)) .card:not(button), .app:where(:not(.mode-app)) .room-card, :where(.app:not(.mode-app)) .website-guide-tile { border-color: #bec0c8; }
-  .app:where(:not(.mode-app)) .secondary, .app:where(:not(.mode-app)) .zone-action, .app:where(:not(.mode-app)) .chip, .app:where(:not(.mode-app)) .item-tabs button, .app:where(:not(.mode-app)) .inspector .secondary, .app:where(:not(.mode-app)) .inspector .text-button { border-color: #a9acb6; }
-  .app:where(:not(.mode-app)) .chip.active, .app:where(:not(.mode-app)) .item-tabs button.active { border-color: #555b67; }
-  :where(.app:not(.mode-app)) .website-guide-detail-art, :where(.app:not(.mode-app)) .website-guide-grades > div, .app:where(:not(.mode-app)) .summary-box { border: 1px solid #c1c3cb; }
+  .app:where(:not(.mode-app)) .field { border-color: var(--c-b9bbc4); }
+  .app:where(:not(.mode-app)) .card:not(button), .app:where(:not(.mode-app)) .room-card, :where(.app:not(.mode-app)) .website-guide-tile { border-color: var(--c-bec0c8); }
+  .app:where(:not(.mode-app)) .secondary, .app:where(:not(.mode-app)) .zone-action, .app:where(:not(.mode-app)) .chip, .app:where(:not(.mode-app)) .item-tabs button, .app:where(:not(.mode-app)) .inspector .secondary, .app:where(:not(.mode-app)) .inspector .text-button { border-color: var(--c-a9acb6); }
+  .app:where(:not(.mode-app)) .chip.active, .app:where(:not(.mode-app)) .item-tabs button.active { border-color: var(--c-555b67); }
+  :where(.app:not(.mode-app)) .website-guide-detail-art, :where(.app:not(.mode-app)) .website-guide-grades > div, .app:where(:not(.mode-app)) .summary-box { border: 1px solid var(--c-c1c3cb); }
   :where(.app:not(.mode-app)) .website-nav-border, .app:where(:not(.mode-app)) .website-footer.desktop-only, .page-detail:where(:not(.mode-app)) .workspace, .page-protect:where(:not(.mode-app)) .workspace, .page-review:where(:not(.mode-app)) .workspace { border-color: var(--border); }
   .page-detail:where(:not(.mode-app)) .workspace::after, .page-protect:where(:not(.mode-app)) .workspace::after, .page-review:where(:not(.mode-app)) .workspace::after { background: var(--border-strong); }
 }
@@ -1215,7 +1215,7 @@
     background: transparent;
   }
   .app:where(:not(.mode-app)) .detail-info > .primary, .app:where(:not(.mode-app)) .detail-info > .secondary {
-    border: 1pt solid #a9acb6;
+    border: 1pt solid var(--c-a9acb6);
   }
 }
 
@@ -1246,8 +1246,8 @@
    the headline is the first screen's focal point, and the guide tiles separate by tone, not outlines. */
 @media (min-width: 761px) {
   :where(.app:not(.mode-app)) .website-hero h1 {
-    font-size: clamp(40px, 4.4vw, 64px);
-    line-height: 1.2;
+    font-size: var(--fs-h1);
+    line-height: var(--lh-h1);
     letter-spacing: -0.03em;
   }
   :where(.app:not(.mode-app)) .website-hero-photo { min-height: 440px; }

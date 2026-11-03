@@ -130,7 +130,7 @@ function App() {
     syncFailed,
     retryUpload,
     sunSource,
-    predictionPill,
+    filmPrediction,
     continueManually,
     deleteSpace,
     deleting,
@@ -165,7 +165,7 @@ function App() {
                   <span>내 공간</span>
                   <span aria-hidden="true">/</span>
                   <strong>
-                    {space.building || "새 건물"} · {space.name || "새 공간"}
+                    {space.building || "새 건물"}, {space.name || "새 공간"}
                   </strong>
                   <span className="context-mode">
                     {editing ? "편집 중" : "공간 현황"}
@@ -180,7 +180,7 @@ function App() {
                   {[
                     "공간 정보",
                     "휴대폰 측정 (선택)",
-                    "가구·보호구역 편집",
+                    "가구·보호 영역 편집",
                   ].map((label, i) => {
                     const current =
                       page === "register"
@@ -220,7 +220,7 @@ function App() {
                       ? "공간 정보 수정"
                       : page === "detail" && active ? active.name : titles[page]}
                   </h1>
-                  {page === "detail" && active && <p className="page-subtitle">{active.building} · {active.floor} <span>공간 현황</span></p>}
+                  {page === "detail" && active && <p className="page-subtitle">{active.building} {active.floor}</p>}
                 </div>
                 {["home", "spaces"].includes(page) && (
                   <button
@@ -254,15 +254,13 @@ function App() {
               )}
               {(page === "spaces") && (
                 <div className="list-content">
-                  {/* App home stays quiet while the server is fine; the status shows when it needs attention. */}
-                  {(!isApp || page === "spaces" || serverState !== "online") && (
+                  {<AwardSpaces status={<>{/* Show connection feedback only while loading or when attention is needed. */}
+                  {serverState !== "online" && (
                   <div className="server-sync-row">
                     <span>
                       {serverState === "loading"
                         ? "저장한 공간 불러오는 중…"
-                        : serverState === "online"
-                          ? "서버 연결됨"
-                          : "서버에 연결되지 않음"}
+                        : "서버에 연결되지 않음"}
                     </span>
                     <button
                       className="text-button"
@@ -277,8 +275,7 @@ function App() {
                     <p className="notice" role="status">
                       {serverError} 기존 브라우저 자료는 유지됩니다.
                     </p>
-                  )}
-                  {<AwardSpaces spaces={spaces} jobs={measurementJobs} syncFailed={syncFailed} onRetrySync={retryUpload} onSelect={selectSpace} onStart={begin} onMeasurement={job=>{const s=spaces.find(s=>s.id===job.space_id);if(isApp && job.status!=="completed")joinMeasurement(job);else if(s){selectSpace(s);if(job.status!=="completed"){setDraft(structuredClone(s));setPage("capture");}}}}/>}
+                  )}</>} spaces={spaces} jobs={measurementJobs} syncFailed={syncFailed} onRetrySync={retryUpload} onSelect={selectSpace} onStart={begin} onMeasurement={job=>{const s=spaces.find(s=>s.id===job.space_id);if(isApp && job.status!=="completed")joinMeasurement(job);else if(s){selectSpace(s);if(job.status!=="completed"){setDraft(structuredClone(s));setPage("capture");}}}}/>}
                   {unavailable.length > 0 && (
                     <section className="external-spaces">
                       <h2>다른 형식의 공간</h2>
@@ -298,7 +295,7 @@ function App() {
               )}
               {page === "register" && draft && (
                 <form id="register-form" noValidate onSubmit={registerSubmit} onInput={(e) => clearFieldIssue(e.target)} className="registration">
-                  <p className="step-label">1 / 3 · 공간 정보</p>
+                  <p className="step-label">1/3단계, 공간 정보</p>
                   <h2>건물과 공간 등록</h2>
                   <div className="two-column">
                     <Card>
@@ -578,7 +575,7 @@ function App() {
                     <li>앱에서 가구 이름과 종류 선택</li>
                     <li>가구 네 모서리에 차례로 서서 창문 QR 마커 촬영</li>
                     <li>마커가 다 보이지 않거나 흔들리면 앱이 재촬영 안내</li>
-                    <li>촬영이 끝나면 웹에서 도면 확인 후 가구·보호구역 편집</li>
+                    <li>촬영이 끝나면 웹에서 도면 확인 후 가구·보호 영역 편집</li>
                   </ol>
                   <button
                     className="primary"
@@ -597,7 +594,7 @@ function App() {
                       className="primary"
                       onClick={() => setPage("protect")}
                     >
-                      측정 완료 · 도면 확인
+                      측정 완료, 도면 확인
                     </button>
                   )}
                   {handoffLink && (
@@ -626,7 +623,7 @@ function App() {
               {page === "capture" && draft && isApp && (
                 <div className="capture-layout">
                   <div>
-                    <p className="step-label">2 / 3 · 휴대폰 측정 · 공간 촬영</p>
+                    <p className="step-label">2/3단계, 휴대폰으로 공간 촬영</p>
                     <h2>
                       {addingByQr
                         ? "추가 가구 모서리 촬영"
@@ -663,7 +660,7 @@ function App() {
                       <li>촬영할 가구의 이름과 종류 선택</li>
                       <li>가구 모서리 1~4에 차례로 서서 마커 전체가 보이게 촬영</li>
                       <li>재촬영 안내가 나오면 안내대로 같은 모서리 다시 촬영</li>
-                      <li>모든 가구 촬영 후 도면과 가로·깊이·높이 확인</li>
+                      <li>모든 가구 촬영 후 도면과 가로·세로·높이 확인</li>
                     </ol>
                     <button
                       className="secondary"
@@ -676,7 +673,7 @@ function App() {
               )}
               {page === "processing" && (
                 <Card className="processing">
-                  <p className="step-label">2 / 3 · 휴대폰 측정 · 사진 분석</p>
+                  <p className="step-label">2/3단계, 휴대폰 사진 분석</p>
                   <h2>측정 도면 생성 중</h2>
                   <strong className="progress-number">
                     {progress}
@@ -704,7 +701,7 @@ function App() {
                   {!isApp && <div className="editor-command-bar">
                     <div>
                       <h1>{draft.name || "새 공간"}</h1>
-                      <span>도면·보호구역 편집</span>
+                      <span>도면·보호 영역 편집</span>
                     </div>
                     <div className="editor-command-actions">
                       <span className="editor-save-status" role="status">
@@ -728,13 +725,13 @@ function App() {
                     </div>
                   </div>}
                   <p className="editing-help">
-                    도면에서 가구를 끌어 옮기거나 치수를 입력해 수정
-                    {isApp && " · 넓은 화면의 웹에서 더 편하게 편집할 수 있어요"}
+                    가구를 끌어 옮기거나 치수를 수정하세요.
+                    {isApp && " 웹의 넓은 화면에서도 편집할 수 있습니다."}
                   </p>
                   <p className="step-label editor-step-label">
                     {page === "review"
-                      ? "3 / 3 · 가구·보호구역 편집 · 가구 선택·치수 · 촬영한 가구 치수는 예시값(FR-03 연결 전)"
-                      : "3 / 3 · 가구·보호구역 편집 · 보호면·높이 확인"}
+                      ? "3/3단계, 가구 위치와 치수 확인"
+                      : "3/3단계, 보호 영역과 높이 설정"}
                   </p>
                   <div className="workspace editor-workspace">
                     <div className="workspace-main">
@@ -744,12 +741,14 @@ function App() {
                           <>
                             <button
                               className={`chip ${tool === "furniture" ? "active" : ""}`}
+                              aria-pressed={tool === "furniture"}
                               onClick={() => setTool("furniture")}
                             >
                               가구 선택
                             </button>
                             <button
                               className={`chip ${tool === "region" ? "active" : ""}`}
+                              aria-pressed={tool === "region"}
                               onClick={() => setTool("region")}
                             >
                               영역 그리기
@@ -771,7 +770,7 @@ function App() {
                               onClick={() => chooseFurniture(f.id)}
                             >
                               {f.name}
-                              {f.type && <small> · {furnitureTypes[f.type]}</small>}
+                              {f.type && <small>, {furnitureTypes[f.type]}</small>}
                             </button>
                           ))}
                         <button className="item-add" onClick={addFurniture}>＋ 가구 추가</button>
@@ -790,14 +789,14 @@ function App() {
                       {page === "protect" && (
                         <div className="region-list">
                           <div className="section-row">
-                            <h3>보호영역</h3>
+                            <h3>보호 영역</h3>
                             <button className="text-button" onClick={addRegion}>
                               ＋ 영역 추가
                             </button>
                           </div>
                           {draft.regions.length === 0 && (
                             <p className="muted small">
-                              가구 선택 후 보호영역 지정 또는 도면에 영역 그리기
+                              가구를 선택하거나 도면에 보호 영역을 그리세요.
                             </p>
                           )}
                           {draft.regions
@@ -812,7 +811,7 @@ function App() {
                                 <span>
                                   {r.name}
                                   <small>
-                                    {r.face} · {r.bottom}~{r.top} m
+                                    {r.face}, {r.bottom}~{r.top} m
                                   </small>
                                 </span>
                                 <span className="grade-summary">
@@ -825,7 +824,7 @@ function App() {
                     </div>
                     <aside className="inspector">
                       <h2>
-                        {region ? "선택한 보호영역 설정" : "선택한 가구 설정"}
+                        {region ? "선택한 보호 영역 설정" : "선택한 가구 설정"}
                       </h2>
                       {furniture ? (
                         <>
@@ -861,9 +860,9 @@ function App() {
                           </label>
                           <p className="muted small">
                             {draft.source === "sample"
-                              ? "가구 종류별 기본 치수 · 실제 치수로 수정"
-                              : "직접 입력"}{" "}
-                            · m
+                              ? "가구 종류별 기본 치수예요. 실제 치수로 고쳐 주세요."
+                              : "직접 입력한 치수예요."}{" "}
+                            단위는 m입니다.
                           </p>
                           <div className="dimensions">
                             {(["width", "depth", "height"] as const).map(
@@ -902,7 +901,7 @@ function App() {
                                 className="secondary"
                                 onClick={protectFurniture}
                               >
-                                보호영역 지정
+                                보호 영역 지정
                               </button>
                             )}
                             <button
@@ -940,7 +939,7 @@ function App() {
                         <>
                           <div className="divider" />
                           <label className="field">
-                            <span>보호영역 이름</span>
+                            <span>보호 영역 이름</span>
                             <input
                               value={region.name}
                               onChange={(e) =>
@@ -1026,7 +1025,7 @@ function App() {
                               setSelectedRegion(null);
                             }}
                           >
-                            보호영역 삭제
+                            보호 영역 삭제
                           </button>
                         </>
                       )}
@@ -1035,7 +1034,7 @@ function App() {
                           <>
                             {!isApp && (
                             <button className="primary" onClick={confirmReview}>
-                              확인하고 보호구역 지정
+                              확인하고 보호 영역 지정
                             </button>
                             )}
                             <button
@@ -1061,7 +1060,7 @@ function App() {
                               onClick={save}
                               disabled={saving}
                             >
-                              보호구역 저장
+                              보호 영역 저장
                             </button>
                             )}
                             {conflict && (
@@ -1090,7 +1089,6 @@ function App() {
               {page === "detail" && active && (
                 <div className="workspace">
                   <div className="workspace-main">
-                    {zoneTabs}
                     <Card className="status-card">
                       <span
                         className={`status-dot ${activeRegionCount ? "" : "pending"}`}
@@ -1098,16 +1096,16 @@ function App() {
                       <div>
                         <strong>
                           {activeRegionCount
-                            ? "보호구역 설정 완료"
-                            : "보호구역 설정 전"}
+                            ? "보호 영역 설정 완료"
+                            : "보호 영역 설정 전"}
                         </strong>
                         <p className="muted small">
-                          {active.floor} · {active.zone} · 보호면{" "}
+                          {active.floor} {active.zone}, 보호 영역{" "}
                           {activeRegionCount}개
                         </p>
                       </div>
-                      <span className="pill">{predictionPill}</span>
                     </Card>
+                    {zoneTabs}
                     <Card className="plan-card">{plan}</Card>
                     <div className="item-tabs">
                       {active.furniture
@@ -1118,6 +1116,7 @@ function App() {
                               selectedFurniture === f.id ? "active" : ""
                             }
                             key={f.id}
+                            aria-pressed={selectedFurniture === f.id}
                             onClick={() => chooseFurniture(f.id)}
                           >
                             {f.name}
@@ -1150,13 +1149,13 @@ function App() {
                     </Card>
                     <Card>
                       <div className="section-row">
-                        <h3>필름 차광 시뮬레이션</h3>
+                        <h3>{filmPrediction ? "필름 차광 계획" : "필름 차광 시뮬레이션"}</h3>
                         <strong className="brand-text">
                           {formatMinute(Math.round(hour * 60))}
                         </strong>
                       </div>
                       {resolveWindow(active) ? (
-                        <FilmGrid space={active} schedule={applyShadingTime(sunSchedule, detailShading)} hour={hour} />
+                        <FilmGrid space={active} schedule={applyShadingTime(sunSchedule, detailShading)} hour={hour} prediction={filmPrediction} setting={detailShading} />
                       ) : (
                         <p className="muted small">
                           창문 규격을 입력하면 시각별로 가려질 필름 칸을 볼 수 있습니다.
@@ -1165,15 +1164,15 @@ function App() {
                     </Card>
                   </div>
                   <aside className="inspector detail-info">
-                    <h2>{active.name}</h2>
+                    <h2>{furniture ? "선택한 가구" : "공간 설정"}</h2>
                     <p className="muted">
-                      {active.building} · {active.floor}
+                      {active.building} {active.floor}
                     </p>
                     {furniture && (
                       <div className="summary-box">
                         <strong>
                           {furniture.name}
-                          {furniture.type && ` · ${furnitureTypes[furniture.type]}`}
+                          {furniture.type && `, ${furnitureTypes[furniture.type]}`}
                         </strong>
                         <p>
                           {furniture.width} × {furniture.depth} ×{" "}
@@ -1181,10 +1180,10 @@ function App() {
                         </p>
                       </div>
                     )}
-                    <h3>설정된 보호영역</h3>
+                    <h3>설정된 보호 영역</h3>
                     {!activeRegionCount && (
                       <p className="muted small">
-                        아직 없음 · 아래 수정 버튼으로 보호할 가구를 지정
+                        설정된 보호 영역이 없습니다. 편집 화면에서 추가하세요.
                       </p>
                     )}
                     {active.regions
@@ -1199,7 +1198,7 @@ function App() {
                           <span>
                             {r.name}
                             <small>
-                              {r.face} · {r.bottom}~{r.top} m
+                              {r.face}, {r.bottom}~{r.top} m
                             </small>
                           </span>
                           <span className="grade-summary">
@@ -1207,7 +1206,6 @@ function App() {
                           </span>
                         </button>
                       ))}
-                    <div className="divider" />
                     <ShadingTimeControl
                       space={active}
                       value={detailShading}
@@ -1229,23 +1227,25 @@ function App() {
                           className="primary"
                           onClick={() => editSpace(active)}
                         >
-                          가구·도면·보호구역 수정
+                          가구·도면·보호 영역 수정
                         </button>
                       )}
-                      <button
-                        className="secondary"
-                        onClick={() => {
-                          setDraft(structuredClone(active));
-                          setSelectedFurniture(null);
-                          setSelectedRegion(null);
-                          setPage("register");
-                        }}
-                      >
-                        공간 정보 수정
-                      </button>
-                      <button className="secondary destructive" onClick={() => setModal("delete-space")}>
-                        공간 삭제
-                      </button>
+                      <div className="detail-secondary">
+                        <button
+                          className="text-button"
+                          onClick={() => {
+                            setDraft(structuredClone(active));
+                            setSelectedFurniture(null);
+                            setSelectedRegion(null);
+                            setPage("register");
+                          }}
+                        >
+                          공간 정보 수정
+                        </button>
+                        <button className="text-button destructive-text" onClick={() => setModal("delete-space")}>
+                          공간 삭제
+                        </button>
+                      </div>
                       {isApp && (
                         <button
                           className="secondary"
@@ -1344,8 +1344,7 @@ function App() {
                 </p>
                 <span className="ap-state-chip on">보호 중</span>
               </aside>
-              <h2>체험 계정으로 계속</h2>
-              <p className="muted small">Google 로그인은 준비 중이라 이름과 이메일로 체험합니다.</p>
+              <h2>계정 정보</h2>
               <label className="field">
                 <span>이름</span>
                 <input
@@ -1385,7 +1384,7 @@ function App() {
             <>
               <h2>'{active.name}'을 삭제할까요?</h2>
               <p className="muted">
-                이 공간의 가구·보호구역 정보도 함께 사라지고 되돌릴 수 없습니다.
+                이 공간의 가구·보호 영역 정보도 함께 사라지고 되돌릴 수 없습니다.
               </p>
               <button className="primary destructive" disabled={deleting} onClick={deleteSpace}>
                 {deleting ? "삭제 중…" : "삭제"}
@@ -1432,7 +1431,7 @@ function App() {
             <>
               <h2>가구 추가</h2>
               <button className="primary" onClick={addManualFurniture}>
-                직접 추가 · 위치·치수 입력
+                직접 추가하고 위치·치수 입력
               </button>
               <button
                 className="secondary"

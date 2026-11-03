@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import type { Account, Space } from "./model";
 import { resolveWindow, isWidthWall } from "./model";
 import type { Page } from "./navigation";
@@ -63,7 +64,7 @@ export function AwardHeader({
           className={page === "guide" ? "is-current" : ""}
           onClick={() => onNavigate("guide")}
         >
-          사용 방법
+          사용 가이드
         </button>
       </nav>
       <div className="award-header-actions">
@@ -71,7 +72,7 @@ export function AwardHeader({
           <button
             className={`award-account ${["account", "more"].includes(page) ? "is-current" : ""}`}
             onClick={() => onNavigate("account")}
-            aria-label={`${account.name} · 내 계정`}
+            aria-label={`${account.name}, 내 계정`}
           >
             <span>{account.name.slice(0, 1)}</span>
             <span className="award-account-label">내 계정</span>
@@ -120,8 +121,8 @@ function SpaceThumbnail({ space }: { space: Space }) {
         width={space.width}
         height={space.depth}
         rx=".07"
-        fill="#fff"
-        stroke="#343434"
+        fill="var(--c-white)"
+        stroke="var(--c-protect-ink)"
         strokeWidth=".04"
       />
       {space.furniture
@@ -134,8 +135,8 @@ function SpaceThumbnail({ space }: { space: Space }) {
             width={f.width}
             height={f.depth}
             rx=".03"
-            fill="#e9e9e9"
-            stroke="#9d9d9d"
+            fill="var(--c-block)"
+            stroke="var(--c-9d9d9d)"
             strokeWidth=".025"
           />
         ))}
@@ -149,7 +150,7 @@ function SpaceThumbnail({ space }: { space: Space }) {
             width={r.width}
             height={r.depth}
             rx=".03"
-            fill="#6660e5"
+            fill="var(--c-action)"
             fillOpacity=".3"
           />
         ))}
@@ -159,7 +160,7 @@ function SpaceThumbnail({ space }: { space: Space }) {
           x2={horizontal ? window.offset + window.width : window.wall === "east" ? space.width : 0}
           y1={horizontal ? window.wall === "south" ? space.depth : 0 : window.offset}
           y2={horizontal ? window.wall === "south" ? space.depth : 0 : window.offset + window.width}
-          stroke="#343434"
+          stroke="var(--c-protect-ink)"
           strokeWidth=".1"
         />
       )}
@@ -167,6 +168,7 @@ function SpaceThumbnail({ space }: { space: Space }) {
   );
 }
 export function AwardSpaces({
+  status,
   spaces,
   jobs,
   onSelect,
@@ -175,6 +177,7 @@ export function AwardSpaces({
   syncFailed,
   onRetrySync,
 }: {
+  status?: ReactNode;
   spaces: Space[];
   jobs: HandoffSession[];
   syncFailed: string[];
@@ -193,34 +196,17 @@ export function AwardSpaces({
         .toLowerCase()
         .includes(query.trim().toLowerCase()),
   );
-  const regions = spaces.reduce(
-    (n, s) => n + s.regions.filter((r) => r.grade !== "D").length,
-    0,
-  );
   return (
     <div className="award-spaces">
       <section className="award-space-intro">
         <div>
-          <h1>
-            각자의 공간,
-            <br />
-            <span>각자의 빛.</span>
-          </h1>
-        </div>
-        <div className="award-space-stats">
-          <div>
-            <strong>{String(spaces.length).padStart(2, "0")}</strong>
-            <span>등록한 공간</span>
-          </div>
-          <div>
-            <strong>{String(regions).padStart(2, "0")}</strong>
-            <span>설정된 보호영역</span>
-          </div>
+          <h1>내 공간</h1>
         </div>
       </section>
+      {status}
       <div className="award-list-tools">
         <label className="award-search">
-          <span className="award-sr">공간 검색</span>
+          <span className="award-control-label">공간 검색</span>
           <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <circle
               cx="10"
@@ -233,13 +219,13 @@ export function AwardSpaces({
           </svg>
           <input
             type="search"
-            placeholder="공간·건물 검색"
+            placeholder="예: 열람실"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
         </label>
         <label className="award-building-filter">
-          <span className="award-sr">건물 선택</span>
+          <span className="award-control-label">건물 선택</span>
           <select
             value={building}
             onChange={(e) => setBuilding(e.target.value)}
@@ -266,32 +252,26 @@ export function AwardSpaces({
                 <button
                   className="award-room-open"
                   onClick={() => onSelect(s)}
-                  aria-label={`${s.building} · ${s.name} 공간 현황 열기`}
+                  aria-label={`${s.building}, ${s.name} 공간 현황 열기`}
                 >
                   <div className={`award-room-visual award-art-${i % 3}`}>
                     <span
                       className={`award-state ${regionCount ? "configured" : ""}`}
                     >
-                      <i />
                       {regionCount ? "보호 설정 완료" : "보호 설정 전"}
                     </span>
                     <SpaceThumbnail space={s} />
-                    <span className="award-room-number">
-                      {String(i + 1).padStart(2, "0")}
-                    </span>
                   </div>
                   <div className="award-room-copy">
                     <span>
-                      {s.building} · {s.floor}
+                      {s.building} {s.floor}
                     </span>
-                    <h3>{s.name}</h3>
+                    <h2>{s.name}</h2>
                     <SyncBadge space={s} />
                     <div>
                       <span>
-                        {s.zones.length}개 구역 <b aria-hidden="true">·</b> 보호영역 {regionCount}
-                        개
+                        구역 {s.zones.length}개, 보호 영역 {regionCount}개
                       </span>
-                      <Arrow diagonal />
                     </div>
                   </div>
                 </button>
@@ -308,8 +288,7 @@ export function AwardSpaces({
                     <button onClick={() => onMeasurement(job)}>
                       {job.status === "completed"
                         ? "도면 확인"
-                        : "측정 상태 보기"}{" "}
-                      →
+                        : "측정 상태 보기"}
                     </button>
                   </div>
                 )}
@@ -323,12 +302,12 @@ export function AwardSpaces({
           <h3>
             {spaces.length
               ? "검색 결과가 없습니다."
-              : "첫 공간을 등록해 보세요."}
+              : "등록한 공간이 없습니다."}
           </h3>
           <p>
             {spaces.length
               ? "다른 이름으로 검색하거나 전체 건물을 선택해 보세요."
-              : "공간과 창문의 크기를 입력하면 가구와 보호구역을 설정할 수 있습니다."}
+              : "공간과 창문의 크기를 입력하면 가구와 보호 영역을 설정할 수 있습니다."}
           </p>
           <button
             className="primary"
@@ -346,6 +325,7 @@ export function AwardSpaces({
     </div>
   );
 }
+// Steps that have a real screen to show get the app's own fragment; the rest are text only.
 export function AwardGuide({
   index,
   onIndex,
@@ -355,29 +335,75 @@ export function AwardGuide({
   onIndex: (i: number) => void;
   onStart: () => void;
 }) {
+  const [activeSection, setActiveSection] = useState(index ?? 0);
+  const [opened, setOpened] = useState(() => new Set(guideSteps.map((_, i) => i)));
+  const activeRef = useRef(index ?? 0);
+  const openStep = (step: number) => {
+    setOpened(previous => new Set(previous).add(step));
+    activeRef.current = step;
+    setActiveSection(step);
+    if (matchMedia("(max-width: 700px)").matches) {
+      const nav = document.querySelector<HTMLElement>(".guide-refresh .ap-guide-nav");
+      const button = nav?.querySelectorAll<HTMLButtonElement>("button")[step];
+      if (nav && button) nav.scrollTo({
+        left: Math.max(0, button.offsetLeft - (nav.clientWidth - button.offsetWidth) / 2),
+        behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+      });
+    }
+  };
+  const scrollToStep = (step: number) => {
+    document.getElementById(`award-guide-${step}`)?.scrollIntoView({
+      behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+      block: "start",
+    });
+  };
   useEffect(() => {
-    if (index !== null)
-      document
-        .getElementById(`award-guide-${index}`)
-        ?.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+    if (index === null) return;
+    let scrollFrame = 0;
+    const frame = requestAnimationFrame(() => {
+      openStep(index);
+      scrollFrame = requestAnimationFrame(() => scrollToStep(index));
+    });
+    return () => { cancelAnimationFrame(frame); cancelAnimationFrame(scrollFrame); };
   }, [index]);
+  useEffect(() => {
+    let frame = 0;
+    const update = () => {
+      frame = 0;
+      const sections = guideSteps.map((_, i) => document.getElementById(`award-guide-${i}`));
+      const header = document.querySelector(".award-header")?.getBoundingClientRect().height ?? 64;
+      const headerBottom = document.querySelector(".award-header")?.getBoundingClientRect().bottom ?? 0;
+      document.getElementById("award-guide-main")?.style.setProperty("--guide-header-offset", `${Math.max(8, headerBottom + 8)}px`);
+      const readingLine = Math.max(header + 32, window.innerHeight * .4);
+      let current = 0;
+      sections.forEach((section, i) => {
+        if (section && section.getBoundingClientRect().top <= readingLine) current = i;
+      });
+      if (activeRef.current !== current) openStep(current);
+    };
+    const schedule = () => { if (!frame) frame = requestAnimationFrame(update); };
+    update();
+    window.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("resize", schedule);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", schedule);
+      window.removeEventListener("resize", schedule);
+    };
+  }, []);
   return (
-    <main id="award-guide-main" tabIndex={-1} className="ap-guide-page">
+    <main id="award-guide-main" tabIndex={-1} className="ap-guide-page guide-refresh">
       <div className="ap-guide-heading">
-        <h1>
-          당신의 공간에
-          <br />
-          <span>빛을 맞추는 방법.</span>
-        </h1>
-        <p>공간 등록부터 보호 설정까지, 순서대로 확인해 보세요.</p>
+        <h1>사용 가이드</h1>
       </div>
       <div className="ap-guide-layout">
-        <nav className="ap-guide-nav" aria-label="사용 방법 단계">
+        <nav className="ap-guide-nav" aria-label="사용 가이드 단계">
           {guideSteps.map((step, i) => (
             <button
               key={step.title}
-              className={(index ?? 0) === i ? "active" : ""}
-              onClick={() => onIndex(i)}
+              className={activeSection === i ? "active" : ""}
+              aria-current={activeSection === i ? "step" : undefined}
+              onClick={() => { openStep(i); if (index === i) requestAnimationFrame(() => scrollToStep(i)); else onIndex(i); }}
             >
               <span>0{i + 1}</span>
               {step.title}
@@ -390,30 +416,32 @@ export function AwardGuide({
             <section
               id={`award-guide-${i}`}
               key={step.title}
-              className={`ap-guide-step ${(index ?? 0) === i ? "is-open" : ""}`}
+              className={`ap-guide-step ${opened.has(i) ? "is-open" : ""} ${activeSection === i ? "is-current" : ""}`}
             >
               <h2 className="ap-guide-step-title">
-                <button
-                  type="button"
-                  aria-expanded={(index ?? 0) === i}
-                  aria-controls={`award-guide-body-${i}`}
-                  onClick={() => onIndex(i)}
-                >
-                  <span>0{i + 1}</span>
-                  {step.title}
-                  <i aria-hidden="true" />
+                <button type="button" aria-expanded={opened.has(i)} aria-controls={`award-guide-body-${i}`}
+                  onClick={() => setOpened(previous => {
+                    const next = new Set(previous);
+                    if (next.has(i)) next.delete(i); else next.add(i);
+                    return next;
+                  })}>
+                  <span>0{i + 1}</span><span className="guide-step-name">{step.title}</span><i aria-hidden="true" />
                 </button>
               </h2>
               <div
                 className="ap-guide-step-body"
                 id={`award-guide-body-${i}`}
-                hidden={(index ?? 0) !== i}
+                hidden={!opened.has(i)}
               >
                 <div className="ap-guide-art">
                   <GuideIllustration step={i} />
                 </div>
-                <p>{step.text}</p>
-                <p className="ap-guide-detail">{step.detail}</p>
+                <div className="guide-step-copy">
+                  <p>{step.text}</p>
+                  <ul className="guide-step-notes">
+                    {step.detail.split(/(?<=\.)\s+/u).map(note => <li key={note}>{note}</li>)}
+                  </ul>
+                </div>
               </div>
             </section>
           ))}
@@ -421,13 +449,11 @@ export function AwardGuide({
       </div>
       <div className="ap-guide-bottom">
         <p>
-          준비되셨나요?
-          <br />
-          <strong>이제 내 공간에서 시작해 보세요.</strong>
+          <span>공간을 등록하고 보호 영역을 설정하세요.</span>
         </p>
         <button className="ap-round-link" onClick={onStart}>
           <Scribble />
-          <span>내 공간 시작하기</span>
+          <span>내 공간 열기</span>
           <b>
             <Arrow diagonal />
           </b>
@@ -443,7 +469,6 @@ export function AwardFooter({ onHome }: { onHome: () => void }) {
         <SunMark />
         <span translate="no">SunSync</span>
       </button>
-      <span>A little shade. A better space.</span>
       <span>© 2026 SunSync</span>
 
     </footer>

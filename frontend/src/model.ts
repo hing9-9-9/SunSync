@@ -94,10 +94,10 @@ export type SavedState = {
 };
 export const STORAGE_KEY = "sunsync-ui-v1";
 export const grades: Record<Grade, string> = {
-  A: "직사광선 경로 차단",
-  B: "낮은 햇빛 세기 상한",
-  C: "B보다 높은 세기 상한",
-  D: "추가 차광 없이 채광 우선",
+  A: "직사광선 차단",
+  B: "약한 햇빛까지만 허용",
+  C: "B보다 강한 햇빛까지 허용",
+  D: "추가 차단 없이 채광 유지",
 };
 export const furnitureTypes: Record<FurnitureType, string> = {
   bookcase: "책장",
@@ -230,7 +230,7 @@ export function placeCapturedFurniture(
 export function regionForFurniture(f: Furniture): Region {
   return {
     id: uid(),
-    name: `${f.name} 보호면`,
+    name: `${f.name} 보호 영역`,
     zone: f.zone,
     furnitureId: f.id,
     x: f.x,
@@ -286,12 +286,12 @@ export function validateSpace(s: Space): string | null {
       return `${f.name}가 공간 경계를 벗어났습니다.`;
   }
   for (const r of s.regions) {
-    if (!s.zones.includes(r.zone)) return "보호면의 구역 연결을 확인해 주세요.";
+    if (!s.zones.includes(r.zone)) return "보호 영역의 구역 연결을 확인해 주세요.";
     if (!r.name.trim() || !faces.includes(r.face) || !(r.grade in grades))
-      return "보호면 이름과 등급을 확인해 주세요.";
+      return "보호 영역 이름과 등급을 확인해 주세요.";
     const host = s.furniture.find((f) => f.id === r.furnitureId);
     if (r.furnitureId && (!host || host.zone !== r.zone))
-      return "보호면의 가구 연결을 확인해 주세요.";
+      return "보호 영역의 가구 연결을 확인해 주세요.";
     if (
       ![r.x, r.y, r.width, r.depth, r.bottom, r.top].every(Number.isFinite) ||
       r.width <= 0 ||
@@ -301,7 +301,7 @@ export function validateSpace(s: Space): string | null {
       r.x + r.width > s.width + 0.001 ||
       r.y + r.depth > s.depth + 0.001
     )
-      return "보호영역이 공간 경계를 벗어났습니다.";
+      return "보호 영역이 공간 경계를 벗어났습니다.";
     if (r.bottom < 0 || r.top <= r.bottom || r.top > (host?.height ?? s.height))
       return `${r.name}의 보호 높이를 확인해 주세요.`;
   }

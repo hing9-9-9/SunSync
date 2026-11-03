@@ -26,8 +26,8 @@ import {
   userMessage,
 } from "./spaceApi";
 import { guideSteps } from "./guideContent";
+import { GuideIllustration } from "./MoodIcons";
 import {
-  GuideArt,
   WebsiteHeader,
   WebsiteHome,
   WebsiteGuide,
@@ -146,6 +146,7 @@ function MobileApp() {
     retryUpload,
     sunSource,
     predictionPill,
+    filmPrediction,
     continueManually,
     deleteSpace,
     deleting,
@@ -162,6 +163,75 @@ function MobileApp() {
     setGuideIndex(index);
     navigate("guide");
   }
+  // App home answers one question first: are my spaces set up? Then the one next task, then a short list.
+  // 공간 추가 lives in the 공간 tab; the guide keeps a quiet shortcut under the list.
+  const protectedSpaces = spaces.filter((s) => s.regions.some((r) => r.grade !== "D"));
+  const needsSetup = spaces.find((s) => !s.regions.some((r) => r.grade !== "D"));
+  const homeDashboard = !spaces.length ? null : (
+    <div className="home-dashboard">
+      <section className="home-hero" aria-label="보호 설정 현황">
+        <h2>
+          {protectedSpaces.length === spaces.length ? (
+            <>
+              공간 {spaces.length}곳 모두
+              <br />
+              보호 설정을 마쳤어요
+            </>
+          ) : protectedSpaces.length === 0 ? (
+            <>
+              아직 보호 설정을
+              <br />
+              마친 공간이 없어요
+            </>
+          ) : (
+            <>
+              {spaces.length}곳 중 {protectedSpaces.length}곳의
+              <br />
+              보호 설정을 마쳤어요
+            </>
+          )}
+        </h2>
+        <i className="home-hero-bar" aria-hidden="true">
+          <b style={{ width: `${(protectedSpaces.length / spaces.length) * 100}%` }} />
+        </i>
+        {needsSetup && (
+          <div className="home-task">
+            <span>
+              다음 할 일<strong>{needsSetup.name}</strong>
+            </span>
+            <button className="primary" onClick={() => selectSpace(needsSetup)}>
+              보호 영역 설정하기
+            </button>
+          </div>
+        )}
+      </section>
+      <div className="home-preview-head">
+        <h2 className="section-label">내 공간</h2>
+        <button className="text-button" onClick={() => navigate("spaces")}>
+          전체 보기
+        </button>
+      </div>
+      <div className="home-preview">
+        {spaces.slice(0, 3).map((s) => (
+          <button key={s.id} onClick={() => selectSpace(s)}>
+            <span>
+              <strong>{s.name}</strong>
+              <small>
+                {s.building} {s.floor}
+              </small>
+            </span>
+            {!s.regions.some((r) => r.grade !== "D") && <span className="status-pill todo">설정 전</span>}
+            <span aria-hidden="true">›</span>
+          </button>
+        ))}
+      </div>
+      <button className="home-guide" onClick={() => navigate("guide")}>
+        <span aria-hidden="true">?</span>사용 가이드
+        <small>처음이라면 순서대로 따라 해 보세요</small>
+        <span aria-hidden="true">›</span>
+      </button>
+    </div>
+  );
   const spaceList = (
     <>
       {!spaces.length ? (
@@ -196,7 +266,7 @@ function MobileApp() {
                             ) : (
                               <span className="status-pill todo">보호 설정 전</span>
                             )}
-                            <small>보호영역 {s.regions.filter((r) => r.grade !== "D").length}개</small>
+                            <small>보호 영역 {s.regions.filter((r) => r.grade !== "D").length}개</small>
                             <SyncBadge space={s} />
                           </span>
                         </span>
@@ -208,7 +278,7 @@ function MobileApp() {
                         if (!job) return null;
                         return <div className="space-measurement-status" role="status">
                           <span>{job.status === "completed" ? "측정 완료" : job.status === "connected" ? "측정 진행 중" : "측정 대기"}</span>
-                          {isApp && job.status !== "completed" && <button className="primary" onClick={()=>joinMeasurement(job)}>{job.status === "connected" ? "촬영 이어하기" : "촬영 시작"}</button>}
+                          {isApp && job.status !== "completed" && <button type="button" className="primary" aria-label={`${s.name} ${job.status === "connected" ? "촬영 이어하기" : "촬영 시작"}`} onClick={()=>{if(draft?.id === s.id && draftPage.current === "capture") setPage("capture"); else joinMeasurement(job);}}>{job.status === "connected" ? "촬영 이어하기" : "촬영 시작"}</button>}
                           {!isApp && job.status === "completed" && <button className="secondary" onClick={async()=>{ try { const saved=await getServerSpace(s.id);selectSpace(saved);setSpaces(current=>upsertSpace(current,saved)); }catch(e){setError(userMessage(e, "공간을 불러오지 못했습니다. 목록을 새로고침해 주세요."));} }}>도면 확인</button>}
                         </div>;
                       })()}
@@ -269,7 +339,7 @@ function MobileApp() {
               <Icon name="sun" />
               <span>SunSync</span>
             </div>
-            <h1>회원가입 · 로그인</h1>
+            <h1>로그인 또는 회원가입</h1>
             <button className="google-button" onClick={() => setModal("login")}>
               <span className="google-g">G</span> Google로 계속하기
             </button>
@@ -308,7 +378,7 @@ function MobileApp() {
                     page === "protect" || page === "review" ? "active" : ""
                   }
                 >
-                  도면·보호구역
+                  도면·보호 영역
                 </button>
               )}
               <button onClick={begin}>공간 등록</button>
@@ -320,7 +390,7 @@ function MobileApp() {
                   <span>내 공간</span>
                   <span aria-hidden="true">/</span>
                   <strong>
-                    {space.building || "새 건물"} · {space.name || "새 공간"}
+                    {space.building || "새 건물"}, {space.name || "새 공간"}
                   </strong>
                   <span className="context-mode">
                     {editing ? "편집 중" : "공간 현황"}
@@ -335,7 +405,7 @@ function MobileApp() {
                   {[
                     "공간 정보",
                     "휴대폰 측정 (선택)",
-                    "가구·보호구역 편집",
+                    "가구·보호 영역 편집",
                   ].map((label, i) => {
                     const current =
                       page === "register"
@@ -368,6 +438,17 @@ function MobileApp() {
               {(isApp || (page !== "review" && page !== "protect")) && (
               <div className="page-heading">
                 <div>
+                  {isApp && (page === "detail" || (draft && ["register", "review", "protect"].includes(page))) && (
+                    <button
+                      className="back-button"
+                      onClick={() =>
+                        navigate(page !== "detail" && draft && spaces.some((s) => s.id === draft.id) ? "detail" : "spaces")
+                      }
+                    >
+                      <span aria-hidden="true">‹</span>
+                      {page !== "detail" && draft && spaces.some((s) => s.id === draft.id) ? "공간 현황" : "내 공간"}
+                    </button>
+                  )}
                   <h1>
                     {page === "register" &&
                     draft &&
@@ -375,9 +456,9 @@ function MobileApp() {
                       ? "공간 정보 수정"
                       : page === "detail" && active ? active.name : titles[page]}
                   </h1>
-                  {page === "detail" && active && <p className="page-subtitle">{active.building} · {active.floor} <span>공간 현황</span></p>}
+                  {page === "detail" && active && <p className="page-subtitle">{active.building} {active.floor} <span>공간 현황</span></p>}
                 </div>
-                {["home", "spaces"].includes(page) && (
+                {(isApp ? page === "spaces" : ["home", "spaces"].includes(page)) && (
                   <button
                     className="icon-button plus"
                     aria-label="공간 추가"
@@ -388,12 +469,12 @@ function MobileApp() {
                 )}
               </div>
               )}
-              {draft && !editing && page !== "guide" && (
+              {draft && !editing && page !== "guide" && !(draftPage.current === "capture" && measurementJobs.some(job => job.space_id === draft.id && job.status !== "completed")) && (
                 <button
                   className="secondary resume-edit"
                   onClick={() => setPage(draftPage.current)}
                 >
-                  편집 중인 공간 이어가기
+                  {draftPage.current === "capture" ? "촬영 이어하기" : "공간 편집 이어가기"}
                 </button>
               )}
               {storageError && (
@@ -410,7 +491,8 @@ function MobileApp() {
               {page === "home" && !isApp && account && <WorkspaceHome spaces={spaces} selectSpace={selectSpace} navigate={navigate} onStart={begin} />}
               {(page === "spaces" || (isApp && page === "home")) && (
                 <div className="list-content">
-                  {page === "home" && (
+                  {page === "home" && isApp && (homeDashboard ?? spaceList)}
+                  {page === "home" && !isApp && (
                     <>
                       {/* Summary strip (one card, three figures), then the list it summarises. */}
                       <section className="app-summary" aria-label="내 공간 요약">
@@ -422,7 +504,7 @@ function MobileApp() {
                           <strong>
                             {spaces.reduce((n, s) => n + s.regions.filter((r) => r.grade !== "D").length, 0)}
                           </strong>
-                          <span>보호영역</span>
+                          <span>보호 영역</span>
                         </div>
                         <div>
                           <strong>
@@ -437,7 +519,7 @@ function MobileApp() {
 
                   {/* App home stays quiet while the server is fine; the status shows when it needs attention. */}
                   {(!isApp || page === "spaces" || serverState !== "online") && (
-                  <div className="server-sync-row">
+                  <div className="server-sync-row" data-state={serverState}>
                     <span>
                       {serverState === "loading"
                         ? "저장한 공간 불러오는 중…"
@@ -459,7 +541,7 @@ function MobileApp() {
                       {serverError} 기존 브라우저 자료는 유지됩니다.
                     </p>
                   )}
-                  {!isApp ? <WorkspaceCards spaces={spaces} selectSpace={selectSpace} onStart={begin} /> : spaceList}
+                  {!isApp ? <WorkspaceCards spaces={spaces} selectSpace={selectSpace} onStart={begin} /> : page === "home" ? null : spaceList}
                   {unavailable.length > 0 && (
                     <section className="external-spaces">
                       <h2>다른 형식의 공간</h2>
@@ -479,7 +561,7 @@ function MobileApp() {
               )}
               {page === "register" && draft && (
                 <form id="register-form" noValidate onSubmit={registerSubmit} onInput={(e) => clearFieldIssue(e.target)} className="registration">
-                  <p className="step-label">1 / 3 · 공간 정보</p>
+                  <p className="step-label">1/3단계, 공간 정보</p>
                   <h2>건물과 공간 등록</h2>
                   <div className="two-column">
                     <Card>
@@ -759,7 +841,7 @@ function MobileApp() {
                     <li>앱에서 가구 이름과 종류 선택</li>
                     <li>가구 네 모서리에 차례로 서서 창문 QR 마커 촬영</li>
                     <li>마커가 다 보이지 않거나 흔들리면 앱이 재촬영 안내</li>
-                    <li>촬영이 끝나면 웹에서 도면 확인 후 가구·보호구역 편집</li>
+                    <li>촬영이 끝나면 웹에서 도면 확인 후 가구·보호 영역 편집</li>
                   </ol>
                   <button
                     className="primary"
@@ -778,7 +860,7 @@ function MobileApp() {
                       className="primary"
                       onClick={() => setPage("protect")}
                     >
-                      측정 완료 · 도면 확인
+                      측정 완료, 도면 확인
                     </button>
                   )}
                   {handoffLink && (
@@ -807,12 +889,10 @@ function MobileApp() {
               {page === "capture" && draft && isApp && (
                 <div className="capture-layout">
                   <div>
-                    <p className="step-label">2 / 3 · 휴대폰 측정 · 공간 촬영</p>
-                    <h2>
-                      {addingByQr
-                        ? "추가 가구 모서리 촬영"
-                        : "가구 모서리에서 QR 촬영"}
-                    </h2>
+                    <div className="capture-intro">
+                      <h2>{addingByQr ? "추가할 가구" : "촬영할 가구"}</h2>
+                      <p className="step-label">2/3단계</p>
+                    </div>
                     {zoneTabs}
                     {draft.windowDimensions?.width &&
                     draft.windowDimensions?.height ? (
@@ -844,7 +924,7 @@ function MobileApp() {
                       <li>촬영할 가구의 이름과 종류 선택</li>
                       <li>가구 모서리 1~4에 차례로 서서 마커 전체가 보이게 촬영</li>
                       <li>재촬영 안내가 나오면 안내대로 같은 모서리 다시 촬영</li>
-                      <li>모든 가구 촬영 후 도면과 가로·깊이·높이 확인</li>
+                      <li>모든 가구 촬영 후 도면과 가로·세로·높이 확인</li>
                     </ol>
                     <button
                       className="secondary"
@@ -857,7 +937,7 @@ function MobileApp() {
               )}
               {page === "processing" && (
                 <Card className="processing">
-                  <p className="step-label">2 / 3 · 휴대폰 측정 · 사진 분석</p>
+                  <p className="step-label">2/3단계, 휴대폰 사진 분석</p>
                   <h2>측정 도면 생성 중</h2>
                   <strong className="progress-number">
                     {progress}
@@ -885,7 +965,7 @@ function MobileApp() {
                   {!isApp && <div className="editor-command-bar">
                     <div>
                       <h1>{draft.name || "새 공간"}</h1>
-                      <span>도면·보호구역 편집</span>
+                      <span>도면·보호 영역 편집</span>
                     </div>
                     <div className="editor-command-actions">
                       <span className="editor-save-status" role="status">
@@ -909,13 +989,13 @@ function MobileApp() {
                     </div>
                   </div>}
                   <p className="editing-help">
-                    도면에서 가구를 끌어 옮기거나 치수를 입력해 수정
-                    {isApp && " · 넓은 화면의 웹에서 더 편하게 편집할 수 있어요"}
+                    가구를 끌어 옮기거나 치수를 수정하세요.
+                    {isApp && " 웹의 넓은 화면에서도 편집할 수 있습니다."}
                   </p>
                   <p className="step-label editor-step-label">
                     {page === "review"
-                      ? "3 / 3 · 가구·보호구역 편집 · 가구 선택·치수 · 촬영한 가구 치수는 예시값(FR-03 연결 전)"
-                      : "3 / 3 · 가구·보호구역 편집 · 보호면·높이 확인"}
+                      ? "3/3단계, 가구 위치와 치수 확인"
+                      : "3/3단계, 보호 영역과 높이 설정"}
                   </p>
                   <div className="workspace editor-workspace">
                     <div className="workspace-main">
@@ -952,7 +1032,7 @@ function MobileApp() {
                               onClick={() => chooseFurniture(f.id)}
                             >
                               {f.name}
-                              {f.type && <small> · {furnitureTypes[f.type]}</small>}
+                              {f.type && <small>, {furnitureTypes[f.type]}</small>}
                             </button>
                           ))}
                         <button className="item-add" onClick={addFurniture}>＋ 가구 추가</button>
@@ -971,14 +1051,14 @@ function MobileApp() {
                       {page === "protect" && (
                         <div className="region-list">
                           <div className="section-row">
-                            <h3>보호영역</h3>
+                            <h3>보호 영역</h3>
                             <button className="text-button" onClick={addRegion}>
                               ＋ 영역 추가
                             </button>
                           </div>
                           {draft.regions.length === 0 && (
                             <p className="muted small">
-                              가구 선택 후 보호영역 지정 또는 도면에 영역 그리기
+                              가구를 선택하거나 도면에 보호 영역을 그리세요.
                             </p>
                           )}
                           {draft.regions
@@ -993,7 +1073,7 @@ function MobileApp() {
                                 <span>
                                   {r.name}
                                   <small>
-                                    {r.face} · {r.bottom}~{r.top} m
+                                    {r.face}, {r.bottom}~{r.top} m
                                   </small>
                                 </span>
                                 <span className="grade-summary">
@@ -1006,7 +1086,7 @@ function MobileApp() {
                     </div>
                     <aside className="inspector">
                       <h2>
-                        {region ? "선택한 보호영역 설정" : "선택한 가구 설정"}
+                        {region ? "선택한 보호 영역 설정" : "선택한 가구 설정"}
                       </h2>
                       {furniture ? (
                         <>
@@ -1042,9 +1122,9 @@ function MobileApp() {
                           </label>
                           <p className="muted small">
                             {draft.source === "sample"
-                              ? "가구 종류별 기본 치수 · 실제 치수로 수정"
-                              : "직접 입력"}{" "}
-                            · m
+                              ? "가구 종류별 기본 치수예요. 실제 치수로 고쳐 주세요."
+                              : "직접 입력한 치수예요."}{" "}
+                            단위는 m입니다.
                           </p>
                           <div className="dimensions">
                             {(["width", "depth", "height"] as const).map(
@@ -1083,7 +1163,7 @@ function MobileApp() {
                                 className="secondary"
                                 onClick={protectFurniture}
                               >
-                                보호영역 지정
+                                보호 영역 지정
                               </button>
                             )}
                             <button
@@ -1121,7 +1201,7 @@ function MobileApp() {
                         <>
                           <div className="divider" />
                           <label className="field">
-                            <span>보호영역 이름</span>
+                            <span>보호 영역 이름</span>
                             <input
                               value={region.name}
                               onChange={(e) =>
@@ -1207,7 +1287,7 @@ function MobileApp() {
                               setSelectedRegion(null);
                             }}
                           >
-                            보호영역 삭제
+                            보호 영역 삭제
                           </button>
                         </>
                       )}
@@ -1216,7 +1296,7 @@ function MobileApp() {
                           <>
                             {!isApp && (
                             <button className="primary" onClick={confirmReview}>
-                              확인하고 보호구역 지정
+                              확인하고 보호 영역 지정
                             </button>
                             )}
                             <button
@@ -1227,7 +1307,7 @@ function MobileApp() {
                             </button>
                             {isApp && (
                               <button
-                                className="text-button"
+                                className="secondary"
                                 onClick={() => navigate(spaces.some((s) => s.id === draft.id) ? "detail" : "spaces")}
                               >
                                 편집 종료
@@ -1242,7 +1322,7 @@ function MobileApp() {
                               onClick={save}
                               disabled={saving}
                             >
-                              보호구역 저장
+                              보호 영역 저장
                             </button>
                             )}
                             {conflict && (
@@ -1255,7 +1335,7 @@ function MobileApp() {
                             )}
                             {isApp && (
                               <button
-                                className="text-button"
+                                className="secondary"
                                 onClick={() => navigate(spaces.some((s) => s.id === draft.id) ? "detail" : "spaces")}
                               >
                                 편집 종료
@@ -1279,11 +1359,11 @@ function MobileApp() {
                       <div>
                         <strong>
                           {activeRegionCount
-                            ? "보호구역 설정 완료"
-                            : "보호구역 설정 전"}
+                            ? "보호 영역 설정 완료"
+                            : "보호 영역 설정 전"}
                         </strong>
                         <p className="muted small">
-                          {active.floor} · {active.zone} · 보호면{" "}
+                          {active.floor} {active.zone}, 보호 영역{" "}
                           {activeRegionCount}개
                         </p>
                       </div>
@@ -1331,13 +1411,13 @@ function MobileApp() {
                     </Card>
                     <Card>
                       <div className="section-row">
-                        <h3>필름 차광 시뮬레이션</h3>
+                        <h3>{filmPrediction ? "필름 차광 계획" : "필름 차광 시뮬레이션"}</h3>
                         <strong className="brand-text">
                           {formatMinute(Math.round(hour * 60))}
                         </strong>
                       </div>
                       {resolveWindow(active) ? (
-                        <FilmGrid space={active} schedule={applyShadingTime(sunSchedule, detailShading)} hour={hour} />
+                        <FilmGrid space={active} schedule={applyShadingTime(sunSchedule, detailShading)} hour={hour} prediction={filmPrediction} setting={detailShading} />
                       ) : (
                         <p className="muted small">
                           창문 규격을 입력하면 시각별로 가려질 필름 칸을 볼 수 있습니다.
@@ -1348,13 +1428,13 @@ function MobileApp() {
                   <aside className="inspector detail-info">
                     <h2>{active.name}</h2>
                     <p className="muted">
-                      {active.building} · {active.floor}
+                      {active.building} {active.floor}
                     </p>
                     {furniture && (
                       <div className="summary-box">
                         <strong>
                           {furniture.name}
-                          {furniture.type && ` · ${furnitureTypes[furniture.type]}`}
+                          {furniture.type && `, ${furnitureTypes[furniture.type]}`}
                         </strong>
                         <p>
                           {furniture.width} × {furniture.depth} ×{" "}
@@ -1362,10 +1442,10 @@ function MobileApp() {
                         </p>
                       </div>
                     )}
-                    <h3>설정된 보호영역</h3>
+                    <h3>설정된 보호 영역</h3>
                     {!activeRegionCount && (
                       <p className="muted small">
-                        아직 없음 · 아래 수정 버튼으로 보호할 가구를 지정
+                        설정된 보호 영역이 없습니다. 편집 화면에서 추가하세요.
                       </p>
                     )}
                     {active.regions
@@ -1380,7 +1460,7 @@ function MobileApp() {
                           <span>
                             {r.name}
                             <small>
-                              {r.face} · {r.bottom}~{r.top} m
+                              {r.face}, {r.bottom}~{r.top} m
                             </small>
                           </span>
                           <span className="grade-summary">
@@ -1410,23 +1490,25 @@ function MobileApp() {
                           className="primary"
                           onClick={() => editSpace(active)}
                         >
-                          가구·도면·보호구역 수정
+                          가구·도면·보호 영역 수정
                         </button>
                       )}
-                      <button
-                        className="secondary"
-                        onClick={() => {
-                          setDraft(structuredClone(active));
-                          setSelectedFurniture(null);
-                          setSelectedRegion(null);
-                          setPage("register");
-                        }}
-                      >
-                        공간 정보 수정
-                      </button>
-                      <button className="secondary destructive" onClick={() => setModal("delete-space")}>
-                        공간 삭제
-                      </button>
+                      <div className="detail-secondary">
+                        <button
+                          className="text-button"
+                          onClick={() => {
+                            setDraft(structuredClone(active));
+                            setSelectedFurniture(null);
+                            setSelectedRegion(null);
+                            setPage("register");
+                          }}
+                        >
+                          공간 정보 수정
+                        </button>
+                        <button className="text-button destructive-text" onClick={() => setModal("delete-space")}>
+                          공간 삭제
+                        </button>
+                      </div>
                       {isApp && (
                         <button
                           className="secondary"
@@ -1461,14 +1543,14 @@ function MobileApp() {
                   ) : (
                     <Card className="guide-detail">
                       <p className="step-label">
-                        사용 가이드 · {guideIndex + 1} / {guideSteps.length}
+                        사용 가이드 {guideIndex + 1}/{guideSteps.length}
                       </p>
                       <h2>{guideSteps[guideIndex].title}</h2>
                       <div className="mobile-guide-visual" aria-hidden="true">
                         <span className="mobile-guide-number">
                           {String(guideIndex + 1).padStart(2, "0")}
                         </span>
-                        <GuideArt step={guideIndex} />
+                        <GuideIllustration step={guideIndex} />
                       </div>
                       <p>{guideSteps[guideIndex].text}</p>
                       <p className="muted">{guideSteps[guideIndex].detail}</p>
@@ -1537,7 +1619,7 @@ function MobileApp() {
                         active ? selectSpace(active) : setPage("spaces")
                       }
                     >
-                      <span>보호구역</span>
+                      <span>보호 영역</span>
                       <span>
                         {spaces.reduce((n, s) => n + s.regions.length, 0)}개 ›
                       </span>
@@ -1551,7 +1633,7 @@ function MobileApp() {
                         {active
                           ? [
                               ...new Set(active.regions.map((r) => r.grade)),
-                            ].join(" · ")
+                            ].join(", ")
                           : "미지정"}{" "}
                         ›
                       </span>
@@ -1566,19 +1648,29 @@ function MobileApp() {
                 </div>
               )}
               {page === "account" && (
-                <div className="account-content">
-                  <h2>연결된 Google 계정</h2>
-                  <Card>
-                    <p className="muted small">Google · 체험 계정</p>
-                    <h3>{account.name}</h3>
+                <div className="account-content account-refresh">
+                  <section className="account-profile" aria-label="계정 정보">
+                    <span className="account-profile-avatar" aria-hidden="true">{account.name.slice(0, 1)}</span>
+                    <h2>{account.name}</h2>
                     <p>{account.email}</p>
-                  </Card>
-                  <button
-                    className="secondary danger"
-                    onClick={() => setModal("logout")}
-                  >
-                    로그아웃
-                  </button>
+                  </section>
+                  <section className="account-info" aria-labelledby="account-connection-title">
+                    <h2 id="account-connection-title">로그인 정보</h2>
+                    <dl>
+                      <div><dt>로그인 방식</dt><dd>Google 계정</dd></div>
+                    </dl>
+                  <button type="button" className="account-logout" onClick={() => setModal("logout")}>로그아웃</button>
+                  </section>
+                  <nav className="account-links" aria-label="계정 메뉴">
+                    <button type="button" onClick={() => navigate("spaces")}>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="M4 4h16v16H4zM4 12h16M12 4v16" /></svg>
+                      <span>내 공간</span><svg className="account-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="m9 5 7 7-7 7" /></svg>
+                    </button>
+                    <button type="button" onClick={() => navigate("guide")}>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="M12 6c-3-2-6-2-9-1v15c3-1 6-1 9 1 3-2 6-2 9-1V5c-3-1-6-1-9 1Zm0 0v15" /></svg>
+                      <span>사용 가이드</span><svg className="account-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="m9 5 7 7-7 7" /></svg>
+                    </button>
+                  </nav>
                 </div>
               )}
             </main>
@@ -1643,8 +1735,7 @@ function MobileApp() {
                 takePendingWebAction()?.();
               }}
             >
-              <h2>체험 계정으로 계속</h2>
-              <p className="muted small">Google 로그인은 준비 중이라 이름과 이메일로 체험합니다.</p>
+              <h2>계정 정보</h2>
               <label className="field">
                 <span>이름</span>
                 <input
@@ -1684,7 +1775,7 @@ function MobileApp() {
             <>
               <h2>'{active.name}'을 삭제할까요?</h2>
               <p className="muted">
-                이 공간의 가구·보호구역 정보도 함께 사라지고 되돌릴 수 없습니다.
+                이 공간의 가구·보호 영역 정보도 함께 사라지고 되돌릴 수 없습니다.
               </p>
               <button className="primary destructive" disabled={deleting} onClick={deleteSpace}>
                 {deleting ? "삭제 중…" : "삭제"}
@@ -1731,7 +1822,7 @@ function MobileApp() {
             <>
               <h2>가구 추가</h2>
               <button className="primary" onClick={addManualFurniture}>
-                직접 추가 · 위치·치수 입력
+                직접 추가하고 위치·치수 입력
               </button>
               <button
                 className="secondary"

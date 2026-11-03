@@ -27,7 +27,7 @@ type Gesture =
 // Top-view symbols so furniture types can be told apart without the 3D view.
 function FurnitureSymbol({ f, ox, oy }: { f: Furniture; ox: number; oy: number }) {
   const x = ox + f.x, y = oy + f.y;
-  const line = { stroke: "#a6adba", strokeWidth: "1pt", vectorEffect: "non-scaling-stroke" as const, pointerEvents: "none" as const };
+  const line = { stroke: "var(--c-a6adba)", strokeWidth: "1pt", vectorEffect: "non-scaling-stroke" as const, pointerEvents: "none" as const };
   // A line along the long side at fraction t across the short side.
   const along = (t: number, inset: number) => f.width >= f.depth
     ? { x1: x + inset, x2: x + f.width - inset, y1: y + f.depth * t, y2: y + f.depth * t }
@@ -124,7 +124,7 @@ export default function Plan({
     } else if (tool === "region" && !t.getAttribute("data-furniture")) {
       const region: Region = {
         id: uid(),
-        name: `보호영역 ${space.regions.filter((r) => !r.furnitureId).length + 1}`,
+        name: `보호 영역 ${space.regions.filter((r) => !r.furnitureId).length + 1}`,
         zone: space.zone,
         furnitureId: null,
         ...p,
@@ -240,14 +240,14 @@ export default function Plan({
           y={top}
           width={space.width}
           height={space.depth}
-          fill="#f7f8fa"
-          stroke="#aeb4c0"
+          fill="var(--c-f7f8fa)"
+          stroke="var(--c-aeb4c0)"
           strokeWidth="1pt"
           vectorEffect="non-scaling-stroke"
         />
         {showDemoSun && <polygon
           points={sunlightPolygon(space, Math.min(Math.max(hour, 6), 17.99)).map(p => `${p.x + left},${p.y + top}`).join(" ")}
-          fill="#FFF2D3"
+          fill="var(--c-fff2d3)"
           opacity={duskFade(hour)}
           pointerEvents="none"
         />}
@@ -274,8 +274,8 @@ export default function Plan({
                 y={top + f.y}
                 width={f.width}
                 height={f.depth}
-                fill={f.id === selectedFurniture ? "#d8dbe3" : "#e4e8ef"}
-                stroke={f.id === selectedFurniture ? "#626875" : "#a6adba"}
+                fill={f.id === selectedFurniture ? "var(--c-d8dbe3)" : "var(--c-e4e8ef)"}
+                stroke={f.id === selectedFurniture ? "var(--c-626875)" : "var(--c-a6adba)"}
                 strokeWidth="1pt"
                 vectorEffect="non-scaling-stroke"
               />
@@ -286,7 +286,7 @@ export default function Plan({
                 textAnchor="middle"
                 dominantBaseline="central"
                 fontSize={textSize}
-                fill="#52596a"
+                fill="var(--c-52596a)"
                 pointerEvents="none"
               >
                 {String(i + 1).padStart(2, "0")}
@@ -316,9 +316,9 @@ export default function Plan({
                 y={top + r.y}
                 width={r.width}
                 height={r.depth}
-                fill={exposedRegionIds.includes(r.id) ? "#e8ad33" : "#8b7ef4"}
+                fill={exposedRegionIds.includes(r.id) ? "var(--c-e8ad33)" : "var(--c-8b7ef4)"}
                 fillOpacity={r.id === selectedRegion ? ".28" : ".18"}
-                stroke={r.id === selectedRegion ? "#6659d8" : "#9c93e1"}
+                stroke={r.id === selectedRegion ? "var(--c-6659d8)" : "var(--c-9c93e1)"}
                 strokeDasharray={r.furnitureId ? ".08 .06" : undefined}
                 strokeWidth="1pt"
                 vectorEffect="non-scaling-stroke"
@@ -329,13 +329,13 @@ export default function Plan({
                   x2={left + r.x + (r.face === "서쪽 측면" ? 0 : r.width)}
                   y1={top + r.y + (r.face === "남쪽 전면" ? r.depth : 0)}
                   y2={top + r.y + (r.face === "북쪽 후면" ? 0 : r.depth)}
-                  stroke="#7060cf"
+                  stroke="var(--c-7060cf)"
                   strokeWidth="1pt"
                   vectorEffect="non-scaling-stroke"
                   pointerEvents="none"
                 />
               )}
-              {!r.furnitureId && r.width >= .7 && r.depth >= .3 && <text x={left + r.x + r.width / 2} y={top + r.y + r.depth / 2} textAnchor="middle" dominantBaseline="central" fontSize={Math.min(textSize, r.width / Math.max(r.name.length * 0.65, 1))} fill="#51488b" pointerEvents="none">{r.name}</text>}
+              {!r.furnitureId && r.width >= .7 && r.depth >= .3 && <text x={left + r.x + r.width / 2} y={top + r.y + r.depth / 2} textAnchor="middle" dominantBaseline="central" fontSize={Math.min(textSize, r.width / Math.max(r.name.length * 0.65, 1))} fill="var(--c-51488b)" pointerEvents="none">{r.name}</text>}
               {!r.furnitureId && r.id === selectedRegion && onRegions && (
                 <rect
                   data-region={r.id}
@@ -355,7 +355,7 @@ export default function Plan({
           <>
             <line
               {...windowLine.line}
-              stroke="#6861e8"
+              stroke="var(--c-6861e8)"
               strokeWidth=".06"
             />
             <text
@@ -363,7 +363,7 @@ export default function Plan({
               fontSize={textSize}
               textAnchor="middle"
               dominantBaseline="central"
-              fill="#747986"
+              fill="var(--c-747986)"
             >
               창
             </text>
@@ -377,7 +377,7 @@ export default function Plan({
         </span>
         <span>
           <i className="purple" />
-          보호영역
+          보호 영역
         </span>
         <span>
           <i className="yellow" />

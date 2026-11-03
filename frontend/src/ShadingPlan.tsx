@@ -1,4 +1,7 @@
+import { filmStatesAt } from "./shading";
+import type { ShadingResult } from "./shading";
 import { filmGrid, resolveWindow, timeToMinute, validateShadingTime, validateWindow, walls } from "./model";
+import { defaultShadingTime } from "./model";
 import type { ShadingTime, Space } from "./model";
 import { DAY_MINUTES, formatMinute, protectedRegions, shadedCells } from "./sunlight";
 import type { BlockingSchedule as Schedule } from "./sunlight";
@@ -8,15 +11,31 @@ import type { ReactNode } from "react";
 const GAP = 0.14;
 
 // MAR5.3 / WAR4.3: the window as 10 cm film cells, seen from inside; row 0 is the top row.
-export function FilmGrid({ space, schedule, hour, marker = false }: { space: Space; schedule?: Schedule; hour?: number; marker?: boolean }) {
+export function FilmGrid({ space, schedule, hour, marker = false, prediction, setting = defaultShadingTime }: { space: Space; schedule?: Schedule; hour?: number; marker?: boolean; prediction?: ShadingResult; setting?: ShadingTime }) {
   const win = resolveWindow(space);
   if (!win) return null;
   // Older saved windows skip validation on load; don't draw a grid from sizes the form would reject.
   const problem = validateWindow(space);
   if (problem) return <p className="muted small">{problem}</p>;
   const { cols, rows } = filmGrid(win);
+  if (prediction && !prediction.plan) return <figure className="film-grid"><p className={prediction.error ? "error" : "muted small"} role={prediction.error ? "alert" : "status"}>{prediction.error ?? (prediction.empty ? "아직 이 공간의 차광 계획이 없습니다." : "차광 계획을 계산하는 중…")}</p></figure>;
+  const serverWindow = prediction?.plan?.windows[0];
+  if (serverWindow && (serverWindow.film_cols !== cols || serverWindow.film_rows !== rows))
+    return <p className="error" role="alert">저장된 창문 규격과 차광 계획이 다릅니다. 최신 공간 정보를 불러와 주세요.</p>;
+  let states: ReturnType<typeof filmStatesAt> | undefined;
+  try {
+    if (prediction?.plan && hour !== undefined) states = filmStatesAt(prediction.plan, hour, setting);
+  } catch {
+    return <p className="error" role="alert">선택한 시각의 차광 계획을 확인할 수 없습니다. 다시 계산해 주세요.</p>;
+  }
+  const counts = { infeasible: 0, unknown: 0 };
+  for (const cell of states?.values() ?? []) {
+    if (cell.state === "infeasible" || cell.state === "unknown") counts[cell.state]++;
+  }
   const showShading = hour !== undefined && !!schedule;
-  const shaded = showShading ? shadedCells(space, schedule, hour) : new Set<number>();
+  const shaded = states
+    ? new Set([...states].filter(([, c]) => c.state === "opaque").map(([i]) => i))
+    : showShading ? shadedCells(space, schedule, hour) : new Set<number>();
   const m = win.marker;
   // Cells are rounded to whole 10 cm units, so scale real metres onto the drawn grid.
   const sx = cols / win.width, sy = rows / win.height;
@@ -30,8 +49,11 @@ export function FilmGrid({ space, schedule, hour, marker = false }: { space: Spa
     <svg viewBox={`${-GAP} ${-GAP} ${cols + GAP * 2} ${rows + GAP * 2}`} role="img" aria-label={`${walls[win.wall]} 창문 필름 ${cols}×${rows}칸${showShading ? `, 가림 ${shaded.size}칸` : ""}`}>
       {Array.from({ length: cols * rows }, (_, i) => {
         const on = shaded.has(i);
-        return <rect aria-hidden="true" key={i} className={on ? "cell shaded" : "cell"} x={(i % cols) + GAP / 2} y={Math.floor(i / cols) + GAP / 2} width={1 - GAP} height={1 - GAP} rx=".14">
-          <title>{`${Math.floor(i / cols) + 1}행 ${(i % cols) + 1}열 · ${on ? "가림" : "열림"}`}</title>
+        const state = states?.get(i);
+        const warning = state?.state === "infeasible" || state?.state === "unknown";
+        const label = state?.state === "infeasible" ? "보호 조건 충족 불가" : state?.state === "unknown" ? "판단 불가" : on ? "가림" : "열림";
+        return <rect aria-hidden="true" key={i} className={on ? "cell shaded" : "cell"} style={warning ? { fill: state?.state === "infeasible" ? "var(--c-f8d7da)" : "var(--c-e2e5e9)", stroke: state?.state === "infeasible" ? "var(--c-a32b38)" : "var(--c-616b78)", strokeWidth: .06, strokeDasharray: state?.state === "unknown" ? ".12 .08" : undefined } : undefined} x={(i % cols) + GAP / 2} y={Math.floor(i / cols) + GAP / 2} width={1 - GAP} height={1 - GAP} rx=".14">
+          <title>{`${Math.floor(i / cols) + 1}행 ${(i % cols) + 1}열 · ${label}${state?.reasons.length ? ` · ${state.reasons.join(", ")}` : ""}`}</title>
         </rect>;
       })}
       {markerBox && <rect aria-hidden="true" className="marker" {...markerBox} rx=".1"><title>QR 마커</title></rect>}
@@ -44,7 +66,9 @@ export function FilmGrid({ space, schedule, hour, marker = false }: { space: Spa
       </span>
       {walls[win.wall]} · {win.width} × {win.height} m · {cols}×{rows}칸
       {showShading && ` · 가림 ${shaded.size}칸`}
-      {showShading && <span className="example-note"> · 칸 배치는 예시값(FR-02 연결 전)</span>}
+      {showShading && <span className="example-note">{prediction ? " · 계산된 차단 계획" : " · 예시 칸 배치"}</span>}
+      {counts.infeasible > 0 && <p role="status">보호 조건 충족 불가 {counts.infeasible}칸: 필름을 가장 어둡게 해도 보호 조건을 만족하지 못합니다.</p>}
+      {counts.unknown > 0 && <p role="status">판단 불가 {counts.unknown}칸: 일사량 정보가 부족합니다.</p>}
     </figcaption>
   </figure>;
 }
@@ -79,7 +103,7 @@ export function ShadingTimeControl({ space, value, onChange, sunSchedule, hour, 
       </label>
     </div>
     <p className="muted small">
-      {value.enabled ? "설정한 시간 안에서 햇빛이 보호영역에 닿을 때만 필름을 가립니다." : "꺼져 있으면 필름을 가리지 않습니다. 켜고 차단할 시간을 정해 주세요."}
+      {value.enabled ? "설정한 시간 안에서 햇빛이 보호 영역에 닿을 때만 필름을 가립니다." : "꺼져 있으면 필름을 가리지 않습니다. 켜고 차단할 시간을 정해 주세요."}
     </p>
     <div className="two-fields">
       <label className="field">
@@ -109,7 +133,7 @@ export function ShadingTimeControl({ space, value, onChange, sunSchedule, hour, 
           {r.name} · {sunSource?.label ?? "햇빛 닿는 시간(간이 계산)"} {periods.length ? periods.map((p) => `${formatMinute(p.arrival)}~${formatMinute(p.end)}`).join(", ") : sunSource ? "직사광이 닿지 않음" : "없음"}
         </li>;
       })}
-    </ul> : <p className="muted small">보호영역이 없어 가릴 곳이 없습니다. D 등급은 채광을 우선해 가리지 않습니다.</p>}
+    </ul> : <p className="muted small">보호 영역이 없어 가릴 곳이 없습니다. D 등급은 채광을 우선해 가리지 않습니다.</p>}
     {onSave && <button type="button" className="secondary" disabled={!dirty || saving || (value.enabled && !!error)} onClick={onSave}>
       {saving ? "저장 중…" : "차단 시간 저장"}
     </button>}

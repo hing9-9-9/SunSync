@@ -31,7 +31,7 @@ const fieldLabels: Record<string, string> = {
   timezone: "시간대",
   windowDimensions: "창문 규격",
   furniture: "가구",
-  regions: "보호영역",
+  regions: "보호 영역",
 };
 function invalidFieldsMessage(detail: unknown) {
   const fields = Array.isArray(detail)
@@ -201,5 +201,16 @@ export function predictSunpath(sceneId: string, revision: number, startTime: str
         expected_scene_revision: revision,
       }),
     },
+  );
+}
+
+/** FR02 uses the same date, resolution and saved Scene revision as the exposure view. */
+export function predictShadingPlan(sceneId: string, revision: number, startTime: string) {
+  return request<import("./shading.ts").ShadingPlan>(
+    `/api/scenes/${encodeURIComponent(sceneId)}/shading-plans`,
+    { method: "POST", body: JSON.stringify({
+      start_time: startTime, duration_minutes: 1440, interval_seconds: 1800,
+      expected_scene_revision: revision,
+    }) },
   );
 }

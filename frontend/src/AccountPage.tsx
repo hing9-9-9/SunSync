@@ -15,7 +15,7 @@ function protectionStatus(space: Space, minute: number) {
   const current = periods.find((p) => minute >= p.start && minute < p.end);
   if (current) return { tone: "on", label: "보호 중", time: `${formatMinute(current.end)}까지` };
   const next = periods.filter((p) => p.start > minute).sort((a, b) => a.start - b.start)[0];
-  return { tone: "set", label: "보호 설정", time: next ? `다음 차단 ${formatMinute(next.start)}` : "오늘 남은 차단 없음" };
+  return { tone: "set", label: "보호 설정", time: next ? `다음 차단 ${formatMinute(next.start)}` : null };
 }
 
 export function AccountOverview({
@@ -53,13 +53,13 @@ export function AccountOverview({
   const buildings = [...new Set(spaces.map((s) => s.building || "건물 미지정"))];
   return (
     <div className="acct">
-      <section className="acct-hero">
-        <div className="acct-wordmark" aria-hidden="true">Account</div>
+      <header className="acct-page-heading"><h1>내 계정</h1></header>
+      <section className="acct-hero" aria-label="계정 정보">
         <div className="acct-id">
           <span className="acct-avatar" aria-hidden="true">{account.name.slice(0, 1)}</span>
           <div>
-            <span className="acct-kicker">Google · 체험 계정</span>
-            <h1>{account.name}</h1>
+            <span className="acct-kicker">로그인 계정</span>
+            <h2>{account.name}</h2>
             <p>{account.email}</p>
           </div>
         </div>
@@ -78,11 +78,11 @@ export function AccountOverview({
           <dd>{zones}개</dd>
         </div>
         <div>
-          <dt>보호영역</dt>
+          <dt>보호 영역</dt>
           <dd>{regions.length}곳</dd>
         </div>
         <div>
-          <dt>다음 차단 · 오늘</dt>
+          <dt>오늘의 다음 차단</dt>
           <dd className="is-sun">{nextAll ? formatMinute(nextAll.start) : "—"}</dd>
         </div>
       </dl>
@@ -90,13 +90,10 @@ export function AccountOverview({
       <section className="acct-spaces" aria-labelledby="acct-spaces-title">
         <div className="acct-head">
           <h2 id="acct-spaces-title">
-            공간과 <mark className="ap-mark">보호 정보</mark>
+            공간과 보호 정보
           </h2>
           <div className="acct-sync">
-            <span className={`acct-dot ${serverState}`} aria-hidden="true" />
-            <span>
-              {serverState === "loading" ? "불러오는 중…" : serverState === "online" ? "서버에 저장됨" : "서버에 연결되지 않음"}
-            </span>
+            {serverState !== "online" && <span role="status">{serverState === "loading" ? "불러오는 중…" : "서버에 연결되지 않음"}</span>}
             <button type="button" className="text-button" disabled={serverState === "loading"} onClick={onRefresh}>
               새로고침
             </button>
@@ -122,11 +119,11 @@ export function AccountOverview({
                               {s.floor} · 구역 {s.zones.length}개
                             </small>
                           </span>
-                          <span className="acct-grades" aria-label="등급별 보호영역 수">
+                          <span className="acct-grades" aria-label="등급별 보호 영역 수">
                             {counts.map(([g, n]) => (
                               <span key={g} className={`acct-grade grade-${g} ${n ? "" : "is-empty"}`} title={grades[g]}>
                                 <i aria-hidden="true" />
-                                {g} {n}
+                                <span>{g}</span><span className="acct-grade-count">{n}</span>
                               </span>
                             ))}
                           </span>
@@ -159,7 +156,7 @@ export function AccountOverview({
       <div className="acct-foot">
         <button type="button" className="ap-round-link" onClick={onGuide}>
           <Scribble />
-          <span>사용 방법 보기</span>
+          <span>사용 가이드</span>
           <b>
             <Arrow diagonal />
           </b>
@@ -177,18 +174,13 @@ export function AuthPanel({ hidden, brand, onLogin }: { hidden: boolean; brand: 
           {brand}
           SunSync 계정
         </span>
-        <h1>
-          내 공간의 빛을
-          <br />
-          <mark className="ap-mark">이어서</mark> 설계하세요.
-        </h1>
-        <p>로그인하면 등록한 공간, 보호영역, 차단 시간을 한 화면에서 확인할 수 있어요.</p>
+        <h1>내 공간을 확인하세요.</h1>
+        <p>Google 계정으로 로그인하고 저장한 공간을 확인하세요.</p>
         <button type="button" className="google-button acct-google" onClick={onLogin}>
           <Scribble />
           <span className="google-g" aria-hidden="true">G</span>
           Google로 계속하기
         </button>
-        <small>Google 로그인은 준비 중이라 이름과 이메일로 체험합니다.</small>
       </div>
       <div className="acct-auth-visual" aria-hidden="true">
         <div className="acct-auth-glow" style={{ "--sun": 0.62 } as CSSProperties} />

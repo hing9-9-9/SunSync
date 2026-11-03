@@ -1,0 +1,641 @@
+/* App first screen + the four tab screens (2026-11-03). Loaded last; scoped to the tab pages and the tab bar
+   so capture, editing and other app screens keep their own styles. The page gradient is not touched.
+   Button rule (iOS kit + Behance moodboard): one shape (capsule), four kinds — filled (the one primary
+   action), tinted, gray, plain — 50px large / 44px default; press = scale .97 + 5% darker in 100ms,
+   release 200ms; disabled = 40% opacity, no press. Cards share one elevation and the 12px radius. */
+.app.award-mobile.mode-app {
+  --at-accent: var(--c-action);
+  --at-accent-ink: var(--c-action-ink);
+  --at-tint: var(--c-action-tint);
+  --at-gray: var(--c-block);
+  --at-ink: var(--c-ink);
+  --at-muted: var(--c-muted);
+  --at-card-shadow: var(--shadow-card);
+  --at-press: 100ms cubic-bezier(0.23, 1, 0.32, 1);
+  --at-release: 200ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.app.award-mobile.mode-app:is(.page-home, .page-spaces, .page-guide, .page-more)
+  main.main {
+  /* Clears the floating tab bar (64px + 12px gap) and the home indicator. */
+  padding-bottom: calc(104px + env(safe-area-inset-bottom));
+}
+
+/* Buttons on the tab screens. */
+.app.award-mobile.mode-app:is(.page-home, .page-spaces, .page-guide, .page-more)
+  :is(
+    .icon-button.plus,
+    .add-space,
+    .room-card,
+    .guide-card,
+    .account-row,
+    button.row
+  ) {
+  transition:
+    transform var(--at-release),
+    filter var(--at-release),
+    background-color var(--at-release);
+}
+.app.award-mobile.mode-app:is(.page-home, .page-spaces) .icon-button.plus {
+  background: var(--at-accent);
+  color: var(--c-white);
+  border: 0;
+  border-radius: 999px;
+  box-shadow: var(--shadow-action);
+}
+/* The labelled add button repeats the header "+", so it steps down to a white card-weight button (gray read as disabled on the gradient). */
+.app.award-mobile.mode-app:is(.page-home, .page-spaces) .add-space {
+  min-height: 50px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--c-white);
+  color: var(--at-ink);
+  font-size: 16px;
+  font-weight: 500;
+  box-shadow: var(--at-card-shadow);
+}
+.app.award-mobile.mode-app:is(.page-home, .page-spaces, .page-guide, .page-more)
+  :is(.icon-button.plus, .add-space, .room-card, .guide-card):active:not(
+    :disabled
+  ) {
+  transform: scale(0.97);
+  filter: brightness(0.95);
+  transition:
+    transform var(--at-press),
+    filter var(--at-press);
+}
+/* List rows highlight instead of shrinking (iOS rows). */
+.app.award-mobile.mode-app.page-more
+  :is(.account-row, button.row):active:not(:disabled) {
+  background-color: var(--c-pressed);
+  transition: background-color var(--at-press);
+}
+.app.award-mobile.mode-app:is(.page-home, .page-spaces, .page-guide, .page-more)
+  button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+  filter: none;
+}
+@media (hover: hover) and (pointer: fine) {
+  .app.award-mobile.mode-app:is(
+      .page-home,
+      .page-spaces,
+      .page-guide,
+      .page-more
+    )
+    :is(.icon-button.plus, .add-space, .room-card, .guide-card):hover:not(
+      :disabled
+    ) {
+    transform: translateY(-1px);
+    filter: brightness(1.03);
+  }
+}
+
+/* Cards: one elevation, white on the gradient, no hairline borders. */
+.app.award-mobile.mode-app:is(.page-home, .page-spaces, .page-guide, .page-more)
+  :is(
+    .app-summary,
+    .room-card,
+    .guide-card,
+    .account-row,
+    .more-content section.card,
+    .more-content > button.row.card
+  ) {
+  border: 0;
+  background: var(--c-white);
+  box-shadow: var(--at-card-shadow);
+}
+
+/* Home: the one thing to see first is your spaces; the summary is three plain figures. */
+.app.award-mobile.mode-app.page-home .app-summary {
+  padding: 20px 8px;
+}
+.app.award-mobile.mode-app.page-home .app-summary > div + div {
+  border-left: 0;
+}
+.app.award-mobile.mode-app.page-home .app-summary strong {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  color: var(--at-ink);
+}
+.app.award-mobile.mode-app.page-home .app-summary span {
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--at-muted);
+}
+.app.award-mobile.mode-app:is(.page-home, .page-spaces, .page-more)
+  .section-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--at-muted);
+}
+
+/* Space card: name first, then state, then the quiet details. */
+.app.award-mobile.mode-app:is(.page-home, .page-spaces) .room-card {
+  padding: 16px 16px 16px 20px;
+}
+.app.award-mobile.mode-app:is(.page-home, .page-spaces) .room-card .room-floor {
+  font-size: 13px;
+  color: var(--at-muted);
+}
+.app.award-mobile.mode-app:is(.page-home, .page-spaces) .room-card strong {
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--at-ink);
+}
+.app.award-mobile.mode-app:is(.page-home, .page-spaces) .room-card .room-tags {
+  gap: 8px 12px;
+}
+.app.award-mobile.mode-app:is(.page-home, .page-spaces)
+  .room-card
+  .room-tags
+  > small {
+  font-size: 13px;
+  color: var(--at-muted);
+}
+
+/* Guide: the step number becomes a small tinted badge so the title leads. */
+.app.award-mobile.mode-app.page-guide .guide-card {
+  padding: 20px;
+}
+.app.award-mobile.mode-app.page-guide .guide-number {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: var(--at-tint);
+  color: var(--at-accent-ink);
+  font-size: 13px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.app.award-mobile.mode-app.page-guide .guide-card h2 {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--at-ink);
+}
+.app.award-mobile.mode-app.page-guide .guide-card p {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--at-muted);
+}
+.app.award-mobile.mode-app.page-guide .guide-card .brand-text {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--at-accent-ink);
+}
+
+/* More: grouped list rows at 52px. */
+.app.award-mobile.mode-app.page-more :is(.account-row, button.row) {
+  min-height: 52px;
+}
+
+/* Tab bar: a floating capsule over the content; the selection is one tinted pill that slides to the tab. */
+.app.award-mobile.mode-app nav.mobile-nav {
+  /* Centred like the original bar: inside the 480px app frame on a computer, full width less 32px on a phone. */
+  left: 50%;
+  right: auto;
+  width: min(448px, calc(100% - 32px));
+  transform: translateX(-50%);
+  bottom: calc(12px + env(safe-area-inset-bottom));
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  height: 64px;
+  padding: 6px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--c-glass);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  box-shadow: var(--shadow-float);
+  --tab: 0;
+}
+.app.award-mobile.mode-app nav.mobile-nav::before {
+  content: "";
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  left: 6px;
+  width: calc((100% - 12px) / 4);
+  border-radius: 999px;
+  background: var(--at-tint);
+  transform: translateX(calc(var(--tab) * 100%));
+  transition:
+    transform 380ms cubic-bezier(0.32, 0.72, 0, 1),
+    opacity 200ms ease;
+  pointer-events: none;
+}
+.app.award-mobile.mode-app nav.mobile-nav:has(> button:nth-child(2).active) {
+  --tab: 1;
+}
+.app.award-mobile.mode-app nav.mobile-nav:has(> button:nth-child(3).active) {
+  --tab: 2;
+}
+.app.award-mobile.mode-app nav.mobile-nav:has(> button:nth-child(4).active) {
+  --tab: 3;
+}
+.app.award-mobile.mode-app nav.mobile-nav:not(:has(> button.active))::before {
+  opacity: 0;
+}
+.app.award-mobile.mode-app nav.mobile-nav button {
+  position: relative;
+  z-index: 1;
+  height: 52px;
+  min-height: 44px;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--at-muted);
+  font-size: 13px;
+  font-weight: 500;
+  transition:
+    color 200ms ease,
+    transform var(--at-release);
+}
+.app.award-mobile.mode-app nav.mobile-nav button.active {
+  background: transparent;
+  color: var(--at-accent-ink);
+}
+.app.award-mobile.mode-app nav.mobile-nav button.active svg {
+  stroke-width: 2.2;
+}
+.app.award-mobile.mode-app nav.mobile-nav button:active {
+  transform: scale(0.94);
+  transition: transform var(--at-press);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app.award-mobile.mode-app nav.mobile-nav::before,
+  .app.award-mobile.mode-app nav.mobile-nav button,
+  .app.award-mobile.mode-app:is(
+      .page-home,
+      .page-spaces,
+      .page-guide,
+      .page-more
+    )
+    :is(
+      .icon-button.plus,
+      .add-space,
+      .room-card,
+      .guide-card,
+      .account-row,
+      button.row
+    ) {
+    transition: none;
+  }
+  .app.award-mobile.mode-app:is(
+      .page-home,
+      .page-spaces,
+      .page-guide,
+      .page-more
+    )
+    :is(.icon-button.plus, .add-space, .room-card, .guide-card):is(
+      :active,
+      :hover
+    ) {
+    transform: none;
+  }
+  .app.award-mobile.mode-app nav.mobile-nav button:active {
+    transform: none;
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .app.award-mobile.mode-app nav.mobile-nav {
+    background: var(--c-white);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+/* Chevrons and the account initial reach contrast on white (were 2.45:1 and 4.22:1). */
+.app.award-mobile.mode-app:is(.page-home, .page-spaces)
+  .room-card
+  > span[aria-hidden="true"] {
+  color: var(--at-muted);
+}
+.app.award-mobile.mode-app.page-more .account-avatar {
+  background: var(--at-tint);
+  color: var(--at-accent-ink);
+}
+
+/* ---- Round 2 (2026-11-03): home vs spaces, status row, back button, bottom action bar ---- */
+
+/* Bottom action button (e.g. 가구·도면·보호구역 수정): sits right above the floating tab bar, no strip behind it. */
+.app.award-mobile.mode-app > .app-action-bar {
+  left: 50%;
+  right: auto;
+  width: min(448px, calc(100% - 32px));
+  transform: translateX(-50%);
+  bottom: calc(12px + 64px + 10px + env(safe-area-inset-bottom));
+  padding: 0;
+  border: 0;
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+}
+.app.award-mobile.mode-app:not(:has(nav.mobile-nav)) > .app-action-bar {
+  bottom: calc(12px + env(safe-area-inset-bottom));
+}
+.app.award-mobile.mode-app > .app-action-bar .primary {
+  min-height: 50px;
+  border-radius: 999px;
+  box-shadow: var(--shadow-action-raised);
+}
+.app.award-mobile.mode-app.has-action-bar main.main {
+  padding-bottom: calc(
+    12px + 64px + 10px + 50px + 24px + env(safe-area-inset-bottom)
+  );
+}
+
+/* Back button (iOS: chevron + the previous screen's name). */
+.app.award-mobile.mode-app .page-heading .back-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 44px;
+  margin: 0 0 4px -8px;
+  padding: 0 8px;
+  border: 0;
+  background: transparent;
+  color: var(--at-accent-ink);
+  font-size: 16px;
+  font-weight: 500;
+}
+.app.award-mobile.mode-app .page-heading .back-button span {
+  font-size: 26px;
+  line-height: 1;
+  margin-top: -3px;
+}
+.app.award-mobile.mode-app .page-heading .back-button:active {
+  opacity: 0.55;
+  transition: opacity var(--at-press);
+}
+
+/* Server status: one quiet row, dot + label left, same-size refresh right. */
+.app.award-mobile.mode-app .server-sync-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
+  margin: 0;
+  font-size: 13px;
+  color: var(--at-muted);
+}
+.app.award-mobile.mode-app .server-sync-row > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+.app.award-mobile.mode-app .server-sync-row > span::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--c-dot-idle);
+}
+.app.award-mobile.mode-app
+  .server-sync-row[data-state="online"]
+  > span::before {
+  background: var(--at-accent);
+}
+.app.award-mobile.mode-app
+  .server-sync-row[data-state="offline"]
+  > span::before {
+  background: var(--c-sun);
+}
+.app.award-mobile.mode-app .server-sync-row .text-button {
+  min-height: 44px;
+  padding: 0 4px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--at-accent-ink);
+}
+
+/* Home: one statement leads (are my spaces set up?), one task, then a quiet short list. */
+.app.award-mobile.mode-app.page-home .home-dashboard {
+  display: grid;
+  gap: 12px;
+}
+.app.award-mobile.mode-app.page-home .home-hero {
+  display: grid;
+  gap: 16px;
+  padding: 24px 20px 20px;
+  border-radius: var(--radius-card, 12px);
+  background: var(--c-white);
+  box-shadow: var(--at-card-shadow);
+}
+.app.award-mobile.mode-app.page-home .home-hero h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.35;
+  letter-spacing: -0.03em;
+  color: var(--at-ink);
+  word-break: keep-all;
+}
+.app.award-mobile.mode-app.page-home .home-hero-bar {
+  display: block;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--at-gray);
+  overflow: hidden;
+}
+.app.award-mobile.mode-app.page-home .home-hero-bar b {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--at-accent);
+}
+.app.award-mobile.mode-app.page-home .home-task {
+  display: grid;
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 1px solid var(--c-hairline);
+}
+.app.award-mobile.mode-app.page-home .home-task > span {
+  display: grid;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--at-muted);
+}
+.app.award-mobile.mode-app.page-home .home-task strong {
+  font-size: 17px;
+  font-weight: 500;
+  color: var(--at-ink);
+}
+.app.award-mobile.mode-app.page-home .home-task .primary {
+  min-height: 50px;
+  border-radius: 999px;
+  font-size: 16px;
+  font-weight: 500;
+}
+.app.award-mobile.mode-app.page-home .home-task .primary:active {
+  transform: scale(0.97);
+  filter: brightness(0.95);
+  transition:
+    transform var(--at-press),
+    filter var(--at-press);
+}
+.app.award-mobile.mode-app.page-home .home-preview-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 12px;
+}
+.app.award-mobile.mode-app.page-home .home-preview-head .text-button {
+  min-height: 44px;
+  padding: 0 4px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--at-accent-ink);
+}
+.app.award-mobile.mode-app.page-home .home-preview {
+  display: grid;
+  overflow: hidden;
+  border-radius: var(--radius-card, 12px);
+  background: var(--c-white);
+  box-shadow: var(--at-card-shadow);
+}
+.app.award-mobile.mode-app.page-home .home-preview button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 60px;
+  padding: 12px 16px;
+  text-align: left;
+  background: transparent;
+  transition: background-color var(--at-release);
+}
+.app.award-mobile.mode-app.page-home .home-preview button > span:first-child {
+  flex: 1;
+  min-width: 0;
+}
+.app.award-mobile.mode-app.page-home
+  .home-preview
+  button
+  > span[aria-hidden="true"] {
+  color: var(--at-muted);
+}
+.app.award-mobile.mode-app.page-home .home-preview button + button {
+  border-top: 1px solid var(--c-hairline);
+}
+.app.award-mobile.mode-app.page-home .home-preview strong {
+  display: block;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--at-ink);
+}
+.app.award-mobile.mode-app.page-home .home-preview small {
+  font-size: 13px;
+  color: var(--at-muted);
+}
+.app.award-mobile.mode-app.page-home .home-preview button:active {
+  background-color: var(--c-pressed);
+  transition: background-color var(--at-press);
+}
+
+/* Spaces tab: the full list as grouped rows (one card per building), not a stack of cards. */
+.app.award-mobile.mode-app.page-spaces .room-grid {
+  display: grid;
+  gap: 0;
+  border-radius: var(--radius-card, 12px);
+  background: var(--c-white);
+  box-shadow: var(--at-card-shadow);
+  overflow: hidden;
+}
+.app.award-mobile.mode-app.page-spaces .room-entry + .room-entry {
+  border-top: 1px solid var(--c-hairline);
+}
+.app.award-mobile.mode-app.page-spaces .room-card {
+  border-radius: 0 !important;
+  box-shadow: none;
+  padding: 16px;
+}
+.app.award-mobile.mode-app.page-spaces .room-card strong {
+  font-size: 16px;
+  font-weight: 500;
+  margin: 0 0 8px;
+}
+.app.award-mobile.mode-app.page-spaces .room-card:active:not(:disabled) {
+  transform: none;
+  filter: none;
+  background-color: var(--c-pressed);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app.award-mobile.mode-app
+    :is(.home-preview button, .page-heading .back-button) {
+    transition: none;
+  }
+}
+/* Guide shortcut (kept from the earlier home): a quiet row under the list. */
+.app.award-mobile.mode-app.page-home .home-guide {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 12px;
+  width: 100%;
+  min-height: 60px;
+  margin-top: 4px;
+  padding: 12px 16px;
+  border: 0;
+  border-radius: var(--radius-card, 12px);
+  background: var(--c-white);
+  box-shadow: var(--at-card-shadow);
+  text-align: left;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--at-ink);
+  transition: background-color var(--at-release);
+}
+.app.award-mobile.mode-app.page-home .home-guide > span:first-child {
+  grid-row: span 2;
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: var(--at-tint);
+  color: var(--at-accent-ink);
+  font-weight: 700;
+}
+.app.award-mobile.mode-app.page-home .home-guide small {
+  grid-column: 2;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--at-muted);
+}
+.app.award-mobile.mode-app.page-home .home-guide > span:last-child {
+  grid-column: 3;
+  grid-row: 1 / span 2;
+  color: var(--at-muted);
+}
+.app.award-mobile.mode-app.page-home .home-guide:active {
+  background-color: var(--c-pressed);
+  transition: background-color var(--at-press);
+}
+/* Measurement handoff: keep the status intact and the action at its natural width. */
+.app.award-mobile.mode-app .space-measurement-status {
+ display:flex; align-items:center; justify-content:space-between;
+ gap:var(--space-3); padding:var(--space-4); background:var(--c-white);
+}
+.app.award-mobile.mode-app .space-measurement-status > span {
+ flex:0 0 auto; white-space:nowrap; color:var(--at-muted);
+ font-size:14px; font-weight:500; line-height:1.5;
+}
+.app.award-mobile.mode-app .space-measurement-status > button {
+ display:inline-flex; align-items:center; justify-content:center;
+ flex:0 0 auto; width:auto; min-width:112px; min-height:44px;
+ margin:0; padding:var(--space-2) var(--space-4); font-size:15px;
+ line-height:1.5; white-space:nowrap;
+}
+/* Spaces header: inset the add action from the outer edge. */
+.app.award-mobile.mode-app.page-spaces .page-heading > .icon-button.plus { margin-right:var(--space-3); }

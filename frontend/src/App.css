@@ -14,8 +14,8 @@
 }
 .demo-banner {
   font-size: var(--text-xs);
-  color: #777888;
-  background: #f7f7fb;
+  color: var(--c-777888);
+  background: var(--c-f7f7fb);
   text-align: center;
   padding: var(--space-2) var(--space-3);
 }
@@ -87,10 +87,10 @@
   margin-bottom: var(--space-6);
 }
 .card {
-  background: white;
+  background: var(--c-white);
   border-radius: var(--radius);
   padding: var(--space-6);
-  border: 1px solid #eef0f4;
+  border: 1px solid var(--c-eef0f4);
 }
 .section-label {
   font-size: var(--text-base);
@@ -106,12 +106,12 @@
   gap: var(--space-5);
   padding: var(--space-12) var(--space-6);
   max-width: 500px;
-  background: linear-gradient(145deg, #f9f9fd, #fff);
+  background: linear-gradient(145deg, var(--c-f9f9fd), var(--c-white));
   margin: var(--space-8) auto;
 }
 .empty-icon {
   color: var(--brand);
-  font-size: 50px;
+  font-size: var(--fs-h1);
 }
 .empty h2 {
   font-size: var(--text-lg);
@@ -136,7 +136,7 @@
 }
 .primary {
   background: var(--brand);
-  color: #fff;
+  color: var(--c-white);
 }
 .primary:hover {
   background: var(--accent-hover);
@@ -146,7 +146,7 @@
   color: var(--brand);
 }
 .secondary:hover {
-  background: #e5e3fb;
+  background: var(--c-e5e3fb);
 }
 .text-button {
   background: none;
@@ -159,7 +159,7 @@
   color: var(--danger);
 }
 .destructive {
-  background: #a95454;
+  background: var(--c-a95454);
 }
 .actions {
   display: flex;
@@ -216,8 +216,8 @@
   min-height: 26px;
 }
 .field:focus-within {
-  background: #f7f6ff;
-  border-color: #a39bf2;
+  background: var(--c-f7f6ff);
+  border-color: var(--c-a39bf2);
 }
 .two-fields {
   display: grid;
@@ -251,7 +251,7 @@
 .mini-room span:last-child {
   position: absolute;
   bottom: -12px;
-  background: #fff;
+  background: var(--c-white);
   padding: 0 var(--space-8);
   border-top: 3px solid var(--brand);
   font-size: var(--text-xs);
@@ -281,7 +281,7 @@
   align-items: center;
   justify-content: space-between;
   text-align: left;
-  background: #fff;
+  background: var(--c-white);
   border: 1px solid var(--line);
   padding: var(--space-6);
   border-radius: 22px;
@@ -302,14 +302,14 @@
   color: var(--muted);
 }
 .room-card:hover {
-  border-color: #aaa2f4;
+  border-color: var(--c-aaa2f4);
 }
 .add-space {
   max-width: 360px;
   margin: var(--space-6) auto;
 }
 .auth-page {
-  background: linear-gradient(115deg, #edf1fb, #f7f9fb 50%, #e6f4ee);
+  background: linear-gradient(115deg, var(--c-edf1fb), var(--c-f7f9fb) 50%, var(--c-e6f4ee));
 }
 .auth {
   max-width: 370px;
@@ -343,7 +343,7 @@
   gap: var(--space-4);
   align-items: center;
   justify-content: center;
-  background: #fff;
+  background: var(--c-white);
   border: 1px solid var(--line);
   min-height: 52px;
   border-radius: 28px;
@@ -353,7 +353,7 @@
 .google-g {
   font-size: var(--text-lg);
   font-weight: 700;
-  color: #5868ba;
+  color: var(--c-5868ba);
 }
 .capture-layout {
   max-width: 900px;
@@ -367,8 +367,8 @@
 }
 .capture-card {
   margin-top: var(--space-5);
-  background: #272b40;
-  color: white;
+  background: var(--c-272b40);
+  color: var(--c-white);
   padding: var(--space-6);
   display: flex;
   flex-direction: column;
@@ -377,7 +377,7 @@
 }
 .capture-card p {
   font-size: var(--text-xs);
-  color: #e8e8f5;
+  color: var(--c-e8e8f5);
 }
 .camera-target {
   width: 220px;
@@ -386,18 +386,18 @@
   position: relative;
   display: grid;
   place-items: center;
-  background: #3b4155;
+  background: var(--c-3b4155);
   border-radius: 10px;
 }
 .qr-symbol {
-  font-size: 130px;
-  line-height: 1;
-  color: #fff;
+  font-size: var(--fs-h1);
+  line-height: var(--lh-h1);
+  color: var(--c-white);
 }
 .corner {
   width: 25px;
   height: 25px;
-  border: 3px solid #9d93ff;
+  border: 3px solid var(--c-9d93ff);
   position: absolute;
 }
 .top-left {
@@ -462,7 +462,7 @@
   cursor: pointer;
 }
 .file-button:focus-within {
-  outline: 2px solid #737883;
+  outline: 2px solid var(--c-737883);
 }
 .disabled {
   opacity: 0.5;
@@ -479,8 +479,8 @@
   line-height: 2.2;
 }
 .notice {
-  background: #f4f2ff;
-  color: #706a9e;
+  background: var(--c-f4f2ff);
+  color: var(--c-706a9e);
   border-radius: 12px;
   padding: var(--space-3);
   font-size: var(--text-xs);
@@ -495,7 +495,7 @@
   text-align: center;
 }
 .progress-number {
-  font-size: 60px;
+  font-size: var(--fs-h1);
   color: var(--brand);
   font-weight: 500;
 }
@@ -592,13 +592,13 @@
   width: 10px;
   height: 10px;
   border-radius: 3px;
-  background: #dfe3eb;
+  background: var(--c-dfe3eb);
 }
 .plan-legend .purple {
-  background: #d9d3fb;
+  background: var(--c-d9d3fb);
 }
 .plan-legend .yellow {
-  background: #fff0c8;
+  background: var(--c-fff0c8);
 }
 .inspector {
   background: var(--surface-subtle);
@@ -612,7 +612,7 @@
   font-size: var(--text-xl);
 }
 .inspector .field {
-  background: white;
+  background: var(--c-white);
   margin-top: 0;
 }
 .inspector .dimensions {
@@ -636,7 +636,7 @@
 }
 .item-tabs button.active {
   background: var(--soft);
-  border-color: #aaa3f3;
+  border-color: var(--c-aaa3f3);
   color: var(--brand);
 }
 .divider {
@@ -662,7 +662,7 @@
 }
 .grade-picker .active {
   background: var(--brand);
-  color: white;
+  color: var(--c-white);
 }
 .grade-description {
   font-size: var(--text-xs);
@@ -672,8 +672,8 @@
 }
 .face-preview {
   height: 92px;
-  background: #e4e8ef;
-  border: 1px solid #c9cbdc;
+  background: var(--c-e4e8ef);
+  border: 1px solid var(--c-c9cbdc);
   border-radius: 8px;
   position: relative;
   overflow: hidden;
@@ -682,8 +682,8 @@
   position: absolute;
   left: 0;
   right: 0;
-  background: #d3ccf8;
-  border: 1px solid #9c8df0;
+  background: var(--c-d3ccf8);
+  border: 1px solid var(--c-9c8df0);
 }
 .face-preview span {
   position: absolute;
@@ -691,7 +691,7 @@
   display: grid;
   place-items: center;
   font-size: var(--text-xs);
-  color: #51488b;
+  color: var(--c-51488b);
   pointer-events: none;
 }
 .section-row {
@@ -745,7 +745,7 @@
 .status-dot {
   width: 10px;
   height: 10px;
-  background: #64a78d;
+  background: var(--c-64a78d);
   border-radius: 50%;
   flex-shrink: 0;
 }
@@ -759,7 +759,7 @@
   white-space: nowrap;
 }
 .summary-box {
-  background: white;
+  background: var(--c-white);
   border-radius: 12px;
   padding: var(--space-4);
   font-size: var(--text-sm);
@@ -796,7 +796,7 @@ input[type="range"] {
 .guide-card {
   border-radius: 22px;
   padding: var(--space-6);
-  background: #fafafd;
+  background: var(--c-fafafd);
   border: 1px solid var(--line);
   text-align: left;
   display: flex;
@@ -805,8 +805,8 @@ input[type="range"] {
   gap: var(--space-4);
 }
 .guide-card:hover {
-  border-color: #aaa2f4;
-  background: #f5f4ff;
+  border-color: var(--c-aaa2f4);
+  background: var(--c-f5f4ff);
 }
 .guide-number {
   color: var(--brand);
@@ -833,7 +833,7 @@ input[type="range"] {
 }
 .guide-illustration {
   height: 150px;
-  background: linear-gradient(120deg, #f0effc, #e9f5ef);
+  background: linear-gradient(120deg, var(--c-f0effc), var(--c-e9f5ef));
   border-radius: 16px;
   display: flex;
   justify-content: center;
@@ -841,8 +841,8 @@ input[type="range"] {
   align-items: center;
 }
 .guide-illustration > span {
-  font-size: 76px;
-  color: #a59fe9;
+  font-size: var(--fs-h1);
+  color: var(--c-a59fe9);
   font-weight: 500;
 }
 .guide-illustration .icon {
@@ -899,10 +899,10 @@ dialog {
   border-radius: 24px;
   padding: var(--space-6);
   color: var(--ink);
-  box-shadow: 0 25px 90px #22223230;
+  box-shadow: 0 25px 90px var(--c-222232-a19);
 }
 dialog::backdrop {
-  background: #25283155;
+  background: var(--c-252831-a33);
   backdrop-filter: blur(3px);
 }
 dialog h2 {
@@ -917,7 +917,7 @@ dialog p {
   margin-bottom: var(--space-4);
 }
 .error {
-  background: #fff1f0;
+  background: var(--c-fff1f0);
   color: var(--danger);
   border-radius: 12px;
   padding: var(--space-4);
@@ -930,9 +930,9 @@ dialog p {
   left: 50%;
   transform: translateX(-50%);
   background: var(--ink);
-  color: white;
+  color: var(--c-white);
   padding: var(--space-4) var(--space-6);
-  box-shadow: 0 8px 30px #25283120;
+  box-shadow: 0 8px 30px var(--c-252831-a13);
   border-radius: 26px;
   font-size: var(--text-sm);
   z-index: 10;
@@ -947,13 +947,13 @@ dialog p {
     background: var(--ink);
   }
   :where(.app:not(.mode-app)) .inspector > .primary:hover {
-    background: #3b3e4b;
+    background: var(--c-3b3e4b);
   }
   :where(.app:not(.mode-app)) .account-content {
     margin-top: var(--space-10);
   }
   .more-page:where(:not(.mode-app)) {
-    background: #fff;
+    background: var(--c-white);
   }
   :where(.app:not(.mode-app)) .more-content {
     background: var(--surface-muted);
@@ -985,7 +985,7 @@ dialog p {
 }
 @media (max-width: 760px) {
   .app {
-    background: linear-gradient(120deg, #edf1fb 0, #f5f8fa 42%, #e4f2ec 100%);
+    background: linear-gradient(120deg, var(--c-edf1fb) 0, var(--c-f5f8fa) 42%, var(--c-e4f2ec) 100%);
     padding-bottom: calc(84px + env(safe-area-inset-bottom));
     min-height: 100svh;
   }
@@ -995,7 +995,7 @@ dialog p {
   .demo-banner {
     font-size: var(--text-xs);
     padding: var(--space-2) var(--space-2);
-    background: #ffffff70;
+    background: var(--c-ffffff-a44);
   }
   .app-header {
     height: 66px;
@@ -1044,7 +1044,7 @@ dialog p {
     padding: var(--space-6) var(--space-5);
     margin: 0;
     max-width: none;
-    background: white;
+    background: var(--c-white);
     gap: var(--space-4);
   }
   .empty .primary {
@@ -1052,7 +1052,7 @@ dialog p {
     max-width: 320px;
   }
   .empty-icon {
-    font-size: 44px;
+    font-size: var(--fs-h1);
   }
   .room-grid {
     grid-template-columns: 1fr;
@@ -1152,7 +1152,7 @@ dialog p {
   }
   .inspector {
     padding: var(--space-5);
-    background: #ffffffd9;
+    background: var(--c-ffffff-a85);
     border-radius: 22px;
     gap: var(--space-3);
   }
@@ -1182,7 +1182,7 @@ dialog p {
   }
   .guide-card {
     padding: var(--space-5);
-    background: white;
+    background: var(--c-white);
     border: 0;
     gap: var(--space-3);
     display: grid;
@@ -1239,9 +1239,9 @@ dialog p {
     bottom: 0;
     left: 0;
     right: 0;
-    background: #fffffff5;
+    background: var(--c-ffffff-a96);
     backdrop-filter: blur(14px);
-    border-top: 1px solid #ebedf2;
+    border-top: 1px solid var(--c-ebedf2);
     padding: 9px 10px calc(10px + env(safe-area-inset-bottom));
   }
   .mobile-nav button {
@@ -1252,7 +1252,7 @@ dialog p {
     min-height: 51px;
     font-size: var(--text-sm);
     font-weight: 500;
-    color: #858992;
+    color: var(--c-858992);
     background: none;
     padding: var(--space-1);
   }
@@ -1298,7 +1298,7 @@ dialog p {
 }
 /* app view: same phone rules at any window width */
 .app:where(.mode-app) {
-    background: linear-gradient(120deg, #edf1fb 0, #f5f8fa 42%, #e4f2ec 100%);
+    background: linear-gradient(120deg, var(--c-edf1fb) 0, var(--c-f5f8fa) 42%, var(--c-e4f2ec) 100%);
     padding-bottom: calc(84px + env(safe-area-inset-bottom));
     min-height: 100svh;
   }
@@ -1308,7 +1308,7 @@ dialog p {
   :where(.app.mode-app) .demo-banner {
     font-size: var(--text-xs);
     padding: var(--space-2) var(--space-2);
-    background: #ffffff70;
+    background: var(--c-ffffff-a44);
   }
   :where(.app.mode-app) .app-header {
     height: 66px;
@@ -1338,7 +1338,7 @@ dialog p {
     margin-bottom: var(--space-5);
   }
   :where(.app.mode-app) h1 {
-    font-size: var(--text-xl);
+    font-size: var(--fs-h1);
     letter-spacing: -0.6px;
   }
   :where(.app.mode-app) h2 {
@@ -1357,7 +1357,7 @@ dialog p {
     padding: var(--space-6) var(--space-5);
     margin: 0;
     max-width: none;
-    background: white;
+    background: var(--c-white);
     gap: var(--space-4);
   }
   :where(.app.mode-app) .empty .primary {
@@ -1365,7 +1365,7 @@ dialog p {
     max-width: 320px;
   }
   :where(.app.mode-app) .empty-icon {
-    font-size: 44px;
+    font-size: var(--fs-h1);
   }
   :where(.app.mode-app) .room-grid {
     grid-template-columns: 1fr;
@@ -1465,7 +1465,7 @@ dialog p {
   }
   :where(.app.mode-app) .inspector {
     padding: var(--space-5);
-    background: #ffffffd9;
+    background: var(--c-ffffff-a85);
     border-radius: 22px;
     gap: var(--space-3);
   }
@@ -1495,7 +1495,7 @@ dialog p {
   }
   :where(.app.mode-app) .guide-card {
     padding: var(--space-5);
-    background: white;
+    background: var(--c-white);
     border: 0;
     gap: var(--space-3);
     display: grid;
@@ -1551,9 +1551,9 @@ dialog p {
     bottom: 0;
     left: 0;
     right: 0;
-    background: #fffffff5;
+    background: var(--c-ffffff-a96);
     backdrop-filter: blur(14px);
-    border-top: 1px solid #ebedf2;
+    border-top: 1px solid var(--c-ebedf2);
     padding: 9px 10px calc(10px + env(safe-area-inset-bottom));
   }
   :where(.app.mode-app) .mobile-nav button {
@@ -1564,7 +1564,7 @@ dialog p {
     min-height: 51px;
     font-size: var(--text-sm);
     font-weight: 500;
-    color: #858992;
+    color: var(--c-858992);
     background: none;
     padding: var(--space-1);
   }
@@ -1644,7 +1644,7 @@ dialog p {
   .zone-action {
     border: 1px solid var(--line);
     border-radius: 8px;
-    background: #fff;
+    background: var(--c-white);
     padding: var(--space-3) var(--space-3);
     min-height: 40px;
     font-size: var(--text-sm);
@@ -1657,7 +1657,7 @@ dialog p {
 :where(.app.mode-app) .zone-action {
     border: 1px solid var(--line);
     border-radius: 8px;
-    background: #fff;
+    background: var(--c-white);
     padding: var(--space-3) var(--space-3);
     min-height: 40px;
     font-size: var(--text-sm);
@@ -1733,8 +1733,8 @@ dialog p {
 .app .inspector .primary,
 .app .inspector .secondary,
 .app .inspector .text-button {
-  background: #fff;
-  border: 1pt solid #c5c7ce;
+  background: var(--c-white);
+  border: 1pt solid var(--c-c5c7ce);
   color: var(--brand);
   box-shadow: none;
   min-height: 44px;
@@ -1750,7 +1750,7 @@ dialog p {
 .app .inspector .secondary:hover,
 .app .inspector .text-button:hover {
   background: var(--surface-subtle);
-  border-color: #92969e;
+  border-color: var(--c-92969e);
 }
 
 .app .inspector .primary,
@@ -1782,25 +1782,25 @@ dialog p {
   margin-top: 0;
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--c-white);
 }
 .app .inspector .save-protection:hover {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
 }
 .app .inspector .furniture-delete {
-  background: #eceef1;
+  background: var(--c-eceef1);
   color: var(--muted);
-  border-color: #c5c7ce;
+  border-color: var(--c-c5c7ce);
 }
 .app .inspector .furniture-delete:hover {
-  background: #e0e3e8;
-  color: #4c515b;
+  background: var(--c-e0e3e8);
+  color: var(--c-4c515b);
 }
 
 .mobile-guide-visual {
   position: relative;
-  background: #f5f5f7;
+  background: var(--c-f5f5f7);
   border-radius: 12px;
   overflow: hidden;
   width: 100%;
@@ -1814,7 +1814,7 @@ dialog p {
   position: absolute;
   top: 12px;
   left: 14px;
-  color: #6f6a80;
+  color: var(--c-6f6a80);
   font-size: var(--text-sm);
   font-weight: 500;
 }
@@ -1856,7 +1856,7 @@ dialog p {
 
 .app .zone-tabs .chip,
 .app .zone-tabs .chip.active {
-  background: #fff;
+  background: var(--c-white);
   border: 1pt solid currentColor;
   box-shadow: none;
 }
@@ -1908,7 +1908,7 @@ dialog p {
   margin: 0;
 }
 @media (min-width: 761px) {
-  .app:where(:not(.mode-app)) .detail-info .detail-actions > button { border: 1pt solid #a9acb6; }
+  .app:where(:not(.mode-app)) .detail-info .detail-actions > button { border: 1pt solid var(--c-a9acb6); }
 }
 
 /* Mobile hierarchy: readable content, quiet surfaces and one clear primary action. */
@@ -1931,21 +1931,21 @@ dialog p {
     line-height: 1.5;
     box-shadow: none;
   }
-  .app .secondary { color: #414958; border: 1px solid #c7cbd6; }
-  .app .primary { background: var(--accent); color: #fff; border: 1px solid var(--accent); }
+  .app .secondary { color: var(--c-414958); border: 1px solid var(--c-c7cbd6); }
+  .app .primary { background: var(--accent); color: var(--c-white); border: 1px solid var(--accent); }
   .app .primary:not(:disabled):active { background: var(--accent-hover); }
   .app .secondary:not(:disabled):active { border-color: var(--accent); }
-  .app .detail-actions > .primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-  .app .detail-actions > .secondary { color: #414958; border-color: #bfc5d0; }
+  .app .detail-actions > .primary { background: var(--accent); border-color: var(--accent); color: var(--c-white); }
+  .app .detail-actions > .secondary { color: var(--c-414958); border-color: var(--c-bfc5d0); }
   .app .detail-actions { gap: var(--space-2); }
   .app .card { border-radius: 16px; }
-  .app .room-card { border: 1px solid #d0d5df; border-radius: 14px; padding: var(--space-4); min-height: 94px; }
+  .app .room-card { border: 1px solid var(--c-d0d5df); border-radius: 14px; padding: var(--space-4); min-height: 94px; }
   .app .room-card strong { font-size: var(--text-lg); line-height: 1.5; }
   .app .room-card small { font-size: var(--text-sm); margin-top: var(--space-1); }
   .app .room-card > span:last-child { font-size: var(--text-2xl); color: var(--accent); }
   .app .room-card:active { border-color: var(--accent); }
   .app .add-space { margin-top: var(--space-4); }
-  .app .field { border: 1px solid #cbd0da; border-radius: 12px; padding: var(--space-3) var(--space-4); }
+  .app .field { border: 1px solid var(--c-cbd0da); border-radius: 12px; padding: var(--space-3) var(--space-4); }
   .app .field > span, .app .field > label { font-size: var(--text-sm); color: var(--muted); font-weight: 500; }
   .app .field input, .app .field select { font-size: var(--text-base); color: var(--ink); min-height: 28px; }
   .app .field:focus-within { border-color: var(--accent); }
@@ -1954,7 +1954,7 @@ dialog p {
     min-height: 44px; padding: var(--space-3) var(--space-4); font-size: var(--text-sm); line-height: 1.5; border-radius: 12px;
   }
   .app .chip.active, .app .item-tabs button.active { border: 1pt solid var(--accent); font-weight: 500; box-shadow: none; }
-  .app .item-tabs button { border: 1pt solid #cbd0da; }
+  .app .item-tabs button { border: 1pt solid var(--c-cbd0da); }
   .app .chip:not(.active), .app .item-tabs button:not(.active) { color: var(--muted); }
   .app .plan-legend { font-size: var(--text-xs); gap: var(--space-3); flex-wrap: wrap; }
   .app .plan-caption { font-size: var(--text-sm); color: var(--muted); }
@@ -1963,7 +1963,7 @@ dialog p {
   .app .detail-info .row, .app .detail-info .row.selected { font-size: var(--text-base); padding: var(--space-4) var(--space-3); }
   .app .detail-info .row small { font-size: var(--text-sm); }
   .app .grade-badge { min-width: 36px; height: 36px; border-radius: 10px; font-size: var(--text-base); }
-  .app .guide-card { border: 1px solid #d0d5df; border-radius: 14px; padding: var(--space-4); gap: var(--space-3); }
+  .app .guide-card { border: 1px solid var(--c-d0d5df); border-radius: 14px; padding: var(--space-4); gap: var(--space-3); }
   .app .guide-card h2 { font-size: var(--text-lg); }
   .app .guide-card p { font-size: var(--text-sm); line-height: 1.65; color: var(--muted); }
   .app .guide-card .brand-text { font-size: var(--text-sm); font-weight: 700; }
@@ -1997,21 +1997,21 @@ dialog p {
     line-height: 1.5;
     box-shadow: none;
   }
-  .app:where(.mode-app) .secondary { color: #414958; border: 1px solid #c7cbd6; }
-  .app:where(.mode-app) .primary { background: var(--accent); color: #fff; border: 1px solid var(--accent); }
+  .app:where(.mode-app) .secondary { color: var(--c-414958); border: 1px solid var(--c-c7cbd6); }
+  .app:where(.mode-app) .primary { background: var(--accent); color: var(--c-white); border: 1px solid var(--accent); }
   .app:where(.mode-app) .primary:not(:disabled):active { background: var(--accent-hover); }
   .app:where(.mode-app) .secondary:not(:disabled):active { border-color: var(--accent); }
-  .app:where(.mode-app) .detail-actions > .primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-  .app:where(.mode-app) .detail-actions > .secondary { color: #414958; border-color: #bfc5d0; }
+  .app:where(.mode-app) .detail-actions > .primary { background: var(--accent); border-color: var(--accent); color: var(--c-white); }
+  .app:where(.mode-app) .detail-actions > .secondary { color: var(--c-414958); border-color: var(--c-bfc5d0); }
   .app:where(.mode-app) .detail-actions { gap: var(--space-2); }
   .app:where(.mode-app) .card { border-radius: 16px; }
-  .app:where(.mode-app) .room-card { border: 1px solid #d0d5df; border-radius: 14px; padding: var(--space-4); min-height: 94px; }
+  .app:where(.mode-app) .room-card { border: 1px solid var(--c-d0d5df); border-radius: 14px; padding: var(--space-4); min-height: 94px; }
   .app:where(.mode-app) .room-card strong { font-size: var(--text-lg); line-height: 1.5; }
   .app:where(.mode-app) .room-card small { font-size: var(--text-sm); margin-top: var(--space-1); }
   .app:where(.mode-app) .room-card > span:last-child { font-size: var(--text-2xl); color: var(--accent); }
   .app:where(.mode-app) .room-card:active { border-color: var(--accent); }
   .app:where(.mode-app) .add-space { margin-top: var(--space-4); }
-  .app:where(.mode-app) .field { border: 1px solid #cbd0da; border-radius: 12px; padding: var(--space-3) var(--space-4); }
+  .app:where(.mode-app) .field { border: 1px solid var(--c-cbd0da); border-radius: 12px; padding: var(--space-3) var(--space-4); }
   .app:where(.mode-app) .field > span, .app:where(.mode-app) .field > label { font-size: var(--text-sm); color: var(--muted); font-weight: 500; }
   .app:where(.mode-app) .field input, .app:where(.mode-app) .field select { font-size: var(--text-base); color: var(--ink); min-height: 28px; }
   .app:where(.mode-app) .field:focus-within { border-color: var(--accent); }
@@ -2020,7 +2020,7 @@ dialog p {
     min-height: 44px; padding: var(--space-3) var(--space-4); font-size: var(--text-sm); line-height: 1.5; border-radius: 12px;
   }
   .app:where(.mode-app) .chip.active, .app:where(.mode-app) .item-tabs button.active { border: 1pt solid var(--accent); font-weight: 500; box-shadow: none; }
-  .app:where(.mode-app) .item-tabs button { border: 1pt solid #cbd0da; }
+  .app:where(.mode-app) .item-tabs button { border: 1pt solid var(--c-cbd0da); }
   .app:where(.mode-app) .chip:not(.active), .app:where(.mode-app) .item-tabs button:not(.active) { color: var(--muted); }
   .app:where(.mode-app) .plan-legend { font-size: var(--text-xs); gap: var(--space-3); flex-wrap: wrap; }
   .app:where(.mode-app) .plan-caption { font-size: var(--text-sm); color: var(--muted); }
@@ -2029,7 +2029,7 @@ dialog p {
   .app:where(.mode-app) .detail-info .row, .app:where(.mode-app) .detail-info .row.selected { font-size: var(--text-base); padding: var(--space-4) var(--space-3); }
   .app:where(.mode-app) .detail-info .row small { font-size: var(--text-sm); }
   .app:where(.mode-app) .grade-badge { min-width: 36px; height: 36px; border-radius: 10px; font-size: var(--text-base); }
-  .app:where(.mode-app) .guide-card { border: 1px solid #d0d5df; border-radius: 14px; padding: var(--space-4); gap: var(--space-3); }
+  .app:where(.mode-app) .guide-card { border: 1px solid var(--c-d0d5df); border-radius: 14px; padding: var(--space-4); gap: var(--space-3); }
   .app:where(.mode-app) .guide-card h2 { font-size: var(--text-lg); }
   .app:where(.mode-app) .guide-card p { font-size: var(--text-sm); line-height: 1.65; color: var(--muted); }
   .app:where(.mode-app) .guide-card .brand-text { font-size: var(--text-sm); font-weight: 700; }
@@ -2073,7 +2073,7 @@ dialog p {
   .app .secondary,
   .app .detail-actions > .secondary,
   .app .field, .app .room-card, .app .guide-card,
-  .app .item-tabs button:not(.active) { border-color: #d2d6df; }
+  .app .item-tabs button:not(.active) { border-color: var(--c-d2d6df); }
   .app .detail-actions { gap: var(--space-2); }
   .app .inspector .furniture-actions button { min-height: 44px; padding: var(--space-2) var(--space-3); }
   .app .plan [data-furniture], .app .plan [data-region] { stroke-width: 1px; }
@@ -2097,7 +2097,7 @@ dialog p {
   .app:where(.mode-app) details > summary { padding: var(--space-3) 0; }
   .app:where(.mode-app) input[type="range"] { height: 44px; margin: var(--space-2) 0 var(--space-1); }
   .app:where(.mode-app) .field, .app:where(.mode-app) .room-card, .app:where(.mode-app) .guide-card, .app:where(.mode-app) .row, .app:where(.mode-app) .row.selected { border-width: 1px; }
-  .app:where(.mode-app) .secondary, .app:where(.mode-app) .detail-actions > .secondary, .app:where(.mode-app) .field, .app:where(.mode-app) .room-card, .app:where(.mode-app) .guide-card, .app:where(.mode-app) .item-tabs button:not(.active) { border-color: #d2d6df; }
+  .app:where(.mode-app) .secondary, .app:where(.mode-app) .detail-actions > .secondary, .app:where(.mode-app) .field, .app:where(.mode-app) .room-card, .app:where(.mode-app) .guide-card, .app:where(.mode-app) .item-tabs button:not(.active) { border-color: var(--c-d2d6df); }
   .app:where(.mode-app) .detail-actions { gap: var(--space-2); }
   .app:where(.mode-app) .inspector .furniture-actions button { min-height: 44px; padding: var(--space-2) var(--space-3); }
   .app:where(.mode-app) .plan [data-furniture], .app:where(.mode-app) .plan [data-region] { stroke-width: 1px; }
@@ -2146,13 +2146,13 @@ dialog p {
 
 /* Shared editing. */
 .landing-auth-hidden { display: none !important; }
-.editing-help { font-size: var(--text-base); line-height: 1.6; color: #555b69; margin: var(--space-4) 0; }
+.editing-help { font-size: var(--text-base); line-height: 1.6; color: var(--c-555b69); margin: var(--space-4) 0; }
 @media (min-width: 761px) {
   .app:where(:not(.mode-app)) .main { font-size: var(--text-lg); }
   .app:where(:not(.mode-app)) .main .small, .app:where(:not(.mode-app)) .main small { font-size: var(--text-base); }
   .app:where(:not(.mode-app)) .main .field > span { font-size: var(--text-base); }
   .app:where(:not(.mode-app)) .main .secondary, .app:where(:not(.mode-app)) .main .primary { font-size: var(--text-lg); }
-  .app:where(:not(.mode-app)) .main .muted { color: #606675; }
+  .app:where(:not(.mode-app)) .main .muted { color: var(--c-606675); }
 }
 @media (max-width: 760px) {
   .app .field > span, .app .small, .app .muted.small { font-size: var(--text-base); }
@@ -2182,7 +2182,7 @@ dialog p {
 .corner-capture > .file-button, .corner-capture > .primary { width: 100%; }
 
 /* Film cells (MAR5.3, WAR4.3) and predicted blocking times (WAR4.2). */
-.film-grid { --film-marker: #272b40; margin: var(--space-3) 0 0; }
+.film-grid { --film-marker: var(--c-272b40); margin: var(--space-3) 0 0; }
 .film-grid svg { display: block; width: 100%; height: auto; max-height: 240px; }
 .film-grid .cell { fill: var(--paper); }
 .film-grid .cell.shaded { fill: var(--data); }
@@ -2211,7 +2211,7 @@ dialog p {
 .plan.dragging-furniture [data-furniture], .plan.dragging-furniture [data-region] { cursor: grab; }
 
 .status-dot.pending {
-  background: #b9bcc6;
+  background: var(--c-b9bcc6);
 }
 .toast:has(.toast-action) {
   display: flex;
@@ -2223,13 +2223,13 @@ dialog p {
   min-height: 36px;
   padding: 0 var(--space-4);
   border-radius: 18px;
-  background: #ffffff1f;
-  color: #fff;
+  background: var(--c-ffffff-a12);
+  color: var(--c-white);
   font-weight: 500;
   font-size: inherit;
 }
 .toast-action:hover {
-  background: #ffffff33;
+  background: var(--c-ffffff-a20);
 }
 /* Changing readouts (time, progress) keep their width while digits change. */
 .brand-text,
@@ -2246,7 +2246,7 @@ dialog p {
   padding: 0 var(--space-4);
   border-radius: 10px;
   background: var(--ink);
-  color: #fff;
+  color: var(--c-white);
   font-size: var(--text-sm);
   transform: translateY(-200%);
 }
@@ -2378,8 +2378,8 @@ dialog[open]::backdrop {
 .shading-time input[type="time"] { font-variant-numeric: tabular-nums; }
 .shading-time input:disabled { color: var(--muted); }
 .switch { display: inline-flex; align-items: center; gap: var(--space-2); min-height: 44px; cursor: pointer; font-size: var(--text-sm); color: var(--muted); }
-.switch input { appearance: none; -webkit-appearance: none; position: relative; width: 44px; height: 26px; margin: 0; border-radius: 13px; background: #c9ccd6; cursor: pointer; transition: background-color 160ms ease; }
-.switch input::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px #25283133; transition: transform 200ms var(--ease-out, ease-out); }
+.switch input { appearance: none; -webkit-appearance: none; position: relative; width: 44px; height: 26px; margin: 0; border-radius: 13px; background: var(--c-c9ccd6); cursor: pointer; transition: background-color 160ms ease; }
+.switch input::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: var(--c-white); box-shadow: 0 1px 3px var(--c-252831-a20); transition: transform 200ms var(--ease-out, ease-out); }
 .switch input:checked { background: var(--accent); }
 .switch input:checked::after { transform: translateX(18px); }
 .switch input:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
@@ -2392,15 +2392,15 @@ dialog[open]::backdrop {
 }
 
 /* Keep toggle geometry independent of generic form-input styles. */
-.app .switch { position: relative; display: inline-flex; flex: none; gap: 8px; white-space: nowrap; }
+.app .switch { position: relative; display: inline-flex; flex: none; gap: var(--space-2); white-space: nowrap; }
 .app .switch input[type="checkbox"] { position: absolute; width: 44px; height: 26px; min-height: 0; padding: 0; margin: 0; opacity: 0; inset: auto; }
 .app .switch input::after { content: none; }
-.app .switch .switch-track { position: relative; display: block; flex: 0 0 44px; width: 44px; height: 26px; border-radius: 99px; background: #a6a8b2; }
-.app .switch .switch-track::after { content: ""; position: absolute; left: 3px; top: 3px; width: 20px; height: 20px; border-radius: 50%; background: white; transition: transform 160ms ease; }
-.app .switch input:checked + .switch-track { background: var(--accent, #6c5ce7); }
+.app .switch .switch-track { position: relative; display: block; flex: 0 0 44px; width: 44px; height: 26px; border-radius: 99px; background: var(--c-a6a8b2); }
+.app .switch .switch-track::after { content: ""; position: absolute; left: 3px; top: 3px; width: 20px; height: 20px; border-radius: 50%; background: var(--c-white); transition: transform 160ms ease; }
+.app .switch input:checked + .switch-track { background: var(--accent, var(--c-6c5ce7)); }
 .app .switch input:checked + .switch-track::after { transform: translateX(18px); }
-.app .switch input:focus-visible + .switch-track { outline: 2px solid var(--accent, #6c5ce7); outline-offset: 3px; }
+.app .switch input:focus-visible + .switch-track { outline: 2px solid var(--accent, var(--c-6c5ce7)); outline-offset: 3px; }
 .app .switch .switch-label { min-width: 2.5em; line-height: 1.4; }
-.app .field-warning { display: block; color: #b02d3d; font-size: 13px; line-height: 1.5; font-weight: 500; }
-.app input[aria-invalid="true"] { border-color: #b02d3d; }
-.app .live-validation { position: sticky; top: 12px; z-index: 25; margin: 0 0 16px; padding: 12px 16px; border: 1px solid #d49ba3; border-radius: 8px; color: #932737; background: #fff5f6; font-size: 15px; line-height: 1.5; }
+.app .field-warning { display: block; color: var(--c-b02d3d); font-size: var(--fs-small); line-height: var(--lh-small); font-weight: 500; }
+.app input[aria-invalid="true"] { border-color: var(--c-b02d3d); }
+.app .live-validation { position: sticky; top: 12px; z-index: 25; margin: 0 0 var(--space-4); padding: var(--space-3) var(--space-4); border: 1px solid var(--c-d49ba3); border-radius: 8px; color: var(--c-932737); background: var(--c-fff5f6); font-size: var(--fs-small); line-height: var(--lh-small); }

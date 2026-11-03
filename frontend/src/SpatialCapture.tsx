@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { corners, measurePixels, photoIssue, retakeMessages } from "./captureCheck";
-import type { MarkerState, PhotoIssue } from "./captureCheck";
+import type { PhotoIssue } from "./captureCheck";
 import { furnitureTypes } from "./model";
 import type { CapturedFurniture, FurnitureType } from "./model";
 
@@ -26,7 +26,6 @@ export default function SpatialCapture({ count, onFinish }: { count: number; onF
   const [name, setName] = useState(`가구 ${count + 1}`);
   const [type, setType] = useState<FurnitureType>("bookcase");
   const [photos, setPhotos] = useState<(Photo | null)[]>([null, null, null, null]);
-  const [last, setLast] = useState<number | null>(null);
   const [checking, setChecking] = useState(false);
   const [error, setError] = useState("");
   const latest = useRef(photos);
@@ -48,15 +47,11 @@ export default function SpatialCapture({ count, onFinish }: { count: number; onF
       const replaced = photos[corner];
       if (replaced) URL.revokeObjectURL(replaced.url);
       setPhotos((all) => all.map((p, i) => (i === corner ? photo : p)));
-      setLast(corner);
     } catch {
       setError("사진을 읽지 못했어요. 다시 찍어 주세요.");
     } finally {
       setChecking(false);
     }
-  }
-  function simulate(marker: MarkerState) {
-    setPhotos((all) => all.map((p, i) => (i === last && p ? { ...p, issue: photoIssue({ ...p.metrics, marker }) } : p)));
   }
   function nextFurniture() {
     const captured = [...items, { name: name.trim() || `가구 ${count + items.length + 1}`, type }];
@@ -64,7 +59,6 @@ export default function SpatialCapture({ count, onFinish }: { count: number; onF
     setName(`가구 ${count + captured.length + 1}`);
     photos.forEach((p) => p && URL.revokeObjectURL(p.url));
     setPhotos([null, null, null, null]);
-    setLast(null);
     return captured;
   }
 
@@ -95,7 +89,7 @@ export default function SpatialCapture({ count, onFinish }: { count: number; onF
           ? "네 모서리 촬영 완료"
           : current?.issue
             ? `모서리 ${corner + 1} 다시 촬영`
-            : `모서리 ${corner + 1} · ${corners[corner]}에서 QR 마커를 프레임 안에`}
+            : `모서리 ${corner + 1} · 창문 QR 전체 촬영`}
       </figcaption>
     </figure>
     <ol className="corner-steps" aria-label="모서리 촬영 상태">
@@ -105,7 +99,7 @@ export default function SpatialCapture({ count, onFinish }: { count: number; onF
         return <li key={label} className={state} aria-current={i === corner ? "step" : undefined}>
           {p ? <img src={p.url} alt="" /> : <span className="corner-number">{i + 1}</span>}
           <strong>{label}</strong>
-          <small>{{ done: "인식 완료", retake: "다시 촬영", current: "촬영할 차례", waiting: "대기" }[state]}</small>
+          <small>{{ done: "촬영 완료", retake: "다시 촬영", current: "촬영할 차례", waiting: "대기" }[state]}</small>
         </li>;
       })}
     </ol>
@@ -123,14 +117,10 @@ export default function SpatialCapture({ count, onFinish }: { count: number; onF
         <input type="file" accept="image/*" capture="environment" disabled={checking} onChange={(e) => { void take(e.target.files?.[0]); e.target.value = ""; }} />
       </label> : <button type="button" className="primary" onClick={() => onFinish(nextFurniture())}>촬영 마치고 도면 만들기 ({items.length + 1}개)</button>}
     </div>
-    <details className="tracking-demo"><summary>재촬영 안내 미리보기</summary>
-      <p className="muted small">방금 찍은 사진으로 인식 결과별 안내 문구를 미리 확인</p>
-      <div className="actions">{(["visible", "partial", "missing"] as const).map((m) => <button key={m} type="button" disabled={last === null} className="secondary" onClick={() => simulate(m)}>{{ visible: "마커 인식", partial: "마커 일부 가림", missing: "마커 없음" }[m]}</button>)}</div>
-    </details>
     {complete && <div className="actions">
       <button type="button" className="secondary" onClick={nextFurniture}>이 가구 저장 · 다음 가구 촬영</button>
     </div>}
     {!complete && items.length > 0 && <button type="button" className="secondary" onClick={() => onFinish(items)}>촬영 마치고 도면 만들기 ({items.length}개)</button>}
-    <p className="muted small">사진은 이 기기에서만 확인합니다. 흔들림·밝기는 자동 확인하고, 치수는 지금은 가구 종류별 기본값으로 채워지니 도면에서 실제 치수로 고쳐 주세요.</p>
+    <p className="muted small">사진의 흔들림과 밝기를 확인합니다. 가구 치수는 기본값으로 표시되므로 도면에서 실제 치수로 수정하세요.</p>
   </div>;
 }

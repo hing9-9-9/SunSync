@@ -4,14 +4,14 @@
    purple-grey secondary text. Kept from the app: the pastel background gradient, #6660e5,
    Noto Sans KR, square plan shapes and every control. */
 .app.award-mobile {
-  --aw-ink: #29252f;
+  --aw-ink: var(--c-29252f);
   --aw-muted: var(--c-muted);
-  --aw-label: #81718f;
-  --aw-line: #e2dce8;
-  --aw-field: #d4ccde;
-  --aw-control: #b9adca;
-  --aw-chip: #d6cde0;
-  --aw-chip-active: #9a84b7;
+  --aw-label: var(--c-81718f);
+  --aw-line: var(--c-e2dce8);
+  --aw-field: var(--c-d4ccde);
+  --aw-control: var(--c-b9adca);
+  --aw-chip: var(--c-d6cde0);
+  --aw-chip-active: var(--c-9a84b7);
   color: var(--aw-ink);
   line-height: 1.7;
 }
@@ -19,24 +19,24 @@
 /* Header and page title: quiet bar, large light title over a hairline. */
 .app.award-mobile .app-header { border-bottom: 1px solid var(--aw-line); }
 .app.award-mobile .brand { font-weight: 700; letter-spacing: -1px; }
-.app.award-mobile .page-heading { padding: 0 0 var(--space-4); margin: 0 0 var(--space-5); border-bottom: 1px solid #ddd7e4; }
-.app.award-mobile .page-heading h1 { font-size: 28px; font-weight: 500; letter-spacing: -1.2px; line-height: 1.35; }
-.app.award-mobile .page-heading .plus { width: 44px; height: 44px; border: 1px solid #bcb1ca; border-radius: 50%; background: #fff; color: var(--aw-ink); }
+.app.award-mobile .page-heading { padding: 0 0 var(--space-4); margin: 0 0 var(--space-5); border-bottom: 1px solid var(--c-ddd7e4); }
+.app.award-mobile .page-heading h1 { font-size: var(--fs-h1); font-weight: 500; letter-spacing: -1.2px; line-height: var(--lh-h1); }
+.app.award-mobile .page-heading .plus { width: 44px; height: 44px; border: 1px solid var(--c-bcb1ca); border-radius: 50%; background: var(--c-white); color: var(--aw-ink); }
 .app.award-mobile h2 { font-weight: 500; letter-spacing: -0.6px; }
 .app.award-mobile h3 { font-weight: 500; letter-spacing: -0.3px; }
 .app.award-mobile .section-label { font-size: var(--text-lg); font-weight: 500; letter-spacing: -0.4px; }
 .app.award-mobile .muted,
 .app.award-mobile small { color: var(--aw-muted); }
-.app.award-mobile .step-label { font-size: 12px; color: var(--c-muted); }
+.app.award-mobile .step-label { font-size: var(--fs-label); color: var(--c-muted); }
 
 /* Buttons: pills. Primary is the accent; secondary is a thin outline on white. */
 .app.award-mobile .primary,
 .app.award-mobile .secondary,
-.app.award-mobile .file-button { min-height: 48px; border-radius: 24px; font-size: 15px; font-weight: 500; box-shadow: none; }
-.app.award-mobile .primary { background: #6660e5; border: 1px solid #6660e5; color: #fff; }
+.app.award-mobile .file-button { min-height: 48px; border-radius: 24px; font-size: var(--fs-small); font-weight: 500; box-shadow: none; }
+.app.award-mobile .primary { background: var(--c-action); border: 1px solid var(--c-action); color: var(--c-white); }
 .app.award-mobile .secondary,
-.app.award-mobile .file-button:not(.capture-action .file-button) { background: #fff; border: 1px solid var(--aw-control); color: #53465f; }
-.app.award-mobile .text-button { color: #72608b; }
+.app.award-mobile .file-button:not(.capture-action .file-button) { background: var(--c-white); border: 1px solid var(--aw-control); color: var(--c-53465f); }
+.app.award-mobile .text-button { color: var(--c-72608b); }
 .app.award-mobile .app-action-bar .primary,
 .app.award-mobile .capture-action > .primary,
 .app.award-mobile .capture-action > .file-button { border-radius: 24px; font-weight: 500; }
@@ -44,17 +44,17 @@
 .app.award-mobile dialog .secondary { border-radius: 24px; }
 
 /* Fields: a thin box with a small label above the value. */
-.app.award-mobile .field { padding: 12px 14px; border: 1px solid var(--aw-field); border-radius: 5px; background: #fff; box-shadow: none; gap: 6px; }
-.app.award-mobile .field > span { font-size: 13px; color: var(--aw-label); }
+.app.award-mobile .field { padding: var(--space-3) 14px; border: 1px solid var(--aw-field); border-radius: 5px; background: var(--c-white); box-shadow: none; gap: 6px; }
+.app.award-mobile .field > span { font-size: var(--fs-small); color: var(--aw-label); }
 .app.award-mobile .field > input,
-.app.award-mobile .field > select { font-size: 16px; color: #302737; }
-.app.award-mobile .field:focus-within { border-color: #8b79a6; }
+.app.award-mobile .field > select { font-size: var(--fs-body); color: var(--c-302737); }
+.app.award-mobile .field:focus-within { border-color: var(--c-8b79a6); }
 
 /* Cards: 5px corners, a hairline border, no shadow. */
 .app.award-mobile .card,
 .app.award-mobile .inspector,
 .app.award-mobile .app-summary,
-.app.award-mobile .room-card { border: 1px solid var(--aw-line); border-radius: 5px; box-shadow: none; background: #fff; }
+.app.award-mobile .room-card { border: 1px solid var(--aw-line); border-radius: 5px; box-shadow: none; background: var(--c-white); }
 .app.award-mobile .app-summary > div + div { border-left-color: var(--aw-line); }
 .app.award-mobile .app-summary strong { font-weight: 500; letter-spacing: -0.6px; }
 .app.award-mobile .room-card strong { font-weight: 500; letter-spacing: -0.4px; }
@@ -63,16 +63,16 @@
 
 /* Chips and tabs: 4px corners; zone actions stay pill-shaped as on the web. */
 .app.award-mobile .chip,
-.app.award-mobile .item-tabs > button { border: 1px solid var(--aw-chip); border-radius: 4px; background: #fff; color: #766486; font-weight: 400; box-shadow: none; }
+.app.award-mobile .item-tabs > button { border: 1px solid var(--aw-chip); border-radius: 4px; background: var(--c-white); color: var(--c-766486); font-weight: 400; box-shadow: none; }
 .app.award-mobile .chip.active,
-.app.award-mobile .item-tabs > button.active { border-color: var(--aw-chip-active); background: #f1edf7; color: #6f51a0; font-weight: 500; }
-.app.award-mobile .zone-action { border: 1px solid var(--aw-chip); border-radius: 22px; background: #fff; color: #766486; }
+.app.award-mobile .item-tabs > button.active { border-color: var(--aw-chip-active); background: var(--c-f1edf7); color: var(--c-6f51a0); font-weight: 500; }
+.app.award-mobile .zone-action { border: 1px solid var(--aw-chip); border-radius: 22px; background: var(--c-white); color: var(--c-766486); }
 
 /* Lists and rows. */
 .app.award-mobile .row { border-radius: 4px; }
-.app.award-mobile .row.selected { background: #f1edf7; border-color: var(--aw-chip-active); }
-.app.award-mobile .guide-card { border: 1px solid var(--aw-line); border-radius: 5px; box-shadow: none; background: #fff; }
-.app.award-mobile .guide-number { font-weight: 500; }
+.app.award-mobile .row.selected { background: var(--c-f1edf7); border-color: var(--aw-chip-active); }
+.app.award-mobile .guide-card { border: 1px solid var(--aw-line); border-radius: 5px; box-shadow: none; background: var(--c-white); }
+.app.award-mobile .guide-number { font-weight: 500; font-size: var(--fs-h1); }
 
 /* Bottom bars: hairline top edge; the active tab is accent text on a pale 6px tile. */
 .app.award-mobile .mobile-nav { border-top: 1px solid var(--aw-line); }
@@ -83,7 +83,7 @@
 
 /* Sheets keep their bottom anchoring; corners follow the card rule at the top edge only. */
 .app.award-mobile dialog { border-radius: 12px 12px 0 0; }
-.app.award-mobile dialog h2 { font-size: 20px; }
+.app.award-mobile dialog h2 { font-size: var(--fs-h2); }
 
 /* Toast: same dark surface, Award's flatter corners. */
 .app.award-mobile .toast { border-radius: 8px; }
@@ -93,13 +93,13 @@
 
 /* Polish: one 16px content edge from header to cards; the accent is kept for the add action,
    the active tab and status, so the card chevron goes quiet. */
-.app.award-mobile .app-header { padding-left: 16px; padding-right: 16px; }
+.app.award-mobile .app-header { padding-left: var(--space-4); padding-right: var(--space-4); }
 .app.award-mobile .brand { padding-left: 0; }
-.app.award-mobile .page-heading .plus { background: #6660e5; border-color: #6660e5; color: #fff; }
-.app.award-mobile .room-card { padding: 16px; gap: 12px; }
+.app.award-mobile .page-heading .plus { background: var(--c-action); border-color: var(--c-action); color: var(--c-white); }
+.app.award-mobile .room-card { padding: var(--space-4); gap: var(--space-3); }
 .app.award-mobile .room-card > span[aria-hidden="true"] { color: var(--aw-control); }
-.app.award-mobile .room-card strong { margin: 2px 0 8px; }
-.app.award-mobile .app-summary span { font-size: 13px; color: var(--aw-muted); }
+.app.award-mobile .room-card strong { margin: 2px 0 var(--space-2); }
+.app.award-mobile .app-summary span { font-size: var(--fs-small); color: var(--aw-muted); }
 .app.award-mobile .guide-number { color: var(--aw-chip-active); }
 
 /* Polish: the add button draws its plus with two centred bars, so font metrics can't push it off-centre. */
@@ -108,15 +108,15 @@
 .app .icon-button.plus::after { content: ""; position: absolute; left: 50%; top: 50%; width: 18px; height: 2px; border-radius: 1px; background: currentColor; transform: translate(-50%, -50%); }
 .app .icon-button.plus::after { transform: translate(-50%, -50%) rotate(90deg); }
 /* Avatars are fixed squares so border-radius: 50% always gives a circle. */
-.app.award-mobile .account-avatar { width: 48px; height: 48px; aspect-ratio: 1; flex-shrink: 0; display: grid; place-items: center; padding: 0; font-size: 20px; line-height: 1; }
+.app.award-mobile .account-avatar { width: 48px; height: 48px; aspect-ratio: 1; flex-shrink: 0; display: grid; place-items: center; padding: 0; font-size: var(--fs-h2); line-height: var(--lh-h2); }
 /* Polish: narrow three-up number fields wrap their labels at word breaks and keep inputs on one baseline. */
 .app .dimensions > .field { justify-content: space-between; }
 .app .dimensions > .field > span { word-break: keep-all; }
 /* Polish: zone actions share the chip height, so one row of controls has one height. */
 .app.award-mobile .zone-action { min-height: 44px; height: 44px; padding: 0 14px; }
 /* Polish: rows grouped in a card start and end on the same inset as standalone row cards. */
-.app.award-mobile section.card:has(> .row) { padding: 4px 0; }
-.app.award-mobile section.card:has(> .row) > .row { padding: 16px 20px; }
+.app.award-mobile section.card:has(> .row) { padding: var(--space-1) 0; }
+.app.award-mobile section.card:has(> .row) > .row { padding: var(--space-4) var(--space-5); }
 
 /* Award pass, phone. Every press answers at once: a short scale for buttons, a tone for rows and cards. */
 .app.award-mobile button,
@@ -132,14 +132,14 @@
 .app.award-mobile .row:active,
 .app.award-mobile .guide-card:active {
   transform: scale(0.99);
-  background-color: #f6f4fa;
+  background-color: var(--c-f6f4fa);
 }
 .app.award-mobile .mobile-nav button:active {
   transform: none;
-  background-color: #f1edf7;
+  background-color: var(--c-f1edf7);
 }
 .app.award-mobile :focus-visible {
-  outline: 2px solid #6660e5;
+  outline: 2px solid var(--c-action);
   outline-offset: 2px;
 }
 /* Screens arrive with a short rise, so moving between tabs reads as one continuous app. */
@@ -151,7 +151,7 @@
   to { opacity: 1; translate: 0 0; }
 }
 /* Hierarchy: key figures lead, small links still meet the 44px touch target. */
-.app.award-mobile .app-summary strong { font-size: 28px; line-height: 1.2; }
+.app.award-mobile .app-summary strong { font-size: var(--fs-h2); line-height: var(--lh-h2); }
 .app.award-mobile .server-sync-row .text-button,
 .app.award-mobile .text-button { min-height: 44px; }
 @media (prefers-reduced-motion: reduce) {

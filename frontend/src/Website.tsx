@@ -94,20 +94,20 @@ export function GuideArt({ step }: { step: number }) {
             width="152"
             height="112"
             rx="6"
-            fill="#fff"
-            stroke="#d3d5de"
+            fill="var(--c-white)"
+            stroke="var(--c-d3d5de)"
           />
-          <path d="M64 52h152M140 52v80" stroke="#d3d5de" />
-          <rect x="77" y="66" width="48" height="47" rx="3" fill="#e5e0fa" />
-          <rect x="155" y="66" width="45" height="47" rx="3" fill="#edf0f2" />
-          <circle cx="197" cy="35" r="4" fill="#7770c8" />
+          <path d="M64 52h152M140 52v80" stroke="var(--c-d3d5de)" />
+          <rect x="77" y="66" width="48" height="47" rx="3" fill="var(--c-e5e0fa)" />
+          <rect x="155" y="66" width="45" height="47" rx="3" fill="var(--c-edf0f2)" />
+          <circle cx="197" cy="35" r="4" fill="var(--c-7770c8)" />
         </>
       ) : step === 1 || step === 2 ? (
         <>
-          <rect x="38" y="25" width="148" height="103" rx="3" fill="#e7e9ed" />
+          <rect x="38" y="25" width="148" height="103" rx="3" fill="var(--c-e7e9ed)" />
           <path
             d="M87 25v103m50-103v103M38 76h148"
-            stroke="#fff"
+            stroke="var(--c-white)"
             strokeWidth="3"
           />
           <rect
@@ -116,17 +116,17 @@ export function GuideArt({ step }: { step: number }) {
             width="48"
             height="83"
             rx="8"
-            fill="#fff"
-            stroke="#aaa4d1"
+            fill="var(--c-white)"
+            stroke="var(--c-aaa4d1)"
             strokeWidth="2"
           />
-          <rect x="207" y="61" width="29" height="30" rx="2" fill="#edeaf9" />
+          <rect x="207" y="61" width="29" height="30" rx="2" fill="var(--c-edeaf9)" />
           <path
             d="M212 67h7v7h-7zm14 0h5v5h-5zm-14 14h5v5h-5zm12-5h7v10h-7z"
-            stroke="#6d64ad"
+            stroke="var(--c-6d64ad)"
             strokeWidth="2"
           />
-          <path d="M203 49h38m-23 65h10" stroke="#c3bde4" strokeWidth="2" />
+          <path d="M203 49h38m-23 65h10" stroke="var(--c-c3bde4)" strokeWidth="2" />
         </>
       ) : step === 3 ? (
         <>
@@ -136,8 +136,8 @@ export function GuideArt({ step }: { step: number }) {
             width="196"
             height="111"
             rx="5"
-            fill="#fff"
-            stroke="#d5d8e0"
+            fill="var(--c-white)"
+            stroke="var(--c-d5d8e0)"
           />
           <rect
             x="58"
@@ -145,13 +145,13 @@ export function GuideArt({ step }: { step: number }) {
             width="46"
             height="24"
             rx="3"
-            fill="#e8e5f9"
-            stroke="#9287d1"
+            fill="var(--c-e8e5f9)"
+            stroke="var(--c-9287d1)"
           />
-          <rect x="117" y="38" width="46" height="24" rx="3" fill="#e7e9ee" />
-          <rect x="176" y="38" width="46" height="24" rx="3" fill="#e7e9ee" />
-          <path d="M126 84l73 13-10 34h-81z" fill="#fff1cc" />
-          <path d="M95 132h91" stroke="#8d80c9" strokeWidth="3" />
+          <rect x="117" y="38" width="46" height="24" rx="3" fill="var(--c-e7e9ee)" />
+          <rect x="176" y="38" width="46" height="24" rx="3" fill="var(--c-e7e9ee)" />
+          <path d="M126 84l73 13-10 34h-81z" fill="var(--c-fff1cc)" />
+          <path d="M95 132h91" stroke="var(--c-8d80c9)" strokeWidth="3" />
         </>
       ) : step === 4 ? (
         <>
@@ -161,8 +161,8 @@ export function GuideArt({ step }: { step: number }) {
             width="184"
             height="104"
             rx="5"
-            fill="#fff"
-            stroke="#d5d8e0"
+            fill="var(--c-white)"
+            stroke="var(--c-d5d8e0)"
           />
           <rect
             x="64"
@@ -170,23 +170,23 @@ export function GuideArt({ step }: { step: number }) {
             width="59"
             height="29"
             rx="3"
-            fill="#e6e1fa"
-            stroke="#887ac8"
+            fill="var(--c-e6e1fa)"
+            stroke="var(--c-887ac8)"
             strokeWidth="2"
           />
-          <path d="M66 73h55" stroke="#7565b4" strokeWidth="4" />
+          <path d="M66 73h55" stroke="var(--c-7565b4)" strokeWidth="4" />
           <rect
             x="141"
             y="87"
             width="69"
             height="29"
             rx="2"
-            fill="#ede9fa"
-            stroke="#9d90cd"
+            fill="var(--c-ede9fa)"
+            stroke="var(--c-9d90cd)"
             strokeDasharray="4 3"
           />
-          <circle cx="225" cy="33" r="20" fill="#fff" stroke="#d6d0e9" />
-          <path d="M216 33l6 6 11-13" stroke="#7f70b5" strokeWidth="2" />
+          <circle cx="225" cy="33" r="20" fill="var(--c-white)" stroke="var(--c-d6d0e9)" />
+          <path d="M216 33l6 6 11-13" stroke="var(--c-7f70b5)" strokeWidth="2" />
         </>
       ) : (
         <>
@@ -196,16 +196,16 @@ export function GuideArt({ step }: { step: number }) {
             width="192"
             height="104"
             rx="7"
-            fill="#fff"
-            stroke="#d5d8e0"
+            fill="var(--c-white)"
+            stroke="var(--c-d5d8e0)"
           />
           <path
             d="M65 105l29-32 31 12 32-43 37 20 23-20"
-            stroke="#9d8dcc"
+            stroke="var(--c-9d8dcc)"
             strokeWidth="3"
           />
-          <path d="M65 48v60h153" stroke="#e1e2e8" />
-          <circle cx="157" cy="42" r="6" fill="#d5cbea" />
+          <path d="M65 48v60h153" stroke="var(--c-e1e2e8)" />
+          <circle cx="157" cy="42" r="6" fill="var(--c-d5cbea)" />
         </>
       )}
     </svg>
@@ -389,7 +389,7 @@ export function WebsiteGuide({
                 disabled={index === guideSteps.length - 1}
                 onClick={() => onIndex(index + 1)}
               >
-                다음 단계 →
+                다음 단계
               </button>
             </div>
           </section>

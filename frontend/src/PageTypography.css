@@ -1,0 +1,35 @@
+/* Hallmark · checked: 2026-11-03 · genre: modern-minimal (inferred) · scope: app · floor: 0 static FAIL (PageTypography.css only) · built: the project · redesign: polish · theme: SunSync brand · v2.0.0 */
+/* Critique · Equal page roles share one title scale; landing copy and editor commands keep their roles. */
+:root {
+ --page-title:32px; --page-title-weight:700; --page-title-leading:1.3;
+ --page-title-tracking:-.035em; --page-title-gap:var(--space-6);
+ --app-tab-title:26px; --app-child-title:20px; --app-section-title:17px;
+}
+.app.award-app.mode-web .guide-refresh { padding-top:var(--space-8); max-width:1440px; }
+.app.award-app.mode-web .guide-refresh .ap-guide-heading { padding-bottom:var(--page-title-gap); }
+.app.award-app.mode-web .guide-refresh .ap-guide-heading h1,
+.app.award-app.mode-web.page-spaces .award-space-intro h1,
+.app.award-app.mode-web .acct-page-heading h1,
+.app.award-app.mode-web.page-detail .page-heading h1,
+.app.award-app.mode-web.page-register .page-heading h1 {
+ margin:0; min-width:0; overflow-wrap:break-word; text-wrap:balance;
+ font-size:var(--page-title); font-weight:var(--page-title-weight);
+ line-height:var(--page-title-leading); letter-spacing:var(--page-title-tracking);
+}
+.app.award-mobile.mode-app:is(.page-home,.page-spaces,.page-guide,.page-more) > .main { padding-top:var(--space-3); }
+.app.award-mobile.mode-app:is(.page-home,.page-spaces,.page-guide,.page-more) .page-heading { min-height:0; margin:0 0 var(--space-5); padding-top:0; }
+.app.award-mobile.mode-app:is(.page-home,.page-spaces,.page-guide,.page-more) .page-heading h1 { margin:0; font-size:var(--app-tab-title); line-height:var(--page-title-leading); font-weight:var(--page-title-weight); }
+.app.award-mobile.mode-app.page-account .page-heading h1 { font-size:var(--app-child-title); line-height:var(--page-title-leading); font-weight:var(--page-title-weight); }
+.app.award-mobile.mode-app .account-info h2 { font-size:var(--app-section-title); }
+/* App screen titles share the same baseline and spacing on every route. */
+.app.award-mobile.mode-app > .main { padding-top:12px; }
+.app.award-mobile.mode-app .page-heading {
+ min-height:0; margin:0 0 20px; padding:0 0 16px; align-items:center;
+}
+.app.award-mobile.mode-app .page-heading h1 {
+ margin:0; font-size:26px; line-height:1.3; font-weight:700; letter-spacing:-.035em;
+}
+.app.award-mobile.mode-app.page-account > .main,
+.app.award-mobile.mode-app.page-capture > .main { padding-top:12px; }
+.app.award-mobile.mode-app:is(.page-account,.page-capture) .page-heading h1 { font-size:26px; line-height:1.3; }
+.app.award-mobile.mode-app .page-heading > div { min-height:44px; display:flex; flex-direction:column; justify-content:center; }

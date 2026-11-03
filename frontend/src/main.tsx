@@ -1,11 +1,20 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import "./palette.css";
 import "./index.css";
 import App from "./App.tsx";
 import MobileApp from "./MobileApp.tsx";
 import "./ProductPolish.css";
 import "./Moodboard.css";
 import "./tokens.css";
+import "./HomeDesign.css";
+import "./WebInteractions.css";
+import "./GuideDesign.css";
+import "./AppTabs.css";
+import "./SpaceDesign.css";
+import "./AccountDesign.css";
+import "./PageTypography.css";
+import "./CaptureDesign.css";
 
 const mode = new URLSearchParams(location.search).get("mode");
 const mobile = mode === "app" || (mode !== "web" && matchMedia("(max-width: 760px)").matches);

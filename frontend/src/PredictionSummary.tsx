@@ -24,7 +24,7 @@ export default function PredictionSummary({ result, space, date, onDate, onRetry
           {values.some(v => v === null) && " · 일부 일사량 확인 불가"}
         </li>;
       })}</ul>
-      <p>창 투과율·실외 건물 차폐·반사는 미반영입니다. 필름 표시는 제어 연동 전 시뮬레이션입니다.</p>
+      <p>창 투과율·실외 건물 차폐·반사는 미반영입니다. 필름 표시는 계산된 차광 계획이며 실제 장치 실행 상태가 아닙니다.</p>
     </>}
   </div>;
 }
