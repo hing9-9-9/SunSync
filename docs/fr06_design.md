@@ -27,8 +27,8 @@ ArUco 검출, UI 화면 개발은 각 담당 모듈의 후속 작업이다.
 | Window | 벽 위 직사각형 네 점, `inward_normal`, `u_axis`, `v_axis`, 실외 방위각, 광학 프로파일, 필름 격자 `film_rows`/`film_cols` (기본 10×10) |
 | Occluder | 직육면체 바닥 중심, `[가로, 깊이, 높이]`, 동쪽 기준 반시계방향 yaw, 가구 종류 `type` (`bookshelf`/`desk`/`chair`/`other`, 기본 `other`) |
 | ProtectedRegion | 평면 직사각형 네 점, `receiving_normal`, A–D 등급, 면 위 평가점, 선택적 host 가림물 |
-| Marker | 마커 종류·사전·ID, 한 변 길이, 평면 `plane` (`floor` 또는 `window`), ENU 4×4 강체 변환 행렬, 창 마커 격자 배치 (`window_id`, `start_row`, `start_col`, `marker_rows`, `marker_cols`) |
-| Observation | 수동 또는 `aruco_planar`, 시각, 확인 상태, 불확실성, 취득 내용 |
+| Marker | 마커 종류·사전·ID, 한 변 길이, 평면 `plane` (`floor`, `window`, `vertical`, `horizontal`), ENU 4×4 강체 변환 행렬, 창 마커 격자 배치 (`window_id`, `start_row`, `start_col`, `marker_rows`, `marker_cols`) |
+| Observation | `manual`, `aruco_planar`, `aruco_board_camera_at_point`, 시각, 확인 상태, 불확실성, 취득 내용 |
 
 - 단위 m, 오른손 ENU: x 동쪽, y 북쪽, z 위쪽. 방 바닥은 z=0.
 - `Room`: 선택적 층수 `floor_level` (정수 -100~1000층, 기본값 `null`). 건물 내 층수 정보를 기록하며 하위 호환성을 위해 생략 가능하다.
@@ -52,10 +52,34 @@ ArUco 모듈은 바닥 마커 로컬 점 `points_marker_m`와 ENU 점 `points_en
 내보내고, 행 우선 4×4 `T_ENU_marker`와 일치해야 한다. 변환은 오른손 강체
 변환이어야 하며 바닥을 바닥으로 보낸다. `derived_fields`는 바닥/XY/yaw에
 해당하는 결과를 명시한다. 높이와 수직면을 바닥 사진에서 구했다고 표시할 수 없다.
-방·창·가림물 높이와 올라간 보호면에는 별도 수동 관측 출처가 필요하다.
+이 바닥점 관측만 사용할 경우 방·창·가림물 높이와 올라간 보호면에는 별도 수동 관측 출처가 필요하다.
 마커만으로 진북이 결정되는 것도 아니므로 `north_alignment`를 별도로 기록한다.
 `derived_fields`는 출처와 허용된 바닥 필드를 검사한다. 점에서 가림물 치수나 yaw를
 재계산하는 매핑은 이 계약에 없으므로 취득 정확도나 도출 과정 자체를 인증하지 않는다.
+
+### 보드 촬영으로 가구 등록
+
+측정 모듈의 `sunsync.fr06-fragment/1` 출력은
+`POST /api/scenes/{scene_id}/registrations`로 전달한다.
+본문은 `{"expected_revision": 현재revision, "fragment": 측정모듈응답}`이다.
+방은 먼저 생성되어 있어야 하며 가구의 room_id와 측정 ENU 원점·진북·바닥이
+기존 방의 기준과 같아야 한다. 이 API는 방·창·기상을 보존하며 가구를 추가하고
+revision 및 scenario.scene_revision을 한 번 증가시킨다. 충돌은 409,
+잘못된 입력은 422이며 저장값은 변경하지 않는다.
+
+`aruco_board_camera_at_point`는 직사각형 상판 P1~P4의 일반 3D 좌표를 받는다.
+수직/수평 마커의 `plane`은 측정점의 평면을 뜻하지 않는다. 높이 산출 모드는
+`surface_is_top`, 최고점 H1을 추가한 `capture_highest`, 실측 `manual`이다.
+떠 있는 가구는 수동 높이와 설치 바닥 높이를 모두 기록한다. 관측에는 실제
+촬영 시각, 표준 모델 ID와 경계상자 근사 여부도 저장한다. 시각을 모르면 내보내기를
+거절하며 처리 시각을 촬영 시각으로 대체하지 않는다.
+
+서버는 점/마커 변환 일치와 직사각형 적합 잔차, 수평 상판,
+가구 치수·중심·yaw·높이 및 방 내부 배치를 검증한다. 형상 경로는
+`dimensions_m[0:2]`, `dimensions_m[2]`, `base_center_m`, `yaw_deg_ccw_from_east`이다.
+기존 `aruco_planar`의 바닥점 제한과 방/창의 수동 높이 출처 규칙은 유지한다.
+같은 마커 ID는 규격·변환이 같을 때 재사용하며 기존 가구/관측 ID는 덮어쓰지 않는다.
+전체 Scene 저장·검증 API도 새 관측 타입을 지원한다.
 
 ## 보호 등급
 
@@ -111,6 +135,7 @@ curl -sS 'http://localhost:8000/api/scenes?offset=0&limit=20'
 | `GET /api/scenes` | offset/limit 기반 목록 |
 | `GET /api/scenes/{scene_id}` | 전체 형상·출처·정책 조회, 미존재 404 |
 | `PUT /api/scenes/{scene_id}` | 전체 교체. 새 revision은 현재 값+1, 충돌 409 |
+| `POST /api/scenes/{scene_id}/registrations` | 측정 fragment를 검증해 가구 추가, 성공 시 revision+1 |
 
 POST는 기존 자료의 양의 revision을 보존하므로 전체 예제는 revision 2로 저장된다.
 PUT에서는 URL과 본문 scene_id가 같아야 하고, 포함된 scenario.scene_revision도

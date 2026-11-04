@@ -3,6 +3,7 @@
 from typing import Annotated, Any, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import ValidationError
 from sqlalchemy import CursorResult, update
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, col, select
@@ -10,6 +11,7 @@ from sqlmodel import Session, col, select
 from app.db import get_session
 from app.models.scene import SceneRecord
 from app.scene_cli import schema_document
+from app.schemas.registration import RegisterFurnitureRequest
 from app.schemas.scene import Scene
 
 router = APIRouter(tags=["scenes"])
@@ -67,6 +69,48 @@ def get_scene(scene_id: str, session: SessionDependency) -> Scene:
     if record is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Scene not found.")
     return Scene.model_validate_json(record.scene_json)
+
+
+@router.post("/scenes/{scene_id}/registrations", response_model=Scene)
+def register_furniture(
+    scene_id: str, request: RegisterFurnitureRequest, session: SessionDependency
+) -> Scene:
+    """Append measured furniture atomically, preserving the existing room and site.
+
+    All coordinates must already use this room's confirmed ENU origin/north/floor.
+    Reusing the same marker is allowed only with identical calibration/placement.
+    Geometry and provenance are validated together before any database write.
+    """
+    current = get_scene(scene_id, session)
+    if current.revision != request.expected_revision:
+        raise HTTPException(status_code=409, detail="Revision conflict: reload the scene.")
+    fragment = request.fragment
+    if any(obj.room_id != current.room.room_id for obj in fragment.occluders):
+        raise HTTPException(
+            status_code=422, detail="Furniture must use the existing room ENU frame."
+        )
+    data = current.model_dump(mode="json")
+    data["revision"] += 1
+    if data["scenario"] is not None:
+        data["scenario"]["scene_revision"] = data["revision"]
+    known = {marker.marker_id: marker for marker in current.markers}
+    incoming_ids: set[str] = set()
+    for marker in fragment.markers:
+        if marker.marker_id in incoming_ids:
+            raise HTTPException(status_code=422, detail="Duplicate registration marker ID.")
+        incoming_ids.add(marker.marker_id)
+        if marker.marker_id in known:
+            if marker != known[marker.marker_id]:
+                raise HTTPException(status_code=422, detail="Existing marker placement differs.")
+        else:
+            data["markers"].append(marker.model_dump(mode="json"))
+    data["observations"].extend(o.model_dump(mode="json") for o in fragment.observations)
+    data["occluders"].extend(o.model_dump(mode="json") for o in fragment.occluders)
+    try:
+        merged = Scene.model_validate(data)
+    except ValidationError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return replace_scene(scene_id, merged, session)
 
 
 @router.put("/scenes/{scene_id}", response_model=Scene)

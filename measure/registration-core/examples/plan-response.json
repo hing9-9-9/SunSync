@@ -1,0 +1,48 @@
+{
+  "plan_id": "0978707f65d28bc75ffb1a82b8e476826cd288559e98608c0e0f516b89f9380f",
+  "space_id": "room_01",
+  "furniture_id": "desk_01",
+  "steps": [
+    {
+      "point_id": "P1",
+      "role": "surface",
+      "guide_xy": [
+        -0.5,
+        0.5
+      ],
+      "required_samples": 3,
+      "instruction_ko": "P1 지점에 렌즈를 맞추고 고정 마커 보드를 촬영하세요."
+    },
+    {
+      "point_id": "P2",
+      "role": "surface",
+      "guide_xy": [
+        0.5,
+        0.5
+      ],
+      "required_samples": 3,
+      "instruction_ko": "P2 지점에 렌즈를 맞추고 고정 마커 보드를 촬영하세요."
+    },
+    {
+      "point_id": "P3",
+      "role": "surface",
+      "guide_xy": [
+        0.5,
+        -0.5
+      ],
+      "required_samples": 3,
+      "instruction_ko": "P3 지점에 렌즈를 맞추고 고정 마커 보드를 촬영하세요."
+    },
+    {
+      "point_id": "P4",
+      "role": "surface",
+      "guide_xy": [
+        -0.5,
+        -0.5
+      ],
+      "required_samples": 3,
+      "instruction_ko": "P4 지점에 렌즈를 맞추고 고정 마커 보드를 촬영하세요."
+    }
+  ],
+  "guide_note": "Guide coordinates define topology and sampling instructions, not measured dimensions."
+}

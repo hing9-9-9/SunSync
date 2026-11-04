@@ -11,6 +11,9 @@ measure/   ArUco measurement (research)
 docs/      requirements, architecture, decisions, data contracts, reports
 ```
 
+Guided furniture registration: [measurement core and API](measure/registration-core/README.md),
+[mobile integration contract](measure/registration-core/integration/CONTRACT.md).
+
 ## Documents
 - [Functional requirements](docs/features.md): FR-01 to FR-06, owners and sub-requirements
 - [Decisions](docs/decisions.md): one line per team decision

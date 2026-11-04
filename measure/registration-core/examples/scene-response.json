@@ -1,0 +1,74 @@
+{
+  "schema_version": "sunsync.scene/1",
+  "space_id": "room_01",
+  "coordinate_frame": "ENU",
+  "units": "m",
+  "furniture": [
+    {
+      "furniture_id": "desk_01",
+      "furniture_kind": "desk",
+      "reference_id": "209d8c92b9e3b8b25495f8c4cc62391654150ffa252ff62b98d51b28d758392d",
+      "model_id": "catalog/desk_normalized",
+      "dimensions_m": [
+        0.6,
+        0.44999999999999996,
+        0.7500000000000009
+      ],
+      "T_board_model": [
+        1.0,
+        2.4054832200211726e-15,
+        0.0,
+        -1.3877787807814457e-15,
+        0.0,
+        0.0,
+        -1.0,
+        1.2,
+        -2.4054832200211726e-15,
+        1.0,
+        0.0,
+        -1.4250000000000003,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "base_center_board_m": [
+        -1.3877787807814457e-15,
+        1.2,
+        -1.4250000000000003
+      ],
+      "height_source": "surface_is_top",
+      "floor_supported": true,
+      "origin": "base_bounding_box_center",
+      "local_axes": "x width, y depth, z up",
+      "shape_approximation": true,
+      "orientation_requires_user_review": true,
+      "T_enu_model": [
+        1.0,
+        2.4054832200211726e-15,
+        0.0,
+        -1.3877787807814457e-15,
+        -2.4054832200211726e-15,
+        1.0,
+        0.0,
+        -1.4250000000000003,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "base_center_enu_m": [
+        -1.3877787807814457e-15,
+        -1.4250000000000003,
+        0.0
+      ],
+      "yaw_deg_ccw_from_east": 359.9999999999999
+    }
+  ],
+  "confirmed": false,
+  "geometry_source": "standard_model_approximation"
+}
