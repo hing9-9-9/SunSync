@@ -1,4 +1,4 @@
-"""Versioned board-camera fragment; not the legacy FR-06 0.2.0 contract."""
+"""Board-camera transport for the FR-06 scene registration endpoint."""
 
 import hashlib
 import re
@@ -18,6 +18,12 @@ def schema_id(value, suffix=""):
 
 
 def export_fragment(measurement):
+    if measurement.get("shape", {}).get("kind") != "rectangle":
+        raise ValueError("FR-06 furniture registration currently requires a rectangle")
+    if not measurement.get("captured_at"):
+        raise ValueError(
+            "FR-06 export requires actual timezone-bearing capture timestamps"
+        )
     scene = compose_scene([measurement])
     reference = measurement["reference"]
     if reference["alignment"] is None:
@@ -56,8 +62,7 @@ def export_fragment(measurement):
         marker_points.append((tbm[:3, :3].T @ (pb - tbm[:3, 3])).tolist())
         enu_points.append(pe.tolist())
     derived = [fid + ".dimensions_m[0:2]", fid + ".yaw_deg_ccw_from_east"]
-    if abs(model["base_center_enu_m"][2]) <= 1e-8:
-        derived.append(fid + ".base_center_m")
+    derived += [fid + ".dimensions_m[2]", fid + ".base_center_m"]
     fragment = {
         "schema_version": "sunsync.fr06-fragment/1",
         "units": "m",
@@ -77,16 +82,26 @@ def export_fragment(measurement):
             {
                 "observation_id": oid,
                 "method": "aruco_board_camera_at_point",
-                "captured_at": None,
+                "captured_at": measurement["captured_at"],
                 "uncertainty_m": None,
                 "confirmed": False,
                 "note": "Guided camera-at-point measurement; placement bias unmeasured.",
                 "marker_id": mid,
                 "plane": plane,
+                "point_ids": [key for key, _ in pairs],
                 "points_marker_m": marker_points,
                 "points_enu_m": enu_points,
                 "derived_fields": derived,
                 "independent_tape_error_m": None,
+                "tabletop_shape": "rectangle",
+                "model_id": model["model_id"],
+                "geometry_source": "standard_model_bounding_box",
+                "height_source": model["height_source"],
+                "manual_height_m": measurement.get("manual_height_m"),
+                "manual_base_height_m": measurement.get("manual_base_height_m"),
+                "floor_supported": model["floor_supported"],
+                "floor_alignment_confirmed": True,
+                "surface_tolerance_m": measurement["surface_tolerance_m"],
             }
         ],
         "occluders": [
@@ -95,6 +110,11 @@ def export_fragment(measurement):
                 "room_id": room_id,
                 "name": measurement["furniture_kind"] + " standard-model bounding box",
                 "kind": "cuboid",
+                "type": (
+                    measurement["furniture_kind"]
+                    if measurement["furniture_kind"] in {"desk", "chair", "bookshelf"}
+                    else "other"
+                ),
                 "base_center_m": model["base_center_enu_m"],
                 "dimensions_m": model["dimensions_m"],
                 "yaw_deg_ccw_from_east": model["yaw_deg_ccw_from_east"],
@@ -108,7 +128,7 @@ def export_fragment(measurement):
             "legacy_fr06_0_2_0_compatible": False,
             "receiver_contract": "sunsync.fr06-fragment/1",
             "marker_plane_semantics": "Plane describes the marker, not the measured furniture points.",
-            "capture_time_status": "unknown",
+            "capture_time_status": "latest_accepted_frame",
             "id_mapping": {
                 "board_id": {"source": board["board_id"], "marker_id": mid},
                 "furniture_id": {
@@ -125,7 +145,7 @@ def export_fragment(measurement):
             "geometry_source": "opaque_bounding_volume_of_standard_model",
             "model_note": "Bounding box fills empty spaces between legs; not an exact sunlight occlusion mesh.",
             "review_status": "unreviewed",
-            "method_extension_requires_receiver_agreement": True,
+            "registration_endpoint": "/api/scenes/{scene_id}/registrations",
         },
     }
     return BoardCameraFragmentV1.model_validate(fragment).model_dump(mode="json")

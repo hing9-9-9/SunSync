@@ -129,6 +129,226 @@
       "title": "ArucoObservation",
       "type": "object"
     },
+    "BoardCameraObservation": {
+      "additionalProperties": false,
+      "description": "General 3D rectangle observations; legacy floor observations stay unchanged.",
+      "properties": {
+        "observation_id": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_]*$",
+          "title": "Observation Id",
+          "type": "string"
+        },
+        "method": {
+          "const": "aruco_board_camera_at_point",
+          "title": "Method",
+          "type": "string"
+        },
+        "captured_at": {
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})$",
+          "title": "Captured At",
+          "type": "string"
+        },
+        "uncertainty_m": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Uncertainty M"
+        },
+        "confirmed": {
+          "title": "Confirmed",
+          "type": "boolean"
+        },
+        "note": {
+          "title": "Note",
+          "type": "string"
+        },
+        "marker_id": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_]*$",
+          "title": "Marker Id",
+          "type": "string"
+        },
+        "plane": {
+          "enum": [
+            "floor",
+            "window",
+            "vertical",
+            "horizontal"
+          ],
+          "title": "Plane",
+          "type": "string"
+        },
+        "point_ids": {
+          "items": {
+            "pattern": "^[a-zA-Z][a-zA-Z0-9_]*$",
+            "type": "string"
+          },
+          "maxItems": 5,
+          "minItems": 4,
+          "title": "Point Ids",
+          "type": "array"
+        },
+        "points_marker_m": {
+          "items": {
+            "maxItems": 3,
+            "minItems": 3,
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array"
+          },
+          "maxItems": 5,
+          "minItems": 4,
+          "title": "Points Marker M",
+          "type": "array"
+        },
+        "points_enu_m": {
+          "items": {
+            "maxItems": 3,
+            "minItems": 3,
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array"
+          },
+          "maxItems": 5,
+          "minItems": 4,
+          "title": "Points Enu M",
+          "type": "array"
+        },
+        "derived_fields": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Derived Fields",
+          "type": "array"
+        },
+        "independent_tape_error_m": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Independent Tape Error M"
+        },
+        "tabletop_shape": {
+          "const": "rectangle",
+          "title": "Tabletop Shape",
+          "type": "string"
+        },
+        "model_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Model Id",
+          "type": "string"
+        },
+        "geometry_source": {
+          "const": "standard_model_bounding_box",
+          "title": "Geometry Source",
+          "type": "string"
+        },
+        "height_source": {
+          "enum": [
+            "surface_is_top",
+            "capture_highest",
+            "manual"
+          ],
+          "title": "Height Source",
+          "type": "string"
+        },
+        "manual_height_m": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Manual Height M"
+        },
+        "manual_base_height_m": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Manual Base Height M"
+        },
+        "floor_supported": {
+          "title": "Floor Supported",
+          "type": "boolean"
+        },
+        "floor_alignment_confirmed": {
+          "const": true,
+          "title": "Floor Alignment Confirmed",
+          "type": "boolean"
+        },
+        "surface_tolerance_m": {
+          "exclusiveMinimum": 0,
+          "maximum": 0.1,
+          "title": "Surface Tolerance M",
+          "type": "number"
+        }
+      },
+      "required": [
+        "observation_id",
+        "method",
+        "captured_at",
+        "uncertainty_m",
+        "confirmed",
+        "note",
+        "marker_id",
+        "plane",
+        "point_ids",
+        "points_marker_m",
+        "points_enu_m",
+        "derived_fields",
+        "independent_tape_error_m",
+        "tabletop_shape",
+        "model_id",
+        "geometry_source",
+        "height_source",
+        "manual_height_m",
+        "manual_base_height_m",
+        "floor_supported",
+        "floor_alignment_confirmed",
+        "surface_tolerance_m"
+      ],
+      "title": "BoardCameraObservation",
+      "type": "object"
+    },
     "GradePolicy": {
       "additionalProperties": false,
       "properties": {
@@ -288,7 +508,9 @@
         "plane": {
           "enum": [
             "floor",
-            "window"
+            "window",
+            "vertical",
+            "horizontal"
           ],
           "title": "Plane",
           "type": "string"
@@ -1327,6 +1549,7 @@
       "items": {
         "discriminator": {
           "mapping": {
+            "aruco_board_camera_at_point": "#/$defs/BoardCameraObservation",
             "aruco_planar": "#/$defs/ArucoObservation",
             "manual": "#/$defs/ManualObservation"
           },
@@ -1338,6 +1561,9 @@
           },
           {
             "$ref": "#/$defs/ArucoObservation"
+          },
+          {
+            "$ref": "#/$defs/BoardCameraObservation"
           }
         ]
       },

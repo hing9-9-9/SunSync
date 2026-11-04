@@ -674,5 +674,9 @@
   "required_actions": [],
   "confirmed": false,
   "geometry_source": "measured_points_and_standard_model",
+  "captured_at": "2026-11-04T10:00:11+09:00",
+  "manual_height_m": null,
+  "manual_base_height_m": null,
+  "surface_tolerance_m": 0.03,
   "measurement_note": "Repeat spread and reprojection residual do not prove metric accuracy."
 }

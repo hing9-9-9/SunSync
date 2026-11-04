@@ -12,5 +12,7 @@ Install and run it from `measure/registration-core/` as described in its README.
 The API is separate from the existing backend and requires mobile camera adapters,
 service-level authentication and real-device accuracy validation before deployment.
 Its board-camera fragment has its own `sunsync.fr06-fragment/1` schema and validator.
-It is not the backend's FR-06 0.2.0 contract and is not accepted directly by
-`/api/scenes`; see the integration contract before connecting the receiver.
+Send it with `expected_revision` to the backend's
+`POST /api/scenes/{scene_id}/registrations` to append rectangular furniture to
+an existing FR-06 scene. Actual capture timestamps and the room's confirmed ENU
+frame are required. See the integration contract for payloads and revision handling.

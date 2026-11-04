@@ -12,20 +12,21 @@ API는 상태를 저장하지 않습니다. 사용자·공간·보드·가구·�
 | `POST /v1/scenes` | 동일 공간의 완료 측정 결과 배열 | 복수 가구 Scene |
 | `POST /v1/fr06` | ENU 정렬이 있는 완료 측정 결과 | `sunsync.fr06-fragment/1` |
 | `POST /v1/fr06/validate` | 별도 버전의 fragment | 스키마·참조·좌표 일관성 검증 |
+| `POST /api/scenes/{scene_id}/registrations` (백엔드) | `expected_revision`, `fragment` | 가구가 추가된 전체 FR-06 Scene, DB 저장 |
 
 전체 요청 스키마는 실행 서버 `/openapi.json`과 저장소 `openapi.json`을 참고하세요. 예제 JSON에는 실제 사용자의 사진·보정 정보가 없습니다.
 
 ## 사진을 자동 분류하는 방법
 
 1. 앱은 `/v1/plans`의 `steps`를 순서대로 표시합니다.
-2. 캡처 버튼 시점에 `begin_capture(capture_id)`를 호출해 티켓의 `point_id`를 고정합니다. 비동기 응답 때 현재 지점 ID를 다시 읽지 않습니다. `accept(capture_id, point_id, camera, detection_response)`에 티켓의 두 ID를 함께 전달합니다. 이전 지점의 늦은 응답은 다음 지점으로 분류하지 않고 거절합니다.
+2. 캡처 버튼 시점에 `begin_capture(capture_id, captured_at)`를 호출해 지점 ID와 실제 촬영 시각을 고정합니다. 시각은 UTC 오프셋을 포함한 ISO 8601 문자열입니다. 비동기 응답 때 현재 지점 ID를 다시 읽지 않습니다. `accept(capture_id, point_id, camera, detection_response)`에 티켓의 두 ID를 함께 전달합니다. 이전 지점의 늦은 응답은 거절합니다.
 3. 검출에 실패하면 현재 지점에 머무르고 재촬영합니다. 성공하면 해당 가구·지점에 코너 픽셀 좌표와 카메라 정보를 함께 저장합니다.
 4. 지정된 반복 수를 채우면 다음 지점으로 이동합니다. 사용자가 파일명을 변경하지 않습니다.
 5. 앱은 같은 정지 위치에서 얻은 실제 서로 다른 프레임을 사용합니다. 복사한 동일 사진에 새 ID를 주는 행위는 반복성 검증이 아닙니다.
 6. 측정 결과의 `required_actions`에 `recapture:P2` 등이 있으면 해당 지점만 다시 안내합니다. 참조 `CaptureSession.retake()`는 해당 지점의 결과를 대체하고 처리 중인 티켓을 모두 무효화합니다. 재촬영 뒤 같은 지점에 도착한 과거 응답도 수용하지 않습니다. 새 사진에는 새 capture ID를 사용합니다.
 
 ```python
-ticket = session.begin_capture(capture_id)  # 셔터 시점
+ticket = session.begin_capture(capture_id, captured_at)  # 셔터 시점
 # 같은 이미지·카메라 정보로 /v1/detect 호출 후
 session.accept(ticket["capture_id"], ticket["point_id"], camera, detection_response)
 ```
@@ -49,8 +50,9 @@ session.accept(ticket["capture_id"], ticket["point_id"], camera, detection_respo
 - 가구 형태와 회전은 근사입니다. 표준 모델 ID와 로컬 축·원점을 카탈로그에서 일관되게 정의하세요.
 - `reference_id`는 보드 치수와 정렬 정보의 해시입니다. 정렬/보드 치수 변경 후에는 기존 측정 결과를 같은 참조로 취급하지 않습니다.
 - `/v1/scenes`와 fragment 출력은 검증된 행렬에서 중심·yaw를 다시 계산하고 허용된 모델 필드만 반환합니다. 클라이언트가 보낸 파생 좌표나 임의 필드는 전달하지 않습니다.
-- fragment 버전은 `sunsync.fr06-fragment/1`이며 백엔드 FR-06 `0.2.0`이 아닙니다. 기존 `/api/scenes`로 직접 전달하지 않습니다. 수직/수평 기준 마커, 일반 3D 관측점, 알 수 없는 촬영 시각 `null`은 이 확장 계약에만 정의돼 있습니다.
-- `derived_fields`는 가로·깊이의 인덱스 경로와 yaw, 바닥에 있는 경우의 base-center만 포함합니다. 높이·설치 높이는 표준 모델 확장 정보에 남깁니다. 수신 측의 버전 어댑터와 전체 Scene 검증은 별도 작업입니다.
+- fragment는 `POST /api/scenes/{scene_id}/registrations`에 `{"expected_revision": 현재revision, "fragment": fragment}`로 전달합니다. 전체 Scene과 다른 전송 봉투이므로 `/api/scenes`에 직접 보내지 않습니다.
+- 백엔드는 `vertical`/`horizontal` 마커와 일반 3D `aruco_board_camera_at_point` 관측을 지원합니다. 실제 촬영 시각이 누락되면 내보내지 않습니다. 높이 산출 모드·수동 높이·설치 높이·모델 ID를 관측에 기록하며 `derived_fields`는 가로/깊이 `[0:2]`, 높이 `[2]`, yaw, base-center를 지정합니다.
+- 등록은 직사각형 상판/직육면체에 한정합니다. 기존 방의 `room_id`와 공통 ENU 정렬이 필요하며 진북·바닥 기준을 확인해야 합니다. 서버는 점과 변환, 치수·높이·중심·yaw의 일치, 방 내부 형상·출처를 확인합니다. 성공 시 revision+1과 전체 Scene을 반환합니다. 409는 재조회 후 충돌 처리가 필요하며, 422에서는 입력을 수정해야 합니다. 실패 시 기존 Scene을 변경하지 않습니다.
 
 ## 배포 담당 확인 사항
 

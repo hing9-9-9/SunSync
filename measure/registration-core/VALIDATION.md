@@ -1,6 +1,6 @@
 # 검증 기록
 
-검증일: 2026-11-04. Python 3.12.14, Windows 환경에서 기존 테스트와 리뷰 회귀 테스트를 포함한 34개 테스트를 확인했습니다. GitHub CI에도 이 측정 모듈의 Python 3.11/3.12 검사를 추가했습니다.
+검증일: 2026-11-04. Python 3.12.14, Windows 환경에서 측정 모듈 34개와 백엔드 전체 및 등록 통합 테스트를 확인했습니다. GitHub CI에서도 Python 3.11/3.12로 측정 모듈과 백엔드 연동을 검사합니다.
 
 ## 확인한 동작
 
@@ -20,7 +20,7 @@
 - fragment ID 정규화·원래 ID 매핑, component별 derived field 경로 검증
 - 공개 JSON Schema·OpenAPI와 실행 모델의 일치
 
-현재 fragment는 별도 계약 `sunsync.fr06-fragment/1`이며, 같은 모듈의 Pydantic 검증기와 공개 JSON Schema로 확인했습니다. 기존 백엔드의 Marker/ArucoObservation JSON Schema가 이 출력을 거절하는 것도 확인해 계약 경계를 회귀 테스트로 남겼습니다. 기존 백엔드 FR-06 0.2.0과의 호환성 검증을 통과했다는 의미가 아닙니다.
+fragment는 `sunsync.fr06-fragment/1` 전송 봉투이며, 백엔드에 일반 3D 관측 타입과 `/api/scenes/{scene_id}/registrations` 등록 경로를 추가했습니다. 합성 사진 코너 관측 → PnP 측정 → fragment → 실제 FastAPI 등록 → SQLite 저장 → 조회 → 전체 Scene 및 JSON Schema 검증을 통합 테스트합니다. 상판 높이·최고점·수동 높이·설치 높이, 여러 가구의 보드 재사용, revision 충돌, 시각 누락·형상/좌표/치수 불일치 시 무변경 거절을 확인합니다. 기존 바닥 평면 관측의 제한은 유지합니다.
 
 합성 입력은 실제 사진에서의 오차를 입증하지 않습니다. 기존 수평 이동 실측 109cm에 대한 추정 97.4cm, 오차 약 10.6%는 별도 실제 실험 결과입니다. 새 서비스 패키지의 기기별 정확도는 아직 평가하지 않았습니다.
 

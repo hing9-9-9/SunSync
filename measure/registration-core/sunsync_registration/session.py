@@ -12,6 +12,7 @@ class CaptureSession:
         self.guide = plan(request)
         self.captures = []
         self._pending = {}
+        self._capture_times = {}
         self._used_ids = set()
         self._lock = RLock()
 
@@ -24,7 +25,7 @@ class CaptureSession:
                     return {**step, "accepted_samples": count}
             return None
 
-    def begin_capture(self, capture_id: str):
+    def begin_capture(self, capture_id: str, captured_at: str | None = None):
         """Call at shutter time, before sending the image to the detector."""
         with self._lock:
             step = self.current_step
@@ -36,6 +37,7 @@ class CaptureSession:
                 raise ValueError("Duplicate capture_id")
             self._used_ids.add(capture_id)
             self._pending[capture_id] = step["point_id"]
+            self._capture_times[capture_id] = captured_at
             return {"capture_id": capture_id, "point_id": step["point_id"]}
 
     def accept(
@@ -55,13 +57,16 @@ class CaptureSession:
             step = self.current_step
             if step is None or step["point_id"] != captured_point:
                 del self._pending[capture_id]
+                self._capture_times.pop(capture_id, None)
                 raise ValueError("Stale response: capture point is no longer active")
             if detection_response["pose"]["status"] != "ok":
                 del self._pending[capture_id]
+                self._capture_times.pop(capture_id, None)
                 return False
             capture = Capture(
                 capture_id=capture_id,
                 point_id=captured_point,
+                captured_at=self._capture_times.pop(capture_id, None),
                 camera=camera,
                 detections=detection_response["detections"],
                 camera_to_point_m=camera_to_point_m,
@@ -76,6 +81,7 @@ class CaptureSession:
                 raise ValueError("Unknown point")
             self.captures = [c for c in self.captures if c.point_id != point_id]
             self._pending.clear()
+            self._capture_times.clear()
 
     def measurement_request(self, **reference):
         with self._lock:

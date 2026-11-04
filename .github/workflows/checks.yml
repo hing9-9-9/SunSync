@@ -21,6 +21,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: pip
       - run: python -m pip install -r requirements-dev.txt
+      - run: python -m pip install -e "./measure/registration-core[api,test]"
       - run: ruff check backend tests
       - run: ruff format --check backend tests
       - run: mypy backend/app

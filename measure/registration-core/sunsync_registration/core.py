@@ -1,5 +1,6 @@
 import hashlib
 import json
+from datetime import datetime
 import numpy as np
 from .models import (
     Alignment,
@@ -65,6 +66,7 @@ def measure(request: MeasureRequest):
     steps = {s["point_id"]: s for s in instructions["steps"]}
     grouped = {key: [] for key in steps}
     diagnostics = []
+    accepted_times = []
     ids = [c.capture_id for c in request.captures]
     if len(set(ids)) != len(ids):
         raise ValueError("capture_id must be unique")
@@ -98,6 +100,7 @@ def measure(request: MeasureRequest):
             {"capture_id": capture.capture_id, "point_id": capture.point_id, **result}
         )
         if result["status"] == "ok":
+            accepted_times.append(capture.captured_at)
             t = rigid(result["T_board_camera"])
             point = t[:3, :3] @ capture.camera_to_point_m + t[:3, 3]
             grouped[capture.point_id].append(point)
@@ -157,6 +160,17 @@ def measure(request: MeasureRequest):
         "required_actions": actions,
         "confirmed": False,
         "geometry_source": "measured_points_and_standard_model",
+        "captured_at": (
+            max(
+                accepted_times,
+                key=lambda t: datetime.fromisoformat(t.replace("Z", "+00:00")),
+            )
+            if accepted_times and all(accepted_times)
+            else None
+        ),
+        "manual_height_m": request.plan.manual_height_m,
+        "manual_base_height_m": request.plan.manual_base_height_m,
+        "surface_tolerance_m": request.max_surface_residual_m,
         "measurement_note": "Repeat spread and reprojection residual do not prove metric accuracy.",
     }
     surface_keys = [

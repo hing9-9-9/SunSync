@@ -1,4 +1,5 @@
 from typing import Annotated, Literal
+from datetime import datetime
 import numpy as np
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, model_validator
 
@@ -166,10 +167,19 @@ class Detection(Strict):
 class Capture(Strict):
     capture_id: str = Field(min_length=1, max_length=100)
     point_id: str
+    captured_at: str | None = None
     camera: Camera
     detections: list[Detection] = Field(max_length=100)
     # OpenCV camera axes: right, down, forward. Optical centre -> contact point.
     camera_to_point_m: Vec3 = (0, 0, 0)
+
+    @model_validator(mode="after")
+    def capture_time(self):
+        if self.captured_at is not None:
+            value = datetime.fromisoformat(self.captured_at.replace("Z", "+00:00"))
+            if value.tzinfo is None or value.utcoffset() is None:
+                raise ValueError("captured_at requires a timezone")
+        return self
 
 
 class MeasureRequest(Strict):

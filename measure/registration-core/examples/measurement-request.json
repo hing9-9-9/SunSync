@@ -36,6 +36,7 @@
     {
       "capture_id": "P1-1",
       "point_id": "P1",
+      "captured_at": "2026-11-04T10:00:00+09:00",
       "camera": {
         "width": 1920,
         "height": 1440,
@@ -143,6 +144,7 @@
     {
       "capture_id": "P1-2",
       "point_id": "P1",
+      "captured_at": "2026-11-04T10:00:01+09:00",
       "camera": {
         "width": 1920,
         "height": 1440,
@@ -250,6 +252,7 @@
     {
       "capture_id": "P1-3",
       "point_id": "P1",
+      "captured_at": "2026-11-04T10:00:02+09:00",
       "camera": {
         "width": 1920,
         "height": 1440,
@@ -357,6 +360,7 @@
     {
       "capture_id": "P2-1",
       "point_id": "P2",
+      "captured_at": "2026-11-04T10:00:03+09:00",
       "camera": {
         "width": 1920,
         "height": 1440,
@@ -464,6 +468,7 @@
     {
       "capture_id": "P2-2",
       "point_id": "P2",
+      "captured_at": "2026-11-04T10:00:04+09:00",
       "camera": {
         "width": 1920,
         "height": 1440,
@@ -571,6 +576,7 @@
     {
       "capture_id": "P2-3",
       "point_id": "P2",
+      "captured_at": "2026-11-04T10:00:05+09:00",
       "camera": {
         "width": 1920,
         "height": 1440,
@@ -678,6 +684,7 @@
     {
       "capture_id": "P3-1",
       "point_id": "P3",
+      "captured_at": "2026-11-04T10:00:06+09:00",
       "camera": {
         "width": 1920,
         "height": 1440,
@@ -785,6 +792,7 @@
     {
       "capture_id": "P3-2",
       "point_id": "P3",
+      "captured_at": "2026-11-04T10:00:07+09:00",
       "camera": {
         "width": 1920,
         "height": 1440,
@@ -892,6 +900,7 @@
     {
       "capture_id": "P3-3",
       "point_id": "P3",
+      "captured_at": "2026-11-04T10:00:08+09:00",
       "camera": {
         "width": 1920,
         "height": 1440,
@@ -999,6 +1008,7 @@
     {
       "capture_id": "P4-1",
       "point_id": "P4",
+      "captured_at": "2026-11-04T10:00:09+09:00",
       "camera": {
         "width": 1920,
         "height": 1440,
@@ -1106,6 +1116,7 @@
     {
       "capture_id": "P4-2",
       "point_id": "P4",
+      "captured_at": "2026-11-04T10:00:10+09:00",
       "camera": {
         "width": 1920,
         "height": 1440,
@@ -1213,6 +1224,7 @@
     {
       "capture_id": "P4-3",
       "point_id": "P4",
+      "captured_at": "2026-11-04T10:00:11+09:00",
       "camera": {
         "width": 1920,
         "height": 1440,

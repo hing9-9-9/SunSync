@@ -93,7 +93,7 @@ def test_fragment_version_and_schema_match_export_and_http_validation():
     assert fragment["extensions"]["legacy_fr06_0_2_0_compatible"] is False
     Draft202012Validator(BoardCameraFragmentV1.model_json_schema()).validate(fragment)
     BoardCameraFragmentV1.model_validate(fragment)
-    assert fragment["observations"][0]["captured_at"] is None
+    assert fragment["observations"][0]["captured_at"] is not None
     client = TestClient(app)
     assert client.post("/v1/fr06/validate", json=fragment).status_code == 200
 
@@ -148,6 +148,7 @@ def test_generated_paths_reference_only_supported_components():
         object_id + ".dimensions_m[0:2]",
         object_id + ".yaw_deg_ccw_from_east",
         object_id + ".base_center_m",
+        object_id + ".dimensions_m[2]",
     }
     request = example.fixture().model_dump()
     request["plan"].update(
@@ -157,13 +158,13 @@ def test_generated_paths_reference_only_supported_components():
         manual_base_height_m=0.4,
     )
     floating = export_fragment(measure(MeasureRequest.model_validate(request)))
-    assert not any(
+    assert any(
         p.endswith(".base_center_m")
         for p in floating["observations"][0]["derived_fields"]
     )
 
 
-def test_fragment_is_explicitly_separate_from_current_backend():
+def test_fragment_components_match_updated_backend():
     path = Path(__file__).parents[3] / "docs/fr06_scene_schema.json"
     if not path.exists():
         pytest.skip(
@@ -173,10 +174,10 @@ def test_fragment_is_explicitly_separate_from_current_backend():
     fragment = export_fragment(measure(example.fixture()))
     for kind, value in [
         ("Marker", fragment["markers"][0]),
-        ("ArucoObservation", fragment["observations"][0]),
+        ("BoardCameraObservation", fragment["observations"][0]),
     ]:
         schema = {"$defs": legacy["$defs"], "$ref": "#/$defs/" + kind}
-        assert list(Draft202012Validator(schema).iter_errors(value))
+        assert not list(Draft202012Validator(schema).iter_errors(value))
     assert fragment["schema_version"] != legacy.get("properties", {}).get(
         "schema_version", {}
     ).get("const")

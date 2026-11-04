@@ -169,7 +169,7 @@
     "/v1/fr06": {
       "post": {
         "summary": "Make Fragment",
-        "description": "Versioned board-camera fragment. Not accepted by the legacy backend /api/scenes.",
+        "description": "Board-camera fragment for POST /api/scenes/{scene_id}/registrations.",
         "operationId": "make_fragment_v1_fr06_post",
         "requestBody": {
           "content": {
@@ -531,6 +531,17 @@
             "type": "string",
             "title": "Point Id"
           },
+          "captured_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Captured At"
+          },
           "camera": {
             "$ref": "#/components/schemas/Camera"
           },
@@ -782,15 +793,8 @@
             "title": "Method"
           },
           "captured_at": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
+            "type": "string",
+            "format": "date-time",
             "title": "Captured At"
           },
           "uncertainty_m": {
@@ -826,6 +830,16 @@
               "horizontal"
             ],
             "title": "Plane"
+          },
+          "point_ids": {
+            "items": {
+              "type": "string",
+              "pattern": "^[a-zA-Z][a-zA-Z0-9_]*$"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "minItems": 4,
+            "title": "Point Ids"
           },
           "points_marker_m": {
             "items": {
@@ -887,6 +901,70 @@
               }
             ],
             "title": "Independent Tape Error M"
+          },
+          "tabletop_shape": {
+            "type": "string",
+            "const": "rectangle",
+            "title": "Tabletop Shape"
+          },
+          "model_id": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Model Id"
+          },
+          "geometry_source": {
+            "type": "string",
+            "const": "standard_model_bounding_box",
+            "title": "Geometry Source"
+          },
+          "height_source": {
+            "type": "string",
+            "enum": [
+              "surface_is_top",
+              "capture_highest",
+              "manual"
+            ],
+            "title": "Height Source"
+          },
+          "manual_height_m": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manual Height M"
+          },
+          "manual_base_height_m": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manual Base Height M"
+          },
+          "floor_supported": {
+            "type": "boolean",
+            "title": "Floor Supported"
+          },
+          "floor_alignment_confirmed": {
+            "type": "boolean",
+            "const": true,
+            "title": "Floor Alignment Confirmed"
+          },
+          "surface_tolerance_m": {
+            "type": "number",
+            "maximum": 0.1,
+            "exclusiveMinimum": 0.0,
+            "title": "Surface Tolerance M"
           }
         },
         "additionalProperties": false,
@@ -900,10 +978,20 @@
           "note",
           "marker_id",
           "plane",
+          "point_ids",
           "points_marker_m",
           "points_enu_m",
           "derived_fields",
-          "independent_tape_error_m"
+          "independent_tape_error_m",
+          "tabletop_shape",
+          "model_id",
+          "geometry_source",
+          "height_source",
+          "manual_height_m",
+          "manual_base_height_m",
+          "floor_supported",
+          "floor_alignment_confirmed",
+          "surface_tolerance_m"
         ],
         "title": "FragmentObservation"
       },
@@ -927,6 +1015,16 @@
             "type": "string",
             "const": "cuboid",
             "title": "Kind"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "desk",
+              "chair",
+              "bookshelf",
+              "other"
+            ],
+            "title": "Type"
           },
           "base_center_m": {
             "prefixItems": [
@@ -987,6 +1085,7 @@
           "room_id",
           "name",
           "kind",
+          "type",
           "base_center_m",
           "dimensions_m",
           "yaw_deg_ccw_from_east",

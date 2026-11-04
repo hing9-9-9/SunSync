@@ -84,7 +84,7 @@ def create_app():
     @app.post(
         "/v1/fr06",
         response_model=BoardCameraFragmentV1,
-        description="Versioned board-camera fragment. Not accepted by the legacy backend /api/scenes.",
+        description="Board-camera fragment for POST /api/scenes/{scene_id}/registrations.",
     )
     def make_fragment(request: FragmentRequest):
         return run(export_fragment, request.measurement)

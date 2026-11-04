@@ -61,6 +61,7 @@ def fixture():
                 {
                     "capture_id": f"P{index+1}-{sample+1}",
                     "point_id": f"P{index+1}",
+                    "captured_at": f"2026-11-04T10:00:{index * 3 + sample:02d}+09:00",
                     "camera": camera.model_dump(),
                     "detections": detections,
                 }

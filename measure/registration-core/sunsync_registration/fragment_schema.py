@@ -1,4 +1,4 @@
-"""Versioned board-camera fragment, distinct from the backend's FR-06 0.2.0."""
+"""Versioned transport for the backend FR-06 registration endpoint."""
 
 from typing import Annotated, Literal
 import numpy as np
@@ -32,17 +32,45 @@ class FragmentMarker(Strict):
 class FragmentObservation(Strict):
     observation_id: Identifier
     method: Literal["aruco_board_camera_at_point"]
-    # Unknown capture time stays unknown; never replace it with processing time.
-    captured_at: AwareDatetime | None
+    captured_at: AwareDatetime
     uncertainty_m: float | None = Field(ge=0)
     confirmed: Literal[False]
     note: str
     marker_id: Identifier
     plane: Plane
+    point_ids: list[Identifier] = Field(min_length=4, max_length=5)
     points_marker_m: list[Vec3] = Field(min_length=1)
     points_enu_m: list[Vec3] = Field(min_length=1)
     derived_fields: list[str]
     independent_tape_error_m: float | None = Field(ge=0)
+    tabletop_shape: Literal["rectangle"]
+    model_id: str = Field(min_length=1, max_length=200)
+    geometry_source: Literal["standard_model_bounding_box"]
+    height_source: Literal["surface_is_top", "capture_highest", "manual"]
+    manual_height_m: Positive | None
+    manual_base_height_m: float | None = Field(ge=0)
+    floor_supported: bool
+    floor_alignment_confirmed: Literal[True]
+    surface_tolerance_m: Positive = Field(le=0.1)
+
+    @model_validator(mode="after")
+    def points_and_height(self):
+        expected = {"P1", "P2", "P3", "P4"}
+        if self.height_source == "capture_highest":
+            expected.add("H1")
+        if (
+            len(set(self.point_ids)) != len(self.point_ids)
+            or set(self.point_ids) != expected
+            or len(self.point_ids) != len(self.points_marker_m)
+        ):
+            raise ValueError("Expected rectangle point IDs and matching point counts")
+        if (self.height_source == "manual") != (self.manual_height_m is not None):
+            raise ValueError("Manual height requires an explicit value")
+        if not self.floor_supported and self.height_source != "manual":
+            raise ValueError("Floating furniture requires manual height")
+        if self.floor_supported != (self.manual_base_height_m is None):
+            raise ValueError("Floating furniture requires manual base height")
+        return self
 
 
 class FragmentQuality(Strict):
@@ -55,6 +83,7 @@ class FragmentOccluder(Strict):
     room_id: Identifier
     name: str
     kind: Literal["cuboid"]
+    type: Literal["desk", "chair", "bookshelf", "other"]
     base_center_m: Vec3
     dimensions_m: tuple[Positive, Positive, Positive]
     yaw_deg_ccw_from_east: float = Field(ge=0, lt=360)
@@ -114,6 +143,8 @@ class BoardCameraFragmentV1(Strict):
                     "dimensions_m[0:2]",
                     "dimensions_m[0]",
                     "dimensions_m[1]",
+                    "dimensions_m[2]",
+                    "base_center_m",
                     "yaw_deg_ccw_from_east",
                 }
                 if abs(occluder.base_center_m[2]) <= 1e-8:
