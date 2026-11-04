@@ -7,7 +7,7 @@ The schema describes structure; model validators also enforce geometry and refer
 from __future__ import annotations
 
 from datetime import datetime
-from math import atan2, degrees, floor
+from math import atan2, degrees, floor, sqrt
 from typing import Annotated, Literal, Self
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -314,7 +314,7 @@ class Marker(Model):
     dictionary: Literal["DICT_4X4_50"]
     code_id: Annotated[int, Field(ge=0, lt=50)]
     side_length_m: Positive
-    plane: Literal["floor", "window"]
+    plane: Literal["floor", "window", "vertical", "horizontal"]
     T_ENU_marker: Annotated[list[Number], Field(min_length=16, max_length=16)]
     window_id: Identifier | None = None
     start_row: Annotated[int, Field(ge=0)] | None = None
@@ -349,7 +349,7 @@ class Marker(Model):
                 close(rows[2], (0, 0, 1)) and abs(matrix[11]) <= EPS,
                 "marker frame must lie on the z=0 floor",
             )
-        else:
+        elif self.plane == "window":
             require(self.window_id is not None, "window marker requires window_id")
             if self.start_row is None:
                 self.start_row = 2
@@ -362,6 +362,26 @@ class Marker(Model):
             require(
                 self.marker_rows == 6 and self.marker_cols == 6,
                 "ArUco 4x4 window marker must occupy 6x6 cells including border",
+            )
+        else:
+            require(
+                all(
+                    value is None
+                    for value in (
+                        self.window_id,
+                        self.start_row,
+                        self.start_col,
+                        self.marker_rows,
+                        self.marker_cols,
+                    )
+                ),
+                "board marker cannot declare window cell placement",
+            )
+            normal_z = abs(matrix[10])
+            require(
+                (self.plane == "vertical" and normal_z < 0.05)
+                or (self.plane == "horizontal" and normal_z > 0.999),
+                "board marker plane disagrees with its ENU transform",
             )
         return self
 
@@ -402,7 +422,79 @@ class ArucoObservation(Model):
         return self
 
 
-Observation = Annotated[ManualObservation | ArucoObservation, Field(discriminator="method")]
+class BoardCameraObservation(Model):
+    """General 3D rectangle observations; legacy floor observations stay unchanged."""
+
+    observation_id: Identifier
+    method: Literal["aruco_board_camera_at_point"]
+    captured_at: Timestamp
+    uncertainty_m: Nonnegative | None
+    confirmed: bool
+    note: str
+    marker_id: Identifier
+    plane: Literal["floor", "window", "vertical", "horizontal"]
+    point_ids: Annotated[list[Identifier], Field(min_length=4, max_length=5)]
+    points_marker_m: Annotated[list[Vector], Field(min_length=4, max_length=5)]
+    points_enu_m: Annotated[list[Vector], Field(min_length=4, max_length=5)]
+    derived_fields: list[str]
+    independent_tape_error_m: Nonnegative | None
+    tabletop_shape: Literal["rectangle"]
+    model_id: Annotated[str, Field(min_length=1, max_length=200)]
+    geometry_source: Literal["standard_model_bounding_box"]
+    height_source: Literal["surface_is_top", "capture_highest", "manual"]
+    manual_height_m: Positive | None
+    manual_base_height_m: Nonnegative | None
+    floor_supported: bool
+    floor_alignment_confirmed: Literal[True]
+    surface_tolerance_m: Annotated[Positive, Field(le=0.1)]
+
+    @model_validator(mode="after")
+    def points_and_height_source(self) -> Self:
+        expected = {"P1", "P2", "P3", "P4"}
+        if self.height_source == "capture_highest":
+            expected.add("H1")
+        require(
+            len(self.point_ids) == len(set(self.point_ids))
+            and set(self.point_ids) == expected
+            and len(self.points_marker_m) == len(self.points_enu_m) == len(self.point_ids),
+            "board observation needs matching rectangle point IDs and point counts",
+        )
+        require(
+            len(set(self.derived_fields)) == len(self.derived_fields),
+            "duplicate derived field",
+        )
+        require(
+            (self.height_source == "manual") == (self.manual_height_m is not None),
+            "manual height source requires an explicit measured height",
+        )
+        require(
+            self.floor_supported or self.height_source == "manual",
+            "floating furniture requires explicit manual height",
+        )
+        require(
+            self.floor_supported == (self.manual_base_height_m is None),
+            "floating furniture requires explicit manual base height",
+        )
+        prefixes = {field.partition(".")[0] for field in self.derived_fields}
+        require(len(prefixes) == 1, "board observation must derive exactly one cuboid")
+        identifier = next(iter(prefixes))
+        require(
+            set(self.derived_fields)
+            == {
+                identifier + ".dimensions_m[0:2]",
+                identifier + ".dimensions_m[2]",
+                identifier + ".yaw_deg_ccw_from_east",
+                identifier + ".base_center_m",
+            },
+            "board observation must declare dimensions, height, yaw and base centre",
+        )
+        return self
+
+
+Observation = Annotated[
+    ManualObservation | ArucoObservation | BoardCameraObservation,
+    Field(discriminator="method"),
+]
 
 
 class OpticalProfile(Model):
@@ -672,7 +764,15 @@ class Scene(Model):
             )
             require(
                 not needs_height
-                or any(isinstance(source, ManualObservation) for source in sources),
+                or any(isinstance(source, ManualObservation) for source in sources)
+                or (
+                    isinstance(obj, Occluder)
+                    and any(
+                        isinstance(source, BoardCameraObservation)
+                        and f"{identifier}.dimensions_m[2]" in source.derived_fields
+                        for source in sources
+                    )
+                ),
                 f"{identifier}: height/elevated geometry needs manual observation provenance",
             )
         for region in self.protected_regions:
@@ -807,13 +907,22 @@ class Scene(Model):
         markers = {marker.marker_id: marker for marker in self.markers}
         objects = self._geometry_objects()
         for observation in self.observations:
-            if not isinstance(observation, ArucoObservation):
+            if not isinstance(observation, (ArucoObservation, BoardCameraObservation)):
                 continue
             require(observation.marker_id in markers, "ArUco marker reference missing")
             marker = markers[observation.marker_id]
-            require(
-                marker.plane == "floor", "ArUco planar floor observation requires a floor marker"
-            )
+            if isinstance(observation, ArucoObservation):
+                require(
+                    marker.plane == "floor",
+                    "ArUco planar floor observation requires a floor marker",
+                )
+            else:
+                require(
+                    self.north_alignment.confirmed, "board measurements require confirmed ENU north"
+                )
+                require(
+                    marker.plane == observation.plane, "board observation marker plane mismatch"
+                )
             matrix = marker.T_ENU_marker
             for local, exported in zip(
                 observation.points_marker_m, observation.points_enu_m, strict=True
@@ -832,6 +941,8 @@ class Scene(Model):
                     "ArUco derived field references unknown geometry",
                 )
                 obj = objects[identifier]
+                if isinstance(observation, BoardCameraObservation):
+                    require(isinstance(obj, Occluder), "board observations derive furniture only")
                 require(
                     observation.observation_id in obj.quality.observation_ids,
                     "ArUco derived field is missing from object provenance",
@@ -846,7 +957,10 @@ class Scene(Model):
                         "dimensions_m[1]",
                         "yaw_deg_ccw_from_east",
                     }
-                    if abs(obj.base_center_m[2]) <= EPS:
+                    if isinstance(observation, BoardCameraObservation):
+                        allowed.update({"dimensions_m[2]", "base_center_m"})
+                        self._validate_board_cuboid(observation, obj)
+                    elif abs(obj.base_center_m[2]) <= EPS:
                         allowed.add("base_center_m")
                 elif isinstance(obj, ProtectedRegion) and all(
                     abs(point[2]) <= EPS for point in obj.vertices_m
@@ -856,3 +970,69 @@ class Scene(Model):
                     attribute in allowed,
                     "ArUco planar derived fields cannot supply height or elevated geometry",
                 )
+
+    @staticmethod
+    def _validate_board_cuboid(observation: BoardCameraObservation, obj: Occluder) -> None:
+        points = dict(zip(observation.point_ids, observation.points_enu_m, strict=True))
+        p = [points[key] for key in ("P1", "P2", "P3", "P4")]
+        centre = tuple(sum(point[i] for point in p) / 4 for i in range(3))
+        width = tuple((p[1][i] - p[0][i] + p[2][i] - p[3][i]) / 2 for i in range(3))
+        depth = tuple((p[3][i] - p[0][i] + p[2][i] - p[1][i]) / 2 for i in range(3))
+        width_length = sqrt(dot(width, width))
+        tolerance = observation.surface_tolerance_m
+        require(width_length > EPS, "board rectangle has zero width")
+        x = tuple(v / width_length for v in width)
+        perpendicular = tuple(depth[i] - dot(depth, x) * x[i] for i in range(3))
+        depth_length = sqrt(dot(perpendicular, perpendicular))
+        require(depth_length > EPS, "board rectangle has zero depth")
+        y = tuple(v / depth_length for v in perpendicular)
+        predicted = [
+            tuple(centre[i] + a * width[i] / 2 + b * y[i] * depth_length / 2 for i in range(3))
+            for a, b in ((-1, -1), (1, -1), (1, 1), (-1, 1))
+        ]
+        require(
+            max(
+                sqrt(dot(subtract(actual, fitted), subtract(actual, fitted)))
+                for actual, fitted in zip(p, predicted, strict=True)
+            )
+            <= tolerance,
+            "board points do not form a rectangle within tolerance",
+        )
+        require(
+            max(abs(point[2] - centre[2]) for point in p) <= tolerance,
+            "board tabletop must be horizontal",
+        )
+        require(
+            abs(obj.dimensions_m[0] - width_length) <= tolerance
+            and abs(obj.dimensions_m[1] - depth_length) <= tolerance
+            and all(abs(obj.base_center_m[i] - centre[i]) <= tolerance for i in (0, 1)),
+            "cuboid placement/dimensions disagree with board points",
+        )
+        yaw = degrees(atan2(width[1], width[0])) % 360
+        require(
+            abs((obj.yaw_deg_ccw_from_east - yaw + 180) % 360 - 180) <= EPS,
+            "cuboid yaw disagrees with board points",
+        )
+        base = obj.base_center_m[2]
+        if observation.floor_supported:
+            require(abs(base) <= EPS, "floor-supported board furniture must start at z=0")
+        else:
+            require(
+                observation.manual_base_height_m is not None
+                and abs(base - observation.manual_base_height_m) <= EPS,
+                "cuboid disagrees with explicit manual base height",
+            )
+        if observation.height_source == "manual":
+            require(
+                observation.manual_height_m is not None
+                and abs(obj.dimensions_m[2] - observation.manual_height_m) <= EPS
+                and base - tolerance <= centre[2] <= base + obj.dimensions_m[2] + tolerance,
+                "cuboid disagrees with explicit manual height",
+            )
+        else:
+            top = points["H1"][2] if observation.height_source == "capture_highest" else centre[2]
+            require(
+                top >= centre[2] - tolerance
+                and abs(obj.dimensions_m[2] - (top - base)) <= tolerance,
+                "cuboid height disagrees with board height point",
+            )

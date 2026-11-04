@@ -1,0 +1,254 @@
+{
+  "schema_version": "sunsync.fr06-fragment/1",
+  "units": "m",
+  "coordinate_frame": "ENU",
+  "markers": [
+    {
+      "marker_id": "window_board_01_reference_marker",
+      "family": "aruco",
+      "dictionary": "DICT_4X4_50",
+      "code_id": 7,
+      "side_length_m": 0.115,
+      "plane": "vertical",
+      "T_ENU_marker": [
+        1.0,
+        0.0,
+        0.0,
+        0.0575,
+        0.0,
+        0.0,
+        -1.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        1.1424999999999998,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    }
+  ],
+  "observations": [
+    {
+      "observation_id": "desk_01_observation",
+      "method": "aruco_board_camera_at_point",
+      "captured_at": "2026-11-04T10:00:11+09:00",
+      "uncertainty_m": null,
+      "confirmed": false,
+      "note": "Guided camera-at-point measurement; placement bias unmeasured.",
+      "marker_id": "window_board_01_reference_marker",
+      "plane": "vertical",
+      "point_ids": [
+        "P1",
+        "P2",
+        "P3",
+        "P4"
+      ],
+      "points_marker_m": [
+        [
+          -0.35750000000000026,
+          -0.3925000000000001,
+          1.1999999999999997
+        ],
+        [
+          0.24249999999999794,
+          -0.3924999999999994,
+          1.2000000000000006
+        ],
+        [
+          0.24249999999999927,
+          -0.39249999999999713,
+          1.6500000000000012
+        ],
+        [
+          -0.3575000000000025,
+          -0.39249999999999974,
+          1.6499999999999992
+        ]
+      ],
+      "points_enu_m": [
+        [
+          -0.30000000000000027,
+          -1.1999999999999997,
+          0.7499999999999998
+        ],
+        [
+          0.29999999999999793,
+          -1.2000000000000006,
+          0.7500000000000006
+        ],
+        [
+          0.29999999999999927,
+          -1.6500000000000012,
+          0.7500000000000029
+        ],
+        [
+          -0.3000000000000025,
+          -1.6499999999999992,
+          0.7500000000000002
+        ]
+      ],
+      "derived_fields": [
+        "desk_01.dimensions_m[0:2]",
+        "desk_01.yaw_deg_ccw_from_east",
+        "desk_01.dimensions_m[2]",
+        "desk_01.base_center_m"
+      ],
+      "independent_tape_error_m": null,
+      "tabletop_shape": "rectangle",
+      "model_id": "catalog/desk_normalized",
+      "geometry_source": "standard_model_bounding_box",
+      "height_source": "surface_is_top",
+      "manual_height_m": null,
+      "manual_base_height_m": null,
+      "floor_supported": true,
+      "floor_alignment_confirmed": true,
+      "surface_tolerance_m": 0.03
+    }
+  ],
+  "occluders": [
+    {
+      "occluder_id": "desk_01",
+      "room_id": "room_01",
+      "name": "desk standard-model bounding box",
+      "kind": "cuboid",
+      "type": "desk",
+      "base_center_m": [
+        -1.3877787807814457e-15,
+        -1.4250000000000003,
+        0.0
+      ],
+      "dimensions_m": [
+        0.6,
+        0.44999999999999996,
+        0.7500000000000009
+      ],
+      "yaw_deg_ccw_from_east": 359.9999999999999,
+      "material": "opaque",
+      "quality": {
+        "observation_ids": [
+          "desk_01_observation"
+        ],
+        "confirmed": false
+      }
+    }
+  ],
+  "windows": [],
+  "protected_regions": [],
+  "extensions": {
+    "legacy_fr06_0_2_0_compatible": false,
+    "receiver_contract": "sunsync.fr06-fragment/1",
+    "marker_plane_semantics": "Plane describes the marker, not the measured furniture points.",
+    "capture_time_status": "latest_accepted_frame",
+    "id_mapping": {
+      "board_id": {
+        "source": "window_board_01",
+        "marker_id": "window_board_01_reference_marker"
+      },
+      "furniture_id": {
+        "source": "desk_01",
+        "occluder_id": "desk_01"
+      },
+      "space_id": {
+        "source": "room_01",
+        "room_id": "room_01"
+      }
+    },
+    "export_kind": "measurement_fragment_not_complete_scene",
+    "reference_id": "209d8c92b9e3b8b25495f8c4cc62391654150ffa252ff62b98d51b28d758392d",
+    "point_ids": [
+      "P1",
+      "P2",
+      "P3",
+      "P4"
+    ],
+    "board": {
+      "board_id": "window_board_01",
+      "dictionary": "DICT_4X4_50",
+      "ids_by_row": [
+        [
+          7,
+          8
+        ],
+        [
+          9,
+          10
+        ]
+      ],
+      "marker_side_m": 0.115,
+      "gap_x_m": 0.02,
+      "gap_y_m": 0.02,
+      "border_bits": 1
+    },
+    "standard_model_placement": {
+      "furniture_id": "desk_01",
+      "furniture_kind": "desk",
+      "reference_id": "209d8c92b9e3b8b25495f8c4cc62391654150ffa252ff62b98d51b28d758392d",
+      "model_id": "catalog/desk_normalized",
+      "dimensions_m": [
+        0.6,
+        0.44999999999999996,
+        0.7500000000000009
+      ],
+      "T_board_model": [
+        1.0,
+        2.4054832200211726e-15,
+        0.0,
+        -1.3877787807814457e-15,
+        0.0,
+        0.0,
+        -1.0,
+        1.2,
+        -2.4054832200211726e-15,
+        1.0,
+        0.0,
+        -1.4250000000000003,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "base_center_board_m": [
+        -1.3877787807814457e-15,
+        1.2,
+        -1.4250000000000003
+      ],
+      "height_source": "surface_is_top",
+      "floor_supported": true,
+      "origin": "base_bounding_box_center",
+      "local_axes": "x width, y depth, z up",
+      "shape_approximation": true,
+      "orientation_requires_user_review": true,
+      "T_enu_model": [
+        1.0,
+        2.4054832200211726e-15,
+        0.0,
+        -1.3877787807814457e-15,
+        -2.4054832200211726e-15,
+        1.0,
+        0.0,
+        -1.4250000000000003,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "base_center_enu_m": [
+        -1.3877787807814457e-15,
+        -1.4250000000000003,
+        0.0
+      ],
+      "yaw_deg_ccw_from_east": 359.9999999999999
+    },
+    "geometry_source": "opaque_bounding_volume_of_standard_model",
+    "model_note": "Bounding box fills empty spaces between legs; not an exact sunlight occlusion mesh.",
+    "review_status": "unreviewed",
+    "registration_endpoint": "/api/scenes/{scene_id}/registrations"
+  }
+}
