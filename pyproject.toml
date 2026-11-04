@@ -1,6 +1,6 @@
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["backend", "measure/registration-core"]
+pythonpath = ["backend", "measure/registration-core", "."]
 
 [tool.ruff]
 target-version = "py311"

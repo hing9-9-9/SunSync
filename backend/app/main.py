@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import Engine
 from sqlmodel import Session
 
-from app.api import handoffs, health, measurements, scenes, shading, sunpath, ui_spaces
+from app.api import film, handoffs, health, measurements, scenes, shading, sunpath, ui_spaces
 from app.db import get_session, init_db
 
 
@@ -42,6 +42,7 @@ def create_app(database_engine: Engine | None = None) -> FastAPI:
     application.include_router(handoffs.router, prefix="/api")
     application.include_router(measurements.router, prefix="/api")
     application.include_router(shading.router, prefix="/api")
+    application.include_router(film.router, prefix="/api")
 
     if database_engine is not None:
 
