@@ -364,3 +364,5 @@
 :is(.app.award-app, .app.award-mobile) .temp-drafts .status-pill { flex-shrink: 0; white-space: nowrap; }
 :is(.app.award-app, .app.award-mobile) .temp-drafts small { word-break: keep-all; }
 .app.award-mobile .temp-drafts .row { background: var(--c-white); border: 0; border-radius: 16px; }
+/* Editor save status: small muted line under the space name. */
+.app.award-app .editor-command-bar > div > .editor-save-status { display: block; min-height: var(--lh-small); font-size: var(--fs-small); line-height: var(--lh-small); color: var(--c-muted); }

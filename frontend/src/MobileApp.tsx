@@ -1005,16 +1005,12 @@ function MobileApp() {
                   {!isApp && <div className="editor-command-bar">
                     <div>
                       <h1>{draft.name || "새 공간"}</h1>
-                      <span>도면·보호 영역 편집</span>
+                      {/* Status sits under the title it describes; a clean editor says nothing. */}
+                      <span className="editor-save-status" role="status">
+                        {!unsaved ? "" : !leaveUnsaved ? "임시 저장됨" : "저장되지 않은 변경사항"}
+                      </span>
                     </div>
                     <div className="editor-command-actions">
-                      <span className="editor-save-status" role="status">
-                        {!unsaved
-                          ? "변경사항 없음"
-                          : !leaveUnsaved
-                            ? "임시 저장됨"
-                            : "저장되지 않은 변경사항"}
-                      </span>
                       <button
                         className="primary"
                         disabled={saving || !!draftWarning}
@@ -1030,10 +1026,6 @@ function MobileApp() {
                       </button>
                     </div>
                   </div>}
-                  <p className="editing-help">
-                    가구를 끌어 옮기거나 치수를 수정하세요.
-                    {isApp && " 웹의 넓은 화면에서도 편집할 수 있습니다."}
-                  </p>
                   <p className="step-label editor-step-label">
                     {page === "review"
                       ? "3/3단계, 가구 위치와 치수 확인"
