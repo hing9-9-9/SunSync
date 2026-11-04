@@ -11,5 +11,6 @@ placement data, ENU conversion, synthetic examples and tests.
 Install and run it from `measure/registration-core/` as described in its README.
 The API is separate from the existing backend and requires mobile camera adapters,
 service-level authentication and real-device accuracy validation before deployment.
-Its FR-06 output is an extended measurement fragment, not a complete Scene accepted
-directly by `/api/scenes`; see the integration contract before connecting the receiver.
+Its board-camera fragment has its own `sunsync.fr06-fragment/1` schema and validator.
+It is not the backend's FR-06 0.2.0 contract and is not accepted directly by
+`/api/scenes`; see the integration contract before connecting the receiver.

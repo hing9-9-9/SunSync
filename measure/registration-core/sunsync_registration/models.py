@@ -1,6 +1,6 @@
-from typing import Literal
+from typing import Annotated, Literal
 import numpy as np
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, model_validator
 
 Vec2 = tuple[float, float]
 Vec3 = tuple[float, float, float]
@@ -187,3 +187,22 @@ class DetectRequest(Strict):
     camera: Camera
     board: Board
     image_base64: str = Field(min_length=1, max_length=12_000_000)
+
+
+Positive = Annotated[float, Field(gt=0)]
+
+
+class ModelPlacement(Strict):
+    model_id: str = Field(min_length=1, max_length=200)
+    dimensions_m: tuple[Positive, Positive, Positive]
+    T_board_model: list[float] = Field(min_length=16, max_length=16)
+    base_center_board_m: Vec3
+    height_source: Literal["surface_is_top", "capture_highest", "manual"]
+    floor_supported: StrictBool
+    origin: Literal["base_bounding_box_center"] = "base_bounding_box_center"
+    local_axes: Literal["x width, y depth, z up"] = "x width, y depth, z up"
+    shape_approximation: Literal[True] = True
+    orientation_requires_user_review: Literal[True] = True
+    T_enu_model: list[float] | None = Field(default=None, min_length=16, max_length=16)
+    base_center_enu_m: Vec3 | None = None
+    yaw_deg_ccw_from_east: float | None = Field(default=None, ge=0, lt=360)

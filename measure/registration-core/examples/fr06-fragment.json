@@ -1,10 +1,10 @@
 {
-  "schema_version": "0.2.0",
+  "schema_version": "sunsync.fr06-fragment/1",
   "units": "m",
   "coordinate_frame": "ENU",
   "markers": [
     {
-      "marker_id": "window_board_01-reference-marker",
+      "marker_id": "window_board_01_reference_marker",
       "family": "aruco",
       "dictionary": "DICT_4X4_50",
       "code_id": 7,
@@ -32,13 +32,13 @@
   ],
   "observations": [
     {
-      "observation_id": "desk_01-observation",
+      "observation_id": "desk_01_observation",
       "method": "aruco_board_camera_at_point",
       "captured_at": null,
       "uncertainty_m": null,
       "confirmed": false,
       "note": "Guided camera-at-point measurement; placement bias unmeasured.",
-      "marker_id": "window_board_01-reference-marker",
+      "marker_id": "window_board_01_reference_marker",
       "plane": "vertical",
       "points_marker_m": [
         [
@@ -85,7 +85,8 @@
         ]
       ],
       "derived_fields": [
-        "desk_01.dimensions_m",
+        "desk_01.dimensions_m[0:2]",
+        "desk_01.yaw_deg_ccw_from_east",
         "desk_01.base_center_m"
       ],
       "independent_tape_error_m": null
@@ -111,7 +112,7 @@
       "material": "opaque",
       "quality": {
         "observation_ids": [
-          "desk_01-observation"
+          "desk_01_observation"
         ],
         "confirmed": false
       }
@@ -120,6 +121,24 @@
   "windows": [],
   "protected_regions": [],
   "extensions": {
+    "legacy_fr06_0_2_0_compatible": false,
+    "receiver_contract": "sunsync.fr06-fragment/1",
+    "marker_plane_semantics": "Plane describes the marker, not the measured furniture points.",
+    "capture_time_status": "unknown",
+    "id_mapping": {
+      "board_id": {
+        "source": "window_board_01",
+        "marker_id": "window_board_01_reference_marker"
+      },
+      "furniture_id": {
+        "source": "desk_01",
+        "occluder_id": "desk_01"
+      },
+      "space_id": {
+        "source": "room_01",
+        "room_id": "room_01"
+      }
+    },
     "export_kind": "measurement_fragment_not_complete_scene",
     "reference_id": "209d8c92b9e3b8b25495f8c4cc62391654150ffa252ff62b98d51b28d758392d",
     "point_ids": [
@@ -147,6 +166,9 @@
       "border_bits": 1
     },
     "standard_model_placement": {
+      "furniture_id": "desk_01",
+      "furniture_kind": "desk",
+      "reference_id": "209d8c92b9e3b8b25495f8c4cc62391654150ffa252ff62b98d51b28d758392d",
       "model_id": "catalog/desk_normalized",
       "dimensions_m": [
         0.6,

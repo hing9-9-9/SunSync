@@ -201,8 +201,12 @@ def test_guided_session_automatic_point_assignment_and_retake():
     session = CaptureSession(r.plan, r.board)
     assert session.current_step["point_id"] == "P1"
     c = r.captures[0]
+    ticket = session.begin_capture("failed")
     assert not session.accept(
-        "failed", c.camera, {"pose": {"status": "insufficient_markers"}}
+        "failed",
+        ticket["point_id"],
+        c.camera,
+        {"pose": {"status": "insufficient_markers"}},
     )
     assert len(session.captures) == 0
     for capture in r.captures:
@@ -210,7 +214,10 @@ def test_guided_session_automatic_point_assignment_and_retake():
             "detections": [d.model_dump() for d in capture.detections],
             "pose": estimate(r.board, capture.camera, capture.detections),
         }
-        assert session.accept(capture.capture_id, capture.camera, result)
+        ticket = session.begin_capture(capture.capture_id)
+        assert session.accept(
+            capture.capture_id, ticket["point_id"], capture.camera, result
+        )
     assert session.current_step is None
     assert measure(session.measurement_request(alignment=r.alignment))["model"]
     session.retake("P2")

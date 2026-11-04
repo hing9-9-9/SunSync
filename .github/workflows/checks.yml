@@ -26,6 +26,20 @@ jobs:
       - run: mypy backend/app
       - run: python -m pytest -q
       - run: PYTHONPATH=backend python -m app.scene_cli schema --check
+  registration:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.12']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: measure/registration-core/pyproject.toml
+      - run: python -m pip install -e "./measure/registration-core[api,test]"
+      - run: python -m pytest measure/registration-core/tests -q
   frontend:
     runs-on: ubuntu-latest
     defaults:

@@ -1,0 +1,386 @@
+{
+  "$defs": {
+    "FragmentMarker": {
+      "additionalProperties": false,
+      "properties": {
+        "marker_id": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_]*$",
+          "title": "Marker Id",
+          "type": "string"
+        },
+        "family": {
+          "const": "aruco",
+          "title": "Family",
+          "type": "string"
+        },
+        "dictionary": {
+          "const": "DICT_4X4_50",
+          "title": "Dictionary",
+          "type": "string"
+        },
+        "code_id": {
+          "exclusiveMaximum": 50,
+          "minimum": 0,
+          "title": "Code Id",
+          "type": "integer"
+        },
+        "side_length_m": {
+          "exclusiveMinimum": 0,
+          "title": "Side Length M",
+          "type": "number"
+        },
+        "plane": {
+          "enum": [
+            "vertical",
+            "horizontal"
+          ],
+          "title": "Plane",
+          "type": "string"
+        },
+        "T_ENU_marker": {
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 16,
+          "minItems": 16,
+          "title": "T Enu Marker",
+          "type": "array"
+        }
+      },
+      "required": [
+        "marker_id",
+        "family",
+        "dictionary",
+        "code_id",
+        "side_length_m",
+        "plane",
+        "T_ENU_marker"
+      ],
+      "title": "FragmentMarker",
+      "type": "object"
+    },
+    "FragmentObservation": {
+      "additionalProperties": false,
+      "properties": {
+        "observation_id": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_]*$",
+          "title": "Observation Id",
+          "type": "string"
+        },
+        "method": {
+          "const": "aruco_board_camera_at_point",
+          "title": "Method",
+          "type": "string"
+        },
+        "captured_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Captured At"
+        },
+        "uncertainty_m": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Uncertainty M"
+        },
+        "confirmed": {
+          "const": false,
+          "title": "Confirmed",
+          "type": "boolean"
+        },
+        "note": {
+          "title": "Note",
+          "type": "string"
+        },
+        "marker_id": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_]*$",
+          "title": "Marker Id",
+          "type": "string"
+        },
+        "plane": {
+          "enum": [
+            "vertical",
+            "horizontal"
+          ],
+          "title": "Plane",
+          "type": "string"
+        },
+        "points_marker_m": {
+          "items": {
+            "maxItems": 3,
+            "minItems": 3,
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array"
+          },
+          "minItems": 1,
+          "title": "Points Marker M",
+          "type": "array"
+        },
+        "points_enu_m": {
+          "items": {
+            "maxItems": 3,
+            "minItems": 3,
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array"
+          },
+          "minItems": 1,
+          "title": "Points Enu M",
+          "type": "array"
+        },
+        "derived_fields": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Derived Fields",
+          "type": "array"
+        },
+        "independent_tape_error_m": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Independent Tape Error M"
+        }
+      },
+      "required": [
+        "observation_id",
+        "method",
+        "captured_at",
+        "uncertainty_m",
+        "confirmed",
+        "note",
+        "marker_id",
+        "plane",
+        "points_marker_m",
+        "points_enu_m",
+        "derived_fields",
+        "independent_tape_error_m"
+      ],
+      "title": "FragmentObservation",
+      "type": "object"
+    },
+    "FragmentOccluder": {
+      "additionalProperties": false,
+      "properties": {
+        "occluder_id": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_]*$",
+          "title": "Occluder Id",
+          "type": "string"
+        },
+        "room_id": {
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_]*$",
+          "title": "Room Id",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "kind": {
+          "const": "cuboid",
+          "title": "Kind",
+          "type": "string"
+        },
+        "base_center_m": {
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Base Center M",
+          "type": "array"
+        },
+        "dimensions_m": {
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            }
+          ],
+          "title": "Dimensions M",
+          "type": "array"
+        },
+        "yaw_deg_ccw_from_east": {
+          "exclusiveMaximum": 360,
+          "minimum": 0,
+          "title": "Yaw Deg Ccw From East",
+          "type": "number"
+        },
+        "material": {
+          "const": "opaque",
+          "title": "Material",
+          "type": "string"
+        },
+        "quality": {
+          "$ref": "#/$defs/FragmentQuality"
+        }
+      },
+      "required": [
+        "occluder_id",
+        "room_id",
+        "name",
+        "kind",
+        "base_center_m",
+        "dimensions_m",
+        "yaw_deg_ccw_from_east",
+        "material",
+        "quality"
+      ],
+      "title": "FragmentOccluder",
+      "type": "object"
+    },
+    "FragmentQuality": {
+      "additionalProperties": false,
+      "properties": {
+        "observation_ids": {
+          "items": {
+            "pattern": "^[a-zA-Z][a-zA-Z0-9_]*$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Observation Ids",
+          "type": "array"
+        },
+        "confirmed": {
+          "const": false,
+          "title": "Confirmed",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "observation_ids",
+        "confirmed"
+      ],
+      "title": "FragmentQuality",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "sunsync.fr06-fragment/1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "units": {
+      "const": "m",
+      "title": "Units",
+      "type": "string"
+    },
+    "coordinate_frame": {
+      "const": "ENU",
+      "title": "Coordinate Frame",
+      "type": "string"
+    },
+    "markers": {
+      "items": {
+        "$ref": "#/$defs/FragmentMarker"
+      },
+      "minItems": 1,
+      "title": "Markers",
+      "type": "array"
+    },
+    "observations": {
+      "items": {
+        "$ref": "#/$defs/FragmentObservation"
+      },
+      "minItems": 1,
+      "title": "Observations",
+      "type": "array"
+    },
+    "occluders": {
+      "items": {
+        "$ref": "#/$defs/FragmentOccluder"
+      },
+      "minItems": 1,
+      "title": "Occluders",
+      "type": "array"
+    },
+    "windows": {
+      "items": {},
+      "maxItems": 0,
+      "title": "Windows",
+      "type": "array"
+    },
+    "protected_regions": {
+      "items": {},
+      "maxItems": 0,
+      "title": "Protected Regions",
+      "type": "array"
+    },
+    "extensions": {
+      "additionalProperties": true,
+      "title": "Extensions",
+      "type": "object"
+    }
+  },
+  "required": [
+    "schema_version",
+    "units",
+    "coordinate_frame",
+    "markers",
+    "observations",
+    "occluders",
+    "windows",
+    "protected_regions",
+    "extensions"
+  ],
+  "title": "BoardCameraFragmentV1",
+  "type": "object"
+}

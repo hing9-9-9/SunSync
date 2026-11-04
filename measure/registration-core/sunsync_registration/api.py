@@ -8,6 +8,7 @@ from .models import PlanRequest, MeasureRequest, DetectRequest, Strict
 from .core import plan, measure, compose_scene
 from .pose import detect
 from .fr06 import export_fragment
+from .fragment_schema import BoardCameraFragmentV1
 
 
 class SceneRequest(Strict):
@@ -80,9 +81,17 @@ def create_app():
     def make_scene(request: SceneRequest):
         return run(compose_scene, request.measurements)
 
-    @app.post("/v1/fr06")
+    @app.post(
+        "/v1/fr06",
+        response_model=BoardCameraFragmentV1,
+        description="Versioned board-camera fragment. Not accepted by the legacy backend /api/scenes.",
+    )
     def make_fragment(request: FragmentRequest):
         return run(export_fragment, request.measurement)
+
+    @app.post("/v1/fr06/validate")
+    def validate_fragment(request: BoardCameraFragmentV1):
+        return {"valid": True, "schema_version": request.schema_version}
 
     return app
 

@@ -1,7 +1,15 @@
 import hashlib
 import json
 import numpy as np
-from .models import PlanRequest, MeasureRequest, rigid
+from .models import (
+    Alignment,
+    Board,
+    Floor,
+    ModelPlacement,
+    PlanRequest,
+    MeasureRequest,
+    rigid,
+)
 from .pose import estimate
 from .geometry import fit_surface
 
@@ -245,27 +253,71 @@ def measure(request: MeasureRequest):
     return response
 
 
+def canonical_model(value: dict):
+    """Rebuild placement from validated transforms, never caller-derived fields."""
+    if (
+        value.get("schema_version") != "sunsync.registration/1"
+        or value.get("units") != "m"
+    ):
+        raise ValueError("Unsupported measurement contract")
+    if value.get("status") != "model_ready_unreviewed":
+        raise ValueError("Only complete model placements can enter a scene")
+    reference = value["reference"]
+    if value["reference_id"] != digest(reference):
+        raise ValueError("Reference identity mismatch")
+    Board.model_validate(reference["board"])
+    model = value.get("model")
+    if model is None:
+        raise ValueError("Missing model")
+    if model["model_id"] != value["model_id"]:
+        raise ValueError("Model ID disagrees with measurement")
+    tm = rigid(model["T_board_model"])
+    data = {
+        "model_id": model["model_id"],
+        "dimensions_m": model["dimensions_m"],
+        "T_board_model": tm.ravel().tolist(),
+        "base_center_board_m": tm[:3, 3].tolist(),
+        "height_source": model["height_source"],
+        "floor_supported": model["floor_supported"],
+    }
+    alignment = reference["alignment"]
+    floor = Floor.model_validate(reference["floor"]) if reference["floor"] else None
+    if alignment is not None:
+        a = Alignment.model_validate(alignment)
+        te_b = rigid(a.T_enu_board)
+        expected = te_b @ tm
+        if not np.allclose(rigid(model["T_enu_model"]), expected, atol=1e-6):
+            raise ValueError("Model ENU transform inconsistent with reference")
+        up = te_b[:3, :3].T @ np.array([0.0, 0.0, 1.0])
+        if floor and (
+            not np.allclose(up, floor.up_board, atol=1e-6)
+            or not np.isclose(te_b[2, 3], floor.board_origin_height_m, atol=1e-4)
+        ):
+            raise ValueError("Floor reference disagrees with ENU transform")
+        data.update(
+            T_enu_model=expected.ravel().tolist(),
+            base_center_enu_m=expected[:3, 3].tolist(),
+            yaw_deg_ccw_from_east=float(
+                np.degrees(np.arctan2(expected[1, 0], expected[0, 0])) % 360
+            ),
+        )
+    elif floor:
+        up = np.array(floor.up_board)
+        if model.get("T_enu_model") is not None:
+            raise ValueError("ENU placement without ENU reference")
+    else:
+        raise ValueError("Model placement requires a floor or ENU reference")
+    if not np.allclose(tm[:3, 2], up, atol=1e-6):
+        raise ValueError("Model up axis disagrees with floor reference")
+    return ModelPlacement.model_validate(data).model_dump(
+        mode="json", exclude_none=True
+    )
+
+
 def compose_scene(measurements: list[dict]):
     if not measurements:
         raise ValueError("At least one measurement is required")
-    from .models import Alignment
-
-    for value in measurements:
-        reference = value["reference"]
-        if value["reference_id"] != digest(reference):
-            raise ValueError("Reference identity mismatch")
-        model = value.get("model")
-        if model is None:
-            raise ValueError("Missing model")
-        tm = rigid(model["T_board_model"])
-        dims = np.asarray(model["dimensions_m"], float)
-        if dims.shape != (3,) or not np.isfinite(dims).all() or np.min(dims) <= 0:
-            raise ValueError("Invalid model dimensions")
-        if reference["alignment"] is not None:
-            a = Alignment.model_validate(reference["alignment"])
-            expected = rigid(a.T_enu_board) @ tm
-            if not np.allclose(rigid(model["T_enu_model"]), expected, atol=1e-6):
-                raise ValueError("Model ENU transform inconsistent with reference")
+    models = [canonical_model(value) for value in measurements]
     ids = [v["furniture_id"] for v in measurements]
     if len(ids) != len(set(ids)):
         raise ValueError("Duplicate furniture_id")
@@ -278,11 +330,6 @@ def compose_scene(measurements: list[dict]):
         raise ValueError(
             "Different board references require ENU alignment before merging"
         )
-    if any(
-        v.get("status") != "model_ready_unreviewed" or v.get("model") is None
-        for v in measurements
-    ):
-        raise ValueError("Only complete model placements can enter a scene")
     return {
         "schema_version": "sunsync.scene/1",
         "space_id": next(iter(space_ids)),
@@ -293,9 +340,9 @@ def compose_scene(measurements: list[dict]):
                 "furniture_id": v["furniture_id"],
                 "furniture_kind": v["furniture_kind"],
                 "reference_id": v["reference_id"],
-                **v["model"],
+                **model,
             }
-            for v in measurements
+            for v, model in zip(measurements, models)
         ],
         "confirmed": False,
         "geometry_source": "standard_model_approximation",

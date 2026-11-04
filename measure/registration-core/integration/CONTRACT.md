@@ -10,18 +10,25 @@ API는 상태를 저장하지 않습니다. 사용자·공간·보드·가구·�
 | `POST /v1/detect` | Base64 JPEG/PNG, 보드 규격, 카메라 정보 | 검출 ID·코너 픽셀 좌표, 자세 유효 상태 |
 | `POST /v1/measurements` | plan 원본, 보드, 지점별 코너 관측·카메라, 바닥/ENU | 지점 좌표·형상·모델 배치·재촬영 이유 |
 | `POST /v1/scenes` | 동일 공간의 완료 측정 결과 배열 | 복수 가구 Scene |
-| `POST /v1/fr06` | ENU 정렬이 있는 완료 측정 결과 | FR-06 확장 fragment |
+| `POST /v1/fr06` | ENU 정렬이 있는 완료 측정 결과 | `sunsync.fr06-fragment/1` |
+| `POST /v1/fr06/validate` | 별도 버전의 fragment | 스키마·참조·좌표 일관성 검증 |
 
 전체 요청 스키마는 실행 서버 `/openapi.json`과 저장소 `openapi.json`을 참고하세요. 예제 JSON에는 실제 사용자의 사진·보정 정보가 없습니다.
 
 ## 사진을 자동 분류하는 방법
 
 1. 앱은 `/v1/plans`의 `steps`를 순서대로 표시합니다.
-2. 현재 `point_id`를 캡처 버튼 시점에 확정하고 `capture_id`를 생성합니다. 비동기 검출 응답이 늦게 와도 다음 단계의 ID로 바꾸지 않습니다.
+2. 캡처 버튼 시점에 `begin_capture(capture_id)`를 호출해 티켓의 `point_id`를 고정합니다. 비동기 응답 때 현재 지점 ID를 다시 읽지 않습니다. `accept(capture_id, point_id, camera, detection_response)`에 티켓의 두 ID를 함께 전달합니다. 이전 지점의 늦은 응답은 다음 지점으로 분류하지 않고 거절합니다.
 3. 검출에 실패하면 현재 지점에 머무르고 재촬영합니다. 성공하면 해당 가구·지점에 코너 픽셀 좌표와 카메라 정보를 함께 저장합니다.
 4. 지정된 반복 수를 채우면 다음 지점으로 이동합니다. 사용자가 파일명을 변경하지 않습니다.
 5. 앱은 같은 정지 위치에서 얻은 실제 서로 다른 프레임을 사용합니다. 복사한 동일 사진에 새 ID를 주는 행위는 반복성 검증이 아닙니다.
-6. 측정 결과의 `required_actions`에 `recapture:P2` 등이 있으면 해당 지점만 다시 안내합니다. 재촬영 결과를 기존 것과 혼합할지 대체할지는 UI가 명시적으로 관리합니다. 참조 `CaptureSession.retake()`는 대체 방식입니다.
+6. 측정 결과의 `required_actions`에 `recapture:P2` 등이 있으면 해당 지점만 다시 안내합니다. 참조 `CaptureSession.retake()`는 해당 지점의 결과를 대체하고 처리 중인 티켓을 모두 무효화합니다. 재촬영 뒤 같은 지점에 도착한 과거 응답도 수용하지 않습니다. 새 사진에는 새 capture ID를 사용합니다.
+
+```python
+ticket = session.begin_capture(capture_id)  # 셔터 시점
+# 같은 이미지·카메라 정보로 /v1/detect 호출 후
+session.accept(ticket["capture_id"], ticket["point_id"], camera, detection_response)
+```
 
 `samples_per_point=3`은 기본값이며 고정된 서비스 요구사항은 아닙니다. 1장은 반복성 평가가 불가능해 `repeat_spread_m=null`을 반환합니다. 어느 경우도 `uncertainty_m`나 실측 오차를 0으로 만들지 않습니다.
 
@@ -41,7 +48,9 @@ API는 상태를 저장하지 않습니다. 사용자·공간·보드·가구·�
 - `model.dimensions_m`는 모델 경계상자 크기, 각 변환은 행 우선 4×4입니다. 앱 렌더러가 y-up/z-up 또는 열 우선 행렬을 쓰면 변환해야 합니다.
 - 가구 형태와 회전은 근사입니다. 표준 모델 ID와 로컬 축·원점을 카탈로그에서 일관되게 정의하세요.
 - `reference_id`는 보드 치수와 정렬 정보의 해시입니다. 정렬/보드 치수 변경 후에는 기존 측정 결과를 같은 참조로 취급하지 않습니다.
-- FR-06 출력은 측정 fragment입니다. 수신 시스템이 Scene의 다른 객체·ID·revision을 검증하고 합쳐야 합니다.
+- `/v1/scenes`와 fragment 출력은 검증된 행렬에서 중심·yaw를 다시 계산하고 허용된 모델 필드만 반환합니다. 클라이언트가 보낸 파생 좌표나 임의 필드는 전달하지 않습니다.
+- fragment 버전은 `sunsync.fr06-fragment/1`이며 백엔드 FR-06 `0.2.0`이 아닙니다. 기존 `/api/scenes`로 직접 전달하지 않습니다. 수직/수평 기준 마커, 일반 3D 관측점, 알 수 없는 촬영 시각 `null`은 이 확장 계약에만 정의돼 있습니다.
+- `derived_fields`는 가로·깊이의 인덱스 경로와 yaw, 바닥에 있는 경우의 base-center만 포함합니다. 높이·설치 높이는 표준 모델 확장 정보에 남깁니다. 수신 측의 버전 어댑터와 전체 Scene 검증은 별도 작업입니다.
 
 ## 배포 담당 확인 사항
 
