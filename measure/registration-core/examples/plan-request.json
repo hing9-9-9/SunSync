@@ -1,0 +1,15 @@
+{
+  "space_id": "room_01",
+  "furniture_id": "desk_01",
+  "furniture_kind": "desk",
+  "model_id": "catalog/desk_normalized",
+  "shape": {
+    "kind": "rectangle",
+    "vertices": []
+  },
+  "samples_per_point": 3,
+  "height_mode": "surface_is_top",
+  "manual_height_m": null,
+  "floor_supported": true,
+  "manual_base_height_m": null
+}
