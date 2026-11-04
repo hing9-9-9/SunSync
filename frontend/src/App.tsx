@@ -53,10 +53,9 @@ function App() {
     draftWarning,
     setPage,
     toast,
-    setToast,
-    undoDraft,
-    setUndoDraft,
-    deleteWithUndo,
+    pendingDelete,
+    confirmDelete,
+    askDelete,
     guideIndex,
     setGuideIndex,
     addingByQr,
@@ -940,7 +939,8 @@ function App() {
                             <button
                               className="text-button furniture-delete"
                               onClick={() => {
-                                deleteWithUndo(
+                                const linked = draft.regions.filter((r) => r.furnitureId === furniture.id).length;
+                                askDelete(
                                   {
                                     ...draft,
                                     revision: draft.revision + 1,
@@ -951,10 +951,13 @@ function App() {
                                       (r) => r.furnitureId !== furniture.id,
                                     ),
                                   },
-                                  `${furniture.name} 삭제됨`,
+                                  `'${furniture.name}'을 삭제할까요?`,
+                                  linked ? `이 가구에 지정한 보호 영역 ${linked}개도 함께 삭제됩니다.` : undefined,
+                                  () => {
+                                    setSelectedFurniture(null);
+                                    setSelectedRegion(null);
+                                  },
                                 );
-                                setSelectedFurniture(null);
-                                setSelectedRegion(null);
                               }}
                             >
                               가구 삭제
@@ -1042,24 +1045,27 @@ function App() {
                           <p className="grade-description" aria-live="polite">
                             {grades[region.grade]}
                           </p>
-                          <button
-                            className="text-button danger"
-                            onClick={() => {
-                              deleteWithUndo(
-                                {
-                                  ...draft,
-                                  revision: draft.revision + 1,
-                                  regions: draft.regions.filter(
-                                    (r) => r.id !== region.id,
-                                  ),
-                                },
-                                `${region.name} 삭제됨`,
-                              );
-                              setSelectedRegion(null);
-                            }}
-                          >
-                            보호 영역 삭제
-                          </button>
+                          <div className="furniture-actions">
+                            <button
+                              className="text-button furniture-delete region-delete"
+                              onClick={() => {
+                                askDelete(
+                                  {
+                                    ...draft,
+                                    revision: draft.revision + 1,
+                                    regions: draft.regions.filter(
+                                      (r) => r.id !== region.id,
+                                    ),
+                                  },
+                                  `'${region.name}'을 삭제할까요?`,
+                                  undefined,
+                                  () => setSelectedRegion(null),
+                                );
+                              }}
+                            >
+                              보호 영역 삭제
+                            </button>
+                          </div>
                         </>
                       )}
                       <div className="actions">
@@ -1422,6 +1428,20 @@ function App() {
               </button>
             </>
           )}
+          {modal === "delete-item" && pendingDelete && (
+            <>
+              <h2>{pendingDelete.title}</h2>
+              <p className="muted">
+                {pendingDelete.body ? `${pendingDelete.body} ` : ""}삭제한 내용은 저장할 때 반영됩니다.
+              </p>
+              <button className="primary destructive" onClick={confirmDelete}>
+                삭제
+              </button>
+              <button className="secondary" onClick={dismissModal}>
+                취소
+              </button>
+            </>
+          )}
           {modal === "delete-temp" && (
             <>
               <h2>
@@ -1515,19 +1535,6 @@ function App() {
         {toast && (
           <div className="toast" role="status">
             {toast}
-            {undoDraft && draft && (
-              <button
-                type="button"
-                className="toast-action"
-                onClick={() => {
-                  setDraft(undoDraft);
-                  setUndoDraft(null);
-                  setToast("");
-                }}
-              >
-                되돌리기
-              </button>
-            )}
           </div>
         )}
       </div>

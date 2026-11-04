@@ -147,6 +147,7 @@ export function useSpaceApp() {
     | "reload-server"
     | "delete-space"
     | "delete-temp"
+    | "delete-item"
     | null
   >(null);
   const [error, setError] = useState("");
@@ -159,13 +160,20 @@ export function useSpaceApp() {
     setPageState(next);
   };
   const [toast, setToast] = useState("");
-  // Deletions in the editor are immediate, so the toast offers a one-step undo.
-  const [undoDraft, setUndoDraft] = useState<Space | null>(null);
-  function deleteWithUndo(next: Space, message: string) {
+  // Editor deletions ask first (same dialog as space delete), then apply and report.
+  const [pendingDelete, setPendingDelete] = useState<{ next: Space; title: string; body?: string; after?: () => void } | null>(null);
+  function askDelete(next: Space, title: string, body?: string, after?: () => void) {
     if (!draft) return;
-    setUndoDraft(draft);
-    setDraft(next);
-    setToast(message);
+    setPendingDelete({ next, title, body, after });
+    setModal("delete-item");
+  }
+  function confirmDelete() {
+    if (!pendingDelete) return;
+    setDraft(pendingDelete.next);
+    pendingDelete.after?.();
+    setPendingDelete(null);
+    setModal(null);
+    setToast("삭제했습니다.");
   }
   const [guideIndex, setGuideIndex] = useState<number | null>(
     initialNavigation.guideIndex,
@@ -722,10 +730,9 @@ export function useSpaceApp() {
     if (!toast) return;
     const id = window.setTimeout(() => {
       setToast("");
-      setUndoDraft(null);
-    }, undoDraft ? 6000 : 3500);
+    }, 3500);
     return () => clearTimeout(id);
-  }, [toast, undoDraft]);
+  }, [toast]);
   useEffect(() => {
     const d = modalRef.current;
     if (modal && d && !d.open) {
@@ -1039,19 +1046,19 @@ export function useSpaceApp() {
             disabled={draft.zones.length <= 1}
             title={draft.zones.length <= 1 ? "최소 1개 구역 필요" : undefined}
             onClick={() => {
-              // Immediate with undo (toast) instead of a confirmation dialog.
               const next = removeZone(draft, draft.zone);
               const furnitureCount = draft.furniture.filter((f) => f.zone === draft.zone).length;
               const regionCount = draft.regions.filter((r) => r.zone === draft.zone).length;
-              deleteWithUndo(
+              askDelete(
                 next,
-                `${draft.zone} 삭제됨 · 가구 ${furnitureCount}개, 보호 영역 ${regionCount}개`,
+                `'${draft.zone}'을 삭제할까요?`,
+                `이 구역의 가구 ${furnitureCount}개와 보호 영역 ${regionCount}개도 함께 삭제됩니다.`,
+                () => {
+                  setSelectedFurniture(next.furniture.find((f) => f.zone === next.zone)?.id ?? null);
+                  setSelectedRegion(null);
+                  setError("");
+                },
               );
-              setSelectedFurniture(
-                next.furniture.find((f) => f.zone === next.zone)?.id ?? null,
-              );
-              setSelectedRegion(null);
-              setError("");
             }}
           >
             선택 구역 삭제
@@ -1321,9 +1328,9 @@ export function useSpaceApp() {
     setPage,
     toast,
     setToast,
-    undoDraft,
-    setUndoDraft,
-    deleteWithUndo,
+    pendingDelete,
+    confirmDelete,
+    askDelete,
     guideIndex,
     setGuideIndex,
     pendingPage,
