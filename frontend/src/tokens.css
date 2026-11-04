@@ -364,8 +364,6 @@
 :is(.app.award-app, .app.award-mobile) .temp-drafts .status-pill { flex-shrink: 0; white-space: nowrap; }
 :is(.app.award-app, .app.award-mobile) .temp-drafts small { word-break: keep-all; }
 .app.award-mobile .temp-drafts .row { background: var(--c-white); border: 0; border-radius: 16px; }
-/* Editor save status: small muted line under the space name. */
-.app.award-app .editor-command-bar > div > .editor-save-status { display: block; min-height: var(--lh-small); font-size: var(--fs-small); line-height: var(--lh-small); color: var(--c-muted); }
 /* Editor header ends with the same hairline as the space detail header. */
 .app.award-app .editor-command-bar { border-bottom: 1px solid var(--c-bdbac5) !important; margin-bottom: 0 !important; }
 .app.award-app .editor-command-bar + .editor-step-label { margin: 0; }
@@ -378,3 +376,9 @@
 /* In the app the field box is the bordered element; it alone turns purple. */
 .app.award-mobile .field :is(input, select, textarea):focus-visible { outline: none !important; box-shadow: none !important; }
 .app.award-mobile .field:focus-within { border-color: var(--c-action) !important; }
+
+/* Inspector actions (보호 영역 지정, 가구 삭제, 보호 영역 삭제): hug their label, sit close to the fields they act on. */
+:is(.app.award-app, .app.award-mobile) .inspector .furniture-actions { display: flex !important; flex-wrap: wrap; gap: var(--space-2); margin: 0 !important; width: auto; }
+/* The inspector column already spaces children 12px; the grade note must not add its own gap on top. */
+:is(.app.award-app, .app.award-mobile) .inspector .grade-description:has(+ .furniture-actions) { padding-bottom: 0 !important; margin-bottom: 0 !important; }
+:is(.app.award-app, .app.award-mobile) .inspector .furniture-actions > button { width: auto !important; flex: 0 0 auto; padding: 0 var(--space-5) !important; }

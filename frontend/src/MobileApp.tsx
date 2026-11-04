@@ -399,8 +399,9 @@ function MobileApp() {
                   <strong>
                     {space.building || "새 건물"}, {space.name || "새 공간"}
                   </strong>
-                  <span className="context-mode">
-                    {editing ? "편집 중" : "공간 현황"}
+                  {/* Save state rides on the existing "편집 중" label, so nothing shifts when it appears. */}
+                  <span className="context-mode" role="status">
+                    {editing ? `편집 중${!unsaved ? "" : !leaveUnsaved ? " · 임시 저장됨" : " · 저장되지 않은 변경사항"}` : "공간 현황"}
                   </span>
                 </div>
               )}
@@ -1004,10 +1005,6 @@ function MobileApp() {
                   {!isApp && <div className="editor-command-bar">
                     <div>
                       <h1>{draft.name || "새 공간"}</h1>
-                      {/* Status sits under the title it describes; a clean editor says nothing. */}
-                      <span className="editor-save-status" role="status">
-                        {!unsaved ? "" : !leaveUnsaved ? "임시 저장됨" : "저장되지 않은 변경사항"}
-                      </span>
                     </div>
                     <div className="editor-command-actions">
                       <button
@@ -1909,7 +1906,7 @@ function MobileApp() {
           {modal === "discard" && (
             <>
               <button type="button" className="dialog-close" aria-label="계속 편집" onClick={() => setModal(null)}>
-                ✕
+                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
               </button>
               <h2>저장하지 않은 변경 내용이 있습니다</h2>
               <p className="muted">
