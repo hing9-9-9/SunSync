@@ -396,3 +396,33 @@ def test_ui_save_predict_edit_and_stale_prediction(client, payload):
     assert client.post(url, json=request).status_code == 409
     request["expected_scene_revision"] = 2
     assert client.post(url, json=request).status_code == 200
+
+
+def test_saved_ui_space_runs_fr02_and_rejects_old_revision(client, payload):
+    payload["site"]["northConfirmed"] = True
+    payload["windowDimensions"] = {
+        "width": 4,
+        "height": 2.5,
+        "wall": "south",
+        "offset": 1,
+        "sill": 0,
+    }
+    saved_response = client.post("/api/ui/spaces", json=payload)
+    assert saved_response.status_code == 201, saved_response.text
+    saved = saved_response.json()
+    url = f"/api/scenes/{saved['serverSceneId']}/shading-plans"
+    request = {
+        "start_time": "2026-11-02T00:00:00+09:00",
+        "duration_minutes": 1440,
+        "interval_seconds": 1800,
+        "expected_scene_revision": 1,
+    }
+    response = client.post(url, json=request)
+    assert response.status_code == 200, response.text
+    result = response.json()
+    assert result["scene_revision"] == 1
+    assert any(
+        s["state"] == "opaque" for w in result["windows"] for c in w["cells"] for s in c["segments"]
+    )
+    assert client.put("/api/ui/spaces/test-space", json=saved).status_code == 200
+    assert client.post(url, json=request).status_code == 409

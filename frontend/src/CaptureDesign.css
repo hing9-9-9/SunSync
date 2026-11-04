@@ -45,3 +45,13 @@
 .app.award-mobile.mode-app.page-capture .capture-action { bottom:calc(12px + 64px + 10px + env(safe-area-inset-bottom)); padding:0; border:0; border-radius:0; background:transparent; box-shadow:none; backdrop-filter:none; -webkit-backdrop-filter:none; }
 .app.award-mobile.mode-app.page-capture .capture-action :is(.file-button,.primary) { min-height:50px; box-shadow:var(--shadow-action-raised); }
 .app.award-mobile.mode-app.page-capture:not(:has(nav.mobile-nav)) .capture-action { bottom:calc(12px + env(safe-area-inset-bottom)); }
+.app.award-mobile.mode-app.page-capture .shape-plan { margin-top:16px; padding:16px; background:var(--c-white); border-radius:var(--radius-card); box-shadow:var(--at-card-shadow); }
+.app.award-mobile.mode-app.page-capture .shape-plan svg { display:block; width:100%; height:180px; touch-action:manipulation; }
+.shape-plan .shape-outline { fill:var(--c-protect); stroke:var(--c-action-ink); stroke-width:1; }
+.shape-plan .point { fill:var(--c-action-ink); }
+.shape-plan .point-current { fill:var(--c-danger); }
+.shape-plan text { font-size:5px; fill:var(--c-ink); }
+.app.award-mobile.mode-app.page-capture .corner-steps { grid-template-columns:repeat(auto-fit,minmax(48px,1fr)); }
+.point-photos { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin:12px 0; }
+.point-photos img { width:100%; aspect-ratio:1; object-fit:cover; border-radius:8px; }
+.point-photos button { width:100%; padding:4px; font-size:12px; }

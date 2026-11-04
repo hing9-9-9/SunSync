@@ -195,7 +195,7 @@ const typicalSize: Record<FurnitureType, [number, number, number]> = {
   display: [1.2, 0.6, 1],
   other: [1, 0.6, 1],
 };
-export type CapturedFurniture = { name: string; type: FurnitureType };
+export type CapturedFurniture = { name: string; type: FurnitureType; capture?: {shape: string; points: {id: string; position: {x:number;y:number}; photos: File[]}[]} };
 // Lays captured furniture out in rows inside the room, clamped to its size.
 export function placeCapturedFurniture(
   space: Pick<Space, "width" | "depth" | "height" | "zone">,

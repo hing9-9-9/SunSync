@@ -564,7 +564,7 @@ export default function AwardPreview({
             {[
               {
                 title: "QR로 공간 인식",
-                text: "가구 네 모서리에서 창문 QR 마커를 촬영합니다.",
+                text: "상판 형태에 맞춰 각 지점에서 창문 QR 마커를 3장씩 촬영합니다.",
                 art: "scan",
               },
               {

@@ -1067,7 +1067,9 @@ export function useSpaceApp() {
       )}
     </div>
   );
+  const capturedPhotos = useRef<CapturedFurniture[]>([]);
   function finishCapture(items: CapturedFurniture[]) {
+    capturedPhotos.current = items;
     if (!draft || !items.length) return;
     const kept = addingByQr
       ? draft.furniture
