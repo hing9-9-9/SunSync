@@ -28,7 +28,7 @@ export function shouldConfirmNavigation(
   current: Page,
   next: Page,
 ): boolean {
-  return hasDraft && current !== next && next !== "account";
+  return hasDraft && current !== next;
 }
 
 export function locationUrl(route: BrowserLocation): string {
@@ -100,4 +100,26 @@ export function resolveLocation(
   if (result.page === "detail" && !spaces.some((s) => s.id === result.activeId))
     result.page = "spaces";
   return result;
+}
+
+// Incomplete edits the user chose to keep on this device ("임시 저장"); only full saves reach the server.
+export const TEMP_DRAFTS_KEY = "sunsync-ui-temp-drafts-v1";
+export type TempDraft = { space: Space; page: Page; savedAt: string };
+export function readTempDrafts(storage: Pick<Storage, "getItem">): TempDraft[] {
+  try {
+    const list = JSON.parse(storage.getItem(TEMP_DRAFTS_KEY) ?? "[]");
+    if (!Array.isArray(list)) return [];
+    return list.filter(
+      (t) =>
+        typeof t?.space?.id === "string" &&
+        Array.isArray(t.space.furniture) &&
+        Array.isArray(t.space.regions) &&
+        Array.isArray(t.space.zones) &&
+        isEditingPage(t.page) &&
+        t.page !== "processing" &&
+        typeof t.savedAt === "string",
+    );
+  } catch {
+    return [];
+  }
 }

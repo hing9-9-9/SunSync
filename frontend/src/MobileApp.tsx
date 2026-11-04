@@ -74,7 +74,6 @@ function MobileApp() {
     deleteWithUndo,
     guideIndex,
     setGuideIndex,
-    pendingPage,
     addingByQr,
     setAddingByQr,
     rememberQrReturn,
@@ -115,6 +114,11 @@ function MobileApp() {
     reloadServerDraft,
     transferSpace,
     unsaved,
+    leaveUnsaved,
+    tempDrafts,
+    dropTempDraft,
+    resumeTempDraft,
+    leaveEditor,
     navigate,
     requireAccount,
     dismissModal,
@@ -471,14 +475,6 @@ function MobileApp() {
                 )}
               </div>
               )}
-              {draft && !editing && page !== "guide" && !(draftPage.current === "capture" && measurementJobs.some(job => job.space_id === draft.id && job.status !== "completed")) && (
-                <button
-                  className="secondary resume-edit"
-                  onClick={() => setPage(draftPage.current)}
-                >
-                  {draftPage.current === "capture" ? "촬영 이어하기" : "공간 편집 이어가기"}
-                </button>
-              )}
               {storageError && (
                 <p className="error" role="alert">
                   저장 공간을 사용할 수 없습니다. 변경 내용이 새로고침 후 사라질
@@ -544,6 +540,27 @@ function MobileApp() {
                     </p>
                   )}
                   {!isApp ? <WorkspaceCards spaces={spaces} selectSpace={selectSpace} onStart={begin} /> : page === "home" ? null : spaceList}
+                  {page === "spaces" && tempDrafts.length > 0 && (
+                    <section className="temp-drafts" aria-labelledby="temp-drafts-title">
+                      <h2 id="temp-drafts-title">작성 중인 공간</h2>
+                      {tempDrafts.map((t) => (
+                        <div className="row" key={t.space.id}>
+                          <button type="button" className="temp-draft-open" onClick={() => resumeTempDraft(t)}>
+                            <span>
+                              {t.space.name || "이름 없는 공간"}
+                              <small>
+                                {[t.space.building, t.space.floor].filter(Boolean).join(" ") || "건물 정보 없음"} · {new Date(t.savedAt).toLocaleDateString("ko-KR", { month: "long", day: "numeric" })} 임시 저장
+                              </small>
+                            </span>
+                            <span className="status-pill todo">작성 중</span>
+                          </button>
+                          <button type="button" className="text-button destructive-text" onClick={() => dropTempDraft(t.space.id)}>
+                            삭제
+                          </button>
+                        </div>
+                      ))}
+                    </section>
+                  )}
                   {unavailable.length > 0 && (
                     <section className="external-spaces">
                       <h2>다른 형식의 공간</h2>
@@ -992,20 +1009,22 @@ function MobileApp() {
                       <span className="editor-save-status" role="status">
                         {!unsaved
                           ? "변경사항 없음"
-                          : "저장되지 않은 변경사항"}
+                          : !leaveUnsaved
+                            ? "임시 저장됨"
+                            : "저장되지 않은 변경사항"}
                       </span>
-                      <button
-                        className="secondary"
-                        onClick={() => navigate("detail")}
-                      >
-                        편집 종료
-                      </button>
                       <button
                         className="primary"
                         disabled={saving || !!draftWarning}
                         onClick={save}
                       >
                         {saving ? "저장 중…" : "저장"}
+                      </button>
+                      <button
+                        className="secondary"
+                        onClick={() => navigate(spaces.some((s) => s.id === draft.id) ? "detail" : "spaces")}
+                      >
+                        닫기
                       </button>
                     </div>
                   </div>}
@@ -1331,7 +1350,7 @@ function MobileApp() {
                                 className="secondary"
                                 onClick={() => navigate(spaces.some((s) => s.id === draft.id) ? "detail" : "spaces")}
                               >
-                                편집 종료
+                                닫기
                               </button>
                             )}
                           </>
@@ -1359,7 +1378,7 @@ function MobileApp() {
                                 className="secondary"
                                 onClick={() => navigate(spaces.some((s) => s.id === draft.id) ? "detail" : "spaces")}
                               >
-                                편집 종료
+                                닫기
                               </button>
                             )}
                           </>
@@ -1517,12 +1536,7 @@ function MobileApp() {
                       <div className="detail-secondary">
                         <button
                           className="text-button"
-                          onClick={() => {
-                            setDraft(structuredClone(active));
-                            setSelectedFurniture(null);
-                            setSelectedRegion(null);
-                            setPage("register");
-                          }}
+                          onClick={() => editSpace(active, "register")}
                         >
                           공간 정보 수정
                         </button>
@@ -1864,36 +1878,18 @@ function MobileApp() {
           )}
           {modal === "discard" && (
             <>
-              <h2>변경 내용을 저장하시겠습니까?</h2>
+              <button type="button" className="dialog-close" aria-label="계속 편집" onClick={() => setModal(null)}>
+                ✕
+              </button>
+              <h2>저장하지 않은 변경 내용이 있습니다</h2>
               <p className="muted">
-                저장하지 않고 이동하면 수정 내용이 사라집니다.
+                임시 저장하면 입력한 데까지 이 기기에 남고, 내 공간의 작성 중인 공간에서 이어서 편집할 수 있습니다.
               </p>
-              <button
-                className="primary"
-                disabled={saving}
-                onClick={async () => {
-                  setModal(null);
-                  if (await save()) {
-                    if (pendingPage === "guide") setGuideIndex(null);
-                    setPage(pendingPage);
-                  }
-                }}
-              >
-                저장 후 이동
+              <button className="primary" onClick={() => leaveEditor(true)}>
+                임시 저장하고 나가기
               </button>
-              <button
-                className="secondary"
-                onClick={() => {
-                  setDraft(null);
-                  if (pendingPage === "guide") setGuideIndex(null);
-                  setPage(pendingPage);
-                  setModal(null);
-                }}
-              >
-                저장하지 않고 이동
-              </button>
-              <button className="secondary" onClick={() => setModal(null)}>
-                계속 편집
+              <button className="primary destructive" onClick={() => leaveEditor(false)}>
+                저장하지 않고 나가기
               </button>
             </>
           )}

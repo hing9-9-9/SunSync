@@ -53,8 +53,10 @@ import {
   locationUrl,
   readLocation,
   resolveLocation,
+  readTempDrafts,
+  TEMP_DRAFTS_KEY,
 } from "./navigation";
-import type { BrowserLocation, Page } from "./navigation";
+import type { BrowserLocation, Page, TempDraft } from "./navigation";
 
 export const titles: Record<Page, string> = {
   home: "홈",
@@ -121,6 +123,17 @@ export function useSpaceApp() {
     initialNavigation.activeId ?? initial.spaces[0]?.id ?? null,
   );
   const [draft, setDraft] = useState<Space | null>(initialNavigation.draft);
+  const [tempDrafts, setTempDrafts] = useState<TempDraft[]>(() => {
+    try {
+      return editorExample ? [] : readTempDrafts(localStorage);
+    } catch {
+      return [];
+    }
+  });
+  const unsaved = useMemo(() => hasUnsavedChanges(draft, spaces), [draft, spaces]);
+  // Leaving only asks when something changed since the last full or temporary save.
+  const tempDraft = draft ? tempDrafts.find((t) => t.space.id === draft.id) : undefined;
+  const leaveUnsaved = tempDraft ? hasUnsavedChanges(draft, [tempDraft.space]) : unsaved;
   const [selectedFurniture, setSelectedFurniture] = useState<string | null>(
     editorExample ? initial.spaces[0].furniture[0].id : null,
   );
@@ -481,6 +494,17 @@ export function useSpaceApp() {
         draft,
         spaces,
       );
+      if (draft && isEditingPage(page) && !isEditingPage(target.page)) {
+        if (leaveUnsaved) {
+          // Back out of an edited editor: put the editor entry back and ask first.
+          const here: BrowserLocation = { page, guideIndex, activeId, draft };
+          window.history.pushState({ ...window.history.state, sunSyncNavigation: here }, "", locationUrl(here));
+          setPendingPage(target.page);
+          setModal("discard");
+          return;
+        }
+        target.draft = null;
+      }
       window.history.replaceState(
         { ...window.history.state, sunSyncNavigation: target },
         "",
@@ -507,7 +531,7 @@ export function useSpaceApp() {
     }
     window.addEventListener("popstate", restore);
     return () => window.removeEventListener("popstate", restore);
-  }, [account, draft, spaces]);
+  }, [account, draft, spaces, page, guideIndex, activeId, leaveUnsaved]);
 
   useEffect(() => {
     if (editorExample) return;
@@ -662,6 +686,15 @@ export function useSpaceApp() {
       setStorageError(true);
     }
   }, [account, spaces]);
+  useEffect(() => {
+    if (editorExample) return;
+    try {
+      localStorage.setItem(TEMP_DRAFTS_KEY, JSON.stringify(tempDrafts));
+    } catch {
+      // eslint-disable-next-line react/set-state-in-effect -- Reflect external storage availability in the UI.
+      setStorageError(true);
+    }
+  }, [tempDrafts]);
   // Errors take focus so they are read out; a form error focuses its first wrong field instead.
   const fieldFocus = useRef<HTMLElement | null>(null);
   useEffect(() => {
@@ -715,21 +748,20 @@ export function useSpaceApp() {
     };
   }, [page]);
 
-  const unsaved = useMemo(() => hasUnsavedChanges(draft, spaces), [draft, spaces]);
   useEffect(() => {
-    if (!unsaved) return;
+    if (!leaveUnsaved) return;
     const handler = (e: BeforeUnloadEvent) => {
       e.preventDefault();
     };
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
-  }, [unsaved]);
+  }, [leaveUnsaved]);
 
   function navigate(next: Page) {
     if (next === page) return;
     if (shouldConfirmNavigation(!!draft, page, next)) {
       // An editor left without edits (e.g. reopened with Back after saving) closes quietly.
-      if (unsaved) {
+      if (leaveUnsaved) {
         setPendingPage(next);
         setModal("discard");
         return;
@@ -740,6 +772,28 @@ export function useSpaceApp() {
       setGuideIndex(null);
     }
     setPage(next);
+  }
+  // Confirm dialog choices: keep the edit as a temporary draft on this device, or drop it.
+  function leaveEditor(keep: boolean) {
+    if (keep && draft) {
+      const entry = { space: draft, page: draftPage.current, savedAt: new Date().toISOString() };
+      setTempDrafts((current) => [entry, ...current.filter((t) => t.space.id !== draft.id)]);
+      setToast("입력한 내용을 임시 저장했습니다.");
+    }
+    setDraft(null);
+    setModal(null);
+    if (pendingPage === "guide") setGuideIndex(null);
+    setPage(pendingPage);
+  }
+  function dropTempDraft(id: string) {
+    setTempDrafts((current) => current.filter((t) => t.space.id !== id));
+  }
+  function resumeTempDraft(t: TempDraft, at: Page = t.page) {
+    if (spaces.some((s) => s.id === t.space.id)) setActiveId(t.space.id);
+    setDraft(structuredClone(t.space));
+    setSelectedFurniture(at === "register" ? null : (t.space.furniture[0]?.id ?? null));
+    setSelectedRegion(null);
+    setPage(at);
   }
   function requireAccount(action: () => void) {
     if (account) action();
@@ -796,12 +850,14 @@ export function useSpaceApp() {
       setSaving(false);
     }
   }
-  function editSpace(s: Space) {
+  function editSpace(s: Space, at: Page = "protect") {
+    const temp = tempDrafts.find((t) => t.space.id === s.id);
+    if (temp) return resumeTempDraft(temp, at);
     setActiveId(s.id);
     setDraft(structuredClone(s));
-    setSelectedFurniture(s.furniture[0]?.id ?? null);
+    setSelectedFurniture(at === "register" ? null : (s.furniture[0]?.id ?? null));
     setSelectedRegion(null);
-    setPage("protect");
+    setPage(at);
   }
   function change(patch: Partial<Space>) {
     setError("");
@@ -850,6 +906,7 @@ export function useSpaceApp() {
     try {
       if (!editorExample) await deleteServerSpace(active.id);
       setSpaces((current) => current.filter((s) => s.id !== active.id));
+      dropTempDraft(active.id);
       setActiveId(null);
       setDraft(null);
       setModal(null);
@@ -890,6 +947,7 @@ export function useSpaceApp() {
         ? { ...draft, savedAt: new Date().toISOString() }
         : await saveServerSpace(draft);
       setSpaces((current) => upsertSpace(current, saved));
+      dropTempDraft(saved.id);
       setActiveId(saved.id);
       setDraft(null);
       setPageState("detail");
@@ -1310,6 +1368,11 @@ export function useSpaceApp() {
     reloadServerDraft,
     transferSpace,
     unsaved,
+    leaveUnsaved,
+    tempDrafts,
+    dropTempDraft,
+    resumeTempDraft,
+    leaveEditor,
     navigate,
     requireAccount,
     dismissModal,
