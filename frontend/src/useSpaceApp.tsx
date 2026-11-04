@@ -146,6 +146,7 @@ export function useSpaceApp() {
     | "add-furniture"
     | "reload-server"
     | "delete-space"
+    | "delete-temp"
     | null
   >(null);
   const [error, setError] = useState("");
@@ -788,6 +789,18 @@ export function useSpaceApp() {
   function dropTempDraft(id: string) {
     setTempDrafts((current) => current.filter((t) => t.space.id !== id));
   }
+  // The list's delete asks first; the draft only lives on this device, so it cannot be restored.
+  const [tempDeleteId, setTempDeleteId] = useState<string | null>(null);
+  function askDeleteTempDraft(id: string) {
+    setTempDeleteId(id);
+    setModal("delete-temp");
+  }
+  function confirmDeleteTempDraft() {
+    if (tempDeleteId) dropTempDraft(tempDeleteId);
+    setTempDeleteId(null);
+    setModal(null);
+    setToast("작성 중인 공간을 삭제했습니다.");
+  }
   function resumeTempDraft(t: TempDraft, at: Page = t.page) {
     if (spaces.some((s) => s.id === t.space.id)) setActiveId(t.space.id);
     setDraft(structuredClone(t.space));
@@ -1370,7 +1383,9 @@ export function useSpaceApp() {
     unsaved,
     leaveUnsaved,
     tempDrafts,
-    dropTempDraft,
+    tempDeleteId,
+    askDeleteTempDraft,
+    confirmDeleteTempDraft,
     resumeTempDraft,
     leaveEditor,
     navigate,

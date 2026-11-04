@@ -100,7 +100,9 @@ function App() {
     unsaved,
     leaveUnsaved,
     tempDrafts,
-    dropTempDraft,
+    tempDeleteId,
+    askDeleteTempDraft,
+    confirmDeleteTempDraft,
     resumeTempDraft,
     leaveEditor,
     navigate,
@@ -287,7 +289,7 @@ function App() {
                             </span>
                             <span className="status-pill todo">작성 중</span>
                           </button>
-                          <button type="button" className="text-button destructive-text" onClick={() => dropTempDraft(t.space.id)}>
+                          <button type="button" className="text-button destructive-text" onClick={() => askDeleteTempDraft(t.space.id)}>
                             삭제
                           </button>
                         </div>
@@ -1422,6 +1424,22 @@ function App() {
               </p>
               <button className="primary destructive" disabled={deleting} onClick={deleteSpace}>
                 {deleting ? "삭제 중…" : "삭제"}
+              </button>
+              <button className="secondary" onClick={dismissModal}>
+                취소
+              </button>
+            </>
+          )}
+          {modal === "delete-temp" && (
+            <>
+              <h2>
+                '{tempDrafts.find((t) => t.space.id === tempDeleteId)?.space.name || "이름 없는 공간"}'의 작성 중인 내용을 삭제할까요?
+              </h2>
+              <p className="muted">
+                이 기기에 임시 저장한 내용이 사라지고 되돌릴 수 없습니다. 서버에 저장된 공간은 그대로 남습니다.
+              </p>
+              <button className="primary destructive" onClick={confirmDeleteTempDraft}>
+                삭제
               </button>
               <button className="secondary" onClick={dismissModal}>
                 취소

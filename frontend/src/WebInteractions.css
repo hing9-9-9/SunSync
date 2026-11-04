@@ -2,15 +2,15 @@
    State is conveyed with color and an inset edge. No geometry-changing scale or rotation. */
 .app.award-app.mode-web button:is(.primary,.secondary,.chip),
 .app.award-app.mode-web .item-tabs > button {
- transition:background-color 160ms ease,border-color 160ms ease,color 160ms ease,box-shadow 160ms ease;
+ transition:filter var(--dur-hover) ease,transform var(--dur-hover) ease,box-shadow var(--dur-hover) ease;
 }
 .app.award-app.mode-web button.primary:not(:disabled):not(.destructive):not(.danger) {
  box-shadow:inset 0 1px 0 var(--c-ffffff-a15),0 1px 2px var(--c-27202d-a7);
 }
+/* Hover A (project rule): shape and border stay; 3% darker, a soft shadow and a 1px lift, 200ms.
+   filter works through the !important fills in tokens.css, so secondary buttons answer too. */
 @media(hover:hover) {
- .app.award-app.mode-web button.primary:not(:disabled):not(.destructive):not(.danger):hover { filter:brightness(.94); transform:none; box-shadow:inset 0 1px 0 var(--c-ffffff-a15),0 3px 7px var(--c-27202d-a9); }
- .app.award-app.mode-web button.secondary:not(:disabled):not(.destructive):not(.danger):hover { background-color:var(--c-eeebf6); border-color:var(--c-958aa9); color:var(--c-443b52); transform:none; box-shadow:none; }
- .app.award-app.mode-web :is(button.chip,.item-tabs > button):not(:disabled):hover { background-color:var(--c-eeebf6); transform:none; box-shadow:none; }
+ .app.award-app.mode-web :is(button.primary,button.secondary,button.chip,.item-tabs > button):not(:disabled):hover { filter:brightness(.97); transform:translateY(-1px); box-shadow:0 2px 6px var(--c-27202d-a9); }
 }
 .app.award-app.mode-web button:is(.primary,.secondary):not(:disabled):active { transform:none; filter:brightness(.95); box-shadow:inset 0 1px 3px var(--c-27202d-a13); }
 .app.award-app.mode-web :is(button.chip,.item-tabs > button):active { transform:none; box-shadow:inset 0 1px 2px var(--c-27202d-a8); }
