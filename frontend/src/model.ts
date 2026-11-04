@@ -94,10 +94,10 @@ export type SavedState = {
 };
 export const STORAGE_KEY = "sunsync-ui-v1";
 export const grades: Record<Grade, string> = {
-  A: "차단 100% · 햇빛이 전혀 닿지 않아요",
+  A: "차단 100% · 암막 커튼을 친 정도",
   B: "차단 70% · 블라인드를 내린 정도",
   C: "차단 30% · 얇은 커튼을 친 정도",
-  D: "차단 0% · 지금처럼 햇빛이 그대로 들어와요",
+  D: "차단 0% · 창문을 그대로 둔 정도",
 };
 export const furnitureTypes: Record<FurnitureType, string> = {
   bookcase: "책장",
