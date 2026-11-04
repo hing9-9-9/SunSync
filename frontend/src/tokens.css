@@ -1,0 +1,346 @@
+/* Phase 4 design system (2026-10-24): one set of values for the web (.award-app) and app
+   (.award-mobile) shells. Loaded last; earlier files keep their layout and only meanings,
+   corners, contrast and motion are unified here. Rules below use !important on purpose: older
+   files style the same parts with deeper selectors, and this layer is the one source of truth. */
+:root {
+  --c-action: #6660e5; /* actions, selection, protection areas */
+  --c-action-ink: #554ed0; /* purple text on light purple */
+  --c-sun: #ff7426; /* sun and sunlight areas, never text */
+  --c-sun-ink: #c2520f; /* sunlight numbers and labels */
+  --c-danger: #1d1c22; /* irreversible actions (delete, log out): dark text, no red (red read too loud) */
+  --c-protect: #efeefd; /* "보호 중 / 설정 완료" chip background (2026-11-03: one-accent system, no separate green) */
+  --c-protect-text: var(--c-action-ink); /* chip text, 5.4:1 on --c-protect */
+  --c-protect-fill: rgba(102, 96, 229, 0.24); /* protected areas drawn in plans and illustrations, with --c-action lines */
+  --c-protect-ink: #343434;
+  --c-block: #e9e9e9;
+  /* App surfaces (2026-11-03; moved out of AppTabs.css so every screen shares one list). */
+  --c-ink: #1d1c22;
+  --c-pressed: #f3f2f8; /* row and card highlight while pressed */
+  --c-hairline: #efeff3; /* dividers between list rows */
+  --c-dot-idle: #9d9d9d; /* neutral status dot */
+  --c-action-tint: rgba(102, 96, 229, 0.12); /* light purple behind selected tabs and badges */
+  --c-glass: rgba(255, 255, 255, 0.82); /* floating tab bar */
+  --shadow-card: 0 1px 2px rgba(22, 21, 27, 0.04), 0 10px 28px -14px rgba(22, 21, 27, 0.16);
+  --shadow-float: 0 0 0 1px rgba(22, 21, 27, 0.05), 0 12px 32px -12px rgba(22, 21, 27, 0.25);
+  --shadow-action: 0 6px 16px -6px rgba(102, 96, 229, 0.55);
+  --shadow-action-raised: 0 10px 24px -10px rgba(102, 96, 229, 0.6);
+  --c-muted: #5f5b66; /* secondary text, 6.4:1 on white */
+  --radius-plan: 0;
+  --radius-card: 12px;
+  --radius-pill: 999px;
+  --dur-hover: 200ms;
+  --dur-text: 600ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+}
+.app.award-app {
+  --mb-sun: var(--c-sun);
+  --mb-sun-ink: var(--c-sun-ink);
+  --mb-protect: var(--c-protect);
+  --mb-block: var(--c-block);
+  --mb-ink: var(--c-protect-ink);
+  --mb-muted: var(--c-muted);
+}
+
+/* Corners: square plans, 12px cards, pill buttons and chips. */
+:is(.app.award-app, .app.award-mobile) .card,
+:is(.app.award-app, .app.award-mobile) .plan-card,
+.app.award-app .award-room-card,
+.app.award-mobile .room-card,
+.app.award-mobile .guide-card {
+  border-radius: var(--radius-card) !important;
+}
+:is(.app.award-app, .app.award-mobile) .pill,
+:is(.app.award-app, .app.award-mobile) .status-pill,
+:is(.app.award-app, .app.award-mobile) .chip,
+:is(.app.award-app, .app.award-mobile) .item-tabs button,
+:is(.app.award-app, .app.award-mobile) button.primary,
+:is(.app.award-app, .app.award-mobile) button.secondary {
+  border-radius: var(--radius-pill) !important;
+}
+
+/* Same meaning, same colour: sunlight is orange and "설정 완료" is light purple with a check in the app too. */
+.app.award-mobile svg polygon[fill="var(--c-fff2d3)"] {
+  fill: var(--c-sun) !important;
+  fill-opacity: 0.2 !important;
+}
+.app.award-mobile .plan-legend .yellow {
+  background: var(--c-sun) !important;
+}
+.app.award-mobile .status-pill.done {
+  background: var(--c-protect) !important;
+  color: var(--c-protect-text) !important;
+}
+/* The check is decoration; the label already says the state. */
+:is(.app.award-mobile, .app.award-app) .status-pill.done {
+  display: inline-flex;
+  align-items: center;
+}
+:is(.app.award-mobile, .app.award-app) :is(.status-pill.done, .ap-state-chip.on)::before {
+  content: "";
+  flex: none;
+  width: 12px;
+  height: 12px;
+  margin-right: 4px;
+  border-radius: 0;
+  background: currentColor;
+  /* Drawn check (SF Symbols "checkmark" proportions), so it matches the text weight and centre. */
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.4 6.3 4.9 8.8 9.6 3.3' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.4 6.3 4.9 8.8 9.6 3.3' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+:is(.app.award-app, .app.award-mobile) .status-pill.todo {
+  background: var(--c-block) !important;
+  color: var(--c-protect-ink) !important;
+}
+
+/* Contrast (WCAG AA): status labels are neutral blocks with dark text. */
+:is(.app.award-app, .app.award-mobile) .pill,
+.app.award-app .status-card .pill {
+  background: var(--c-block) !important;
+  color: var(--c-protect-ink) !important;
+}
+
+/* Touch targets: at least 44px tall. The slider grows its hit area without moving the layout. */
+:is(.app.award-app, .app.award-mobile) .chip,
+:is(.app.award-app, .app.award-mobile) .item-tabs button {
+  min-height: 44px !important;
+}
+.app.award-app input[type="range"] {
+  height: 44px !important;
+  margin-block: -2px !important; /* was 4px tall with 18px margins: same 40px box */
+}
+
+/* Field errors: one style, written under the field (NumberField writes its own). */
+:is(.app.award-app, .app.award-mobile) label.field[data-issue] {
+  border-color: var(--c-b02d3d) !important;
+}
+:is(.app.award-app, .app.award-mobile) label.field[data-issue]::after {
+  content: attr(data-issue);
+  display: block;
+  color: var(--c-a3293c);
+  font-size: var(--fs-small);
+  line-height: 1.55;
+  font-weight: 500;
+}
+
+/* Keyboard focus: 2px action purple everywhere (the hero link keeps its approved fill style). */
+:is(.app.award-app, .app.award-mobile) :focus-visible:not(.ap-round-link, main, dialog) {
+  outline: 2px solid var(--c-action) !important;
+  outline-offset: 2px !important;
+}
+
+/* Page containers take focus on navigation only to move screen readers; they draw no ring. */
+:is(#main, #ap-main, #award-guide-main):focus {
+  outline: none !important;
+}
+
+/* Skip link: readable when it appears on keyboard focus. */
+.app.award-app .skip-link {
+  background: var(--c-protect-ink) !important;
+  color: var(--c-white) !important;
+}
+
+/* Motion: one hover speed, and everything settles instantly with "reduce motion". */
+@media (prefers-reduced-motion: reduce) {
+  .app *,
+  .app *::before,
+  .app *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Delete is a quiet outlined action with red text; the red fill is kept for the final confirm. */
+:is(.app.award-app, .app.award-mobile) button.secondary.destructive {
+  background: var(--c-white) !important;
+  color: var(--c-danger) !important;
+}
+
+/* Type scale (2026-11-03): six steps on the web, five in the app, measured against base.org
+   (72 / 28 / 16 / 12), tempo (53 / 10) and acctual (64). Weights 400 / 500 / 700 only.
+   The older --text-* names point at these steps, so every rule uses the same scale. */
+:root {
+  --fs-display: clamp(44px, 4.4vw, 64px); --lh-display: 1.14;
+  --fs-h1: 36px; --lh-h1: 1.25;
+  --fs-h2: 24px; --lh-h2: 1.35;
+  --fs-body: 17px; --lh-body: 1.65;
+  --fs-small: 14px; --lh-small: 1.55;
+  --fs-label: 12px; --lh-label: 1.45;
+  --text-xs: var(--fs-label); --text-sm: var(--fs-small); --text-base: var(--fs-body); --text-lg: var(--fs-body);
+  --text-xl: var(--fs-h2); --text-2xl: var(--fs-h2); --text-3xl: var(--fs-h1); --text-4xl: var(--fs-h1);
+}
+@media (max-width: 700px) {
+  :root {
+    --fs-display: 36px; --fs-h1: 28px; --fs-h2: 20px; --fs-body: 16px;
+    --text-base: var(--fs-body); --text-lg: var(--fs-body); --text-xl: var(--fs-h2); --text-2xl: var(--fs-h2); --text-3xl: var(--fs-h1); --text-4xl: var(--fs-h1);
+  }
+}
+/* App: five steps (the display step is the page title). */
+.app.award-mobile, .app.mode-app {
+  --fs-display: 26px; --fs-h1: 26px; --fs-h2: 20px; --fs-body: 16px; --fs-small: 14px; --fs-label: 12px;
+  --text-xs: var(--fs-label); --text-sm: var(--fs-small); --text-base: var(--fs-body); --text-lg: var(--fs-body);
+  --text-xl: var(--fs-h2); --text-2xl: var(--fs-h2); --text-3xl: var(--fs-h1); --text-4xl: var(--fs-h1);
+}
+/* Guide text keeps a readable line (about 40 Korean characters). */
+.app.award-app .ap-guide-page p { max-width: 36em; }
+/* Korean line breaking: whole words only, headings balanced, paragraphs avoid a lone last word. */
+:is(.app.award-app, .app.award-mobile) :is(h1, h2, h3) { word-break: keep-all; text-wrap: balance; }
+:is(.app.award-app, .app.award-mobile) :is(p, li, small) { word-break: keep-all; text-wrap: pretty; }
+
+/* Space cards (2026-11-03): the saved plan itself, square to the card, no numbering. */
+.app.award-app .award-space-thumbnail { width: 78%; height: auto; max-height: 150px; transform: none; transition: none; }
+.app.award-app .award-room-card:hover .award-space-thumbnail { transform: none; }
+.app.award-app .award-space-summary { margin: 0; align-self: end; font-size: var(--fs-body); line-height: var(--lh-body); color: var(--c-muted); }
+.app.award-app .award-room-visual .award-space-thumbnail { margin-top: var(--space-6); }
+
+
+/* Space status actions (2026-11-03): one primary action; editing details and deleting are quiet text actions on one row. */
+:is(.app.award-app, .app.award-mobile) .detail-secondary { display: flex; justify-content: space-between; gap: var(--space-3); }
+:is(.app.award-app, .app.award-mobile) .detail-secondary .text-button { min-height: 44px; padding: 0 var(--space-1); background: none; border: 0; font-size: var(--fs-small); color: var(--ink, var(--c-1f1d26)); text-decoration: underline; text-underline-offset: 4px; text-decoration-color: var(--c-block); cursor: pointer; transition: text-decoration-color .2s; }
+:is(.app.award-app, .app.award-mobile) .detail-secondary .text-button:hover { text-decoration-color: currentColor; }
+:is(.app.award-app, .app.award-mobile) .detail-secondary .destructive-text { color: var(--c-danger); }
+/* App: the fixed primary action never covers the end of the page. */
+.app.award-mobile.has-action-bar .main { padding-bottom: calc(160px + env(safe-area-inset-bottom)); }
+
+/* App guide (2026-11-03): the same step drawings as the web guide. */
+.app.award-mobile .mobile-guide-visual:has(.mood-guide-art) { background: transparent; aspect-ratio: 280 / 152; }
+.app.award-mobile .mobile-guide-visual .mood-guide-art { display: block; width: 100%; height: 100%; }
+.app.award-mobile .mobile-guide-visual:has(.mood-guide-art) .mobile-guide-number { display: none; }
+
+/* Plan cards: labels and the plan sit on the card itself; no separate white panel inside (2026-11-03). */
+:is(.app.award-app, .app.award-mobile) .plan-wrap {
+  background: transparent !important;
+}
+/* "설정 완료" status dot follows the one-accent system (was an unapproved green). */
+:is(.app.award-app, .app.award-mobile) .status-dot:not(.pending) {
+  background: var(--c-action) !important;
+}
+
+/* Dialogs (2026-11-03, Apple alert / sheet): no ring or border on the container — focus moves to the dialog
+   on open for screen readers, and only its controls show a keyboard focus ring. One wide soft shadow,
+   a 36% dim behind, title 17px bold, text 15px grey. Irreversible actions (delete, log out) are a grey
+   button with bold dark text (red read too loud on screen); cancel is white with a hairline. */
+:is(.app.award-app, .app.award-mobile) dialog:is(:focus, :focus-visible) {
+  outline: none !important;
+}
+:is(.app.award-app, .app.award-mobile) dialog {
+  border: 0 !important;
+  background: var(--c-white);
+  box-shadow: 0 24px 64px -16px rgba(22, 21, 27, 0.3) !important;
+}
+:is(.app.award-app, .app.award-mobile) dialog::backdrop {
+  background: rgba(22, 21, 27, 0.36);
+  backdrop-filter: blur(2px);
+}
+:is(.app.award-app, .app.award-mobile) dialog:not(.acct-login-dialog) h2 {
+  margin: 0 0 8px;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.4;
+}
+:is(.app.award-app, .app.award-mobile) dialog:not(.acct-login-dialog) > p,
+:is(.app.award-app, .app.award-mobile) dialog:not(.acct-login-dialog) form > p {
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--c-muted);
+  word-break: keep-all;
+  text-wrap: balance;
+}
+:is(.app.award-app, .app.award-mobile) dialog .primary.destructive {
+  border: 0 !important;
+  background: var(--c-block) !important;
+  color: var(--c-danger) !important;
+  font-weight: 700 !important;
+  box-shadow: none !important;
+}
+:is(.app.award-app, .app.award-mobile) dialog .secondary {
+  border: 0 !important;
+  background: var(--c-white) !important;
+  box-shadow: inset 0 0 0 1px var(--c-block) !important;
+  color: var(--c-protect-ink) !important;
+}
+/* Web: a centred alert, 16px corners, actions side by side with the main one on the right. */
+.app.award-app dialog:not(.acct-login-dialog) {
+  width: min(440px, calc(100% - 32px));
+  padding: 28px !important;
+  border-radius: 16px !important;
+}
+.app.award-app dialog:not(.acct-login-dialog):has(> .primary + .secondary) {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 8px;
+}
+.app.award-app dialog:not(.acct-login-dialog):has(> .primary + .secondary) > :not(button) {
+  grid-column: 1 / -1;
+}
+.app.award-app dialog:not(.acct-login-dialog):has(> .primary + .secondary) > .primary {
+  grid-column: 2;
+  grid-row: 3;
+  margin-top: 16px;
+}
+.app.award-app dialog:not(.acct-login-dialog):has(> .primary + .secondary) > .secondary {
+  grid-column: 1;
+  grid-row: 3;
+  margin-top: 16px;
+}
+/* App: a bottom sheet, 20px top corners, full-width stacked actions. */
+.app.award-mobile dialog {
+  border-radius: 20px 20px 0 0 !important;
+}
+
+/* Buttons, one rule for web and app (2026-11-03 consistency pass; see docs/consistency-audit-2026-11-03).
+   Every button is a pill. Primary = #6660E5 fill, one per area. Secondary (incl. delete, zone and add actions)
+   = white, hairline, #343434. Toggles (chips, item tabs) = secondary at rest, light purple when on.
+   Text buttons = #554ED0 link text. 44px everywhere; the app's bottom actions stay 50px. */
+:is(.app.award-app, .app.award-mobile) :is(button.primary, button.secondary, .furniture-delete, .zone-action, .item-add, .chip, .item-tabs button, .zone-tabs button) {
+  min-height: 44px;
+  border-radius: 999px !important;
+  font-weight: 500;
+}
+:is(.app.award-app, .app.award-mobile) button.primary:not(.destructive) {
+  border: 1px solid var(--c-action) !important;
+  background: var(--c-action) !important;
+  color: var(--c-white) !important;
+}
+:is(.app.award-app, .app.award-mobile) :is(button.secondary, .furniture-delete, .zone-action, .item-add, .chip:not(.active), .item-tabs button:not(.active), .zone-tabs button:not(.active)) {
+  border: 1px solid var(--c-block) !important;
+  background: var(--c-white) !important;
+  color: var(--c-protect-ink) !important;
+}
+:is(.app.award-app, .app.award-mobile) :is(.chip.active, .item-tabs button.active, .zone-tabs button.active) {
+  border: 1px solid transparent !important;
+  background: var(--c-protect) !important;
+  color: var(--c-action-ink) !important;
+}
+:is(.app.award-app, .app.award-mobile) :is(.furniture-delete, .zone-delete, button.secondary.destructive) {
+  color: var(--c-danger) !important;
+}
+:is(.app.award-app, .app.award-mobile) button.text-button:not(.destructive-text):not(.back-button):not(.furniture-delete) {
+  min-height: 44px;
+  border: 0 !important;
+  border-radius: 999px;
+  background: transparent !important;
+  color: var(--c-action-ink) !important;
+  font-weight: 500;
+}
+:is(.app.award-app, .app.award-mobile) button:is(.primary, .secondary, .furniture-delete, .zone-action, .item-add, .chip):disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Editor and detail: the line between the plan and the settings panel runs the full height.
+   The panel stays sticky, so the line is drawn on the plan column, which spans the whole row. */
+.app.award-app .workspace > .workspace-main {
+  align-self: stretch;
+  border-right: 1px solid var(--c-aaa3b8);
+}
+.app.award-app .workspace > .inspector {
+  border-left: 0 !important;
+}
+@media (max-width: 1100px) {
+  .app.award-app .workspace > .workspace-main {
+    border-right: 0;
+  }
+}

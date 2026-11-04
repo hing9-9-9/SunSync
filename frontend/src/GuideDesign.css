@@ -1,0 +1,93 @@
+/* Web guide: the existing six-step accordion, typeset as a practical reading surface.
+   References: Senso grouping, Apple action states, Base hierarchy, FlexyAI local pastel. */
+.app.award-app.mode-web .guide-refresh {
+ --guide-ink:var(--c-232326); --guide-text:var(--c-494650); --guide-muted:var(--c-5d566b);
+ --guide-line:var(--c-bdbac5); --guide-accent:var(--c-action-ink); --guide-paper:var(--c-white);
+ --guide-tint:color-mix(in srgb,var(--c-action) 6%,var(--c-white));
+ width:92%; max-width:1320px; margin:0 auto; padding:52px 0 56px; color:var(--guide-ink);
+}
+.app.award-app.mode-web .guide-refresh .ap-guide-heading { margin:0; padding:0 0 36px; border:0; }
+.app.award-app.mode-web .guide-refresh .ap-guide-heading h1 { margin:0 0 14px; font-size:clamp(36px,4vw,52px); line-height:1.2; letter-spacing:-.045em; font-weight:700; }
+.app.award-app.mode-web .guide-refresh .ap-guide-heading > p { margin:0; font-size:17px; line-height:1.8; color:var(--guide-text); }
+.app.award-app.mode-web .guide-refresh .ap-guide-layout { grid-template-columns:224px minmax(0,1fr); gap:48px; align-items:start; padding-top:0; }
+.app.award-app.mode-web .guide-refresh .ap-guide-nav { top:var(--guide-header-offset,88px); gap:6px; padding:6px 0; border:0; background:var(--guide-paper); }
+.app.award-app.mode-web .guide-refresh .ap-guide-nav > button {
+ min-width:0; min-height:52px; gap:12px; padding:12px 14px; border:0; border-radius:8px;
+ color:var(--guide-text); background:transparent; font-size:14px; line-height:1.5; font-weight:500;
+ box-shadow:none; transform:none; translate:none; transition:color 140ms,background-color 140ms;
+}
+.app.award-app.mode-web .guide-refresh .ap-guide-nav > button > span { font-size:12px; min-width:20px; color:var(--guide-muted); font-variant-numeric:tabular-nums; }
+.app.award-app.mode-web .guide-refresh .ap-guide-nav > button > svg { width:16px; height:16px; opacity:0; transition:opacity 140ms; flex-shrink:0; }
+.app.award-app.mode-web .guide-refresh .ap-guide-nav > button:hover { background:var(--guide-tint); color:var(--guide-text); }
+.app.award-app.mode-web .guide-refresh .ap-guide-nav > button.active { background:var(--guide-tint); color:var(--guide-text); box-shadow:inset 2px 0 0 var(--guide-accent); }
+.app.award-app.mode-web .guide-refresh .ap-guide-nav > button.active > span { color:inherit; }
+.app.award-app.mode-web .guide-refresh .ap-guide-nav > button:is(:hover,.active) > svg { opacity:1; }
+.app.award-app.mode-web .guide-refresh .ap-guide-step {
+ background:transparent; margin:0 0 28px; padding:0 0 28px; border:0; border-bottom:1px solid var(--guide-line);
+ border-radius:0; box-shadow:none; overflow:visible; scroll-margin-top:88px; transition:none;
+}
+.app.award-app.mode-web .guide-refresh .ap-guide-step:last-child { margin-bottom:0; }
+.app.award-app.mode-web .guide-refresh .ap-guide-step-title { margin:0; padding:0; }
+.app.award-app.mode-web .guide-refresh .ap-guide-step-title > button {
+ min-height:68px; gap:16px; padding:12px 0 20px; background:transparent; color:var(--guide-ink);
+ border:0; border-radius:0; box-shadow:none; transform:none; translate:none; font-size:24px; line-height:1.4; font-weight:700; letter-spacing:-.025em;
+}
+.app.award-app.mode-web .guide-refresh .ap-guide-step-title > button > span:first-child {
+ display:grid; place-items:center; width:36px; min-width:36px; height:36px; border-radius:10px;
+ background:var(--guide-tint); color:var(--guide-accent); font-size:13px; line-height:1; font-weight:500; letter-spacing:0; transition:color 140ms,background-color 140ms;
+}
+.app.award-app.mode-web .guide-refresh .ap-guide-step-title > button > .guide-step-name { min-width:0; font:inherit; color:inherit; letter-spacing:inherit; }
+.app.award-app.mode-web .guide-refresh .ap-guide-step.is-current .ap-guide-step-title > button > span:first-child { background:var(--c-action); color:var(--guide-paper); }
+.app.award-app.mode-web .guide-refresh .ap-guide-step-title > button:hover { background:transparent; color:var(--guide-ink); }
+.app.award-app.mode-web .guide-refresh .ap-guide-step-title > button > i { width:28px; height:28px; border-radius:50%; background:var(--guide-tint); margin-left:auto; }
+.app.award-app.mode-web .guide-refresh .ap-guide-step-title > button > i::before,
+.app.award-app.mode-web .guide-refresh .ap-guide-step-title > button > i::after { left:8px; top:13px; width:12px; height:1.5px; background:var(--guide-accent); }
+.app.award-app.mode-web .guide-refresh .ap-guide-step-body { display:grid; grid-template-columns:minmax(0,1.05fr) minmax(0,1fr); align-items:center; gap:28px; padding:0; }
+.app.award-app.mode-web .guide-refresh .ap-guide-step-body[hidden] { display:none; }
+.app.award-app.mode-web .guide-refresh .ap-guide-art {
+ display:grid; place-items:center; min-width:0; min-height:238px; margin:0; padding:24px 14px;
+ border:0; border-radius:12px; box-shadow:none; overflow:hidden;
+ background:linear-gradient(145deg,var(--guide-tint),var(--c-f1f0ee));
+}
+.app.award-app.mode-web .guide-refresh .ap-guide-art > .website-guide-art { display:block; width:100%; height:auto; max-height:240px; border:0; border-radius:0; background:transparent; box-shadow:none; }
+.guide-step-copy { min-width:0; }
+.guide-step-copy > p { margin:0 0 18px; font-size:17px; font-weight:500; line-height:1.85; color:var(--guide-ink); word-break:keep-all; overflow-wrap:break-word; }
+.guide-step-notes { padding:0 0 0 16px; margin:0; color:var(--guide-text); font-size:14px; line-height:1.85; word-break:keep-all; overflow-wrap:break-word; }
+.guide-step-notes > li { margin:0 0 8px; padding-left:2px; }
+.guide-step-notes > li:last-child { margin-bottom:0; }
+.guide-step-notes > li::marker { color:var(--guide-accent); font-size:10px; }
+.app.award-app.mode-web .guide-refresh .ap-guide-bottom { display:flex; justify-content:space-between; align-items:center; gap:28px; margin:44px 0 0 272px; padding:28px; border:0; border-radius:12px; background:var(--guide-tint); text-align:left; }
+.app.award-app.mode-web .guide-refresh .ap-guide-bottom > p { margin:0; font-size:15px; line-height:1.8; color:var(--guide-text); }
+.app.award-app.mode-web .guide-refresh .ap-guide-bottom strong { font-size:20px; font-weight:700; color:var(--guide-ink); }
+.app.award-app.mode-web .guide-refresh .ap-guide-bottom .ap-round-link { min-height:46px; padding:10px 16px; gap:12px; margin:0; border:0; border-radius:999px; background:var(--c-action); color:var(--guide-paper); font-size:14px; white-space:nowrap; box-shadow:none; transform:none; transition:background-color 140ms; }
+.app.award-app.mode-web .guide-refresh .ap-guide-bottom .ap-scribble { display:none; }
+.app.award-app.mode-web .guide-refresh .ap-guide-bottom .ap-round-link > b,
+.app.award-app.mode-web .guide-refresh .ap-guide-bottom .ap-round-link:hover > b { width:22px; height:22px; border:0; color:inherit; background:transparent; transform:none; }
+.app.award-app.mode-web .guide-refresh .ap-guide-bottom .ap-round-link:hover { background:var(--c-5049c5); }
+.app.award-app.mode-web .guide-refresh button:focus-visible { outline:2px solid var(--guide-accent); outline-offset:3px; }
+@media(max-width:1100px) {
+ .app.award-app.mode-web .guide-refresh .ap-guide-layout { grid-template-columns:200px minmax(0,1fr); gap:28px; }
+ .app.award-app.mode-web .guide-refresh .ap-guide-step-body { grid-template-columns:minmax(0,1fr); gap:20px; }
+ .app.award-app.mode-web .guide-refresh .ap-guide-art { min-height:220px; }
+ .app.award-app.mode-web .guide-refresh .ap-guide-bottom { margin-left:228px; flex-wrap:wrap; }
+}
+@media(max-width:700px) {
+ .app.award-app.mode-web .guide-refresh { padding-top:32px; }
+ .app.award-app.mode-web .guide-refresh .ap-guide-layout { grid-template-columns:minmax(0,1fr); gap:24px; }
+ .app.award-app.mode-web .guide-refresh .ap-guide-nav { position:sticky; top:var(--guide-header-offset,120px); display:flex; gap:6px; padding:8px 0; overflow-x:auto; max-width:100%; z-index:3; box-shadow:0 1px 0 var(--guide-line); }
+ .app.award-app.mode-web .guide-refresh .ap-guide-nav > button { flex:0 0 auto; min-height:44px; padding:8px 12px; }
+ .app.award-app.mode-web .guide-refresh .ap-guide-nav > button > svg { display:none; }
+ .app.award-app.mode-web .guide-refresh .ap-guide-step { scroll-margin-top:calc(var(--guide-header-offset,120px) + 80px); }
+ .app.award-app.mode-web .guide-refresh .ap-guide-step-title > button { font-size:21px; }
+ .app.award-app.mode-web .guide-refresh .ap-guide-bottom { margin-left:0; padding:24px; }
+ .app.award-app.mode-web .guide-refresh .ap-guide-heading > p { font-size:16px; }
+}
+@media(prefers-reduced-motion:reduce) {
+ .app.award-app.mode-web .guide-refresh *, .app.award-app.mode-web .guide-refresh *::before, .app.award-app.mode-web .guide-refresh *::after { transition:none !important; animation:none !important; }
+}
+/* Shared surface chrome must not redraw an outer card around the reading sections. */
+.app.award-app.mode-web .guide-refresh .ap-guide-step::after { content:none; }
+
+.app.award-app.mode-web .guide-refresh .ap-guide-nav { scrollbar-width:thin; }
+
+.app.award-app.mode-web .guide-refresh .ap-guide-bottom p { font-size:20px; font-weight:400; color:var(--guide-ink); }

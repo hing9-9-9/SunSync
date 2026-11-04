@@ -1,0 +1,296 @@
+/* Web home only: Base type, Acctual product depth, Tempo media rhythm, Sketch action states. */
+.app.award-app .ap.home-design { --home-ink:var(--c-232326); --home-muted:var(--c-4e4e57); --home-line:var(--c-b9b8c0); --home-action:var(--c-action); --home-stage:var(--c-f2f3f2); --home-ease:cubic-bezier(.2,.75,.25,1); color:var(--home-ink); background:var(--c-white); }
+.app.award-app .home-design :is(h1,h2,h3,p) { text-wrap:pretty; }
+.app.award-app .home-design :is(.ap-reveal,.ap-revealed,.ap-hero-type,.ap-hero-visual) { animation:none; opacity:1; translate:none; transform:none; transition:none; }
+.app.award-app .home-design .ap-hero { max-width:1560px; margin:0 auto; padding:var(--space-10) 4% 0; }
+.app.award-app .home-design .ap-hero-type { display:grid; grid-template-columns:minmax(0,1fr) 300px; align-items:end; gap:var(--space-10); padding:var(--space-3) 0 38px; margin:0; }
+.app.award-app .home-design .ap-hero h1 { font-size:var(--fs-display); font-weight:500; line-height:var(--lh-display); letter-spacing:-.065em; margin:0; color:var(--home-ink); }
+.app.award-app .home-design .ap-hero h1 > span { color:inherit; }
+.app.award-app .home-design .ap-hero-note { width:auto; display:grid; gap:22px; align-items:start; padding-bottom:3px; }
+.app.award-app .home-design .ap-hero-note p { font-size:var(--fs-body); line-height:var(--lh-body); color:var(--home-muted); margin:0; }
+/* Filled CTA, plain link, and outlined selection each express a different job. */
+.app.award-app .home-design .ap-round-link { display:inline-flex; align-items:center; justify-content:space-between; gap:var(--space-6); justify-self:start; min-height:50px; padding:var(--space-3) var(--space-5) var(--space-3) var(--space-6); border:1px solid var(--home-action); border-radius:999px; background:var(--home-action); color:var(--c-white); font-size:var(--fs-body); line-height:var(--lh-body); font-weight:500; box-shadow:none; transition:background 180ms,border-color 180ms,transform 120ms; }
+.app.award-app .home-design .ap-round-link .ap-scribble { display:none; }
+.app.award-app .home-design .ap-round-link > b { display:grid; place-items:center; width:24px; height:24px; background:transparent; border:0; color:inherit; padding:0; border-radius:0; }
+.app.award-app .home-design .ap-round-link > b svg { width:22px; height:22px; transition:transform 200ms var(--home-ease); }
+.app.award-app .home-design .ap-round-link:hover { background:var(--c-5049c5); border-color:var(--c-5049c5); transform:none; }
+.app.award-app .home-design .ap-round-link:hover > b svg { transform:translate(2px,-2px); }
+.app.award-app .home-design button:active { transform:scale(.98); }
+.app.award-app .home-design button:focus-visible { outline:2px solid var(--c-5149b9); outline-offset:4px; }
+/* Open stage. No gradient haze, framing card, decorative words or orbital lines. */
+.app.award-app .home-design .ap-hero-visual { height:490px; min-height:0; border:0; border-radius:0; background:var(--home-stage); overflow:hidden; isolation:isolate; position:relative; }
+.app.award-app .home-design .ap-hero-visual::before { content:''; position:absolute; top:20px; left:20px; width:16px; height:16px; border-top:1px solid var(--c-a7a7ad); border-left:1px solid var(--c-a7a7ad); pointer-events:none; }
+.app.award-app .home-design .ap-visual-label { position:absolute; top:25px; right:24px; left:auto; width:auto; color:var(--c-4e4e57); font-size:var(--fs-small); line-height:var(--lh-small); padding:0; background:transparent; }
+.app.award-app .home-design .ap-room-stage { position:absolute; inset:0; width:auto; height:auto; background:transparent; display:grid; place-items:center; padding:18px var(--space-5) 0; overflow:visible; }
+.app.award-app .home-design .ap-room { position:relative; inset:auto; margin:0; translate:none; transform:none; width:min(100%,760px); height:100%; max-height:408px; max-width:760px; filter:drop-shadow(0 13px 8px var(--c-242426-a5)); overflow:visible; }
+.app.award-app .home-design .ap-furniture { cursor:pointer; outline:none; }
+.app.award-app .home-design .ap-furniture:focus-visible { filter:drop-shadow(0 0 2px var(--c-action-ink)); }
+.app.award-app .home-design .ap-furniture > path { transition:fill 220ms; }
+.app.award-app .home-design .ap-furniture:hover > circle { stroke:var(--c-5149b9); stroke-width:2px; }
+.app.award-app .home-design .ap-object-label { position:absolute; left:24px; right:auto; bottom:20px; border:0; border-left:2px solid var(--c-action); border-radius:0; padding:5px 0 5px var(--space-3); background:transparent; box-shadow:none; color:var(--c-2d2938); font-size:var(--fs-small); }
+.app.award-app .home-design .ap-object-label > .ap-dot { display:none; }
+.app.award-app .home-design .ap-object-label small { font-size:var(--fs-small); color:var(--c-4e4e57); margin-top:3px; animation:none; }
+.app.award-app .home-design .ap-hero-foot { display:block; padding:25px 0; border:0; }
+.app.award-app .home-design .ap-hero-foot > span { font-size:var(--fs-small); line-height:var(--lh-small); color:var(--c-4e4e57); }
+.app.award-app .home-design .ap-statement { max-width:1560px; margin:auto; padding:110px 4% 90px; min-height:0; display:grid; grid-template-columns:1.2fr .8fr; gap:var(--space-16); align-items:start; border:0; }
+.app.award-app .home-design .ap-statement h2 { font-size:var(--fs-h1); line-height:var(--lh-h1); font-weight:500; letter-spacing:-.055em; color:var(--c-232326); }
+.app.award-app .home-design .ap-statement h2 mark { color:inherit; background:none; box-shadow:none; padding:0; }
+.app.award-app .home-design .ap-statement-bottom { display:grid; gap:var(--space-6); align-items:start; padding-top:9px; }
+.app.award-app .home-design .ap-statement-bottom > svg { width:36px; height:36px; color:var(--c-b84d12); }
+.app.award-app .home-design .ap-statement-bottom p { margin:0; color:var(--c-4e4e57); font-size:var(--fs-body); line-height:var(--lh-body); }
+.app.award-app .home-design .ap-text-link { display:inline-flex; align-items:center; gap:14px; width:fit-content; min-height:44px; color:var(--c-2d2938); border:0; border-bottom:1px solid var(--c-6e677a); padding:5px 0; font-size:var(--fs-body); background:transparent; }
+.app.award-app .home-design .ap-text-link:hover { color:var(--c-5047b7); border-color:var(--c-5047b7); }
+/* Caption outside the photograph: readable independently from the image's lighting. */
+.app.award-app .home-design .ap-photo-section { display:grid; grid-template-columns:minmax(0,1.65fr) minmax(0,1fr); gap:0; width:92%; max-width:1440px; margin:0 auto 96px; height:auto; min-height:0; padding:0; border:0; border-radius:0; background:var(--c-f1f0ee); overflow:hidden; }
+.home-photo-media { position:relative; min-width:0; overflow:hidden; }
+.app.award-app .home-design .home-photo-media img { display:block; width:100%; height:100%; min-height:400px; object-fit:cover; object-position:43% 50%; scale:1; translate:none; transform:none; }
+.home-photo-shade { position:absolute; inset:12% 55% 15% 7%; background:var(--c-282530); opacity:0; mix-blend-mode:multiply; clip-path:polygon(0 3%,100% 0,100% 100%,0 96%); transition:opacity 350ms; pointer-events:none; }
+.is-protected .home-photo-shade { opacity:.27; }
+.app.award-app .home-design .ap-photo-section::before,.app.award-app .home-design .ap-photo-section::after { display:none; }
+.app.award-app .home-design .ap-photo-copy { position:static; inset:auto; display:flex; flex-direction:column; align-items:start; justify-content:center; padding:52px 36px; gap:var(--space-6); color:var(--c-242426); background:transparent; opacity:1; translate:none; text-shadow:none; }
+.app.award-app .home-design .ap-photo-copy h2 { color:var(--c-242426); font-size:var(--fs-h1); line-height:var(--lh-h1); letter-spacing:-.055em; font-weight:500; margin:0; text-shadow:none; }
+.ap.home-design .ap-photo-copy > p { color:var(--c-4e4e57); font-size:var(--fs-body); line-height:var(--lh-body); margin:0; }
+.app.award-app .home-design .ap-photo-tag { position:static; display:flex; align-items:center; gap:var(--space-3); opacity:1; translate:none; margin:0; padding:var(--space-2) 0; min-height:44px; border:0; border-radius:0; background:transparent; color:var(--c-302b3c); font-size:var(--fs-small); font-weight:500; box-shadow:none; }
+.home-switch-track { width:42px; height:26px; padding:3px; background:var(--c-a5a2ad); border-radius:20px; display:block; transition:background 180ms; flex-shrink:0; }
+.home-switch-track i { display:block; width:20px; height:20px; border-radius:50%; background:var(--c-white); transition:transform 180ms var(--home-ease); }
+.ap-photo-tag[aria-checked='true'] .home-switch-track { background:var(--c-action); }
+.ap-photo-tag[aria-checked='true'] .home-switch-track i { transform:translateX(16px); }
+.app.award-app .home-design .home-photo-caption { color:var(--c-59565e); font-size:var(--fs-label); line-height:var(--lh-label); letter-spacing:0; text-transform:none; }
+/* Open numbered rows; their illustration follows pointer and keyboard focus. */
+.app.award-app .home-design .ap-process { max-width:1560px; margin:auto; padding:18px 4% 100px; display:grid; grid-template-columns:.9fr 1.1fr; gap:72px; border:0; border-radius:0; background:var(--c-white); min-height:0; }
+.app.award-app .home-design .ap-process-heading h2 { font-size:var(--fs-h1); font-weight:500; letter-spacing:-.055em; line-height:var(--lh-h1); margin:0; }
+.home-step-preview { margin-top:28px; width:100%; max-width:390px; animation:home-preview-in 200ms ease-out both; }
+.app.award-app .home-design .home-step-preview .mood-guide-art { display:block; width:100%; height:auto; background:transparent; border:0; border-radius:0; filter:drop-shadow(1px 2px 0 var(--c-e6e4ec)); }
+.app.award-app .home-design .ap-process-list { display:block; padding:0; }
+.app.award-app .home-design .ap-process-row { display:grid; grid-template-columns:32px minmax(0,1fr) 42px 24px; gap:var(--space-4); align-items:center; width:100%; min-height:136px; margin:0; padding:var(--space-6) var(--space-3); border:0; border-bottom:1px solid var(--c-bdbac5); border-radius:0; background:transparent; text-align:left; transition:background 160ms,border-color 160ms; }
+.app.award-app .home-design .ap-process-row:first-child { border-top:1px solid var(--c-bdbac5); }
+.app.award-app .home-design .ap-process-row:is(:hover,:focus-visible) { border-radius:0; background:var(--c-f2f0f8); padding-left:var(--space-3); border-color:var(--c-938bb5); }
+.app.award-app .home-design .ap-process-row > span { font-size:var(--fs-small); font-variant-numeric:tabular-nums; color:var(--c-5d566b); }
+.app.award-app .home-design .ap-process-row h3 { font-size:var(--fs-h2); font-weight:500; line-height:var(--lh-h2); letter-spacing:-.04em; margin:0 0 var(--space-2); }
+.app.award-app .home-design .ap-process-row p { font-size:var(--fs-small); line-height:var(--lh-small); color:var(--c-4e4e57); margin:0; }
+.app.award-app .home-design .ap-process-art { width:42px; height:42px; border:0; border-radius:0; background:transparent; display:grid; place-items:center; }
+.app.award-app .home-design .ap-process-art > svg { width:36px; height:36px; }
+.app.award-app .home-design .ap-process-row > svg { width:22px; height:22px; color:var(--c-5047b7); }
+/* One final contrast band, with the product's own film-cell motif. */
+.app.award-app .home-design .ap-final { position:relative; display:block; width:92%; max-width:1440px; margin:0 auto 56px; min-height:340px; padding:66px 56px; background:var(--c-252529); color:var(--c-white); border:0; overflow:hidden; text-align:left; }
+.app.award-app .home-design .ap-final h2 { color:var(--c-white); font-size:var(--fs-h1); font-weight:500; line-height:var(--lh-h1); letter-spacing:-.055em; margin:0 0 var(--space-8); position:relative; z-index:1; }
+.app.award-app .home-design .ap-final h2 > span { color:inherit; -webkit-text-stroke:0; }
+.app.award-app .home-design .ap-final .ap-round-link { background:var(--c-white); border-color:var(--c-white); color:var(--c-302b3c); position:relative; z-index:1; }
+.app.award-app .home-design .ap-final .ap-round-link:hover { background:var(--c-e9e6fb); border-color:var(--c-e9e6fb); }
+@keyframes home-preview-in { from { opacity:.5; translate:0 6px; } to { opacity:1; translate:0 0; } }
+@media(min-width:1600px) { .app.award-app .home-design .ap-hero-visual { height:550px; } .app.award-app .home-design .ap-room { max-height:468px; } }
+@media(max-width:1000px) {
+ .app.award-app .home-design .ap-hero-type { grid-template-columns:minmax(0,1fr) 260px; gap:28px; }
+ .app.award-app .home-design .ap-hero h1 { font-size:var(--fs-display); }
+ .app.award-app .home-design .ap-hero-visual { height:440px; }
+ .app.award-app .home-design .ap-process { gap:36px; }
+ .app.award-app .home-design .ap-photo-copy { padding:36px 28px; gap:var(--space-5); }
+ .app.award-app .home-design .ap-statement { gap:var(--space-10); }
+}
+@media(max-width:700px) {
+ .app.award-app .home-design .ap-hero { padding-top:28px; }
+ .app.award-app .home-design .ap-hero-type { grid-template-columns:1fr; gap:var(--space-6); padding:0 0 30px; }
+ .app.award-app .home-design .ap-hero h1 { font-size:var(--fs-display); letter-spacing:-.06em; }
+ .app.award-app .home-design .ap-hero-note { gap:18px; }
+ .app.award-app .home-design .ap-hero-note p { font-size:var(--fs-body); }
+ .app.award-app .home-design .ap-round-link { min-height:48px; padding:10px 18px 10px 22px; }
+ .app.award-app .home-design .ap-hero-visual { height:410px; }
+ .app.award-app .home-design .ap-visual-label { top:16px; right:16px; font-size:var(--fs-label); }
+ .app.award-app .home-design .ap-hero-visual::before { left:14px; top:14px; width:10px; height:10px; }
+ .app.award-app .home-design .ap-room-stage { inset:24px 0 0; padding:0; }
+ .app.award-app .home-design .ap-room { width:100%; height:100%; max-height:none; }
+ .app.award-app .home-design .ap-object-label { display:none; }
+ .app.award-app .home-design .ap-statement { grid-template-columns:1fr; padding:var(--space-16) 4% var(--space-12); gap:26px; }
+ .app.award-app .home-design .ap-statement h2 { font-size:var(--fs-h1); }
+ .app.award-app .home-design .ap-statement-bottom { gap:18px; }
+ .app.award-app .home-design .ap-statement-bottom > svg { display:none; }
+ .app.award-app .home-design .ap-statement-bottom p { font-size:var(--fs-body); }
+ .app.award-app .home-design .ap-photo-section { grid-template-columns:1fr; margin-bottom:60px; }
+ .app.award-app .home-design .home-photo-media img { min-height:0; aspect-ratio:4/3; }
+ .app.award-app .home-design .ap-photo-copy { padding:28px var(--space-6); gap:18px; }
+ .app.award-app .home-design .ap-photo-copy h2 { font-size:var(--fs-h1); }
+ .app.award-app .home-design .ap-process { grid-template-columns:1fr; padding-bottom:60px; gap:28px; }
+ .home-step-preview { display:none; }
+ .app.award-app .home-design .ap-process-row { grid-template-columns:26px minmax(0,1fr) 20px; gap:10px; padding:22px var(--space-2); min-height:130px; }
+ .app.award-app .home-design .ap-process-row:is(:hover,:focus-visible) { padding-left:var(--space-2); }
+ .app.award-app .home-design .ap-process-art { display:none; }
+ .app.award-app .home-design .ap-process-row h3 { font-size:var(--fs-h2); }
+ .app.award-app .home-design .ap-process-row p { font-size:var(--fs-small); }
+ .app.award-app .home-design .ap-final { padding:36px 26px; min-height:290px; margin-bottom:var(--space-8); }
+ .app.award-app .home-design .ap-final h2 { font-size:var(--fs-h1); }
+}
+@media(prefers-reduced-motion:reduce) { .app.award-app .home-design *, .app.award-app .home-design *::after { animation:none !important; transition:none !important; scroll-behavior:auto !important; } }
+
+/* Prevent the legacy delayed entrance on the explanatory copy. */
+.app.award-app .home-design .ap-hero-note { animation:none; opacity:1; translate:none; }
+.app.award-app .home-design .home-photo-shade { inset:0; clip-path:polygon(52% 57%,100% 51%,100% 100%,52% 74%); }
+.app.award-app .home-design .is-protected .home-photo-shade { opacity:.22; }
+/* Shared illustration styles must not reintroduce a card around the home artwork. */
+.app.award-app .home-design .ap-final .ap-round-link { margin-top:0; }
+@media(min-width:701px) and (max-width:900px) {
+ .app.award-app .home-design .ap-hero-type { grid-template-columns:1fr; gap:var(--space-6); }
+ .app.award-app .home-design .ap-hero h1 { font-size:var(--fs-display); }
+ .app.award-app .home-design .ap-hero-note { display:flex; align-items:center; justify-content:space-between; }
+ .app.award-app .home-design .ap-hero-note p { font-size:var(--fs-body); }
+}
+
+.app.award-app .home-design .home-step-preview .mood-guide-art { box-shadow:none; }
+
+/* Craft pass: Acctual action depth, Base type discipline; effects belong to feedback. */
+.app.award-app .home-design { --home-fast:140ms; --home-state:220ms; }
+.app.award-app .home-design :is(h1,h2,h3) { text-wrap:balance; }
+.app.award-app .home-design .ap-hero h1 { font-weight:700; letter-spacing:-.045em; font-size:var(--fs-display); line-height:var(--lh-display); }
+.app.award-app .home-design :is(.ap-statement h2,.ap-photo-copy h2,.ap-process-heading h2,.ap-final h2) { font-weight:700; letter-spacing:-.04em; }
+.app.award-app .home-design :is(.ap-hero-note p,.ap-statement-bottom p) { font-size:var(--fs-body); line-height:var(--lh-body); letter-spacing:-.02em; color:var(--c-42424a); }
+.app.award-app .home-design .ap-round-link { font-weight:500; box-shadow:inset 0 1px 0 var(--c-ffffff-a16),0 1px 2px var(--c-302665-a13); transition:background var(--home-fast),box-shadow var(--home-fast),transform var(--home-fast); }
+.app.award-app .home-design .ap-round-link > b { width:30px; height:30px; border-radius:50%; background:var(--c-ffffff-a9); overflow:hidden; }
+.app.award-app .home-design .ap-final .ap-round-link > b { background:var(--c-6660e5-a6); }
+.app.award-app .home-design .ap-round-link:active { transform:translateY(1px); box-shadow:inset 0 1px 3px var(--c-302665-a15); }
+.app.award-app .home-design .ap-text-link { border-bottom:0; background-image:linear-gradient(currentColor,currentColor); background-size:100% 1px; background-repeat:no-repeat; background-position:left bottom; transition:color var(--home-fast),background-size var(--home-state); }
+.app.award-app .home-design .ap-text-link > svg { width:20px; height:20px; transition:transform var(--home-state) var(--home-ease); }
+.app.award-app .home-design .ap-text-link:hover > svg { transform:translateX(4px); }
+.app.award-app .home-design .home-guide-link { margin-top:var(--space-6); }
+.app.award-app .home-design .ap-furniture { transition:filter var(--home-fast); }
+.app.award-app .home-design .ap-furniture:focus { filter:none; }
+.app.award-app .home-design .ap-furniture:focus-visible { filter:drop-shadow(0 0 3px var(--c-665ce0)); }
+.app.award-app .home-design .ap-furniture > circle { transition:fill var(--home-fast),stroke var(--home-fast); }
+.app.award-app .home-design .ap-furniture:hover { filter:brightness(1.08) drop-shadow(0 3px 2px var(--c-363044-a15)); }
+.app.award-app .home-design .ap-furniture:hover > circle { fill:var(--c-e9e5ff); stroke:var(--c-5149b9); stroke-width:2; }
+.app.award-app .home-design .ap-furniture:hover > text { fill:var(--c-42369e); }
+.app.award-app .home-design .ap-process-row { grid-template-columns:28px 60px minmax(0,1fr) 24px; column-gap:var(--space-5); position:relative; transition:background var(--home-fast),border-color var(--home-fast); }
+.app.award-app .home-design .ap-process-row > span { grid-column:1; grid-row:1; }
+.app.award-app .home-design .ap-process-art { grid-column:2; grid-row:1; width:56px; height:56px; border-radius:16px; background:var(--c-faf9ff); color:var(--c-6157ba); border:1px solid var(--c-d8d4e6); box-shadow:inset 0 1px 0 var(--c-white),0 2px 3px var(--c-332450-a4); }
+.app.award-app .home-design .ap-process-art > .home-action-icon { width:32px; height:32px; }
+.app.award-app .home-design .ap-process-row > div:not(.ap-process-art) { grid-column:3; grid-row:1; }
+.app.award-app .home-design .ap-process-row > svg { grid-column:4; grid-row:1; transition:transform var(--home-state),color var(--home-fast); }
+.app.award-app .home-design .ap-process-row h3 { font-size:var(--fs-h2); font-weight:700; letter-spacing:-.025em; margin-bottom:7px; }
+.app.award-app .home-design .ap-process-row p { font-size:var(--fs-body); color:var(--c-494650); line-height:var(--lh-body); }
+.app.award-app .home-design .ap-process-row:is(:hover,:focus-visible) > svg { transform:translate(3px,-3px); }
+.app.award-app .home-design .ap-process-row:is(:hover,:focus-visible) .ap-process-art { color:var(--c-5043ae); border-color:var(--c-aaa0cf); box-shadow:inset 0 1px 0 var(--c-white),0 3px 7px var(--c-332450-a6); }
+.home-scan-line { opacity:0; transform:translateY(-4px); transition:opacity 140ms,transform 300ms; }
+.home-shield-check { stroke-dasharray:16; stroke-dashoffset:0; transition:stroke-dashoffset 220ms; }
+.home-clock-hand { transform-origin:16px 16px; transition:transform 220ms; }
+.ap-process-row:is(:hover,:focus-visible) .home-scan-line { opacity:1; transform:translateY(3px); }
+.ap-process-row:is(:hover,:focus-visible) .home-shield-check { stroke-dashoffset:32; }
+.ap-process-row:is(:hover,:focus-visible) .home-clock-hand { transform:rotate(25deg); }
+.app.award-app .home-design .ap-photo-tag { transition:color var(--home-fast); }
+.app.award-app .home-design .ap-photo-tag:hover { color:var(--c-5043ae); }
+.app.award-app .home-design .ap-photo-tag:hover .home-switch-track { box-shadow:0 0 0 4px var(--c-6660e5-a7); }
+@media(max-width:700px) {
+ .app.award-app .home-design .ap-hero h1 { font-size:var(--fs-display); }
+ .app.award-app .home-design .ap-process-row { grid-template-columns:44px minmax(0,1fr) 20px; gap:var(--space-3); padding-block:var(--space-6); }
+ .app.award-app .home-design .ap-process-row > span { display:none; }
+ .app.award-app .home-design .ap-process-art { display:grid; grid-column:1; width:42px; height:46px; border-radius:12px; }
+ .app.award-app .home-design .ap-process-art > .home-action-icon { width:28px; height:28px; }
+ .app.award-app .home-design .ap-process-row > div:not(.ap-process-art) { grid-column:2; }
+ .app.award-app .home-design .ap-process-row > svg { grid-column:3; }
+ .app.award-app .home-design .ap-process-row h3 { font-size:var(--fs-h2); }
+ .app.award-app .home-design .ap-process-row p { font-size:var(--fs-small); }
+}
+@media(prefers-reduced-motion:reduce) {
+ .app.award-app .home-design :is(button,svg,path,circle,text),.home-clock-hand,.home-scan-line { transition:none !important; animation:none !important; }
+ .app.award-app .home-design button:active,.app.award-app .home-design button:hover > svg { transform:none; }
+}
+
+/* Original diffuse sun glow; six-second timing is unchanged. */
+.app.award-app .home-design .ap-statement-bottom > svg { width:80px; height:80px; }
+.home-step-preview { display:grid; animation:none; }
+.home-step-layer { grid-area:1/1; opacity:0; transform:none; transition:opacity 180ms ease; pointer-events:none; }
+.home-step-layer.is-active { opacity:1; transform:translateY(0); }
+.app.award-app .home-design .ap-final { display:grid; grid-template-columns:minmax(0,1.2fr) minmax(280px,.8fr); column-gap:var(--space-12); align-items:center; }
+.app.award-app .home-design .ap-final h2 { grid-column:1; grid-row:1; align-self:end; }
+.app.award-app .home-design .ap-final > button { grid-column:1; grid-row:2; align-self:start; }
+.home-protection-plan { grid-column:2; grid-row:1/3; width:100%; max-width:380px; justify-self:end; margin:0; transform:none; }
+.home-protection-plan > svg { display:block; width:100%; overflow:visible; filter:none; }
+.home-protection-plan svg text { fill:var(--c-e3deeb); font-family:inherit; font-size:var(--fs-small); font-weight:500; }
+@media(max-width:900px) {
+ .app.award-app .home-design .ap-final { column-gap:var(--space-6); padding:44px 30px; }
+ .app.award-app .home-design .ap-final h2 { font-size:var(--fs-h1); }
+}
+@media(max-width:700px) {
+ .app.award-app .home-design .ap-statement-bottom > svg { display:block; width:64px; height:64px; }
+ .app.award-app .home-design .ap-final { grid-template-columns:1fr; row-gap:var(--space-6); padding:36px 26px; }
+ .app.award-app .home-design .ap-final h2 { margin-bottom:0; font-size:var(--fs-h1); }
+ .home-protection-plan { grid-column:1; grid-row:3; justify-self:center; max-width:320px; margin-top:var(--space-2); }
+}
+@media(prefers-reduced-motion:reduce) { .home-step-layer { transition:none; transform:none; } }
+
+/* FlexyAI reference: local pastel light behind the product, with a white page. */
+.app.award-app .home-design .ap-hero-visual {
+ border:0; outline:0; box-shadow:none;
+ background:radial-gradient(ellipse at 68% 62%,var(--c-e7e1fa-a60) 0,transparent 57%),radial-gradient(ellipse at 26% 70%,var(--c-f7e8da-a60) 0,transparent 55%),var(--c-f8f8fa);
+}
+.app.award-app .home-design .ap-hero-visual::before,.app.award-app .home-design .ap-hero-visual::after { content:none; }
+.app.award-app .home-design .ap-object-label { border-left:0; padding-left:0; }
+.app.award-app .home-design .ap-room { max-height:440px; }
+.app.award-app .home-design .ap-final { background:radial-gradient(ellipse at 87% 60%,var(--c-49415b-a50) 0,transparent 63%),var(--c-252529); }
+/* Cancel the inherited 45-degree arrow-container rotation. */
+.app.award-app .home-design .ap-round-link > b,
+.app.award-app .home-design .ap-round-link:hover > b { transform:none; border:0; color:inherit; background:transparent; transition:none; }
+.app.award-app .home-design .ap-round-link > b svg { transition:translate 180ms ease; transform:none; }
+.app.award-app .home-design .ap-round-link:hover > b svg { transform:none; translate:2px -2px; }
+.app.award-app .home-design .ap-round-link { transition:background 160ms,box-shadow 160ms,border-radius 200ms; }
+.app.award-app .home-design .ap-round-link:hover { border-radius:22px; box-shadow:inset 0 1px 0 var(--c-ffffff-a16),0 3px 8px var(--c-40347c-a10); }
+@media(min-width:1600px) { .app.award-app .home-design .ap-room { max-height:490px; } }
+@media(max-width:700px) { .app.award-app .home-design .ap-room { max-height:none; } }
+@media(prefers-reduced-motion:reduce) { .app.award-app .home-design .ap-round-link:hover > b svg { translate:none; } }
+
+/* Stable action geometry: color feedback only, including press and keyboard focus. */
+.app.award-app .home-design .ap-round-link,
+.app.award-app .home-design .ap-round-link:is(:hover,:active,:focus-visible) {
+ border-radius:999px; transform:none; translate:none;
+ box-shadow:inset 0 1px 0 var(--c-ffffff-a16),0 1px 2px var(--c-302665-a13);
+ transition:background-color 160ms,border-color 160ms;
+}
+.app.award-app .home-design .ap-round-link > b,
+.app.award-app .home-design .ap-round-link:is(:hover,:active,:focus-visible) > b,
+.app.award-app .home-design .ap-round-link > b svg,
+.app.award-app .home-design .ap-round-link:is(:hover,:active,:focus-visible) > b svg {
+ transform:none; translate:none; transition:none;
+}
+.app.award-app .home-design .ap-photo-tag {
+ display:grid; grid-template-columns:42px 7em; gap:var(--space-3);
+ justify-content:start; justify-items:start; text-align:left;
+ width:max-content; transform:none; translate:none;
+}
+.app.award-app .home-design .ap-photo-tag:active { transform:none; }
+.home-switch-label { display:block; width:7em; white-space:nowrap; }
+.app.award-app .home-design .ap-process-row {
+ border-top:1px solid var(--c-bdbac5); margin-top:-1px; z-index:0;
+}
+.app.award-app .home-design .ap-process-row:first-child { margin-top:0; }
+.app.award-app .home-design .ap-process-row:is(:hover,:focus-visible) {
+ border-top-color:var(--c-938bb5); border-bottom-color:var(--c-938bb5); z-index:1;
+}
+.app.award-app .home-design .ap-process-row:active { transform:none; }
+
+/* One row owns the highlight; the old row clears without a fading purple tail. */
+.app.award-app .home-design .ap-process-row { transition:none; background:transparent; }
+.app.award-app .home-design .ap-process-row:is(:hover,:focus-visible) { background:var(--c-f2f0f8); transition:background-color 90ms ease; }
+/* Fixed silhouette, with a soft material highlight instead of shape/arrow movement. */
+.app.award-app .home-design .ap-hero-note .ap-round-link { position:relative; overflow:hidden; background:var(--c-action); transition:background-color 160ms,box-shadow 180ms; }
+.app.award-app .home-design .ap-hero-note .ap-round-link::before { content:''; position:absolute; inset:0; border-radius:inherit; background:linear-gradient(115deg,var(--c-ffffff-a14),transparent 70%); opacity:0; transition:opacity 180ms; pointer-events:none; }
+.app.award-app .home-design .ap-hero-note .ap-round-link:is(:hover,:focus-visible) { background:var(--c-5b50d3); box-shadow:inset 0 1px 0 var(--c-ffffff-a31),0 4px 12px var(--c-5847a8-a17); }
+.app.award-app .home-design .ap-hero-note .ap-round-link:is(:hover,:focus-visible)::before { opacity:1; }
+.app.award-app .home-design .ap-hero-note .ap-round-link > b { transition:background-color 160ms; }
+.app.award-app .home-design .ap-hero-note .ap-round-link:is(:hover,:focus-visible) > b { background:var(--c-ffffff-a12); }
+.app.award-app .home-design .ap-hero-note .ap-round-link:active { background:var(--c-5045c2); box-shadow:inset 0 2px 5px var(--c-302665-a19); }
+@media(prefers-reduced-motion:reduce) { .app.award-app .home-design .ap-hero-note .ap-round-link::before,.home-step-layer { transition:none; } }
+
+
+/* Keep the original lift; hide the stationary shared edge beside the lifted row. */
+.app.award-app .home-design .ap-process-row { box-shadow:none; translate:none; transition:translate 140ms ease; }
+.app.award-app .home-design .ap-process-row:is(:hover,:focus-visible) { translate:0 -2px; box-shadow:none; }
+.app.award-app .home-design .ap-process-row:has(+ .ap-process-row:is(:hover,:focus-visible)) { border-bottom-color:transparent; }
+.app.award-app .home-design .ap-process-row:is(:hover,:focus-visible) + .ap-process-row { border-top-color:transparent; }
+@media(prefers-reduced-motion:reduce) { .app.award-app .home-design .ap-process-row:is(:hover,:focus-visible) { translate:none; transition:none; } }
+.app.award-app .home-design .ap-process-row:is(:hover,:focus-visible) { transition:translate 140ms ease,background-color 90ms ease; }
+
+/* The action stays anchored. A short ease-out changes its surface only. */
+.app.award-app.mode-web .home-design .ap-round-link,
+.app.award-app.mode-web .home-design .ap-round-link:is(:hover,:active,:focus-visible) { transform:none; translate:none; scale:1; rotate:none; animation:none; border-radius:999px; filter:none; transition:background-color 160ms cubic-bezier(.2,0,0,1),box-shadow 160ms cubic-bezier(.2,0,0,1); }
+.app.award-app.mode-web .home-design .ap-round-link > b,
+.app.award-app.mode-web .home-design .ap-round-link:is(:hover,:active,:focus-visible) > b,
+.app.award-app.mode-web .home-design .ap-round-link > b svg,
+.app.award-app.mode-web .home-design .ap-round-link:is(:hover,:active,:focus-visible) > b svg { transform:none; translate:none; scale:1; rotate:none; animation:none; transition:none; }
+@media(prefers-reduced-motion:reduce) { .app.award-app.mode-web .home-design .ap-round-link { transition:none; } }

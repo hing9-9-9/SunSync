@@ -1,0 +1,28 @@
+/* Web only: shallow material for primary actions; flat feedback for secondary actions.
+   State is conveyed with color and an inset edge. No geometry-changing scale or rotation. */
+.app.award-app.mode-web button:is(.primary,.secondary,.chip),
+.app.award-app.mode-web .item-tabs > button {
+ transition:background-color 160ms ease,border-color 160ms ease,color 160ms ease,box-shadow 160ms ease;
+}
+.app.award-app.mode-web button.primary:not(:disabled):not(.destructive):not(.danger) {
+ box-shadow:inset 0 1px 0 var(--c-ffffff-a15),0 1px 2px var(--c-27202d-a7);
+}
+@media(hover:hover) {
+ .app.award-app.mode-web button.primary:not(:disabled):not(.destructive):not(.danger):hover { filter:brightness(.94); transform:none; box-shadow:inset 0 1px 0 var(--c-ffffff-a15),0 3px 7px var(--c-27202d-a9); }
+ .app.award-app.mode-web button.secondary:not(:disabled):not(.destructive):not(.danger):hover { background-color:var(--c-eeebf6); border-color:var(--c-958aa9); color:var(--c-443b52); transform:none; box-shadow:none; }
+ .app.award-app.mode-web :is(button.chip,.item-tabs > button):not(:disabled):hover { background-color:var(--c-eeebf6); transform:none; box-shadow:none; }
+}
+.app.award-app.mode-web button:is(.primary,.secondary):not(:disabled):active { transform:none; filter:brightness(.95); box-shadow:inset 0 1px 3px var(--c-27202d-a13); }
+.app.award-app.mode-web :is(button.chip,.item-tabs > button):active { transform:none; box-shadow:inset 0 1px 2px var(--c-27202d-a8); }
+.app.award-app.mode-web button:disabled { box-shadow:none; filter:none; }
+.app.award-app.mode-web button:focus-visible { outline:2px solid var(--c-6554ad); outline-offset:3px; }
+@media(prefers-reduced-motion:reduce) {
+ .app.award-app.mode-web button { transition:none !important; }
+}
+
+/* Existing accordion layout; scrolling opens reached steps and updates its sticky index. */
+.app.award-app.mode-web .ap-guide-step { scroll-margin-top:100px; }
+.app.award-app.mode-web .ap-guide-nav { top:88px; }
+
+/* Reserve the vertical scrollbar gutter on short and long pages alike. */
+html:has(.app.mode-web), html:has(.app.mode-app) { scrollbar-gutter:stable; }

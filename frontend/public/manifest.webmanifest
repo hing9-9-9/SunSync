@@ -1,0 +1,20 @@
+{
+  "id": "/",
+  "name": "SunSync · 공간 관리",
+  "short_name": "SunSync",
+  "description": "공간 측정 및 보호구역 설정 UI 데모",
+  "lang": "ko",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#edf1fb",
+  "theme_color": "#6660e5",
+  "icons": [
+    {
+      "src": "/design/sun.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

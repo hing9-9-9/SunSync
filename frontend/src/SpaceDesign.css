@@ -1,0 +1,179 @@
+/* Hallmark · checked: 2026-11-03 · genre: modern-minimal (inferred) · scope: app
+ * floor: 0 static FAIL (SpaceDesign.css only; browser checks recorded separately) · built: the project · redesign: polish · theme: SunSync brand · v2.0.0 */
+/* Critique · Saved plans lead; flat controls and a single settings rail replace repeated nested frames. */
+/* Hallmark · answered F7 · The shared field recipe covers native form controls in the existing inspector, not repeated marketing cards. */
+:root {
+ --space-ui-28:28px; --space-ui-6:6px; --space-ui-10:10px; --space-ui-14:14px; --space-ui-5:5px;
+ --space-ui-ink:var(--c-232326); --space-ui-text:var(--c-494650); --space-ui-muted:var(--c-5d566b);
+ --space-ui-line:var(--c-bdbac5); --space-ui-paper:var(--c-white); --space-ui-soft:var(--c-f6f4fb);
+ --space-ui-accent:var(--c-action-ink); --space-ui-selected:var(--c-efeefd);
+ --space-ui-fast:140ms; --radius-space-ui:12px;
+}
+/* Existing shell, diagrams and inspector positions are retained. */
+.app.award-app.mode-web:is(.page-spaces,.page-detail,.page-review,.page-protect,.page-register) > .main {
+ width:92%; max-width:1440px; margin:0 auto; padding:var(--space-8) 0 var(--space-10); color:var(--space-ui-ink);
+}
+.app.award-app.mode-web:is(.page-spaces,.page-detail,.page-review,.page-protect,.page-register) :is(h1,h2,h3) { min-width:0; overflow-wrap:break-word; text-wrap:balance; color:var(--space-ui-ink); }
+.app.award-app.mode-web.page-spaces .list-content { padding:0; }
+.app.award-app.mode-web.page-spaces .server-sync-row { margin:0 0 var(--space-5); padding:0; min-height:24px; align-items:center; color:var(--space-ui-muted); }
+.app.award-app.mode-web.page-spaces .server-sync-row .text-button { min-height:32px; padding:var(--space-1) 0; color:var(--space-ui-text); font-size:14px; }
+.app.award-app.mode-web.page-spaces .award-space-intro { margin:0 0 var(--space-6); padding:0; min-height:0; align-items:center; border:0; }
+.app.award-app.mode-web.page-spaces .award-space-intro h1 { margin:0; font-size:32px; line-height:1.3; letter-spacing:-.035em; }
+.app.award-app.mode-web.page-spaces .award-space-summary { margin:0; font-size:15px; color:var(--space-ui-text); line-height:1.7; font-variant-numeric:tabular-nums; }
+.app.award-app.mode-web.page-spaces .award-list-tools { display:grid; grid-template-columns:minmax(0,1fr) 200px auto; align-items:end; gap:var(--space-4); margin:0 0 var(--space-ui-28); }
+.app.award-app.mode-web.page-spaces .award-search { width:100%; max-width:none; display:grid; grid-template-columns:24px minmax(0,1fr); grid-template-rows:auto 44px; gap:var(--space-ui-6) 0; min-width:0; height:auto; padding:0; border:0; background:transparent; }
+.app.award-app.mode-web.page-spaces .award-control-label { grid-column:1/-1; position:static; width:auto; height:auto; font-size:14px; font-weight:500; line-height:1.5; color:var(--space-ui-text); }
+.app.award-app.mode-web.page-spaces .award-search > svg { grid-area:2/1; align-self:center; position:relative; width:18px; height:18px; margin-left:var(--space-3); color:var(--space-ui-muted); z-index:1; }
+.app.award-app.mode-web.page-spaces .award-search > input { grid-area:2/1/3/3; width:100%; min-width:0; min-height:44px; height:44px; padding:var(--space-ui-10) var(--space-3) var(--space-ui-10) var(--space-10); border:1px solid var(--space-ui-line); border-radius:8px; background:var(--space-ui-paper); color:var(--space-ui-ink); font-size:16px; }
+.app.award-app.mode-web.page-spaces .award-building-filter { display:grid; gap:var(--space-ui-6); min-width:0; }
+.app.award-app.mode-web.page-spaces .award-building-filter select { min-height:44px; height:44px; width:100%; border:1px solid var(--space-ui-line); border-radius:8px; padding:var(--space-2) var(--space-8) var(--space-2) var(--space-3); background-color:var(--space-ui-paper); color:var(--space-ui-ink); font-size:15px; }
+.app.award-app.mode-web.page-spaces .award-list-tools > button { min-height:44px; height:44px; margin:0; padding:var(--space-ui-10) var(--space-5); font-size:15px; white-space:nowrap; }
+.app.award-app.mode-web.page-spaces .award-room-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(min(100%,280px),360px)); gap:var(--space-6); }
+.app.award-app.mode-web.page-spaces .award-room-card { min-width:0; max-width:360px; padding:0; border:1px solid var(--space-ui-line); border-radius:var(--radius-space-ui); background:var(--space-ui-paper); overflow:hidden; box-shadow:none; }
+.app.award-app.mode-web.page-spaces .award-room-card::after { content:none; }
+.app.award-app.mode-web.page-spaces .award-room-open { display:block; width:100%; padding:0; background:transparent; color:var(--space-ui-ink); border:0; border-radius:0; box-shadow:none; transform:none; translate:none; text-align:left; transition:background-color var(--space-ui-fast); }
+.app.award-app.mode-web.page-spaces .award-room-visual { height:202px; border:0; border-radius:0; background:var(--space-ui-soft); }
+.app.award-app.mode-web.page-spaces .award-space-thumbnail { max-width:86%; max-height:80%; transform:none; transition:none; }
+.app.award-app.mode-web.page-spaces .award-state { color:var(--space-ui-text); background:var(--space-ui-paper); box-shadow:none; font-size:12px; font-weight:500; }
+.app.award-app.mode-web.page-spaces .award-state.configured { color:var(--space-ui-accent); background:var(--space-ui-selected); }
+.app.award-app.mode-web.page-spaces .award-room-copy { padding:var(--space-5); }
+.app.award-app.mode-web.page-spaces .award-room-copy > span { font-size:14px; line-height:1.6; color:var(--space-ui-text); }
+.app.award-app.mode-web.page-spaces .award-room-copy h2 { margin:var(--space-ui-10) 0 var(--space-4); font-size:23px; line-height:1.4; letter-spacing:-.025em; }
+.app.award-app.mode-web.page-spaces .award-room-copy :is(small,.sync-badge),
+.app.award-app.mode-web.page-spaces .award-room-copy > div > span { font-size:13px; line-height:1.7; color:var(--space-ui-text); }
+.app.award-app.mode-web.page-spaces .award-room-copy > div > svg { color:var(--space-ui-text); }
+.app.award-app.mode-web.page-spaces .award-room-open:hover { background:var(--space-ui-soft); transform:none; translate:none; box-shadow:none; }
+.app.award-app.mode-web.page-spaces .award-room-open:hover .award-space-thumbnail { transform:none; }
+.app.award-app.mode-web.page-spaces .award-room-open:hover .award-room-copy h2 { color:var(--space-ui-ink); }
+.app.award-app.mode-web.page-spaces .award-room-open:active { background:var(--space-ui-selected); }
+/* Keep the plan large, and separate the settings rail with one vertical rule. */
+.app.award-app.mode-web:is(.page-detail,.page-review,.page-protect) .page-heading { margin:0 0 var(--space-6); padding:0 0 var(--space-5); }
+.app.award-app.mode-web:is(.page-detail,.page-review,.page-protect) .page-heading h1 { margin:0; font-size:32px; line-height:1.3; }
+.app.award-app.mode-web:is(.page-detail,.page-review,.page-protect) .page-subtitle { margin-top:var(--space-ui-10); font-size:14px; line-height:1.6; color:var(--space-ui-text); }
+.app.award-app.mode-web:is(.page-detail,.page-review,.page-protect) .workspace { display:grid; grid-template-columns:minmax(0,1fr) minmax(300px,360px); column-gap:0; margin:0; }
+.app.award-app.mode-web:is(.page-detail,.page-review,.page-protect) .workspace-main { gap:var(--space-4); min-width:0; width:auto; padding:0 var(--space-ui-28) var(--space-8) 0; }
+.app.award-app.mode-web:is(.page-detail,.page-review,.page-protect) .inspector { gap:var(--space-3); min-width:0; width:auto; padding:var(--space-6) 0 var(--space-8) var(--space-6); border:0; border-left:1px solid var(--space-ui-line); border-radius:0; background:var(--space-ui-paper); box-shadow:none; }
+.app.award-app.mode-web:is(.page-detail,.page-review,.page-protect) .inspector::after { content:none; }
+.app.award-app.mode-web:is(.page-detail,.page-review,.page-protect) .inspector h2 { font-size:22px; line-height:1.4; margin:0 0 var(--space-3); }
+.app.award-app.mode-web:is(.page-detail,.page-review,.page-protect) .inspector h3 { font-size:17px; line-height:1.5; margin:var(--space-6) 0 var(--space-3); }
+.app.award-app.mode-web:is(.page-detail,.page-review,.page-protect) .workspace-main > .card { margin:var(--space-5) 0 0; padding:var(--space-6) 0; border:0; border-top:1px solid var(--space-ui-line); border-radius:0; background:transparent; box-shadow:none; }
+.app.award-app.mode-web:is(.page-detail,.page-review,.page-protect) .workspace-main > .card::after { content:none; }
+.app.award-app.mode-web:is(.page-detail,.page-review,.page-protect) .workspace-main > .plan-card { padding:0; margin-top:var(--space-4); border:0; border-radius:var(--radius-space-ui); background:var(--space-ui-soft); overflow:hidden; }
+.app.award-app.mode-web:is(.page-detail,.page-review,.page-protect) .plan-wrap { padding:var(--space-4); }
+.app.award-app.mode-web:is(.page-detail,.page-review,.page-protect) .plan-caption { font-size:16px; color:var(--space-ui-text); margin-bottom:var(--space-3); }
+.app.award-app.mode-web.page-detail .workspace-main > .status-card { margin-top:var(--space-3); padding:var(--space-3) 0; border:0; }
+.app.award-app.mode-web.page-detail .status-card strong { font-size:15px; color:var(--space-ui-ink); }
+.app.award-app.mode-web.page-detail .status-card .status-dot { display:none; }
+.app.award-app.mode-web.page-detail .status-card p { margin-top:var(--space-ui-5); font-size:13px; color:var(--space-ui-text); }
+.app.award-app.mode-web.page-detail .status-card .pill { margin-left:auto; background:var(--space-ui-soft); color:var(--space-ui-text); font-size:12px; }
+.app.award-app.mode-web:is(.page-detail,.page-review,.page-protect) .section-row h3 { font-size:18px; line-height:1.5; }
+.app.award-app.mode-web:is(.page-detail,.page-review,.page-protect) .range-labels { font-size:12px; color:var(--space-ui-text); }
+.app.award-app.mode-web:is(.page-detail,.page-review,.page-protect) .plan-legend { margin-top:var(--space-3); font-size:13px; color:var(--space-ui-text); }
+.app.award-app.mode-web:is(.page-detail,.page-review,.page-protect) .item-tabs { gap:var(--space-2); margin:var(--space-4) 0 var(--space-5); }
+.app.award-app.mode-web:is(.page-detail,.page-review,.page-protect) .item-tabs > button { min-height:40px; padding:var(--space-2) var(--space-ui-14); font-size:14px; color:var(--space-ui-text); box-shadow:none; transform:none; translate:none; border:1px solid var(--space-ui-line); }
+.app.award-app.mode-web:is(.page-detail,.page-review,.page-protect) .item-tabs > button.active { color:var(--space-ui-ink); background:var(--space-ui-selected); border-color:var(--space-ui-accent); }
+.app.award-app.mode-web:is(.page-detail,.page-review,.page-protect) .summary-box { padding:var(--space-4); margin:var(--space-4) 0 var(--space-6); border:0; border-radius:8px; background:var(--space-ui-soft); }
+.app.award-app.mode-web:is(.page-detail,.page-review,.page-protect) .summary-box :is(strong,p) { margin:0; font-size:15px; line-height:1.7; }
+.app.award-app.mode-web:is(.page-detail,.page-review,.page-protect) .summary-box p { color:var(--space-ui-text); }
+.app.award-app.mode-web:is(.page-detail,.page-review,.page-protect) .row { padding:var(--space-3); margin:0; min-height:60px; border:0; border-bottom:1px solid var(--space-ui-line); border-radius:0; color:var(--space-ui-ink); box-shadow:none; transform:none; }
+.app.award-app.mode-web:is(.page-detail,.page-review,.page-protect) .row.selected { background:var(--space-ui-selected); border-radius:8px; }
+.app.award-app.mode-web:is(.page-detail,.page-review,.page-protect) .row small { font-size:13px; line-height:1.7; color:var(--space-ui-text); }
+.app.award-app.mode-web:is(.page-detail,.page-review,.page-protect) .grade-summary { font-size:13px; line-height:1.6; color:var(--space-ui-text); }
+.app.award-app.mode-web:is(.page-detail,.page-review,.page-protect) .detail-actions { margin-top:var(--space-6); gap:var(--space-3); }
+.app.award-app.mode-web:is(.page-detail,.page-review,.page-protect) .detail-secondary { gap:var(--space-3); }
+.app.award-app.mode-web:is(.page-detail,.page-review,.page-protect,.page-register) .field > span { font-size:14px; line-height:1.5; font-weight:500; color:var(--space-ui-text); }
+.app.award-app.mode-web:is(.page-detail,.page-review,.page-protect,.page-register) :is(.field input:not([type=range]):not([type=checkbox]),.field select,.field textarea) { min-width:0; min-height:44px; border:1px solid var(--space-ui-line); border-radius:8px; background-color:var(--space-ui-paper); color:var(--space-ui-ink); font-size:16px; box-shadow:none; }
+.app.award-app.mode-web:is(.page-detail,.page-review,.page-protect,.page-register) .muted { color:var(--space-ui-muted); }
+.app.award-app.mode-web:is(.page-review,.page-protect) .editor-command-bar { position:sticky; top:0; z-index:12; gap:var(--space-6); margin:0 0 var(--space-4); padding:var(--space-4) 0; background:var(--space-ui-paper); border:0; border-bottom:1px solid var(--space-ui-line); box-shadow:none; }
+.app.award-app.mode-web:is(.page-review,.page-protect) .editor-command-bar h1 { font-size:28px; line-height:1.3; }
+.app.award-app.mode-web:is(.page-review,.page-protect) .editor-command-actions { gap:var(--space-3); align-items:center; }
+.app.award-app.mode-web:is(.page-review,.page-protect) .editor-command-actions > button { min-width:80px; min-height:44px; }
+.app.award-app.mode-web:is(.page-review,.page-protect) .editor-save-status { font-size:13px; letter-spacing:0; text-transform:none; color:var(--space-ui-muted); }
+.app.award-app.mode-web:is(.page-review,.page-protect) .space-workflow { margin:var(--space-4) 0; padding:var(--space-3) 0; gap:var(--space-5); }
+.app.award-app.mode-web:is(.page-review,.page-protect) .editing-help { margin:0 0 var(--space-5); font-size:14px; line-height:1.7; color:var(--space-ui-text); }
+/* Flex gaps own the vertical rhythm; nested margins must not add a second gap. */
+.app.award-app.mode-web:is(.page-detail,.page-review,.page-protect) .workspace-main > :is(.zone-tabs,.item-tabs,.card) { margin-top:0; margin-bottom:0; }
+.app.award-app.mode-web:is(.page-detail,.page-review,.page-protect) .inspector > :is(h2,p,.summary-box,.row,.divider,.detail-actions) { margin-top:0; margin-bottom:0; }
+.app.award-app.mode-web:is(.page-detail,.page-review,.page-protect) .inspector > h3 { margin-top:var(--space-3); margin-bottom:0; }
+.app.award-app.mode-web:is(.page-detail,.page-review,.page-protect,.page-register) .field { padding:0; border:0; border-radius:0; background:transparent; box-shadow:none; gap:var(--space-2); }
+.app.award-app.mode-web:is(.page-detail,.page-review,.page-protect,.page-register) :is(.field input:not([type=range]):not([type=checkbox]),.field select,.field textarea) { padding:var(--space-ui-10) var(--space-3); }
+.app.award-app.mode-web:is(.page-review,.page-protect) .editor-command-title { text-align:left; }
+.app.award-app.mode-web.page-spaces .award-room-card,
+.app.award-app.mode-web.page-spaces .award-room-card:hover { translate:none; transform:none; box-shadow:none; border-color:var(--space-ui-line); border-radius:var(--radius-space-ui); }
+.app.award-app.mode-web.page-spaces .award-room-card:hover .award-room-visual { background:var(--space-ui-soft); }
+.app.award-app.mode-web:is(.page-detail,.page-review,.page-protect) .workspace-main > .card:not(.plan-card),
+.app.award-app.mode-web:is(.page-detail,.page-review,.page-protect) .workspace-main > .card:not(.plan-card):hover { border-radius:0; box-shadow:none; }
+.app.award-app.mode-web:is(.page-detail,.page-review,.page-protect,.page-register) .inspector .field select { padding-right:var(--space-8); }
+/* Field borders keep their width; feedback never moves the label or value. */
+.app.award-app.mode-web:is(.page-spaces,.page-detail,.page-review,.page-protect,.page-register) :is(button,a,input,select,textarea):focus-visible { outline:2px solid var(--space-ui-accent); outline-offset:3px; }
+.app.award-app.mode-web:is(.page-spaces,.page-detail,.page-review,.page-protect,.page-register) :is(input,select,textarea):focus-visible { outline-offset:-3px; }
+.app.award-app.mode-web:is(.page-spaces,.page-detail,.page-review,.page-protect,.page-register) :is(button,input,select,textarea):disabled { opacity:.55; cursor:not-allowed; box-shadow:none; transform:none; }
+.app.award-app.mode-web:is(.page-detail,.page-review,.page-protect,.page-register) [aria-invalid=true] { border-color:var(--c-danger); outline:2px solid var(--c-danger); outline-offset:-3px; }
+@media(max-width:1100px) {
+ .app.award-app.mode-web:is(.page-detail,.page-review,.page-protect) .workspace { grid-template-columns:minmax(0,1fr) 300px; }
+ .app.award-app.mode-web:is(.page-detail,.page-review,.page-protect) .workspace-main { padding-right:var(--space-5); }
+ .app.award-app.mode-web:is(.page-detail,.page-review,.page-protect) .inspector { padding-left:var(--space-5); }
+}
+@media(max-width:800px) {
+ .app.award-app.mode-web.page-spaces .award-list-tools { grid-template-columns:minmax(0,1fr) minmax(0,1fr); }
+ .app.award-app.mode-web.page-spaces .award-search { grid-column:1/-1; }
+ .app.award-app.mode-web.page-spaces .award-list-tools > button { justify-self:end; }
+ .app.award-app.mode-web:is(.page-detail,.page-review,.page-protect) .workspace { grid-template-columns:minmax(0,1fr); }
+ .app.award-app.mode-web:is(.page-detail,.page-review,.page-protect) .workspace-main { padding-right:0; }
+ .app.award-app.mode-web:is(.page-detail,.page-review,.page-protect) .inspector { border-left:0; border-top:1px solid var(--space-ui-line); padding:var(--space-6) 0; }
+ .app.award-app.mode-web:is(.page-review,.page-protect) .editor-command-bar { flex-wrap:wrap; }
+}
+@media(max-width:500px) {
+ .app.award-app.mode-web.page-spaces .award-space-intro { display:block; }
+ .app.award-app.mode-web.page-spaces .award-space-summary { margin-top:var(--space-ui-10); }
+ .app.award-app.mode-web.page-spaces .award-room-grid { grid-template-columns:minmax(0,1fr); }
+ .app.award-app.mode-web.page-spaces .award-room-card { max-width:none; }
+ .app.award-app.mode-web:is(.page-review,.page-protect) .editor-command-actions { flex-wrap:wrap; }
+ .app.award-app.mode-web:is(.page-review,.page-protect) .space-workflow { gap:var(--space-ui-10); font-size:12px; }
+}
+@media(prefers-reduced-motion:reduce) {
+ .app.award-app.mode-web:is(.page-spaces,.page-detail,.page-review,.page-protect,.page-register) *,
+ .app.award-app.mode-web:is(.page-spaces,.page-detail,.page-review,.page-protect,.page-register) *::after { transition:none !important; animation:none !important; }
+}
+
+/* Status labels share one surface; state is carried by words, not decoration. */
+.app.award-app.mode-web.page-spaces .award-state,
+.app.award-app.mode-web.page-spaces .award-state.configured { color:var(--space-ui-text); background:var(--space-ui-paper); border:1px solid var(--space-ui-line); border-radius:6px; padding:var(--space-ui-6) var(--space-ui-10); }
+.app.award-app.mode-web.page-detail .workspace { border-top:0; }
+.app.award-app.mode-web.page-detail .workspace-main > .zone-tabs { padding:0; margin:0; align-items:center; }
+.app.award-app.mode-web.page-detail .zone-tabs .chip { min-height:36px; padding:var(--space-2) var(--space-3); border:1px solid var(--space-ui-accent) !important; border-radius:8px !important; background:var(--space-ui-paper) !important; color:var(--space-ui-accent) !important; box-shadow:none; }
+.app.award-app.mode-web.page-detail .prediction-source { margin-left:auto; color:var(--space-ui-muted); font-size:13px; line-height:1.5; white-space:nowrap; }
+
+/* One continuous settings divider, meeting the heading and footer without floating ends. */
+.app.award-app.mode-web:is(.page-detail,.page-review,.page-protect) > .main { gap:0; padding-bottom:0; }
+.app.award-app.mode-web.page-detail .page-heading { margin-bottom:0; border-bottom:1px solid var(--space-ui-line); }
+.app.award-app.mode-web:is(.page-detail,.page-review,.page-protect) .workspace { border:0; padding-top:0; padding-bottom:0; }
+.app.award-app.mode-web:is(.page-detail,.page-review,.page-protect) .workspace::after { content:none; }
+.app.award-app.mode-web:is(.page-detail,.page-review,.page-protect) .workspace-main { padding-top:var(--space-6); }
+.app.award-app.mode-web:is(.page-detail,.page-review,.page-protect) .workspace > .inspector { align-self:stretch; max-height:none; border-left:1px solid var(--space-ui-line) !important; }
+.app.award-app.mode-web:is(.page-review,.page-protect) :is(.space-workflow,.editor-command-bar,.editing-help) { border:0; }
+.app.award-app.mode-web:is(.page-review,.page-protect) .workspace-main > .card:not(.plan-card) { border:0; }
+@media(max-width:800px) {
+ .app.award-app.mode-web:is(.page-detail,.page-review,.page-protect) .workspace > .inspector { border-left:0 !important; border-top:0; }
+}
+
+/* Row boundaries are single rules; no rounded underline ends. */
+.app.award-app.mode-web.page-detail .inspector > .row { border-radius:0 !important; }
+
+/* A short ease-out elevation makes the whole space card respond as one object. */
+.app.award-app.mode-web.page-spaces .award-room-card { transition:transform 180ms cubic-bezier(.16,1,.3,1),box-shadow 180ms cubic-bezier(.16,1,.3,1); }
+@media(hover:hover) {
+ .app.award-app.mode-web.page-spaces .award-room-card:hover { translate:none; transform:translateY(-3px); box-shadow:var(--shadow-card); }
+ .app.award-app.mode-web.page-spaces .award-room-open:hover { background:transparent; }
+}
+.app.award-app.mode-web.page-spaces .award-room-card:focus-within { box-shadow:var(--shadow-card); }
+.app.award-app.mode-web:is(.page-detail,.page-review,.page-protect) .zone-tabs > .chip {
+ display:inline-flex; justify-content:center; align-items:center; flex:0 0 80px;
+ width:80px; height:44px; min-height:44px; padding:0; box-sizing:border-box;
+ font-size:14px; font-weight:500; line-height:20px; font-variant-numeric:tabular-nums;
+}
+/* Only the settings panel draws the divider; a second adjacent border made it look heavier. */
+.app.award-app.mode-web:is(.page-detail,.page-review,.page-protect) .workspace > .workspace-main { border-right:0; }
+@media(prefers-reduced-motion:reduce) {
+ .app.award-app.mode-web.page-spaces .award-room-card:hover { transform:none; }
+}
