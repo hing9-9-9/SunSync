@@ -367,12 +367,13 @@
 /* Editor save status: small muted line under the space name. */
 .app.award-app .editor-command-bar > div > .editor-save-status { display: block; min-height: var(--lh-small); font-size: var(--fs-small); line-height: var(--lh-small); color: var(--c-muted); }
 /* Editor header ends with the same hairline as the space detail header. */
-.app.award-app .editor-command-bar { border-bottom: 1px solid var(--c-bdbac5) !important; margin-bottom: var(--space-6) !important; }
-/* Focused fields: one accent line (the border, thickened inside), no separate outline ring around it. */
+.app.award-app .editor-command-bar { border-bottom: 1px solid var(--c-bdbac5) !important; margin-bottom: 0 !important; }
+.app.award-app .editor-command-bar + .editor-step-label { margin: 0; }
+/* Focused fields: the 1px border turns purple; no separate outline ring around it. */
 .app.award-app.mode-web :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea):focus-visible {
   outline: none !important;
   border-color: var(--c-action) !important;
-  box-shadow: inset 0 0 0 1px var(--c-action) !important;
+  box-shadow: none !important;
 }
 /* In the app the field box is the bordered element; it alone turns purple. */
 .app.award-mobile .field :is(input, select, textarea):focus-visible { outline: none !important; box-shadow: none !important; }
