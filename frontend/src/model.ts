@@ -94,10 +94,10 @@ export type SavedState = {
 };
 export const STORAGE_KEY = "sunsync-ui-v1";
 export const grades: Record<Grade, string> = {
-  A: "직사광선 차단",
-  B: "약한 햇빛까지만 허용",
-  C: "B보다 강한 햇빛까지 허용",
-  D: "추가 차단 없이 채광 유지",
+  A: "차단 100% · 햇빛이 전혀 닿지 않아요",
+  B: "차단 70% · 블라인드를 내린 정도",
+  C: "차단 30% · 얇은 커튼을 친 정도",
+  D: "차단 0% · 지금처럼 햇빛이 그대로 들어와요",
 };
 export const furnitureTypes: Record<FurnitureType, string> = {
   bookcase: "책장",
@@ -119,6 +119,8 @@ export const CELL_SIZE = 0.1;
 export const isWidthWall = (wall: Wall) => wall === "south" || wall === "north";
 export const wallLength = (s: Pick<Space, "width" | "depth">, wall: Wall) =>
   isWidthWall(wall) ? s.width : s.depth;
+// Derived window margins are rounded to the millimetre so float noise never reaches the inputs.
+export const margin = (m: number) => Math.round(m * 1000) / 1000;
 // Fills the optional fields of spaces saved before window position existed.
 export function resolveWindow(s: Space): Required<WindowSpec> | null {
   const w = s.windowDimensions;
@@ -319,9 +321,9 @@ export function validateWindow(s: Space): string | null {
   if (![r.offset, r.sill].every((n) => Number.isFinite(n) && n >= 0))
     return "창문 위치는 0 이상의 숫자로 입력해 주세요.";
   if (r.offset + r.width > wallLength(s, r.wall) + 0.001)
-    return `창문이 ${walls[r.wall]} 길이를 벗어났습니다. 벽 끝에서의 거리와 창문 가로를 확인해 주세요.`;
+    return `창문이 ${walls[r.wall]} 길이를 벗어났습니다. 왼쪽·오른쪽 여백과 창문 가로를 확인해 주세요.`;
   if (r.sill + r.height > s.height + 0.001)
-    return "창문이 천장 높이를 벗어났습니다. 바닥에서 창 아래까지 높이와 창문 높이를 확인해 주세요.";
+    return "창문이 천장 높이를 벗어났습니다. 위·아래 여백과 창문 높이를 확인해 주세요.";
   const m = r.marker;
   if (
     ![m.size, m.x, m.y].every(Number.isFinite) ||

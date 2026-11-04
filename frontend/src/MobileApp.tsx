@@ -9,6 +9,8 @@ import {
   furnitureTypes,
   grades,
   isWidthWall,
+  margin,
+  wallLength,
   resolveWindow,
   upsertSpace,
   walls,
@@ -672,18 +674,37 @@ function MobileApp() {
                       </label>
                       {draftWindow && (
                         <>
+                          {/* Right and top margins are derived: editing them rewrites offset/sill, the stored values. */}
                           <div className="two-fields">
                             <NumberField
                               label={
                                 isWidthWall(draftWindow.wall)
-                                  ? "서쪽 끝에서 창까지"
-                                  : "북쪽 끝에서 창까지"
+                                  ? "왼쪽 여백 · 서쪽 끝부터"
+                                  : "왼쪽 여백 · 북쪽 끝부터"
                               }
                               value={draftWindow.offset}
                               onChange={(offset) => changeWindow({ offset })}
                             />
                             <NumberField
-                              label="바닥에서 창 아래까지"
+                              label={
+                                isWidthWall(draftWindow.wall)
+                                  ? "오른쪽 여백 · 동쪽 끝까지"
+                                  : "오른쪽 여백 · 남쪽 끝까지"
+                              }
+                              value={margin(wallLength(draft, draftWindow.wall) - draftWindow.offset - draftWindow.width)}
+                              onChange={(right) =>
+                                changeWindow({ offset: margin(wallLength(draft, draftWindow.wall) - draftWindow.width - right) })
+                              }
+                            />
+                            <NumberField
+                              label="위 여백 · 천장까지"
+                              value={margin(draft.height - draftWindow.sill - draftWindow.height)}
+                              onChange={(top) =>
+                                changeWindow({ sill: margin(draft.height - draftWindow.height - top) })
+                              }
+                            />
+                            <NumberField
+                              label="아래 여백 · 바닥부터"
                               value={draftWindow.sill}
                               onChange={(sill) => changeWindow({ sill })}
                             />
