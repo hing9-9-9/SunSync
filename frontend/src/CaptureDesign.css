@@ -41,3 +41,7 @@
 .app.award-mobile.mode-app.page-capture .capture-intro .step-label { color:var(--at-muted); font-size:13px; }
 .app.award-mobile.mode-app.page-capture .capture-viewfinder { padding:var(--space-4); gap:var(--space-3); }
 .app.award-mobile.mode-app.page-capture .viewfinder-frame { width:min(100%,180px); }
+/* Capture's bottom action matches every other app action bar: no white card behind it, same 50px raised pill, same spot above the tab bar. */
+.app.award-mobile.mode-app.page-capture .capture-action { bottom:calc(12px + 64px + 10px + env(safe-area-inset-bottom)); padding:0; border:0; border-radius:0; background:transparent; box-shadow:none; backdrop-filter:none; -webkit-backdrop-filter:none; }
+.app.award-mobile.mode-app.page-capture .capture-action :is(.file-button,.primary) { min-height:50px; box-shadow:var(--shadow-action-raised); }
+.app.award-mobile.mode-app.page-capture:not(:has(nav.mobile-nav)) .capture-action { bottom:calc(12px + env(safe-area-inset-bottom)); }
