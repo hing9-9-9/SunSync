@@ -72,6 +72,11 @@
           "title": "Method",
           "type": "string"
         },
+        "calibration_id": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Calibration Id",
+          "type": "string"
+        },
         "captured_at": {
           "format": "date-time",
           "title": "Captured At",
@@ -250,6 +255,7 @@
       "required": [
         "observation_id",
         "method",
+        "calibration_id",
         "captured_at",
         "uncertainty_m",
         "confirmed",
@@ -406,6 +412,11 @@
       "title": "Schema Version",
       "type": "string"
     },
+    "calibration_id": {
+      "pattern": "^[a-f0-9]{64}$",
+      "title": "Calibration Id",
+      "type": "string"
+    },
     "units": {
       "const": "m",
       "title": "Units",
@@ -460,6 +471,7 @@
   },
   "required": [
     "schema_version",
+    "calibration_id",
     "units",
     "coordinate_frame",
     "markers",

@@ -92,6 +92,10 @@ API 문서: `http://127.0.0.1:8001/docs`. 기존 백엔드의 8000 포트와 분
 
 기존 Scene은 먼저 `/api/scenes`로 등록되어 있어야 합니다. `plan.space_id`는 해당 Scene의 `room.room_id`와 같아야 하며, 보드 정렬도 그 방의 ENU 원점·진북·바닥을 사용해야 합니다. ID가 정규화되면 `extensions.id_mapping`의 변환 ID를 확인하세요.
 
+가구 등록 전에 확인된 보드/ENU/바닥 보정을 Scene의 `registration_calibration`에 저장합니다. 형식은 `{"calibration_id": measurement.reference_id, "marker": fragment.markers[0]}`이며 Scene 생성 또는 revision을 증가시킨 PUT으로 등록합니다. 실제 공간 기준과 일치하는지 확인한 보정을 사용하세요. 서버는 저장된 보정 ID와 마커의 전체 규격·ENU 변환이 일치할 때만 가구를 추가합니다. 첫 가구 요청의 보정을 자동으로 신뢰하지 않습니다. 보정을 변경하면 기존 관측도 재측정해야 합니다.
+
+`/v1/scenes`는 측정점과 높이 산출 근거에서 치수를 재검증합니다. 같은 space ID라도 보드→ENU 변환이나 바닥 기준이 다르면 합치지 않습니다. 현재 여러 보드를 사용하려면 동일 기준 보드로 재측정하거나 별도의 좌표계 정합 과정이 필요합니다.
+
 백엔드는 `aruco_board_camera_at_point`의 일반 3D 관측과 `vertical`/`horizontal` 마커를 지원합니다. `plane`은 측정점이 아닌 마커 방향입니다. 모든 유효 촬영에 실제 ISO 8601 시각과 UTC 오프셋인 `captured_at`을 전달해야 내보낼 수 있습니다. 관측 시각은 마지막 유효 촬영 시각이며 처리 시각으로 대체하지 않습니다. 높이 산출 모드, 수동 높이·설치 높이, 표준 모델 ID도 관측에 저장됩니다.
 
 명세는 `fr06-fragment.schema.json`, 실행 검증기는 `fragment_schema.BoardCameraFragmentV1`입니다. `POST /v1/fr06/validate`는 스키마·ID 참조·좌표 변환·derived field 경로를 검증합니다. 내보낸 객체 ID는 기존 식별자 문자 규칙을 따르며, 변환한 원래 ID는 `extensions.id_mapping`에 보존합니다. 보드 좌표는 실제 기준 마커 중심 좌표로 변환하고 위치·회전 파생값은 행렬에서 다시 계산합니다.

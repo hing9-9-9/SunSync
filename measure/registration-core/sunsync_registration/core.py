@@ -9,6 +9,7 @@ from .models import (
     ModelPlacement,
     PlanRequest,
     MeasureRequest,
+    Shape,
     rigid,
 )
 from .pose import estimate
@@ -323,6 +324,50 @@ def canonical_model(value: dict):
         raise ValueError("Model placement requires a floor or ENU reference")
     if not np.allclose(tm[:3, 2], up, atol=1e-6):
         raise ValueError("Model up axis disagrees with floor reference")
+    shape = Shape.model_validate(value["shape"])
+    count = {"rectangle": 4, "circle": 4, "ellipse": 6}.get(
+        shape.kind, len(shape.vertices)
+    )
+    points = value["points"]
+    if any(points[f"P{i+1}"]["status"] != "ok" for i in range(count)):
+        raise ValueError("Model requires complete measured surface points")
+    surface_points = np.array(
+        [points[f"P{i+1}"]["point_board_m"] for i in range(count)], float
+    )
+    if not np.isfinite(surface_points).all():
+        raise ValueError("Non-finite measured points")
+    tolerance = float(value["surface_tolerance_m"])
+    if not 0 < tolerance <= 0.1:
+        raise ValueError("Invalid surface tolerance")
+    fit = fit_surface(shape.kind, surface_points, tolerance)
+    origin_height = (
+        float(te_b[2, 3]) if alignment is not None else floor.board_origin_height_m
+    )
+    heights = surface_points @ up + origin_height
+    if min(heights) < 0 or max(abs(heights - heights.mean())) > tolerance:
+        raise ValueError("Measured surface must be horizontal and above the floor")
+    surface_height = float(heights.mean())
+    mode = model["height_source"]
+    if mode == "manual":
+        height = value["manual_height_m"]
+    elif mode == "capture_highest":
+        if points["H1"]["status"] != "ok":
+            raise ValueError("Missing highest point")
+        height = float(np.dot(points["H1"]["point_board_m"], up) + origin_height)
+        if height < surface_height - tolerance:
+            raise ValueError("Highest point below measured surface")
+    elif mode == "surface_is_top":
+        height = surface_height
+    else:
+        raise ValueError("Unknown height source")
+    if height is None or not np.isfinite(height) or height <= 0:
+        raise ValueError("Invalid measured/manual height")
+    if not np.allclose(
+        model["dimensions_m"], [fit["width"], fit["depth"], height], atol=1e-6, rtol=0
+    ):
+        raise ValueError(
+            "Model dimensions disagree with measured points and height source"
+        )
     return ModelPlacement.model_validate(data).model_dump(
         mode="json", exclude_none=True
     )
@@ -339,7 +384,28 @@ def compose_scene(measurements: list[dict]):
     if len(space_ids) != 1:
         raise ValueError("Different space IDs cannot be merged")
     enu = all(v["reference"]["alignment"] is not None for v in measurements)
-    # ENU transforms must refer to the SAME origin/north/floor, represented by a space_id.
+    if enu:
+        first = measurements[0]["reference"]
+        first_alignment = rigid(first["alignment"]["T_enu_board"])
+        first_up = first_alignment[:3, :3].T @ np.array([0.0, 0.0, 1.0])
+        for measurement in measurements[1:]:
+            reference = measurement["reference"]
+            alignment = rigid(reference["alignment"]["T_enu_board"])
+            floor = reference["floor"]
+            up = (
+                np.array(floor["up_board"])
+                if floor
+                else alignment[:3, :3].T @ np.array([0.0, 0.0, 1.0])
+            )
+            height = floor["board_origin_height_m"] if floor else alignment[2, 3]
+            if (
+                not np.allclose(alignment, first_alignment, atol=1e-6, rtol=0)
+                or not np.allclose(up, first_up, atol=1e-6, rtol=0)
+                or not np.isclose(height, first_alignment[2, 3], atol=1e-6, rtol=0)
+            ):
+                raise ValueError(
+                    "Different ENU alignments/floor references cannot be merged"
+                )
     if not enu and len({v["reference_id"] for v in measurements}) != 1:
         raise ValueError(
             "Different board references require ENU alignment before merging"

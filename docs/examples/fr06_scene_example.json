@@ -6,6 +6,7 @@
   "created_at": "2026-10-14T00:00:00Z",
   "units": "m",
   "coordinate_frame": "ENU",
+  "registration_calibration": null,
   "site": {
     "latitude_deg": 37.5,
     "longitude_deg": 127.0,

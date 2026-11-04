@@ -53,6 +53,8 @@ session.accept(ticket["capture_id"], ticket["point_id"], camera, detection_respo
 - fragment는 `POST /api/scenes/{scene_id}/registrations`에 `{"expected_revision": 현재revision, "fragment": fragment}`로 전달합니다. 전체 Scene과 다른 전송 봉투이므로 `/api/scenes`에 직접 보내지 않습니다.
 - 백엔드는 `vertical`/`horizontal` 마커와 일반 3D `aruco_board_camera_at_point` 관측을 지원합니다. 실제 촬영 시각이 누락되면 내보내지 않습니다. 높이 산출 모드·수동 높이·설치 높이·모델 ID를 관측에 기록하며 `derived_fields`는 가로/깊이 `[0:2]`, 높이 `[2]`, yaw, base-center를 지정합니다.
 - 등록은 직사각형 상판/직육면체에 한정합니다. 기존 방의 `room_id`와 공통 ENU 정렬이 필요하며 진북·바닥 기준을 확인해야 합니다. 서버는 점과 변환, 치수·높이·중심·yaw의 일치, 방 내부 형상·출처를 확인합니다. 성공 시 revision+1과 전체 Scene을 반환합니다. 409는 재조회 후 충돌 처리가 필요하며, 422에서는 입력을 수정해야 합니다. 실패 시 기존 Scene을 변경하지 않습니다.
+- 가구 요청 전에 확인된 보정을 Scene의 `registration_calibration={"calibration_id": measurement.reference_id, "marker": fragment.markers[0]}`로 저장합니다. 생성/PUT API를 이용하며 실제 공간의 원점·진북·바닥과 일치하는 보정만 등록합니다. fragment 및 관측의 `calibration_id`, 마커 규격·ENU 변환이 저장된 값과 같아야 합니다. 미등록/다른 보정은 422입니다. 같은 room ID만으로 좌표계 일치를 판단하지 않습니다.
+- `/v1/scenes`도 실제 측정점·높이 모드와 치수를 대조하며, 같은 space ID의 서로 다른 ENU 변환/바닥 기준을 거절합니다.
 
 ## 배포 담당 확인 사항
 

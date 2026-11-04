@@ -231,3 +231,45 @@ def test_capture_ticket_mismatch_and_same_point_retake_are_rejected():
     assert not session.captures
     with pytest.raises(ValueError, match="Duplicate"):
         session.begin_capture("old")
+
+
+@pytest.mark.parametrize("dimension", [0, 1, 2])
+@pytest.mark.parametrize("manual", [False, True])
+def test_scene_rejects_dimensions_changed_after_measurement(dimension, manual):
+    request = example.fixture().model_dump()
+    if manual:
+        request["plan"].update(height_mode="manual", manual_height_m=0.9)
+    result = measure(MeasureRequest.model_validate(request))
+    result["model"]["dimensions_m"][dimension] += 0.2
+    with pytest.raises(ValueError, match="dimensions disagree"):
+        compose_scene([result])
+    assert (
+        TestClient(app).post("/v1/scenes", json={"measurements": [result]}).status_code
+        == 422
+    )
+
+
+@pytest.mark.parametrize("component", ["origin", "north", "floor"])
+def test_scene_rejects_different_enu_calibrations_with_same_space_id(component):
+    request = example.fixture().model_dump()
+    first = measure(MeasureRequest.model_validate(request))
+    request["plan"]["furniture_id"] = "second_desk"
+    transform = np.array(request["alignment"]["T_enu_board"]).reshape(4, 4)
+    if component == "origin":
+        transform[0, 3] += 0.2
+    elif component == "floor":
+        transform[2, 3] += 0.2
+    else:
+        theta = 0.2
+        rotation = np.array(
+            [
+                [np.cos(theta), -np.sin(theta), 0],
+                [np.sin(theta), np.cos(theta), 0],
+                [0, 0, 1],
+            ]
+        )
+        transform[:3, :3] = rotation @ transform[:3, :3]
+    request["alignment"]["T_enu_board"] = transform.ravel().tolist()
+    second = measure(MeasureRequest.model_validate(request))
+    with pytest.raises(ValueError, match="Different ENU"):
+        compose_scene([first, second])

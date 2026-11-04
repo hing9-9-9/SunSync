@@ -376,6 +376,11 @@
             "const": "sunsync.fr06-fragment/1",
             "title": "Schema Version"
           },
+          "calibration_id": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Calibration Id"
+          },
           "units": {
             "type": "string",
             "const": "m",
@@ -432,6 +437,7 @@
         "type": "object",
         "required": [
           "schema_version",
+          "calibration_id",
           "units",
           "coordinate_frame",
           "markers",
@@ -792,6 +798,11 @@
             "const": "aruco_board_camera_at_point",
             "title": "Method"
           },
+          "calibration_id": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Calibration Id"
+          },
           "captured_at": {
             "type": "string",
             "format": "date-time",
@@ -972,6 +983,7 @@
         "required": [
           "observation_id",
           "method",
+          "calibration_id",
           "captured_at",
           "uncertainty_m",
           "confirmed",

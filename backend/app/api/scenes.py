@@ -85,6 +85,18 @@ def register_furniture(
     if current.revision != request.expected_revision:
         raise HTTPException(status_code=409, detail="Revision conflict: reload the scene.")
     fragment = request.fragment
+    calibration = current.registration_calibration
+    if (
+        calibration is None
+        or calibration.calibration_id != fragment.calibration_id
+        or len(fragment.markers) != 1
+        or fragment.markers[0] != calibration.marker
+        or any(o.calibration_id != calibration.calibration_id for o in fragment.observations)
+    ):
+        raise HTTPException(
+            status_code=422,
+            detail="Register and confirm the matching board/ENU/floor calibration in the scene first.",
+        )
     if any(obj.room_id != current.room.room_id for obj in fragment.occluders):
         raise HTTPException(
             status_code=422, detail="Furniture must use the existing room ENU frame."
