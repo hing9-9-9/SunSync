@@ -377,8 +377,8 @@
 .app.award-mobile .field :is(input, select, textarea):focus-visible { outline: none !important; box-shadow: none !important; }
 .app.award-mobile .field:focus-within { border-color: var(--c-action) !important; }
 
-/* Inspector actions (보호 영역 지정, 가구 삭제, 보호 영역 삭제): hug their label, sit close to the fields they act on. */
+/* Inspector actions (보호 영역 지정, 가구 삭제, 보호 영역 삭제): fill the row, border like the fields, 12px from the fields above. */
 :is(.app.award-app, .app.award-mobile) .inspector .furniture-actions { display: flex !important; flex-wrap: wrap; gap: var(--space-2); margin: 0 !important; width: auto; }
 /* The inspector column already spaces children 12px; the grade note must not add its own gap on top. */
 :is(.app.award-app, .app.award-mobile) .inspector .grade-description:has(+ .furniture-actions) { padding-bottom: 0 !important; margin-bottom: 0 !important; }
-:is(.app.award-app, .app.award-mobile) .inspector .furniture-actions > button { width: auto !important; flex: 0 0 auto; padding: 0 var(--space-5) !important; }
+:is(.app.award-app, .app.award-mobile) .inspector .furniture-actions > button { width: auto !important; flex: 1 1 0; min-width: 0; padding: 0 var(--space-3) !important; border-color: var(--c-bdbac5) !important; }
