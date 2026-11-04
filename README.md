@@ -18,6 +18,7 @@ docs/      requirements, architecture, decisions, data contracts, reports
 - [FR-06 space data](docs/fr06_design.md) and [JSON schema](docs/fr06_scene_schema.json)
 - FR-01 sunlight prediction: [FR-01.1 pvlib path design](docs/fr01_1_pvlib_design.md), [FR-01.4 Open-Meteo DNI design](docs/fr01_4_open_meteo_dni_design.md), [API](docs/fr01_api.md), [FR-01 → FR-02 tile contract](docs/fr01_fr02_tile_contract.md), [mock test plan](docs/fr01_mock_test_plan.md)
 - FR-02 shading plan: [format](docs/fr02_schedule.md), [design](docs/fr02_design.md), [API](docs/fr02_api.md)
+- FR-05 film control: [protocol](docs/fr05_protocol.md) and [database persistence](docs/db.md)
 - [AI & Applications Proposal](docs/ai_applications/README.md): Project proposal blog for ITE 351 (Task 1 & Task 3)
 - Requirement document: `docs/reports/SunSync_Requirements.pdf`
 - Meeting notes: shared Google document (not in the repository)
