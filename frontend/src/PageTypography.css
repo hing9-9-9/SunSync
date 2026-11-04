@@ -33,3 +33,5 @@
 .app.award-mobile.mode-app.page-capture > .main { padding-top:12px; }
 .app.award-mobile.mode-app:is(.page-account,.page-capture) .page-heading h1 { font-size:26px; line-height:1.3; }
 .app.award-mobile.mode-app .page-heading > div { min-height:44px; display:flex; flex-direction:column; justify-content:center; }
+/* Tab titles line up with the text inside the cards below them (card padding 16px), not the card edge. */
+.app.award-mobile.mode-app:is(.page-home,.page-spaces,.page-guide,.page-more) .page-heading h1 { padding-left:var(--space-4); }
