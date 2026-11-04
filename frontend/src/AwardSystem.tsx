@@ -336,10 +336,8 @@ export function AwardGuide({
   onStart: () => void;
 }) {
   const [activeSection, setActiveSection] = useState(index ?? 0);
-  const [opened, setOpened] = useState(() => new Set(guideSteps.map((_, i) => i)));
   const activeRef = useRef(index ?? 0);
   const openStep = (step: number) => {
-    setOpened(previous => new Set(previous).add(step));
     activeRef.current = step;
     setActiveSection(step);
     if (matchMedia("(max-width: 700px)").matches) {
@@ -416,22 +414,16 @@ export function AwardGuide({
             <section
               id={`award-guide-${i}`}
               key={step.title}
-              className={`ap-guide-step ${opened.has(i) ? "is-open" : ""} ${activeSection === i ? "is-current" : ""}`}
+              className={`ap-guide-step is-open ${activeSection === i ? "is-current" : ""}`}
             >
               <h2 className="ap-guide-step-title">
-                <button type="button" aria-expanded={opened.has(i)} aria-controls={`award-guide-body-${i}`}
-                  onClick={() => setOpened(previous => {
-                    const next = new Set(previous);
-                    if (next.has(i)) next.delete(i); else next.add(i);
-                    return next;
-                  })}>
-                  <span>0{i + 1}</span><span className="guide-step-name">{step.title}</span><i aria-hidden="true" />
-                </button>
+                <span className="ap-guide-step-head">
+                  <span>0{i + 1}</span><span className="guide-step-name">{step.title}</span>
+                </span>
               </h2>
               <div
                 className="ap-guide-step-body"
                 id={`award-guide-body-${i}`}
-                hidden={!opened.has(i)}
               >
                 <div className="ap-guide-art">
                   <GuideIllustration step={i} />
