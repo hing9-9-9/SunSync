@@ -53,14 +53,14 @@ export function userMessage(error: unknown, fallback: string) {
   console.warn("SunSync", error);
   return fallback;
 }
-async function request<T>(url: string, init?: RequestInit, timeoutMs = 15000): Promise<T> {
+async function request<T>(url: string, init?: RequestInit): Promise<T> {
   let response: Response;
   try {
     response = await fetch(url, {
       ...init,
       signal: init?.signal
-        ? AbortSignal.any([init.signal, AbortSignal.timeout(timeoutMs)])
-        : AbortSignal.timeout(timeoutMs),
+        ? AbortSignal.any([init.signal, AbortSignal.timeout(15000)])
+        : AbortSignal.timeout(15000),
       headers: { "Content-Type": "application/json", ...init?.headers },
     });
   } catch (error) {
@@ -191,37 +191,18 @@ export type SunpathPrediction = {
   regions: { region_id: string; timeline: SunpathTimeline[] }[];
 };
 /** FR-01: direct-sun exposure of every protected region over one day, from the saved Scene. */
-export function predictSunpath(sceneId: string, revision: number, startTime: string, durationMinutes = 1440, intervalSeconds = 1800) {
+export function predictSunpath(sceneId: string, revision: number, startTime: string) {
   return request<SunpathPrediction>(
     `/api/scenes/${encodeURIComponent(sceneId)}/sunpath-predictions`,
     {
       method: "POST",
       body: JSON.stringify({
         start_time: startTime,
-        duration_minutes: durationMinutes,
-        interval_seconds: intervalSeconds,
+        duration_minutes: 1440,
+        interval_seconds: 1800,
         expected_scene_revision: revision,
       }),
     },
-    60000,
-  );
-}
-export type AdaptivePlan = {
-  scene_id: string;
-  scene_revision: number;
-  stabilized_plan: import("./shading.ts").ShadingPlan;
-  metrics: { flicker_reduction_pct: number; protection_violation_count: number };
-};
-/** FR-04: the FR-02 plan with the cell-edge margin (FR-04.4) and flicker rules, for a two-state film. */
-export function predictAdaptivePlan(sceneId: string, startTime: string, durationMinutes: number) {
-  return request<AdaptivePlan>(
-    `/api/scenes/${encodeURIComponent(sceneId)}/adaptive-shading-plan`,
-    { method: "POST", body: JSON.stringify({
-      start_time: startTime, duration_minutes: durationMinutes, interval_seconds: 300,
-      hardware_mode: "PDLC", enable_edge_margin: true, auto_tune_weights: false,
-    }) },
-    // A half day at 5-minute steps takes the server about 20 s.
-    120000,
   );
 }
 

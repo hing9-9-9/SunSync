@@ -147,6 +147,8 @@ function App() {
     deleteSpace,
     deleting,
     predictionDate,
+    predictionKey,
+    sunpathResult,
   } = useSpaceApp();
   return (
     <>
@@ -1130,6 +1132,24 @@ function App() {
                   </div>
                 </>
               )}
+              {page === "detail" && active && view3d && (
+                <Suspense fallback={<p className="muted small">3D 화면을 불러오는 중…</p>}>
+                  <Space3DView
+                    key={`${active.id}:${active.serverRevision ?? active.revision}:${active.zone}`}
+                    space={active}
+                    hour={hour}
+                    onHour={setHour}
+                    date={predictionDate}
+                    selected={selectedFurniture}
+                    onSelect={chooseFurniture}
+                    shading={detailShading}
+                    planned={!!predictionKey}
+                    sunpath={sunpathResult}
+                    film={filmPrediction}
+                    onView2d={() => setView3d(false)}
+                  />
+                </Suspense>
+              )}
               {page === "detail" && active && (
                 <div className="workspace">
                   <div className="workspace-main">
@@ -1150,31 +1170,17 @@ function App() {
                       </div>
                     </Card>
                     {zoneTabs}
-                    <Card className="plan-card">
-                      <div className="plan-view-row">
-                        <div className="s3-viewtoggle" role="group" aria-label="도면 보기 방식">
-                          {[false, true].map((on) => (
-                            <button key={String(on)} aria-pressed={view3d === on} className={view3d === on ? "on" : ""} onClick={() => setView3d(on)}>
-                              {on ? "3D" : "2D"}
-                            </button>
-                          ))}
+                    {!view3d && (
+                      <Card className="plan-card">
+                        <div className="plan-view-row">
+                          <div className="s3-viewtoggle" role="group" aria-label="도면 보기 방식">
+                            <button aria-pressed="true" className="on">2D</button>
+                            <button aria-pressed="false" onClick={() => setView3d(true)}>3D</button>
+                          </div>
                         </div>
-                      </div>
-                      {view3d ? (
-                        <Suspense fallback={<p className="muted small">3D 화면을 불러오는 중…</p>}>
-                          <Space3DView
-                            key={`${active.id}:${active.serverRevision ?? active.revision}:${active.zone}`}
-                            space={active}
-                            hour={hour}
-                            onHour={setHour}
-                            date={predictionDate}
-                            selected={selectedFurniture}
-                            onSelect={chooseFurniture}
-                            shading={detailShading}
-                          />
-                        </Suspense>
-                      ) : plan}
-                    </Card>
+                        {plan}
+                      </Card>
+                    )}
                     <div className="item-tabs">
                       {active.furniture
                         .filter((f) => f.zone === active.zone)

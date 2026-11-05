@@ -1339,6 +1339,8 @@ export function useSpaceApp() {
 
   return {
     predictionDate,
+    predictionKey,
+    sunpathResult: predictionError ? undefined : currentPrediction?.result,
     deleteSpace,
     deleting,
     continueManually,

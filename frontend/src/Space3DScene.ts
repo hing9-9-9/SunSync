@@ -339,19 +339,14 @@ export function createSpaceScene(host: HTMLElement, space: Space, events: Events
   };
 
   // Preview of the film cells for one sun direction, until the server plan arrives: a cell closes
-  // when its ray into the room meets an A, B or C surface (grade caps need the server's irradiance),
-  // plus its up, down, left and right neighbours, as the FR-04.4 code does.
+  // when its ray into the room meets an A, B or C surface (grade caps need the server's irradiance).
   const cellsFor = (dir: THREE.Vector3, out: Uint8Array) => {
     out.fill(0);
     if (!win || dir.y <= 0 || dir.dot(winFrame.outward) <= 0.01) return out;
-    const ray = new THREE.Ray(), hits = new Uint8Array(cellCount), into = dir.clone().negate();
+    const ray = new THREE.Ray(), into = dir.clone().negate();
     for (let i = 0; i < cellCount; i++) {
       ray.set(cellCenter(i), into);
-      if (regionViews.some(v => v.r.grade !== "D" && ray.intersectsBox(v.box))) hits[i] = 1;
-    }
-    for (let i = 0; i < cellCount; i++) {
-      const c = i % film.cols, r = Math.floor(i / film.cols);
-      out[i] = hits[i] || (c > 0 && hits[i - 1]) || (c < film.cols - 1 && hits[i + 1]) || (r > 0 && hits[i - film.cols]) || (r < film.rows - 1 && hits[i + film.cols]) ? 1 : 0;
+      if (regionViews.some(v => v.r.grade !== "D" && ray.intersectsBox(v.box))) out[i] = 1;
     }
     return out;
   };
