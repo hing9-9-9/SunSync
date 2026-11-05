@@ -15,6 +15,8 @@ artifacts/mock_validation/*
 !artifacts/mock_validation/.gitkeep
 # Local external-source diagnostic captures are never committed.
 artifacts/local/
+# Local FR-01 provider responses and normalized experiment datasets.
+data/fr01/
 # Node
 node_modules/
 dist/
