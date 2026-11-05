@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense } from "react";
 import NumberField from "./NumberField";
 import "./ReferencePreview.css";
 import "./WorkspaceDesign.css";
@@ -29,11 +29,10 @@ import { AccountOverview, AuthPanel } from "./AccountPage";
 import { useSpaceApp, titles } from "./useSpaceApp";
 import { clearFieldIssue } from "./formIssues";
 import { Icon, Card } from "./ShellParts";
-// three.js loads only when someone opens the 3D view.
+// The web detail plan (2D top view and 3D) is a three.js scene, loaded with the detail page only.
 const Space3DView = lazy(() => import("./Space3DView.tsx"));
 
 function App() {
-  const [view3d, setView3d] = useState(false);
   const {
     isApp,
     handoffLink,
@@ -1132,8 +1131,9 @@ function App() {
                   </div>
                 </>
               )}
-              {page === "detail" && active && view3d && (
-                <Suspense fallback={<p className="muted small">3D 화면을 불러오는 중…</p>}>
+              {page === "detail" && active && (
+                // The 2D plan draws while three.js loads, so the page never waits on it.
+                <Suspense fallback={<Card className="plan-card">{plan}</Card>}>
                   <Space3DView
                     key={`${active.id}:${active.serverRevision ?? active.revision}:${active.zone}`}
                     space={active}
@@ -1146,7 +1146,6 @@ function App() {
                     planned={!!predictionKey}
                     sunpath={sunpathResult}
                     film={filmPrediction}
-                    onView2d={() => setView3d(false)}
                   />
                 </Suspense>
               )}
@@ -1170,17 +1169,6 @@ function App() {
                       </div>
                     </Card>
                     {zoneTabs}
-                    {!view3d && (
-                      <Card className="plan-card">
-                        <div className="plan-view-row">
-                          <div className="s3-viewtoggle" role="group" aria-label="도면 보기 방식">
-                            <button aria-pressed="true" className="on">2D</button>
-                            <button aria-pressed="false" onClick={() => setView3d(true)}>3D</button>
-                          </div>
-                        </div>
-                        {plan}
-                      </Card>
-                    )}
                     <div className="item-tabs">
                       {active.furniture
                         .filter((f) => f.zone === active.zone)

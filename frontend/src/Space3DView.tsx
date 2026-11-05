@@ -35,11 +35,14 @@ type Props = {
   planned: boolean;
   sunpath?: SunpathPrediction;
   film?: ShadingResult;
-  onView2d: () => void;
+};
+const VIEW_KEY = "sunsync-plan-view";
+const savedView = (): "2d" | "3d" => {
+  try { return localStorage.getItem(VIEW_KEY) === "3d" ? "3d" : "2d"; } catch { return "2d"; }
 };
 
 /** Web-only 3D view of a saved space (issue #102): room, sunlight and film cells from the server's plan. */
-export default function Space3DView({ space, hour, onHour, date, selected, onSelect, shading, planned, sunpath, film, onView2d }: Props) {
+export default function Space3DView({ space, hour, onHour, date, selected, onSelect, shading, planned, sunpath, film }: Props) {
   // The scene shows the current zone, like the 2D plan; server results stay indexed by space.regions.
   const zoneSpace = useMemo(() => ({
     ...space,
@@ -50,6 +53,15 @@ export default function Space3DView({ space, hour, onHour, date, selected, onSel
   const needle = useRef<HTMLDivElement>(null);
   const api = useRef<SceneApi | null>(null);
   const [level, setLevel] = useState<Level>("basic");
+  // The plan opens in the view this viewer used last (2D the first time); it is only a convenience.
+  const [view, setView] = useState<"2d" | "3d">(savedView);
+  const viewRef = useRef(view);
+  const changeView = (next: "2d" | "3d") => {
+    setView(next);
+    viewRef.current = next;
+    api.current?.setView(next);
+    try { localStorage.setItem(VIEW_KEY, next); } catch { /* not remembered */ }
+  };
   const [playing, setPlaying] = useState(false);
   const [lit, setLit] = useState<Lit | null>(null);
   const site = space.site ?? { latitude: 37.57, longitude: 126.98, timezone: "Asia/Seoul", northConfirmed: false };
@@ -66,7 +78,7 @@ export default function Space3DView({ space, hour, onHour, date, selected, onSel
     const scene = createSpaceScene(host.current!, zoneSpace, {
       onSelect: id => id && onSelect(id),
       onAzimuth: deg => needle.current?.style.setProperty("--az", `${deg}deg`),
-    });
+    }, viewRef.current);
     api.current = scene;
     return () => scene.dispose();
     // onSelect is a fresh function each render; the scene keeps the first one, which only forwards ids.
@@ -163,7 +175,7 @@ export default function Space3DView({ space, hour, onHour, date, selected, onSel
     <div className="s3">
       <header className="s3-head">
         <div className="s3-title">
-          <p className="s3-kicker">3D 공간 보기</p>
+          <p className="s3-kicker">공간 보기 · {view === "2d" ? "2D 도면" : "3D"}</p>
           <p className="s3-meta">
             {space.width.toFixed(1)} × {space.depth.toFixed(1)} × {space.height.toFixed(1)} m
             {win && ` · ${walls[win.wall]} 창 ${win.width.toFixed(1)} × ${win.height.toFixed(1)} m`}
@@ -186,8 +198,9 @@ export default function Space3DView({ space, hour, onHour, date, selected, onSel
           </div>
           <div className="s3-tools">
             <div className="s3-seg" role="group" aria-label="보기 방식">
-              <button aria-pressed="false" onClick={onView2d}>2D</button>
-              <button aria-pressed="true" className="on">3D</button>
+              {(["2d", "3d"] as const).map(v => (
+                <button key={v} aria-pressed={view === v} className={view === v ? "on" : ""} onClick={() => changeView(v)}>{v.toUpperCase()}</button>
+              ))}
             </div>
             <button className="s3-ghost" onClick={() => api.current?.reset()}>
               <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8a5 5 0 1 0 1.6-3.7M3 2.5v2.8h2.8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>

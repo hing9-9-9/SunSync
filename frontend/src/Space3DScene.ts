@@ -11,6 +11,7 @@ export type Lit = { open: Record<string, number>; film: Record<string, number>; 
 export type SceneApi = {
   setLevel(level: Level): void;
   setTime(dayOfYear: number, hour: number, server?: ServerMoment): Lit;
+  setView(view: "3d" | "2d"): void;
   reset(): void;
   select(id: string | null): void;
   dispose(): void;
@@ -28,7 +29,7 @@ const TYPE_COLOR: Record<string, string> = { bookcase: "#f2f0ea", desk: "#ececf0
 const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
 
-export function createSpaceScene(host: HTMLElement, space: Space, events: Events): SceneApi {
+export function createSpaceScene(host: HTMLElement, space: Space, events: Events, startView: "3d" | "2d" = "3d"): SceneApi {
   const W = space.width, D = space.depth, H = space.height, T = 0.14;
   // Plan coordinates: x east, y south from the north-west corner. Three.js: x east, y up, z south.
   const at = (x: number, y: number, h = 0) => new THREE.Vector3(x - W / 2, h, y - D / 2);
@@ -473,6 +474,13 @@ export function createSpaceScene(host: HTMLElement, space: Space, events: Events
   const home = (): Pose => ({ target: at(W / 2, D / 2, 0.4), radius: Math.hypot(W, D) * 1.75 / Math.min(1, camera.aspect / 1.35), phi: 0.98, theta: 0.6, fov: 32 });
   // Sunlight steps look from the north-west, so the window, the sun and its path sit across the room.
   const sunView = (): Pose => ({ ...home(), radius: home().radius * 1.12, phi: 0.9, theta: -Math.PI / 2 - 0.72 });
+  const top = (): Pose => {
+    // Narrow lens for a near-flat plan; the room sits a little high to clear the time bar.
+    const fov = 12, half = Math.max(D / 2 + 2.2, (W / 2 + 1.6) / camera.aspect);
+    return { target: at(W / 2, D / 2 + 0.7, 0), radius: half / Math.tan(THREE.MathUtils.degToRad(fov / 2)), phi: 0.0001, theta: 0, fov };
+  };
+  let view = startView;
+  const viewPose = () => (view === "2d" ? top() : level === "basic" ? home() : sunView());
   let tween: { from: Pose; to: Pose; start: number; ms: number } | null = null;
   const pose = (): Pose => {
     const s = new THREE.Spherical().setFromVector3(camera.position.clone().sub(controls.target));
@@ -504,7 +512,8 @@ export function createSpaceScene(host: HTMLElement, space: Space, events: Events
   const observer = new ResizeObserver(resize);
   observer.observe(host);
   resize();
-  apply(home());
+  controls.enableRotate = view === "3d";
+  apply(viewPose());
   
   // Smoothly follow level targets each frame (lights, sun visuals, cells, wall fades).
   const lerp = (a: number, b: number, k: number) => a + (b - a) * k;
@@ -549,7 +558,8 @@ export function createSpaceScene(host: HTMLElement, space: Space, events: Events
       if (t === 1) tween = null;
     } else controls.update();
     for (const w of wallParts) {
-      const outside = w.normal.dot(toCam.copy(camera.position).sub(w.center)) > 0;
+      // Seen from straight above, every wall stays solid so the plan reads like a drawing.
+      const outside = view === "3d" && w.normal.dot(toCam.copy(camera.position).sub(w.center)) > 0;
       w.fade = lerp(w.fade, outside ? 0 : 1, k);
       for (const m of w.fill) {
         m.opacity = w.fade;
@@ -567,13 +577,19 @@ export function createSpaceScene(host: HTMLElement, space: Space, events: Events
   scene.updateMatrixWorld(true);
   return {
     setLevel(next) {
-      if ((next === "basic") !== (level === "basic")) go(next === "basic" ? home() : sunView());
+      const moves = view === "3d" && (next === "basic") !== (level === "basic");
       level = next;
+      if (moves) go(viewPose());
       for (let i = 0; i < cellCount; i++) cellTarget[i] = level === "film" && closes(cellBlock[i]) ? 1 : 0;
     },
     setTime,
+    setView(next) {
+      view = next;
+      controls.enableRotate = next === "3d";
+      go(viewPose());
+    },
     reset() {
-      go(level === "basic" ? home() : sunView());
+      go(viewPose());
     },
     select,
     dispose() {
