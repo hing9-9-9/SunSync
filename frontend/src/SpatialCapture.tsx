@@ -5,7 +5,7 @@ import { shapes, validPolygon, nextPhotoSlot, photosPerPoint } from "./capturePl
 import type { Shape, CapturePoint } from "./capturePlan";
 import type { CapturedFurniture } from "./model";
 import { browserCaptureEnabled } from "./captureEnvironment";
-import { BOARD, MeasureError, detectFrame, forgetCamera, savedCamera, setupCamera } from "./measureApi";
+import { BOARD, MeasureError, detectFrame, savedCamera, setupCamera } from "./measureApi";
 import type { Camera, Frame } from "./measureApi";
 
 type Photo = { file: File; url: string; issue: PhotoIssue | null; metrics: { brightness: number; sharpness: number }; frame?: Frame };
@@ -34,8 +34,8 @@ export default function SpatialCapture(props: { count: number; onFinish: (items:
 }
 
 function TestSpatialCapture({ count, onFinish }: { count: number; onFinish: (items: CapturedFurniture[]) => void }) {
-  const [camera, setCamera] = useState<Camera | null>(() => savedCamera());
-  const [skipMeasure, setSkipMeasure] = useState(false);
+  // WEB APP TEST ONLY: intrinsics come from the camera setup in 더보기 (see CameraSetup below).
+  const [camera] = useState<Camera | null>(() => savedCamera());
   const [items, setItems] = useState<CapturedFurniture[]>([]);
   const [name, setName] = useState(`가구 ${count + 1}`);
   const [shape, setShape] = useState<Shape>('rectangle');
@@ -61,7 +61,7 @@ function TestSpatialCapture({ count, onFinish }: { count: number; onFinish: (ite
     try {
       const metrics = await analyse(file);
       // The measurement server finds the board; at least two markers give a camera pose.
-      const frame = camera && !skipMeasure ? await detectFrame(file) : undefined;
+      const frame = camera ? await detectFrame(file) : undefined;
       const found = frame?.detections.length ?? 4;
       const url = URL.createObjectURL(file);
       const photo = { file, url, metrics, frame, issue: photoIssue({ ...metrics, marker: found >= 2 ? "visible" : found ? "partial" : "missing" }) };
@@ -83,9 +83,8 @@ function TestSpatialCapture({ count, onFinish }: { count: number; onFinish: (ite
     return captured;
   }
 
-  if (!camera && !skipMeasure) return <CameraSetup onReady={setCamera} onSkip={() => setSkipMeasure(true)} />;
   return <div className="spatial-capture corner-capture">
-    {camera && <p className="muted small camera-ready">카메라 준비 완료 · <button type="button" className="text-button" onClick={() => { forgetCamera(); setCamera(null); }}>카메라 다시 준비</button></p>}
+    {!camera && <p className="notice" role="note">이 휴대폰은 카메라 준비 전이에요. 더보기 › 카메라 준비를 먼저 하면 사진으로 가구 크기와 위치를 계산해요. 지금 촬영하면 기본 크기로 놓여요.</p>}
     <div className="two-fields">
       <label className="field"><span>가구 이름</span><input value={name} onChange={(e) => setName(e.target.value)} /></label>
       <label className="field"><span>상판 형태</span>
@@ -152,15 +151,21 @@ function TestSpatialCapture({ count, onFinish }: { count: number; onFinish: (ite
     </div>}
     {!complete && items.length > 0 && <button type="button" className="secondary" onClick={() => onFinish(items)}>촬영 마치고 도면 만들기 ({items.length}개)</button>}
     </>}
-    <p className="muted small">{camera && !skipMeasure ? "사진마다 흔들림·밝기와 창문 보드 마커를 확인하고, 촬영을 마치면 가구 크기와 위치를 계산해요." : "사진의 흔들림과 밝기만 확인해요. 가구 치수는 기본값으로 놓이니 도면에서 실제 치수로 고쳐 주세요."}</p>
+    <p className="muted small">{camera ? "사진마다 흔들림·밝기와 창문 보드 마커를 확인하고, 촬영을 마치면 가구 크기와 위치를 계산해요." : "사진의 흔들림과 밝기만 확인해요. 가구 치수는 기본값으로 놓이니 도면에서 실제 치수로 고쳐 주세요."}</p>
   </div>;
 }
 
 const SETUP_MIN = 12, SETUP_MAX = 30;
 
-// One-time camera setup: the browser gives no lens data, so the installed board seen from many
-// positions and angles lets the measurement server estimate it (kept on this phone).
-function CameraSetup({ onReady, onSkip }: { onReady: (camera: Camera) => void; onSkip: () => void }) {
+/**
+ * WEB APP TEST ONLY — camera setup for phones testing through the browser.
+ * A native app reads the lens intrinsics from the OS camera (mobile/ android·ios adapters) and
+ * skips this, except on devices that report none. Browsers expose no intrinsics, so the installed
+ * board photographed from many positions and angles lets the measurement server estimate them
+ * (/v1/mobile/automatic-setup). Lives in 더보기 › 카메라 준비; the result is kept on this phone.
+ * Remove this screen (and savedCamera use) once capture moves to the native app.
+ */
+export function CameraSetup({ onReady }: { onReady: (camera: Camera) => void }) {
   const [frames, setFrames] = useState<Frame[]>([]);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -183,16 +188,15 @@ function CameraSetup({ onReady, onSkip }: { onReady: (camera: Camera) => void; o
     finally { setBusy(false); }
   }
   return <section className="spatial-capture camera-setup" aria-labelledby="camera-setup-title">
-    <h3 id="camera-setup-title">처음 한 번, 카메라 준비</h3>
+    <h3 id="camera-setup-title">카메라 준비 · 웹앱 테스트용</h3>
     <p className="muted small">창문의 마커 보드({BOARD.ids_by_row.flat().length}개 마커) 전체가 보이게, 휴대폰 위치와 기울기를 바꿔 가며 {SETUP_MIN}장 이상 찍어 주세요. 보드가 화면 가운데·가장자리에 골고루 오도록 찍으면 정확해져요.</p>
     <p role="status" className="tracking-status">{busy ? "확인 중…" : `${frames.length} / ${SETUP_MIN}장`}</p>
     {message && <p role="alert" className="error">{message}</p>}
-    <div className="capture-action">
+    <div className="camera-setup-action">
       {frames.length < SETUP_MIN
         ? <label className={`file-button ${busy ? "disabled" : ""}`}>{busy ? "확인 중…" : `보드 사진 ${frames.length + 1} 촬영`}<input type="file" accept="image/*" capture="environment" disabled={busy} onChange={(e) => { void add(e.target.files?.[0]); e.target.value = ""; }} /></label>
         : <button type="button" className="primary" disabled={busy} onClick={() => void finish()}>{busy ? "준비 중…" : "카메라 준비 완료"}</button>}
     </div>
     {frames.length >= SETUP_MIN && frames.length < SETUP_MAX && <label className="file-button secondary">한 장 더 찍기<input type="file" accept="image/*" capture="environment" disabled={busy} onChange={(e) => { void add(e.target.files?.[0]); e.target.value = ""; }} /></label>}
-    <button type="button" className="text-button" onClick={onSkip}>준비 없이 기본 크기로 배치</button>
   </section>;
 }

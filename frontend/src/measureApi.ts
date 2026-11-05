@@ -1,6 +1,10 @@
 // Phone web capture → measurement server (measure/registration-core, reached as /measure) →
-// FR-06 registration on the backend. The browser exposes no camera intrinsics, so a one-time
-// guided setup (the installed board seen from many angles) estimates them on the server.
+// FR-06 registration on the backend.
+//
+// WEB APP TEST ONLY parts are marked below: browsers expose no camera intrinsics, so phones testing
+// through the web app run a one-time guided setup (더보기 › 카메라 준비, the installed board seen
+// from many angles) and keep the result on the device. The native app (mobile/) reads intrinsics
+// from the OS camera instead; drop savedCamera/setupCamera/prepare's fixed size when it ships.
 import { resolveWindow } from "./model.ts";
 import type { Space } from "./model.ts";
 
@@ -112,6 +116,7 @@ export async function detectFrame(file: File): Promise<Frame> {
   return { ...image, capture_id: crypto.randomUUID(), captured_at: new Date().toISOString(), detections: result.detections };
 }
 
+// WEB APP TEST ONLY: intrinsics from the guided setup, per phone browser.
 export function savedCamera(): Camera | null {
   try {
     const camera = JSON.parse(localStorage.getItem(CAMERA_KEY) ?? "null");
@@ -120,11 +125,8 @@ export function savedCamera(): Camera | null {
     return null;
   }
 }
-export function forgetCamera() {
-  try { localStorage.removeItem(CAMERA_KEY); } catch { /* storage unavailable: nothing kept */ }
-}
 
-/** 12–30 views of the whole board → intrinsics for this phone camera, kept on this device. */
+/** WEB APP TEST ONLY: 12–30 views of the whole board → intrinsics for this phone camera, kept on this device. */
 export async function setupCamera(frames: Frame[]): Promise<Camera> {
   const result = await post<{ camera: Camera }>("/measure/v1/mobile/automatic-setup", {
     board: BOARD,

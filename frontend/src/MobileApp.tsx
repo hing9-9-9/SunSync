@@ -1,9 +1,11 @@
+import { useState } from "react";
 import NumberField from "./NumberField";
 import { WorkspaceNavigation, WorkspaceHome, WorkspaceCards } from "./WorkspaceDesign";
 import { DeviceHandoff } from "./DeviceHandoff";
 import { FilmGrid, ShadingTimeControl } from "./ShadingPlan";
 import { applyShadingTime, formatMinute } from "./sunlight";
-import SpatialCapture from "./SpatialCapture";
+import SpatialCapture, { CameraSetup } from "./SpatialCapture";
+import { savedCamera } from "./measureApi";
 import {
   defaultShadingTime,
   furnitureTypes,
@@ -157,7 +159,11 @@ function MobileApp() {
     continueManually,
     deleteSpace,
     deleting,
+    setToast,
   } = useSpaceApp();
+  // WEB APP TEST ONLY: camera setup state for 더보기 › 카메라 준비.
+  const [cameraSetupOpen, setCameraSetupOpen] = useState(false);
+  const [cameraReady, setCameraReady] = useState(() => !!savedCamera());
   function websiteNavigate(next: WebsiteDestination) {
     if (next === "home" || next === "guide") {
       navigate(next);
@@ -961,7 +967,7 @@ function MobileApp() {
                     <h3>촬영 순서</h3>
                     <ol className="instruction-list">
                       <li>창문 규격 확인 및 필름의 QR 마커 표시</li>
-                      <li>처음 한 번, 마커 보드를 여러 각도로 12장 찍어 카메라 준비</li>
+                      <li>(웹앱 테스트) 더보기 › 카메라 준비를 휴대폰마다 한 번 완료</li>
                       <li>촬영할 가구의 이름과 상판 형태 선택</li>
                       <li>형태 도면의 P1부터 순서대로 이동하며 지점마다 3장 촬영</li>
                       <li>재촬영 안내가 나오면 안내대로 같은 지점에서 다시 촬영</li>
@@ -1678,6 +1684,27 @@ function MobileApp() {
                   >
                     사용 가이드 <span>›</span>
                   </button>
+                  {/* WEB APP TEST ONLY: phones testing in the browser need a one-time camera setup
+                      (see CameraSetup in SpatialCapture.tsx). Remove with the native app. */}
+                  <h2 className="section-label">웹앱 테스트</h2>
+                  <Card>
+                    <button className="row" aria-expanded={cameraSetupOpen} onClick={() => setCameraSetupOpen((open) => !open)}>
+                      <span>
+                        카메라 준비
+                        <small>{cameraReady ? "이 휴대폰은 준비 완료" : "촬영 전에 한 번 필요해요"}</small>
+                      </span>
+                      <span>{cameraSetupOpen ? "닫기" : cameraReady ? "다시 준비 ›" : "준비하기 ›"}</span>
+                    </button>
+                  </Card>
+                  {cameraSetupOpen && (
+                    <CameraSetup
+                      onReady={() => {
+                        setCameraReady(true);
+                        setCameraSetupOpen(false);
+                        setToast("카메라 준비 완료 · 이제 사진으로 가구를 측정해요");
+                      }}
+                    />
+                  )}
                 </div>
               )}
               {page === "account" && (
