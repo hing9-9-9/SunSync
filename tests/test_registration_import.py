@@ -214,3 +214,74 @@ def test_persisted_calibration_required_before_import(client, change):
         before = response.json()
     assert submit(client, fragment, revision=before["revision"]).status_code == 422
     assert client.get("/api/scenes/scene_manual_room").json() == before
+
+
+def test_registration_keeps_ui_space_editable_and_shows_furniture(tmp_path):
+    """Web space → calibration → app registration → the web sees the measured furniture."""
+    from app.ui_scene import canonical_id
+
+    engine = create_engine(
+        f"sqlite:///{tmp_path / 'ui-sync.db'}", connect_args={"check_same_thread": False}
+    )
+    with TestClient(create_app(engine)) as client:
+        space = {
+            "id": "space_sync",
+            "building": "B",
+            "floor": "1층",
+            "name": "열람실",
+            "width": 6.0,
+            "depth": 5.0,
+            "height": 3.0,
+            "zone": "구역 1",
+            "zones": ["구역 1"],
+            "source": "manual",
+            "revision": 1,
+            "site": {
+                "latitude": 37.5,
+                "longitude": 127.0,
+                "timezone": "Asia/Seoul",
+                "northConfirmed": True,
+            },
+            "furniture": [],
+            "regions": [],
+        }
+        created = client.post("/api/ui/spaces", json=space)
+        assert created.status_code == 201, created.text
+        scene_id = created.json()["serverSceneId"]
+        fragment = measured_fragment()
+        room_id = canonical_id("room", "space_sync")
+        for item in fragment["occluders"]:
+            item["room_id"] = room_id
+
+        scene = client.get(f"/api/scenes/{scene_id}").json()
+        scene.update(revision=2, registration_calibration=calibration_for(fragment))
+        assert client.put(f"/api/scenes/{scene_id}", json=scene).status_code == 200
+        assert client.get("/api/ui/spaces/space_sync").json()["serverRevision"] == 2
+
+        registered = client.post(
+            f"/api/scenes/{scene_id}/registrations",
+            json={"expected_revision": 2, "fragment": fragment},
+        )
+        assert registered.status_code == 200, registered.text
+        ui = client.get("/api/ui/spaces/space_sync")
+        assert ui.status_code == 200, ui.text
+        ui_space = ui.json()
+        assert ui_space["serverRevision"] == 3
+        [desk] = ui_space["furniture"]
+        assert desk["id"] == fragment["occluders"][0]["occluder_id"]
+        assert desk["height"] == pytest.approx(
+            fragment["occluders"][0]["dimensions_m"][2], abs=1e-3
+        )
+
+        ui_space["name"] = "열람실 2"
+        saved = client.put("/api/ui/spaces/space_sync", json=ui_space)
+        assert saved.status_code == 200, saved.text
+        after = client.get(f"/api/scenes/{scene_id}").json()
+        stored = client.get(f"/api/scenes/{scene_id}").json()["registration_calibration"]
+        assert stored["calibration_id"] == fragment["calibration_id"]
+        assert stored["marker"]["code_id"] == fragment["markers"][0]["code_id"]
+        assert stored["marker"]["T_ENU_marker"] == pytest.approx(
+            fragment["markers"][0]["T_ENU_marker"]
+        )
+        assert len(after["occluders"]) == 1
+    engine.dispose()
