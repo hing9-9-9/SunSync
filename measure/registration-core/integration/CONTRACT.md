@@ -4,6 +4,8 @@ API는 상태를 저장하지 않습니다. 사용자·공간·보드·가구·�
 
 ## 엔드포인트
 
+실제 촬영은 네이티브 앱에서만 제공합니다. Android/iOS 어댑터와 숫자 입력 없는 카메라 자동 설정은 [모바일 연동 코드](../../../mobile/README.md)를 참고하세요. 웹 사진 추가는 개발 테스트용입니다.
+
 | 경로 | 입력 | 출력 |
 |---|---|---|
 | `POST /v1/plans` | 가구 종류·모델 ID·상판 모양·높이 모드 | plan ID, 지점과 순서 |
@@ -12,6 +14,8 @@ API는 상태를 저장하지 않습니다. 사용자·공간·보드·가구·�
 | `POST /v1/scenes` | 동일 공간의 완료 측정 결과 배열 | 복수 가구 Scene |
 | `POST /v1/fr06` | ENU 정렬이 있는 완료 측정 결과 | `sunsync.fr06-fragment/1` |
 | `POST /v1/fr06/validate` | 별도 버전의 fragment | 스키마·참조·좌표 일관성 검증 |
+| `POST /v1/mobile/captures` | 네이티브 사진·촬영 시각·기기 메타데이터 | 보정된 관측/카메라 정보 또는 자동 설정 안내 |
+| `POST /v1/mobile/automatic-setup` | 동일 고정 카메라의 다양한 보드 관측 12~30장 | 검증된 현재 스트림용 카메라 정보 |
 | `POST /api/scenes/{scene_id}/registrations` (백엔드) | `expected_revision`, `fragment` | 가구가 추가된 전체 FR-06 Scene, DB 저장 |
 
 전체 요청 스키마는 실행 서버 `/openapi.json`과 저장소 `openapi.json`을 참고하세요. 예제 JSON에는 실제 사용자의 사진·보정 정보가 없습니다.

@@ -130,6 +130,78 @@
         }
       }
     },
+    "/v1/mobile/captures": {
+      "post": {
+        "summary": "Native Capture",
+        "operationId": "native_capture_v1_mobile_captures_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NativeFrame"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/mobile/automatic-setup": {
+      "post": {
+        "summary": "Automatic Camera Setup",
+        "operationId": "automatic_camera_setup_v1_mobile_automatic_setup_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AutomaticSetup"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/scenes": {
       "post": {
         "summary": "Make Scene",
@@ -274,6 +346,209 @@
           "floor_confirmed"
         ],
         "title": "Alignment"
+      },
+      "AndroidCalibration": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "android_camera2",
+            "title": "Kind"
+          },
+          "intrinsic": {
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array",
+            "maxItems": 5,
+            "minItems": 5,
+            "title": "Intrinsic"
+          },
+          "distortion": {
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array",
+            "maxItems": 5,
+            "minItems": 5,
+            "title": "Distortion"
+          },
+          "reference_width": {
+            "type": "integer",
+            "maximum": 30000.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Reference Width"
+          },
+          "reference_height": {
+            "type": "integer",
+            "maximum": 30000.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Reference Height"
+          },
+          "crop": {
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array",
+            "maxItems": 4,
+            "minItems": 4,
+            "title": "Crop"
+          },
+          "distortion_correction": {
+            "type": "string",
+            "const": "off",
+            "title": "Distortion Correction"
+          },
+          "stabilization": {
+            "type": "string",
+            "const": "off",
+            "title": "Stabilization"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "intrinsic",
+          "distortion",
+          "reference_width",
+          "reference_height",
+          "crop",
+          "distortion_correction",
+          "stabilization"
+        ],
+        "title": "AndroidCalibration"
+      },
+      "AppleCalibration": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "ios_avfoundation",
+            "title": "Kind"
+          },
+          "intrinsic": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "maxItems": 9,
+            "minItems": 9,
+            "title": "Intrinsic"
+          },
+          "reference_width": {
+            "type": "integer",
+            "maximum": 30000.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Reference Width"
+          },
+          "reference_height": {
+            "type": "integer",
+            "maximum": 30000.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Reference Height"
+          },
+          "distortion_center": {
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array",
+            "maxItems": 2,
+            "minItems": 2,
+            "title": "Distortion Center"
+          },
+          "distortion_lookup": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "maxItems": 4096,
+            "minItems": 2,
+            "title": "Distortion Lookup"
+          },
+          "full_reference_frame": {
+            "type": "boolean",
+            "const": true,
+            "title": "Full Reference Frame"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "intrinsic",
+          "reference_width",
+          "reference_height",
+          "distortion_center",
+          "distortion_lookup",
+          "full_reference_frame"
+        ],
+        "title": "AppleCalibration"
+      },
+      "AutomaticSetup": {
+        "properties": {
+          "board": {
+            "$ref": "#/components/schemas/Board"
+          },
+          "views": {
+            "items": {
+              "$ref": "#/components/schemas/SetupView"
+            },
+            "type": "array",
+            "maxItems": 30,
+            "minItems": 12,
+            "title": "Views"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "board",
+          "views"
+        ],
+        "title": "AutomaticSetup"
       },
       "Board": {
         "properties": {
@@ -1215,6 +1490,111 @@
         ],
         "title": "MeasureRequest"
       },
+      "NativeFrame": {
+        "properties": {
+          "capture_id": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Capture Id"
+          },
+          "point_id": {
+            "type": "string",
+            "maxLength": 30,
+            "minLength": 1,
+            "title": "Point Id"
+          },
+          "captured_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Captured At"
+          },
+          "stream_id": {
+            "type": "string",
+            "maxLength": 150,
+            "minLength": 1,
+            "title": "Stream Id"
+          },
+          "lens_id": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Lens Id"
+          },
+          "width": {
+            "type": "integer",
+            "maximum": 4096.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Width"
+          },
+          "height": {
+            "type": "integer",
+            "maximum": 4096.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Height"
+          },
+          "pixel_rotation_degrees": {
+            "type": "integer",
+            "const": 0,
+            "title": "Pixel Rotation Degrees"
+          },
+          "mirrored": {
+            "type": "boolean",
+            "const": false,
+            "title": "Mirrored"
+          },
+          "image_base64": {
+            "type": "string",
+            "maxLength": 12000000,
+            "minLength": 1,
+            "title": "Image Base64"
+          },
+          "board": {
+            "$ref": "#/components/schemas/Board"
+          },
+          "calibration": {
+            "anyOf": [
+              {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/AndroidCalibration"
+                  },
+                  {
+                    "$ref": "#/components/schemas/AppleCalibration"
+                  }
+                ],
+                "discriminator": {
+                  "propertyName": "kind",
+                  "mapping": {
+                    "android_camera2": "#/components/schemas/AndroidCalibration",
+                    "ios_avfoundation": "#/components/schemas/AppleCalibration"
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calibration"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "capture_id",
+          "point_id",
+          "captured_at",
+          "stream_id",
+          "lens_id",
+          "width",
+          "height",
+          "pixel_rotation_degrees",
+          "mirrored",
+          "image_base64",
+          "board"
+        ],
+        "title": "NativeFrame"
+      },
       "PlanRequest": {
         "properties": {
           "space_id": {
@@ -1323,6 +1703,54 @@
           "measurements"
         ],
         "title": "SceneRequest"
+      },
+      "SetupView": {
+        "properties": {
+          "capture_id": {
+            "type": "string",
+            "title": "Capture Id"
+          },
+          "stream_id": {
+            "type": "string",
+            "title": "Stream Id"
+          },
+          "lens_id": {
+            "type": "string",
+            "title": "Lens Id"
+          },
+          "width": {
+            "type": "integer",
+            "maximum": 4096.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Width"
+          },
+          "height": {
+            "type": "integer",
+            "maximum": 4096.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Height"
+          },
+          "detections": {
+            "items": {
+              "$ref": "#/components/schemas/Detection"
+            },
+            "type": "array",
+            "maxItems": 4,
+            "minItems": 4,
+            "title": "Detections"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "capture_id",
+          "stream_id",
+          "lens_id",
+          "width",
+          "height",
+          "detections"
+        ],
+        "title": "SetupView"
       },
       "Shape": {
         "properties": {

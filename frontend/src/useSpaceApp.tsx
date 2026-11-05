@@ -1,4 +1,5 @@
 import { validateShadingPlan } from "./shading";
+import { browserCaptureEnabled } from "./captureEnvironment";
 import type { ShadingResult } from "./shading";
 import PredictionSummary from "./PredictionSummary";
 import { createHandoff, connectHandoff, completeHandoff, listMeasurements, predictSunpath, predictShadingPlan } from "./spaceApi";
@@ -990,6 +991,7 @@ export function useSpaceApp() {
     </div>
   );
   function finishCapture(items: CapturedFurniture[]) {
+    if (!browserCaptureEnabled) return;
     if (!draft || !items.length) return;
     const kept = addingByQr
       ? draft.furniture
