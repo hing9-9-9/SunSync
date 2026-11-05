@@ -429,16 +429,28 @@
   font-variant-numeric: tabular-nums;
 }
 .s3-rval.sun { color: var(--c-sun-ink); }
+.s3-rval.film { color: var(--c-action-ink); }
+.s3-source {
+  margin: -4px 0 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--soft);
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--c-muted);
+  word-break: keep-all;
+}
+.s3-source.ready { background: var(--c-protect); color: var(--c-action-ink); }
 .s3-strip {
   grid-area: s;
   position: relative;
   display: grid;
-  grid-template-columns: repeat(49, 1fr);
   gap: 1px;
   height: 10px;
   margin-top: 10px;
 }
 .s3-strip i { background: var(--c-sun); }
+.s3-strip.film i { background: var(--c-action); }
 .s3-strip b {
   position: absolute;
   top: -3px;

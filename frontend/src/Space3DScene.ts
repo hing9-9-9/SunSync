@@ -11,7 +11,7 @@ export type Lit = { open: Record<string, number>; film: Record<string, number>; 
 export type DayProfile = { hours: number[]; open: Record<string, number[]>; film: Record<string, number[]> };
 export type SceneApi = {
   setLevel(level: Level): void;
-  setTime(dayOfYear: number, hour: number): Lit;
+  setTime(dayOfYear: number, hour: number, server?: ServerMoment): Lit;
   setView(view: "3d" | "2d"): void;
   reset(): void;
   select(id: string | null): void;
@@ -19,12 +19,14 @@ export type SceneApi = {
   dispose(): void;
 };
 type Events = { onSelect(id: string | null): void; onAzimuth(deg: number): void };
+// FR-01 sun direction (ENU) and FR-04 cell states (server order: row 0 top, column 0 left seen from inside).
+export type ServerMoment = { sun?: [number, number, number] | null; cells?: Uint8Array | null; rows?: number; cols?: number };
 
 const INK = "#1d1c22", ACTION = "#6660e5", SUN = "#ff7426";
-// Film blocking per grade (model.ts `grades`); D is never protected.
-const BLOCK: Record<Grade, number> = { A: 1, B: 0.7, C: 0.3, D: 0 };
-const REGION_FILL: Record<Grade, number> = { A: 0.24, B: 0.17, C: 0.1, D: 0 };
-const CELL_COLOR: Record<string, string> = { "1": "#4b45c6", "0.7": "#6660e5", "0.3": "#aeaaf2" };
+const REGION_FILL: Record<Grade, number> = { A: 0.3, B: 0.22, C: 0.14, D: 0 };
+// Cell state codes from space3dServer STATE_CODE: 1 opaque, 2 infeasible (darkest film is not enough). Unknown (3) cells are counted, not drawn.
+const STATE_COLOR: Record<number, string> = { 1: "#4b45c6", 2: "#2a2833" };
+const closes = (code: number) => code === 1 || code === 2;
 const TYPE_COLOR: Record<string, string> = { bookcase: "#f2f0ea", desk: "#ececf0", table: "#f3f3f5", cabinet: "#e4e4e9", display: "#f3f3f5", other: "#ececec" };
 const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
@@ -147,7 +149,7 @@ export function createSpaceScene(host: HTMLElement, space: Space, events: Events
   const cellMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: "#ffffff", roughness: 0.6, transparent: true, opacity: 0.92 }), Math.max(1, cellCount));
   cellMesh.castShadow = true;
   cellMesh.count = cellCount;
-  const cellTarget = new Float32Array(cellCount), cellNow = new Float32Array(cellCount), cellBlock = new Float32Array(cellCount);
+  const cellTarget = new Float32Array(cellCount), cellNow = new Float32Array(cellCount), cellBlock = new Uint8Array(cellCount);
   const filmGridMat = new THREE.LineBasicMaterial({ color: ACTION, transparent: true, opacity: 0 });
   if (win) {
     const wide = isWidthWall(win.wall);
@@ -259,31 +261,41 @@ export function createSpaceScene(host: HTMLElement, space: Space, events: Events
     items.set(f.id, { f, group, mats, line, parts });
   }
 
-  // Protected regions: translucent purple volumes; D (not protected) is a dashed outline only.
-  type RegionView = { r: Region; box: THREE.Box3; line: THREE.LineBasicMaterial | THREE.LineDashedMaterial; fill: THREE.MeshBasicMaterial; chip: HTMLDivElement };
+  // Protected regions are surfaces, as the server stores them: a translucent purple face on the
+  // chosen side (or top) of the furniture. D (not protected) is a dashed outline only.
+  type RegionView = { r: Region; box: THREE.Box3; corner: THREE.Vector3; u: THREE.Vector3; v: THREE.Vector3; normal: THREE.Vector3; line: THREE.LineBasicMaterial | THREE.LineDashedMaterial; chip: HTMLDivElement };
   const regionViews: RegionView[] = [];
   for (const r of space.regions) {
-    const pad = 0.03;
-    const lo = at(r.x - pad, r.y - pad, r.bottom), hi = at(r.x + r.width + pad, r.y + r.depth + pad, r.top + pad);
-    const size = hi.clone().sub(lo), center = lo.clone().add(hi).multiplyScalar(0.5);
-    const fill = new THREE.MeshBasicMaterial({ color: ACTION, transparent: true, opacity: REGION_FILL[r.grade], depthWrite: false });
-    const mesh = new THREE.Mesh(new THREE.BoxGeometry(size.x, size.y, size.z), fill);
-    mesh.position.copy(center);
+    const { x, y, width: w, depth: d, bottom: lo, top: hi } = r;
+    // corner, then the two edge vectors (u along the face, v up or southwards) and the outward normal.
+    const [corner, u, v, normal] = {
+      "남쪽 전면": [at(x, y + d, lo), new THREE.Vector3(w, 0, 0), new THREE.Vector3(0, hi - lo, 0), new THREE.Vector3(0, 0, 1)],
+      "북쪽 후면": [at(x, y, lo), new THREE.Vector3(w, 0, 0), new THREE.Vector3(0, hi - lo, 0), new THREE.Vector3(0, 0, -1)],
+      "동쪽 측면": [at(x + w, y, lo), new THREE.Vector3(0, 0, d), new THREE.Vector3(0, hi - lo, 0), new THREE.Vector3(1, 0, 0)],
+      "서쪽 측면": [at(x, y, lo), new THREE.Vector3(0, 0, d), new THREE.Vector3(0, hi - lo, 0), new THREE.Vector3(-1, 0, 0)],
+      "상단": [at(x, y, hi), new THREE.Vector3(w, 0, 0), new THREE.Vector3(0, 0, d), new THREE.Vector3(0, 1, 0)],
+    }[r.face];
+    const lift = normal.clone().multiplyScalar(0.012);
+    const quad = [corner, corner.clone().add(u), corner.clone().add(u).add(v), corner.clone().add(v)].map(p => p.clone().add(lift));
+    const geometry = new THREE.BufferGeometry().setFromPoints([quad[0], quad[1], quad[2], quad[0], quad[2], quad[3]]);
+    const mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ color: ACTION, transparent: true, opacity: REGION_FILL[r.grade], depthWrite: false, side: THREE.DoubleSide }));
     mesh.raycast = () => {};
     mesh.renderOrder = 2;
     const line = r.grade === "D"
       ? new THREE.LineDashedMaterial({ color: "#8f8b9c", dashSize: 0.08, gapSize: 0.06 })
       : new THREE.LineBasicMaterial({ color: ACTION, transparent: true, opacity: 0.95 });
-    const outline = edges(mesh, line);
+    const outline = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(quad), line);
     if (r.grade === "D") outline.computeLineDistances();
-    scene.add(mesh);
+    outline.raycast = () => {};
+    scene.add(mesh, outline);
     const chip = document.createElement("div");
     chip.className = `s3-chip g-${r.grade}`;
     chip.textContent = r.grade;
     const label = new CSS2DObject(chip);
-    label.position.set(center.x, hi.y + 0.12, center.z);
+    label.position.copy(corner.clone().addScaledVector(u, 0.5).addScaledVector(v, normal.y ? 0.5 : 1).add(new THREE.Vector3(0, 0.16, 0)));
     scene.add(label);
-    regionViews.push({ r, box: new THREE.Box3(at(r.x, r.y, r.bottom), at(r.x + r.width, r.y + r.depth, r.top)), line, fill, chip });
+    const box = new THREE.Box3().setFromPoints([corner, corner.clone().add(u).add(v)]).expandByVector(new THREE.Vector3(1, 1, 1).multiply(normal).multiplyScalar(0.01));
+    regionViews.push({ r, box, corner, u, v, normal, line, chip });
   }
 
   // North marker painted on the ground outside the north wall, so walls hide it like real paint.
@@ -329,63 +341,46 @@ export function createSpaceScene(host: HTMLElement, space: Space, events: Events
     return { dir: new THREE.Vector3(Math.cos(a) * Math.sin(z), Math.sin(a), -Math.cos(a) * Math.cos(z)), altitude, azimuth };
   };
 
-  // Film cells for one sun direction: a cell closes when its ray into the room meets a protected
-  // region, with the region's grade as its strength, plus one edge cell around (FR-04.4).
-  const cellsFor = (dir: THREE.Vector3, out: Float32Array) => {
+  // Preview of the film cells for one sun direction, until the server plan arrives: a cell closes
+  // when its ray into the room meets an A, B or C surface (grade caps need the server's irradiance),
+  // plus its up, down, left and right neighbours, as the FR-04.4 code does.
+  const cellsFor = (dir: THREE.Vector3, out: Uint8Array) => {
     out.fill(0);
     if (!win || dir.y <= 0 || dir.dot(winFrame.outward) <= 0.01) return out;
-    const ray = new THREE.Ray(), hits = new Float32Array(cellCount), into = dir.clone().negate();
+    const ray = new THREE.Ray(), hits = new Uint8Array(cellCount), into = dir.clone().negate();
     for (let i = 0; i < cellCount; i++) {
       ray.set(cellCenter(i), into);
-      for (const v of regionViews) if (v.r.grade !== "D" && ray.intersectsBox(v.box)) hits[i] = Math.max(hits[i], BLOCK[v.r.grade]);
+      if (regionViews.some(v => v.r.grade !== "D" && ray.intersectsBox(v.box))) hits[i] = 1;
     }
     for (let i = 0; i < cellCount; i++) {
       const c = i % film.cols, r = Math.floor(i / film.cols);
-      let best = 0;
-      for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
-        const cc = c + dc, rr = r + dr;
-        if (cc >= 0 && rr >= 0 && cc < film.cols && rr < film.rows) best = Math.max(best, hits[rr * film.cols + cc]);
-      }
-      out[i] = best;
+      out[i] = hits[i] || (c > 0 && hits[i - 1]) || (c < film.cols - 1 && hits[i + 1]) || (r > 0 && hits[i - film.cols]) || (r < film.rows - 1 && hits[i + film.cols]) ? 1 : 0;
     }
     return out;
   };
-  // Share of each region's sun-facing surface that the sun reaches, with or without the film.
+  // Share of each region's surface that the sun reaches (6 × 6 points), with or without closed cells.
   const raycaster = new THREE.Raycaster();
   raycaster.layers.enable(1);
   const winPlane = new THREE.Plane();
-  const litFor = (dir: THREE.Vector3, cells: Float32Array | null) => {
+  const litFor = (dir: THREE.Vector3, cells: Uint8Array | null) => {
     const result: Record<string, number> = {};
     if (win) winPlane.setFromNormalAndCoplanarPoint(winFrame.outward, winFrame.origin);
-    const normals = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, 0, 1], [0, 0, -1]].map(n => new THREE.Vector3(...n));
+    const q = new THREE.Vector3();
     for (const v of regionViews) {
-      let sum = 0, n = 0;
-      if (dir.y > 0) for (const normal of normals) {
-        if (normal.dot(dir) <= 0.05) continue;
-        const { min, max } = v.box;
-        for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) {
-          const a = (i + 0.5) / 4, b = (j + 0.5) / 4;
-          const p = new THREE.Vector3(
-            normal.x ? (normal.x > 0 ? max.x : min.x) : min.x + a * (max.x - min.x),
-            normal.y ? max.y : min.y + (normal.x ? a : b) * (max.y - min.y),
-            normal.z ? (normal.z > 0 ? max.z : min.z) : min.z + b * (max.z - min.z),
-          ).addScaledVector(normal, 0.01);
-          raycaster.set(p, dir);
-          const blocked = raycaster.intersectObjects(occluders, false).some(h => h.object.userData.fid !== v.r.furnitureId);
-          let light = blocked ? 0 : 1;
-          if (light && cells && win) {
-            const q = new THREE.Vector3();
-            if (raycaster.ray.intersectPlane(winPlane, q)) {
-              const u = q.clone().sub(winFrame.origin).dot(winFrame.along), h = q.y - win.sill;
-              const c = Math.floor((u / win.width) * film.cols), r = Math.floor((h / win.height) * film.rows);
-              if (c >= 0 && r >= 0 && c < film.cols && r < film.rows) light = 1 - cells[r * film.cols + c];
-            }
-          }
-          sum += light;
-          n++;
+      let sum = 0;
+      const n = 36;
+      if (dir.y > 0 && v.normal.dot(dir) > 0.02) for (let i = 0; i < 6; i++) for (let j = 0; j < 6; j++) {
+        const p = v.corner.clone().addScaledVector(v.u, (i + 0.5) / 6).addScaledVector(v.v, (j + 0.5) / 6).addScaledVector(v.normal, 0.01);
+        raycaster.set(p, dir);
+        if (raycaster.intersectObjects(occluders, false).some(h => h.object.userData.fid !== v.r.furnitureId)) continue;
+        if (cells && win && raycaster.ray.intersectPlane(winPlane, q)) {
+          const c = Math.floor((q.clone().sub(winFrame.origin).dot(winFrame.along) / win.width) * film.cols);
+          const r = Math.floor(((q.y - win.sill) / win.height) * film.rows);
+          if (c >= 0 && r >= 0 && c < film.cols && r < film.rows && closes(cells[r * film.cols + c])) continue;
         }
+        sum++;
       }
-      result[v.r.id] = n ? sum / n : 0;
+      result[v.r.id] = sum / n;
     }
     return result;
   };
@@ -393,8 +388,10 @@ export function createSpaceScene(host: HTMLElement, space: Space, events: Events
   let level: Level = "basic";
   let litNow: Lit = { open: {}, film: {}, blocked: 0, cells: cellCount };
   let sunUp = true;
-  const setTime = (day: number, hour: number): Lit => {
-    const { dir } = sunDir(day, hour);
+  const flip = win?.wall === "south" || win?.wall === "west";
+  const setTime = (day: number, hour: number, server?: ServerMoment): Lit => {
+    const e = server?.sun;
+    const dir = e ? new THREE.Vector3(e[0], e[2], -e[1]).normalize() : sunDir(day, hour).dir;
     sun.position.copy(dir.clone().multiplyScalar(20));
     sunDisc.position.copy(dir.clone().multiplyScalar(RADIUS));
     sunDisc.visible = dir.y > -0.02;
@@ -405,15 +402,20 @@ export function createSpaceScene(host: HTMLElement, space: Space, events: Events
     }
     sunPath.geometry.setFromPoints(pts);
     sunPath.computeLineDistances();
-    cellsFor(dir, cellBlock);
+    const fromServer = server?.cells && server.rows === film.rows && server.cols === film.cols ? server.cells : null;
+    if (fromServer) {
+      // Server row 0 is the top row; column 0 is the left one seen from inside (east end of a south wall).
+      for (let i = 0; i < cellCount; i++) {
+        const row = Math.floor(i / film.cols), col = i % film.cols;
+        cellBlock[(film.rows - 1 - row) * film.cols + (flip ? film.cols - 1 - col : col)] = fromServer[i];
+      }
+    } else cellsFor(dir, cellBlock);
     const color = new THREE.Color();
     let blocked = 0;
     for (let i = 0; i < cellCount; i++) {
-      if (cellBlock[i] > 0) {
-        blocked++;
-        cellMesh.setColorAt(i, color.set(CELL_COLOR[String(cellBlock[i])]));
-      }
-      cellTarget[i] = level === "film" && cellBlock[i] > 0 ? 1 : 0;
+      if (closes(cellBlock[i])) cellMesh.setColorAt(i, color.set(STATE_COLOR[cellBlock[i]]));
+      if (closes(cellBlock[i])) blocked++;
+      cellTarget[i] = level === "film" && closes(cellBlock[i]) ? 1 : 0;
     }
     if (cellMesh.instanceColor) cellMesh.instanceColor.needsUpdate = true;
     sunUp = dir.y > 0;
@@ -581,7 +583,7 @@ export function createSpaceScene(host: HTMLElement, space: Space, events: Events
     setLevel(next) {
       if (view === "3d" && (next === "basic") !== (level === "basic")) go(next === "basic" ? home() : sunView());
       level = next;
-      for (let i = 0; i < cellCount; i++) cellTarget[i] = level === "film" && cellBlock[i] > 0 ? 1 : 0;
+      for (let i = 0; i < cellCount; i++) cellTarget[i] = level === "film" && closes(cellBlock[i]) ? 1 : 0;
     },
     setTime,
     setView(next) {
@@ -595,7 +597,7 @@ export function createSpaceScene(host: HTMLElement, space: Space, events: Events
     select,
     dayProfile(day) {
       const hours: number[] = [], open: Record<string, number[]> = {}, filmed: Record<string, number[]> = {};
-      const cells = new Float32Array(cellCount);
+      const cells = new Uint8Array(cellCount);
       for (const v of regionViews) {
         open[v.r.id] = [];
         filmed[v.r.id] = [];
