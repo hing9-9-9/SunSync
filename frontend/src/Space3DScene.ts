@@ -3,7 +3,7 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { CSS2DObject, CSS2DRenderer } from "three/examples/jsm/renderers/CSS2DRenderer.js";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { filmGrid, isWidthWall, resolveWindow } from "./model.ts";
-import type { Furniture, Grade, Region, Space, Wall } from "./model.ts";
+import type { Furniture, Region, Space, Wall } from "./model.ts";
 import { sunPosition } from "./sun3d.ts";
 
 export type Level = "basic" | "sun" | "film";
@@ -16,12 +16,11 @@ export type SceneApi = {
   select(id: string | null): void;
   dispose(): void;
 };
-type Events = { onSelect(id: string | null): void; onAzimuth(deg: number): void };
+type Events = { onSelect(id: string | null): void };
 // FR-01 sun direction (ENU) and FR-04 cell states (server order: row 0 top, column 0 left seen from inside).
 export type ServerMoment = { sun?: [number, number, number] | null; cells?: Uint8Array | null; rows?: number; cols?: number };
 
 const INK = "#1d1c22", ACTION = "#6660e5", SUN = "#ff7426";
-const REGION_FILL: Record<Grade, number> = { A: 0.3, B: 0.22, C: 0.14, D: 0 };
 // Cell state codes from space3dServer STATE_CODE: 1 opaque, 2 infeasible (darkest film is not enough). Unknown (3) cells are counted, not drawn.
 const STATE_COLOR: Record<number, string> = { 1: "#4b45c6", 2: "#2a2833" };
 const closes = (code: number) => code === 1 || code === 2;
@@ -260,9 +259,9 @@ export function createSpaceScene(host: HTMLElement, space: Space, events: Events
     items.set(f.id, { f, group, mats, line, parts });
   }
 
-  // Protected regions are surfaces, as the server stores them: a translucent purple face on the
-  // chosen side (or top) of the furniture. D (not protected) is a dashed outline only.
-  type RegionView = { r: Region; box: THREE.Box3; corner: THREE.Vector3; u: THREE.Vector3; v: THREE.Vector3; normal: THREE.Vector3; line: THREE.LineBasicMaterial | THREE.LineDashedMaterial; chip: HTMLDivElement };
+  // Protected regions are surfaces, as the server stores them. Only the grade chip is drawn (no
+  // coloured face); the surface is kept for the light rays and the film preview.
+  type RegionView = { r: Region; box: THREE.Box3; corner: THREE.Vector3; u: THREE.Vector3; v: THREE.Vector3; normal: THREE.Vector3; chip: HTMLDivElement };
   const regionViews: RegionView[] = [];
   for (const r of space.regions) {
     const { x, y, width: w, depth: d, bottom: lo, top: hi } = r;
@@ -274,19 +273,6 @@ export function createSpaceScene(host: HTMLElement, space: Space, events: Events
       "서쪽 측면": [at(x, y, lo), new THREE.Vector3(0, 0, d), new THREE.Vector3(0, hi - lo, 0), new THREE.Vector3(-1, 0, 0)],
       "상단": [at(x, y, hi), new THREE.Vector3(w, 0, 0), new THREE.Vector3(0, 0, d), new THREE.Vector3(0, 1, 0)],
     }[r.face];
-    const lift = normal.clone().multiplyScalar(0.012);
-    const quad = [corner, corner.clone().add(u), corner.clone().add(u).add(v), corner.clone().add(v)].map(p => p.clone().add(lift));
-    const geometry = new THREE.BufferGeometry().setFromPoints([quad[0], quad[1], quad[2], quad[0], quad[2], quad[3]]);
-    const mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ color: ACTION, transparent: true, opacity: REGION_FILL[r.grade], depthWrite: false, side: THREE.DoubleSide }));
-    mesh.raycast = () => {};
-    mesh.renderOrder = 2;
-    const line = r.grade === "D"
-      ? new THREE.LineDashedMaterial({ color: "#8f8b9c", dashSize: 0.08, gapSize: 0.06 })
-      : new THREE.LineBasicMaterial({ color: ACTION, transparent: true, opacity: 0.95 });
-    const outline = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(quad), line);
-    if (r.grade === "D") outline.computeLineDistances();
-    outline.raycast = () => {};
-    scene.add(mesh, outline);
     const chip = document.createElement("div");
     chip.className = `s3-chip g-${r.grade}`;
     chip.textContent = r.grade;
@@ -294,8 +280,26 @@ export function createSpaceScene(host: HTMLElement, space: Space, events: Events
     label.position.copy(corner.clone().addScaledVector(u, 0.5).addScaledVector(v, normal.y ? 0.5 : 1).add(new THREE.Vector3(0, 0.16, 0)));
     scene.add(label);
     const box = new THREE.Box3().setFromPoints([corner, corner.clone().add(u).add(v)]).expandByVector(new THREE.Vector3(1, 1, 1).multiply(normal).multiplyScalar(0.01));
-    regionViews.push({ r, box, corner, u, v, normal, line, chip });
+    regionViews.push({ r, box, corner, u, v, normal, chip });
   }
+
+  // The one north sign: painted on the ground outside the north wall, so it turns with the room.
+  const northCanvas = document.createElement("canvas");
+  northCanvas.width = northCanvas.height = 256;
+  const nc = northCanvas.getContext("2d")!;
+  nc.fillStyle = INK;
+  nc.beginPath();
+  nc.moveTo(128, 18);
+  nc.lineTo(168, 104);
+  nc.lineTo(88, 104);
+  nc.fill();
+  nc.font = "700 92px 'Noto Sans KR', sans-serif";
+  nc.textAlign = "center";
+  nc.fillText("N", 128, 210);
+  const northMark = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.9), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(northCanvas), transparent: true, depthWrite: false }));
+  northMark.rotation.x = -Math.PI / 2;
+  northMark.position.copy(at(W / 2, -0.85, -0.09));
+  scene.add(northMark);
 
   // Sun: a disc with a soft glow, travelling along today's dashed sun path.
   const glowCanvas = document.createElement("canvas");
@@ -490,7 +494,6 @@ export function createSpaceScene(host: HTMLElement, space: Space, events: Events
   const lerp = (a: number, b: number, k: number) => a + (b - a) * k;
   let lastFrame = performance.now();
   const toCam = new THREE.Vector3();
-  let lastAzimuth = NaN;
   renderer.setAnimationLoop(() => {
     const now = performance.now(), dt = Math.min((now - lastFrame) / 1000, 0.05), k = reduced ? 1 : 1 - Math.exp(-dt * 7);
     lastFrame = now;
@@ -507,7 +510,6 @@ export function createSpaceScene(host: HTMLElement, space: Space, events: Events
     filmGridMat.opacity = lerp(filmGridMat.opacity, level === "film" ? 0.22 : 0, k);
     for (const v of regionViews) {
       const sunlit = level !== "basic" && ((level === "film" ? litNow.film : litNow.open)[v.r.id] ?? 0) > 0.01;
-      if (v.line instanceof THREE.LineBasicMaterial) v.line.color.lerp(new THREE.Color(sunlit ? SUN : ACTION), k);
       v.chip.classList.toggle("lit", sunlit);
     }
     let moved = false;
@@ -538,8 +540,6 @@ export function createSpaceScene(host: HTMLElement, space: Space, events: Events
       }
       w.line.opacity = 0.16 + 0.3 * w.fade;
     }
-    const az = THREE.MathUtils.radToDeg(controls.getAzimuthalAngle());
-    if (Math.abs(az - lastAzimuth) > 0.2) events.onAzimuth((lastAzimuth = az));
     renderer.render(scene, camera);
     labels.render(scene, camera);
   });

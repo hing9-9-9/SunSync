@@ -48,7 +48,6 @@ export default function Space3DView({ space, hour, onHour, date, selected, onSel
     regions: space.regions.filter(r => r.zone === space.zone),
   }), [space]);
   const host = useRef<HTMLDivElement>(null);
-  const needle = useRef<HTMLDivElement>(null);
   const api = useRef<SceneApi | null>(null);
   const [level, setLevel] = useState<Level>("basic");
   // The plan opens in the view this viewer used last (2D the first time); it is only a convenience.
@@ -75,7 +74,6 @@ export default function Space3DView({ space, hour, onHour, date, selected, onSel
   useEffect(() => {
     const scene = createSpaceScene(host.current!, zoneSpace, {
       onSelect: id => id && onSelect(id),
-      onAzimuth: deg => needle.current?.style.setProperty("--az", `${deg}deg`),
     }, viewRef.current);
     api.current = scene;
     return () => scene.dispose();
@@ -187,9 +185,6 @@ export default function Space3DView({ space, hour, onHour, date, selected, onSel
       <div className="s3-body">
         <section className="s3-stage" aria-label="3D 공간">
           <div ref={host} className="s3-canvas" />
-          <div className="s3-compass" aria-label="북쪽 방향">
-            <div ref={needle} className="s3-needle"><span>N</span></div>
-          </div>
           <div className="s3-tools">
             <div className="s3-seg" role="group" aria-label="보기 방식">
               {(["2d", "3d"] as const).map(v => (
@@ -236,7 +231,7 @@ export default function Space3DView({ space, hour, onHour, date, selected, onSel
                     <span className={`s3-rval ${level === "basic" ? "" : tone}`}>{level === "basic" ? `${r.face} · ${r.bottom}~${r.top} m` : text}</span>
                     {bars && (
                       <span className="s3-strip" aria-hidden="true" style={{ gridTemplateColumns: `repeat(${bars.length}, 1fr)` }}>
-                        {bars.map((b, j) => <i key={j} className={b.film ? "film" : ""} style={{ opacity: 0.08 + b.value * 0.92 }} />)}
+                        {bars.map((b, j) => <i key={j} className={b.film ? "film" : b.value > 0 ? "" : "none"} style={b.value > 0 ? { opacity: 0.2 + b.value * 0.8 } : undefined} />)}
                         <b style={{ left: `${((time - 6) / 12) * 100}%` }} />
                       </span>
                     )}
