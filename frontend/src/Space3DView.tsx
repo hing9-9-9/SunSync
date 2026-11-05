@@ -10,10 +10,10 @@ import { predictionDay } from "./sunlight.ts";
 import { cellsAt, compactDay, sampleIndex, sunAt } from "./space3dServer.ts";
 import "./Space3DView.css";
 
-const LEVELS: { id: Level; label: string; lead: string }[] = [
-  { id: "basic", label: "기본 보기", lead: "저장된 크기와 위치 그대로예요. 가구를 누르면 크기와 위치가 나와요." },
-  { id: "sun", label: "햇빛과 그림자", lead: "서버가 계산한 해 위치로 창을 통과한 햇빛과 그림자를 그려요. 주황색은 지금 직사광이 닿는 보호 영역이에요." },
-  { id: "film", label: "필름 칸", lead: "서버의 차광 계획대로 10 cm 칸을 닫아요. A는 직사광이 닿으면 늘, B·C는 직사광이 상한을 넘을 때만 닫아요." },
+// Sunlight and film are one step: the film cells sit on the window while the sun moves.
+const LEVELS: { id: Level; label: string }[] = [
+  { id: "basic", label: "기본 보기" },
+  { id: "film", label: "햇빛·필름 보기" },
 ];
 const clock = (h: number) => `${String(Math.floor(h)).padStart(2, "0")}:${String(Math.floor((h % 1) * 60 + 1e-6)).padStart(2, "0")}`;
 const compassWord = (az: number) => ["북", "북동", "동", "남동", "남", "남서", "서", "북서"][Math.round(az / 45) % 8];
@@ -133,7 +133,6 @@ export default function Space3DView({ space, hour, onHour, date, selected, onSel
   }, [playing, onHour]);
 
   const sunNow = sunPosition(day, hour, site.latitude, site.longitude, utcHours(offset));
-  const info = LEVELS.find(l => l.id === level)!;
   const chosen = space.furniture.find(f => f.id === selected);
   const chosenRegion = space.regions.find(r => r.furnitureId === selected);
   // Row text: server numbers when they have arrived, otherwise the on-screen preview.
@@ -141,25 +140,23 @@ export default function Space3DView({ space, hour, onHour, date, selected, onSel
     const d = serverDay, k = moment?.index ?? -1;
     if (d && moment && k >= 0) {
       const share = d.exposure[i]?.share[k] ?? 0;
-      if (level === "sun") return share > 0 ? [`햇빛 ${pct(share)}`, "sun"] : ["닿지 않음", ""];
-      if (moment.byRegion[i]) return [`칸 ${moment.byRegion[i]}개 닫음`, "film"];
+      if (moment.byRegion[i]) return ["필름으로 가림", "film"];
       if (share === 0) return ["닿지 않음", ""];
       if (r.grade === "D") return [`햇빛 ${pct(share)} · 보호 안 함`, "sun"];
       if (!gateOpen) return [`햇빛 ${pct(share)} · ${shading.enabled ? "차단 시간 밖" : "차단 시간 꺼짐"}`, "sun"];
       // B/C cells stay open while the direct sun is under the grade's cap.
-      return r.grade === "A" ? ["닫을 칸 없음", ""] : ["약한 햇빛이라 열어 둠", ""];
+      return r.grade === "A" ? [`햇빛 ${pct(share)}`, "sun"] : [`햇빛 ${pct(share)} · 약해서 열어 둠`, "sun"];
     }
-    if (level === "film" && r.grade === "D") return ["보호 안 함", ""];
-    if (level === "film" && !gateOpen) return [shading.enabled ? "차단 시간 밖" : "차단 시간 꺼짐", ""];
-    const v = (level === "film" ? lit?.film : lit?.open)?.[r.id] ?? 0;
-    return v > 0.005 ? [`햇빛 ${pct(v)}`, "sun"] : [level === "film" && (lit?.open[r.id] ?? 0) > 0.005 ? "막음" : "닿지 않음", ""];
+    const open = lit?.open[r.id] ?? 0, after = lit?.film[r.id] ?? 0;
+    if (open <= 0.005) return ["닿지 않음", ""];
+    return after > 0.005 ? [`햇빛 ${pct(after)}`, "sun"] : ["필름으로 가림", "film"];
   };
+  // One bar per server sample: purple while the film covers the area, orange by how much sun reaches it.
   const rowBars = (i: number) => {
     const s = series?.[i];
     if (!s) return null;
-    if (level === "film") return s.film;
     const top = Math.max(...s.open, 0.001);
-    return s.open.map(x => x / top);
+    return s.open.map((x, j) => ({ film: s.film[j] === 1, value: s.film[j] === 1 ? 1 : x / top }));
   };
   // Only say something when the picture is not the server's yet.
   const source = serverDay ? null : !planned
@@ -225,14 +222,7 @@ export default function Space3DView({ space, hour, onHour, date, selected, onSel
         </section>
 
         <aside className="s3-panel">
-          <p className="s3-lead">{info.lead}</p>
           {level !== "basic" && source && <p className="s3-source" role="status">{source}</p>}
-          {level === "film" && lit && (
-            <div className="s3-stat">
-              <div><strong>{lit.blocked}<small> / {lit.cells}칸</small></strong><span>지금 닫은 필름 칸</span></div>
-              <div><strong>{pct(lit.blocked / Math.max(1, lit.cells))}</strong><span>창 면적 중</span></div>
-            </div>
-          )}
           <h2>보호 영역</h2>
           <ul className="s3-regions">
             {space.regions.map((r, i) => {
@@ -245,8 +235,8 @@ export default function Space3DView({ space, hour, onHour, date, selected, onSel
                     <span className="s3-rname">{r.name}<small>{grades[r.grade].split(" · ")[0]}</small></span>
                     <span className={`s3-rval ${level === "basic" ? "" : tone}`}>{level === "basic" ? `${r.face} · ${r.bottom}~${r.top} m` : text}</span>
                     {bars && (
-                      <span className={`s3-strip ${level === "film" ? "film" : ""}`} aria-hidden="true" style={{ gridTemplateColumns: `repeat(${bars.length}, 1fr)` }}>
-                        {bars.map((x, j) => <i key={j} style={{ opacity: 0.08 + x * 0.92 }} />)}
+                      <span className="s3-strip" aria-hidden="true" style={{ gridTemplateColumns: `repeat(${bars.length}, 1fr)` }}>
+                        {bars.map((b, j) => <i key={j} className={b.film ? "film" : ""} style={{ opacity: 0.08 + b.value * 0.92 }} />)}
                         <b style={{ left: `${((time - 6) / 12) * 100}%` }} />
                       </span>
                     )}

@@ -297,24 +297,6 @@ export function createSpaceScene(host: HTMLElement, space: Space, events: Events
     regionViews.push({ r, box, corner, u, v, normal, line, chip });
   }
 
-  // North marker painted on the ground outside the north wall, so walls hide it like real paint.
-  const northCanvas = document.createElement("canvas");
-  northCanvas.width = northCanvas.height = 256;
-  const nc = northCanvas.getContext("2d")!;
-  nc.fillStyle = INK;
-  nc.beginPath();
-  nc.moveTo(128, 18);
-  nc.lineTo(168, 104);
-  nc.lineTo(88, 104);
-  nc.fill();
-  nc.font = "700 92px 'Noto Sans KR', sans-serif";
-  nc.textAlign = "center";
-  nc.fillText("N", 128, 210);
-  const northMark = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.9), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(northCanvas), transparent: true, depthWrite: false }));
-  northMark.rotation.x = -Math.PI / 2;
-  northMark.position.copy(at(W / 2, -0.85, -0.09));
-  scene.add(northMark);
-
   // Sun: a disc with a soft glow, travelling along today's dashed sun path.
   const glowCanvas = document.createElement("canvas");
   glowCanvas.width = glowCanvas.height = 128;
@@ -418,11 +400,6 @@ export function createSpaceScene(host: HTMLElement, space: Space, events: Events
   };
 
   // Hover (slight brighten) and click-to-select on furniture.
-  const tip = document.createElement("div");
-  tip.className = "s3-tip";
-  const tipLabel = new CSS2DObject(tip);
-  tipLabel.visible = false;
-  scene.add(tipLabel);
   let hovered: string | null = null, selected: string | null = null;
   const paint = () => {
     for (const [id, it] of items) {
@@ -445,14 +422,8 @@ export function createSpaceScene(host: HTMLElement, space: Space, events: Events
     const id = pick(e);
     if (id === hovered) return;
     hovered = id;
+    // No label on hover: it covered the furniture. A click shows the size in the side panel.
     renderer.domElement.style.cursor = id ? "pointer" : "";
-    const it = id ? items.get(id) : null;
-    tipLabel.visible = !!it;
-    if (it) {
-      const { f } = it;
-      tip.innerHTML = `<b>${f.name}</b><span>${f.width.toFixed(1)} × ${f.depth.toFixed(1)} × ${f.height.toFixed(1)} m</span>`;
-      tipLabel.position.copy(at(f.x + f.width / 2, f.y + f.depth / 2, f.height + 0.35));
-    }
     paint();
   };
   let down: { x: number; y: number } | null = null;
@@ -463,7 +434,7 @@ export function createSpaceScene(host: HTMLElement, space: Space, events: Events
     select(id === selected ? null : id);
     events.onSelect(selected);
   };
-  const onLeave = () => { hovered = null; tipLabel.visible = false; paint(); };
+  const onLeave = () => { hovered = null; paint(); };
   renderer.domElement.addEventListener("pointermove", onMove);
   renderer.domElement.addEventListener("pointerdown", onDown);
   renderer.domElement.addEventListener("pointerup", onUp);
@@ -496,7 +467,6 @@ export function createSpaceScene(host: HTMLElement, space: Space, events: Events
   };
   const go = (to: Pose) => {
     hovered = null;
-    tipLabel.visible = false;
     if (reduced) return apply(to);
     const from = pose();
     to.theta = from.theta + Math.atan2(Math.sin(to.theta - from.theta), Math.cos(to.theta - from.theta));
@@ -536,7 +506,7 @@ export function createSpaceScene(host: HTMLElement, space: Space, events: Events
     groundMat.opacity = lerp(groundMat.opacity, sunny && sunUp ? 0.03 : 0, k);
     filmGridMat.opacity = lerp(filmGridMat.opacity, level === "film" ? 0.22 : 0, k);
     for (const v of regionViews) {
-      const sunlit = level === "sun" && (litNow.open[v.r.id] ?? 0) > 0.01;
+      const sunlit = level !== "basic" && ((level === "film" ? litNow.film : litNow.open)[v.r.id] ?? 0) > 0.01;
       if (v.line instanceof THREE.LineBasicMaterial) v.line.color.lerp(new THREE.Color(sunlit ? SUN : ACTION), k);
       v.chip.classList.toggle("lit", sunlit);
     }
