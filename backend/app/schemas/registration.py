@@ -9,6 +9,7 @@ from app.schemas.scene import BoardCameraObservation, Marker, Model, Occluder
 
 class RegistrationFragment(Model):
     schema_version: Literal["sunsync.fr06-fragment/1"]
+    calibration_id: Annotated[str, Field(pattern=r"^[a-f0-9]{64}$")]
     units: Literal["m"]
     coordinate_frame: Literal["ENU"]
     markers: Annotated[list[Marker], Field(min_length=1, max_length=100)]

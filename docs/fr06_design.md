@@ -67,6 +67,11 @@ ArUco 모듈은 바닥 마커 로컬 점 `points_marker_m`와 ENU 점 `points_en
 revision 및 scenario.scene_revision을 한 번 증가시킨다. 충돌은 409,
 잘못된 입력은 422이며 저장값은 변경하지 않는다.
 
+가구 등록 전 Scene 생성/PUT으로 확인된 `registration_calibration`을 저장한다.
+`calibration_id`는 측정 reference_id, `marker`는 확인된 기준 마커의 규격과 ENU 변환이다.
+가구 요청의 보정 ID 및 전체 마커 값이 저장값과 같아야 하며 미등록 보정을 자동 채택하지 않는다.
+보정이 다른 요청은 room_id가 같아도 거절한다.
+
 `aruco_board_camera_at_point`는 직사각형 상판 P1~P4의 일반 3D 좌표를 받는다.
 수직/수평 마커의 `plane`은 측정점의 평면을 뜻하지 않는다. 높이 산출 모드는
 `surface_is_top`, 최고점 H1을 추가한 `capture_highest`, 실측 `manual`이다.
