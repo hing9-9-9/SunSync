@@ -426,3 +426,32 @@ def test_saved_ui_space_runs_fr02_and_rejects_old_revision(client, payload):
     )
     assert client.put("/api/ui/spaces/test-space", json=saved).status_code == 200
     assert client.post(url, json=request).status_code == 409
+
+
+def test_ui_save_keeps_registration_calibration(client, payload):
+    """A web save must not erase the board/ENU calibration that furniture registration needs."""
+    from app.api.ui_spaces import keep_paired_markers
+    from app.schemas.scene import RegistrationCalibration, Scene
+    from app.ui_scene import UISpace, to_scene
+
+    calibration = RegistrationCalibration.model_validate(
+        {
+            "calibration_id": "a" * 64,
+            "marker": {
+                "marker_id": "board_m",
+                "family": "aruco",
+                "dictionary": "DICT_4X4_50",
+                "code_id": 7,
+                "side_length_m": 0.24,
+                "plane": "vertical",
+                "T_ENU_marker": [1, 0, 0, 1, 0, 0, 1, 0, 0, -1, 0, 1.2, 0, 0, 0, 1],
+            },
+        }
+    )
+    space = UISpace.model_validate(payload)
+    previous = to_scene(space, 1).model_copy(update={"registration_calibration": calibration})
+    renamed = UISpace.model_validate({**payload, "name": "이름 변경"})
+    kept = keep_paired_markers(to_scene(renamed, 2), previous)
+    assert isinstance(kept, Scene)
+    assert kept.registration_calibration == calibration
+    assert kept.room.name == "이름 변경"

@@ -9,6 +9,7 @@ from .core import plan, measure, compose_scene
 from .pose import detect
 from .fr06 import export_fragment
 from .fragment_schema import BoardCameraFragmentV1
+from .mobile import NativeFrame, AutomaticSetup, ingest_frame, calibrate_automatically
 
 
 class SceneRequest(Strict):
@@ -76,6 +77,14 @@ def create_app():
     @app.post("/v1/measurements")
     def make_measurement(request: MeasureRequest):
         return run(measure, request)
+
+    @app.post("/v1/mobile/captures")
+    def native_capture(request: NativeFrame):
+        return run(ingest_frame, request)
+
+    @app.post("/v1/mobile/automatic-setup")
+    def automatic_camera_setup(request: AutomaticSetup):
+        return run(calibrate_automatically, request)
 
     @app.post("/v1/scenes")
     def make_scene(request: SceneRequest):

@@ -427,6 +427,7 @@ class BoardCameraObservation(Model):
 
     observation_id: Identifier
     method: Literal["aruco_board_camera_at_point"]
+    calibration_id: Annotated[str, Field(pattern=r"^[a-f0-9]{64}$")]
     captured_at: Timestamp
     uncertainty_m: Nonnegative | None
     confirmed: bool
@@ -665,6 +666,13 @@ class Scenario(Model):
         return self
 
 
+class RegistrationCalibration(Model):
+    """Explicitly registered board/ENU/floor calibration, before furniture import."""
+
+    calibration_id: Annotated[str, Field(pattern=r"^[a-f0-9]{64}$")]
+    marker: Marker
+
+
 class Scene(Model):
     schema_version: Literal["0.2.0"]
     scene_id: Identifier
@@ -676,6 +684,7 @@ class Scene(Model):
     site: Site
     north_alignment: NorthAlignment
     room: Room
+    registration_calibration: RegistrationCalibration | None = None
     windows: list[Window] = Field(default_factory=list)
     occluders: list[Occluder] = Field(default_factory=list)
     protected_regions: list[ProtectedRegion] = Field(default_factory=list)
@@ -917,6 +926,13 @@ class Scene(Model):
                     "ArUco planar floor observation requires a floor marker",
                 )
             else:
+                calibration = self.registration_calibration
+                require(
+                    calibration is not None
+                    and calibration.calibration_id == observation.calibration_id
+                    and calibration.marker == marker,
+                    "board observation must match the scene's persisted calibration",
+                )
                 require(
                     self.north_alignment.confirmed, "board measurements require confirmed ENU north"
                 )

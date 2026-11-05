@@ -143,6 +143,11 @@
           "title": "Method",
           "type": "string"
         },
+        "calibration_id": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Calibration Id",
+          "type": "string"
+        },
         "captured_at": {
           "format": "date-time",
           "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})$",
@@ -325,6 +330,7 @@
       "required": [
         "observation_id",
         "method",
+        "calibration_id",
         "captured_at",
         "uncertainty_m",
         "confirmed",
@@ -988,6 +994,26 @@
       "title": "Quality",
       "type": "object"
     },
+    "RegistrationCalibration": {
+      "additionalProperties": false,
+      "description": "Explicitly registered board/ENU/floor calibration, before furniture import.",
+      "properties": {
+        "calibration_id": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Calibration Id",
+          "type": "string"
+        },
+        "marker": {
+          "$ref": "#/$defs/Marker"
+        }
+      },
+      "required": [
+        "calibration_id",
+        "marker"
+      ],
+      "title": "RegistrationCalibration",
+      "type": "object"
+    },
     "Room": {
       "additionalProperties": false,
       "properties": {
@@ -1516,6 +1542,17 @@
     },
     "room": {
       "$ref": "#/$defs/Room"
+    },
+    "registration_calibration": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/RegistrationCalibration"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
     },
     "windows": {
       "items": {

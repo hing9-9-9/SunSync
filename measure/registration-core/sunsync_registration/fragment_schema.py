@@ -32,6 +32,7 @@ class FragmentMarker(Strict):
 class FragmentObservation(Strict):
     observation_id: Identifier
     method: Literal["aruco_board_camera_at_point"]
+    calibration_id: str = Field(pattern=r"^[a-f0-9]{64}$")
     captured_at: AwareDatetime
     uncertainty_m: float | None = Field(ge=0)
     confirmed: Literal[False]
@@ -93,6 +94,7 @@ class FragmentOccluder(Strict):
 
 class BoardCameraFragmentV1(Strict):
     schema_version: Literal["sunsync.fr06-fragment/1"]
+    calibration_id: str = Field(pattern=r"^[a-f0-9]{64}$")
     units: Literal["m"]
     coordinate_frame: Literal["ENU"]
     markers: list[FragmentMarker] = Field(min_length=1)
@@ -119,6 +121,8 @@ class BoardCameraFragmentV1(Strict):
             if not set(occluder.quality.observation_ids).issubset(observations):
                 raise ValueError("Unknown provenance observation")
         for observation in self.observations:
+            if observation.calibration_id != self.calibration_id:
+                raise ValueError("Observation calibration disagrees with fragment")
             marker = markers.get(observation.marker_id)
             if marker is None or observation.plane != marker.plane:
                 raise ValueError("Unknown marker or inconsistent marker plane")

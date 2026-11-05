@@ -42,6 +42,10 @@ def measured_fragment(furniture_id="desk_01", mode="surface_is_top", floating=Fa
     return export_fragment(measure(MeasureRequest.model_validate(request)))
 
 
+def calibration_for(fragment):
+    return {"calibration_id": fragment["calibration_id"], "marker": fragment["markers"][0]}
+
+
 @pytest.fixture
 def client(tmp_path):
     engine = create_engine(
@@ -49,6 +53,7 @@ def client(tmp_path):
     )
     with TestClient(create_app(engine)) as result:
         payload = json.loads((ROOT / "docs/examples/fr06_manual_room.json").read_text("utf-8"))
+        payload["registration_calibration"] = calibration_for(measured_fragment())
         response = result.post("/api/scenes", json=payload)
         assert response.status_code == 201, response.text
         yield result
@@ -158,6 +163,7 @@ def test_existing_marker_cannot_be_relocated(client):
 
 def test_registration_preserves_existing_windows_weather_policy_and_scenario(client):
     payload = json.loads((ROOT / "docs/examples/fr06_scene_example.json").read_text("utf-8"))
+    payload["registration_calibration"] = calibration_for(measured_fragment())
     response = client.post("/api/scenes", json=payload)
     assert response.status_code == 201, response.text
     before = response.json()
@@ -186,3 +192,25 @@ def test_unconfirmed_north_and_missing_height_provenance_are_rejected(client):
     fragment["observations"][0]["derived_fields"].remove("desk_01.dimensions_m[2]")
     assert submit(client, fragment, revision=2).status_code == 422
     assert client.get("/api/scenes/scene_manual_room").json()["revision"] == 2
+
+
+@pytest.mark.parametrize("change", ["identity", "transform", "missing"])
+def test_persisted_calibration_required_before_import(client, change):
+    before = client.get("/api/scenes/scene_manual_room").json()
+    fragment = measured_fragment("other_desk")
+    if change == "identity":
+        fragment["calibration_id"] = "0" * 64
+        fragment["observations"][0]["calibration_id"] = "0" * 64
+    elif change == "transform":
+        fragment["markers"][0]["T_ENU_marker"][3] += 0.2
+        for point in fragment["observations"][0]["points_enu_m"]:
+            point[0] += 0.2
+        fragment["occluders"][0]["base_center_m"][0] += 0.2
+    else:
+        before["registration_calibration"] = None
+        before["revision"] = 2
+        response = client.put("/api/scenes/scene_manual_room", json=before)
+        assert response.status_code == 200, response.text
+        before = response.json()
+    assert submit(client, fragment, revision=before["revision"]).status_code == 422
+    assert client.get("/api/scenes/scene_manual_room").json() == before

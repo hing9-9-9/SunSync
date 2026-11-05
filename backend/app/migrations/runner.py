@@ -6,7 +6,7 @@ schema and record their progress in SQLite's built-in ``user_version``.
 
 from sqlalchemy import Engine
 
-LATEST_VERSION = 2
+LATEST_VERSION = 3
 
 
 def _upgrade_1(connection) -> None:  # type: ignore[no-untyped-def]
@@ -102,6 +102,17 @@ def _upgrade_2(connection) -> None:  # type: ignore[no-untyped-def]
 
 
 MIGRATIONS[2] = _upgrade_2
+
+
+def _upgrade_3(connection) -> None:  # type: ignore[no-untyped-def]
+    connection.exec_driver_sql("ALTER TABLE nowcast_point ADD COLUMN dni_p10_W_m2 REAL")
+    connection.exec_driver_sql("ALTER TABLE nowcast_point ADD COLUMN dni_p50_W_m2 REAL")
+    connection.exec_driver_sql("ALTER TABLE nowcast_point ADD COLUMN dni_p90_W_m2 REAL")
+    connection.exec_driver_sql("ALTER TABLE nowcast_point ADD COLUMN kma_ai_dni_W_m2 REAL")
+    connection.exec_driver_sql("ALTER TABLE nowcast_point ADD COLUMN open_meteo_dni_W_m2 REAL")
+
+
+MIGRATIONS[3] = _upgrade_3
 
 
 def upgrade_database(engine: Engine) -> None:

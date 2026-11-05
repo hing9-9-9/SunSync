@@ -4,6 +4,7 @@ import type { PhotoIssue } from "./captureCheck";
 import { shapes, validPolygon, nextPhotoSlot, photosPerPoint } from "./capturePlan";
 import type { Shape, CapturePoint } from "./capturePlan";
 import type { CapturedFurniture } from "./model";
+import { browserCaptureEnabled } from "./captureEnvironment";
 
 type Photo = { file: File; url: string; issue: PhotoIssue | null; metrics: { brightness: number; sharpness: number } };
 
@@ -22,7 +23,15 @@ async function analyse(file: File) {
 }
 
 // MAR3.2: stand at each of the four corners of one piece of furniture and photograph the window marker.
-export default function SpatialCapture({ count, onFinish }: { count: number; onFinish: (items: CapturedFurniture[]) => void }) {
+export default function SpatialCapture(props: { count: number; onFinish: (items: CapturedFurniture[]) => void }) {
+  if (!browserCaptureEnabled) return <section role="status">
+    <h3>촬영은 SunSync 앱에서 진행해 주세요</h3>
+    <p>앱에서 같은 공간을 선택해 촬영하면 측정 결과를 웹에서 확인할 수 있어요.</p>
+  </section>;
+  return <TestSpatialCapture {...props} />;
+}
+
+function TestSpatialCapture({ count, onFinish }: { count: number; onFinish: (items: CapturedFurniture[]) => void }) {
   const [items, setItems] = useState<CapturedFurniture[]>([]);
   const [name, setName] = useState(`가구 ${count + 1}`);
   const [shape, setShape] = useState<Shape>('rectangle');
@@ -69,6 +78,7 @@ export default function SpatialCapture({ count, onFinish }: { count: number; onF
   }
 
   return <div className="spatial-capture corner-capture">
+    <p role="note">개발용 사진 테스트 · 실제 측정 결과로 저장되지 않습니다.</p>
     <div className="two-fields">
       <label className="field"><span>가구 이름</span><input value={name} onChange={(e) => setName(e.target.value)} /></label>
       <label className="field"><span>상판 형태</span>

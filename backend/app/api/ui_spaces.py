@@ -28,7 +28,8 @@ def checked_scene(space: UISpace, revision: int, created_at: str | None = None) 
 
 
 def keep_paired_markers(scene: Scene, previous: Scene) -> Scene:
-    """FR-05 pairing writes markers the UI never sends; a UI save keeps them while their window is unchanged."""
+    """Keep server-side measurement setup the UI never sends: FR-05 paired markers (while their
+    window is unchanged) and the registration calibration (board/ENU/floor reference)."""
     windows = {w.window_id: w.vertices_m for w in scene.windows}
     before = {w.window_id: w.vertices_m for w in previous.windows}
     kept = [
@@ -37,15 +38,22 @@ def keep_paired_markers(scene: Scene, previous: Scene) -> Scene:
         if m.window_id is None
         or (m.window_id in windows and windows[m.window_id] == before.get(m.window_id))
     ]
-    if not kept:
+    calibration = previous.registration_calibration
+    if not kept and calibration is None:
         return scene
-    try:
-        return Scene.model_validate(
-            {**scene.model_dump(mode="json"), "markers": [m.model_dump(mode="json") for m in kept]}
+    data = scene.model_dump(mode="json")
+    attempts: list[dict[str, Any]] = [{"markers": [m.model_dump(mode="json") for m in kept]}]
+    if calibration is not None:
+        attempts.insert(
+            0, {**attempts[0], "registration_calibration": calibration.model_dump(mode="json")}
         )
-    except ValidationError:
-        # A marker that no longer fits the regenerated film grid must be paired again.
-        return scene
+    for extra in attempts:
+        try:
+            return Scene.model_validate({**data, **extra})
+        except ValidationError:
+            # Setup that no longer fits the regenerated room or film grid must be done again.
+            continue
+    return scene
 
 
 @router.get("")

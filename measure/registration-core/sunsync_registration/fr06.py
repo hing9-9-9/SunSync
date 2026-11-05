@@ -65,6 +65,7 @@ def export_fragment(measurement):
     derived += [fid + ".dimensions_m[2]", fid + ".base_center_m"]
     fragment = {
         "schema_version": "sunsync.fr06-fragment/1",
+        "calibration_id": measurement["reference_id"],
         "units": "m",
         "coordinate_frame": "ENU",
         "markers": [
@@ -82,6 +83,7 @@ def export_fragment(measurement):
             {
                 "observation_id": oid,
                 "method": "aruco_board_camera_at_point",
+                "calibration_id": measurement["reference_id"],
                 "captured_at": measurement["captured_at"],
                 "uncertainty_m": None,
                 "confirmed": False,
