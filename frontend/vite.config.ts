@@ -46,9 +46,18 @@ self.addEventListener('fetch', event => {
   };
 }
 
+// The measurement server (measure/registration-core) runs beside the backend; the web reaches it as /measure.
+const proxies = {
+  "/api": process.env.SUNSYNC_API_TARGET || "http://127.0.0.1:8000",
+  "/measure": {
+    target: process.env.SUNSYNC_MEASURE_TARGET || "http://127.0.0.1:8001",
+    rewrite: (path: string) => path.replace(/^\/measure/, ""),
+  },
+};
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), offlineShell()],
-  server: { proxy: { "/api": process.env.SUNSYNC_API_TARGET || "http://127.0.0.1:8000" } },
-  preview: { proxy: { "/api": process.env.SUNSYNC_API_TARGET || "http://127.0.0.1:8000" } },
+  server: { proxy: proxies },
+  preview: { proxy: proxies },
 });

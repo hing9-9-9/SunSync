@@ -1,5 +1,5 @@
 /** The mobile screen stands in for the SunSync app until a native app ships (team decision 2026-11-05),
- *  so it captures in every build; the desktop web captures only in an opted-in development build. */
-export function allowBrowserCapture(development: boolean, testFlag: string | undefined, mobile = false): boolean {
-  return mobile || (development && testFlag === "true");
+ *  so it captures in every build. The desktop web never captures: photos come from the phone. */
+export function allowBrowserCapture(mobile: boolean): boolean {
+  return mobile;
 }

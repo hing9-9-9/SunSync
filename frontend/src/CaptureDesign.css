@@ -55,3 +55,8 @@
 .point-photos { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin:12px 0; }
 .point-photos img { width:100%; aspect-ratio:1; object-fit:cover; border-radius:8px; }
 .point-photos button { width:100%; padding:4px; font-size:12px; }
+/* Camera setup sits in the same white card as the other capture steps. */
+.app.award-mobile.mode-app.page-capture .camera-setup { display:grid; gap:var(--space-3); padding:var(--space-5); background:var(--c-white); border-radius:var(--radius-card); box-shadow:var(--at-card-shadow); }
+.app.award-mobile.mode-app.page-capture .camera-setup h3 { margin:0; font-size:var(--fs-body); font-weight:700; }
+.app.award-mobile.mode-app.page-capture .camera-setup p { margin:0; }
+.app.award-mobile.mode-app.page-capture .camera-setup .text-button { justify-self:start; }

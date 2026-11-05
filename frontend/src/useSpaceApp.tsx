@@ -1,5 +1,6 @@
 import { validateShadingPlan } from "./shading";
 import { browserCaptureEnabled } from "./captureEnvironment";
+import { MeasureError, measureAndRegister, savedCamera } from "./measureApi";
 import type { ShadingResult } from "./shading";
 import PredictionSummary from "./PredictionSummary";
 import { createHandoff, connectHandoff, completeHandoff, listMeasurements, predictSunpath, predictShadingPlan } from "./spaceApi";
@@ -746,8 +747,10 @@ export function useSpaceApp() {
       d.focus();
     } else if (!modal && d?.open) d.close();
   }, [modal]);
+  // True while real measurement runs, so the processing screen waits for it instead of a timer.
+  const measuring = useRef(false);
   useEffect(() => {
-    if (page !== "processing") return;
+    if (page !== "processing" || measuring.current) return;
     const id = window.setInterval(
       () => setProgress((p) => Math.min(100, p + 17)),
       320,
@@ -1081,10 +1084,50 @@ export function useSpaceApp() {
     </div>
   );
   const capturedPhotos = useRef<CapturedFurniture[]>([]);
+  // Real measurement when every photo was checked by the measurement server and this phone's
+  // camera is set up; otherwise the default-size placement below.
+  async function measureCaptured(space: Space, items: CapturedFurniture[]) {
+    const camera = savedCamera();
+    measuring.current = true;
+    setProgress(10);
+    setPage("processing");
+    try {
+      let current = space;
+      for (const [i, item] of items.entries()) {
+        current = await measureAndRegister(current, camera!, {
+          name: item.name,
+          shape: item.capture!.shape,
+          vertices: item.capture!.points.map((p) => p.position),
+          points: item.capture!.points.map((p) => ({ id: p.id, frames: p.frames! })),
+        });
+        setProgress(10 + Math.round((90 * (i + 1)) / items.length));
+      }
+      const added = current.furniture.filter((f) => !space.furniture.some((o) => o.id === f.id));
+      setSpaces((all) => upsertSpace(all, current));
+      setDraft(current);
+      setSelectedFurniture(added[0]?.id ?? null);
+      setSelectedRegion(null);
+      setAddingByQr(false);
+      setToast(`측정 완료 · 가구 ${added.length}개를 배치했어요. 위치와 크기를 확인해 주세요.`);
+    } catch (e) {
+      setError(e instanceof MeasureError ? e.message : "측정하지 못했어요. 다시 촬영해 주세요.");
+      setPageState("capture");
+      return;
+    } finally {
+      measuring.current = false;
+    }
+    setPageState(qrReturnPage.current);
+  }
   function finishCapture(items: CapturedFurniture[]) {
     if (!browserCaptureEnabled) return;
     capturedPhotos.current = items;
     if (!draft || !items.length) return;
+    const measurable = !!savedCamera() && !!draft.serverSceneId &&
+      items.every((item) => item.capture?.points.every((p) => p.frames?.length));
+    if (measurable) {
+      void measureCaptured(draft, items);
+      return;
+    }
     const kept = addingByQr
       ? draft.furniture
       : draft.furniture.filter((f) => f.zone !== draft.zone);
