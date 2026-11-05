@@ -27,6 +27,27 @@ def checked_scene(space: UISpace, revision: int, created_at: str | None = None) 
         ) from error
 
 
+def keep_paired_markers(scene: Scene, previous: Scene) -> Scene:
+    """FR-05 pairing writes markers the UI never sends; a UI save keeps them while their window is unchanged."""
+    windows = {w.window_id: w.vertices_m for w in scene.windows}
+    before = {w.window_id: w.vertices_m for w in previous.windows}
+    kept = [
+        m
+        for m in previous.markers
+        if m.window_id is None
+        or (m.window_id in windows and windows[m.window_id] == before.get(m.window_id))
+    ]
+    if not kept:
+        return scene
+    try:
+        return Scene.model_validate(
+            {**scene.model_dump(mode="json"), "markers": [m.model_dump(mode="json") for m in kept]}
+        )
+    except ValidationError:
+        # A marker that no longer fits the regenerated film grid must be paired again.
+        return scene
+
+
 @router.get("")
 def list_spaces(
     session: DB,
@@ -121,9 +142,8 @@ def replace_space(space_id: str, space: UISpace, session: DB) -> UISpace:
             409, "다른 곳에서 수정된 공간입니다. 최신 내용을 불러온 뒤 다시 수정해 주세요."
         )
     revision = existing.revision + 1
-    scene = checked_scene(
-        space, revision, Scene.model_validate_json(existing.scene_json).created_at
-    )
+    previous = Scene.model_validate_json(existing.scene_json)
+    scene = keep_paired_markers(checked_scene(space, revision, previous.created_at), previous)
     saved = space.model_copy(
         update={
             "serverRevision": revision,

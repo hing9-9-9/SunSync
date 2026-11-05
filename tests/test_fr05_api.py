@@ -621,6 +621,58 @@ def test_marker_pairing_uispace_synchronization(
     assert put_res.json()["serverRevision"] == 3
 
 
+def test_ui_save_keeps_paired_marker_until_window_moves(client: TestClient) -> None:
+    space = {
+        "id": "space_marker_keep",
+        "building": "B",
+        "floor": "1F",
+        "name": "Room",
+        "width": 6.0,
+        "depth": 5.0,
+        "height": 3.0,
+        "zone": "z",
+        "zones": ["z"],
+        "source": "manual",
+        "revision": 1,
+        "site": {
+            "latitude": 37.5,
+            "longitude": 127.0,
+            "timezone": "Asia/Seoul",
+            "northConfirmed": True,
+        },
+        "windowDimensions": {
+            "width": 2.0,
+            "height": 1.5,
+            "wall": "south",
+            "offset": 2.0,
+            "sill": 0.8,
+        },
+        "furniture": [],
+        "regions": [],
+    }
+    created = client.post("/api/ui/spaces", json=space).json()
+    scene_id = created["serverSceneId"]
+    assert (
+        client.post(f"/api/scenes/{scene_id}/marker-pairing", json={"code_id": 5}).status_code
+        == 200
+    )
+
+    def markers() -> list[dict[str, object]]:
+        return client.get(f"/api/scenes/{scene_id}").json()["markers"]
+
+    assert [m["code_id"] for m in markers()] == [5]
+    current = client.get("/api/ui/spaces/space_marker_keep").json()
+    current["name"] = "Renamed"
+    saved = client.put("/api/ui/spaces/space_marker_keep", json=current)
+    assert saved.status_code == 200, saved.text
+    assert [m["code_id"] for m in markers()] == [5]
+
+    moved = saved.json()
+    moved["windowDimensions"]["offset"] = 3.0
+    assert client.put("/api/ui/spaces/space_marker_keep", json=moved).status_code == 200
+    assert markers() == []
+
+
 def test_nonexistent_scene_returns_404(client: TestClient) -> None:
     non_existent = "scene_does_not_exist_999"
     assert client.get(f"/api/scenes/{non_existent}/film-state").status_code == 404
