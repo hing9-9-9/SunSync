@@ -111,7 +111,7 @@
 .app.award-mobile .account-avatar { width: 48px; height: 48px; aspect-ratio: 1; flex-shrink: 0; display: grid; place-items: center; padding: 0; font-size: var(--fs-h2); line-height: var(--lh-h2); }
 /* Polish: narrow three-up number fields wrap their labels at word breaks and keep inputs on one baseline. */
 .app .dimensions > .field { justify-content: space-between; }
-.app .dimensions > .field > span { word-break: keep-all; }
+.app .dimensions > .field > span, .app .two-fields > .field > span { word-break: keep-all; }
 /* Polish: zone actions share the chip height, so one row of controls has one height. */
 .app.award-mobile .zone-action { min-height: 44px; height: 44px; padding: 0 14px; }
 /* Polish: rows grouped in a card start and end on the same inset as standalone row cards. */

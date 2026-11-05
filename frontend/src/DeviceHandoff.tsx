@@ -3,7 +3,6 @@ import QRCode from "qrcode";
 import { readHandoff, userMessage } from "./spaceApi";
 import type { HandoffSession } from "./spaceApi";
 import type { Space } from "./model";
-import { browserCaptureEnabled } from "./captureEnvironment";
 export function DeviceHandoff({
   session,
   onComplete,
@@ -85,7 +84,7 @@ export function DeviceHandoff({
             : "측정 대기"}
       </h3>
       <p>같은 계정으로 로그인한 앱의 내 공간에서 ‘촬영 시작’ 선택</p>
-      {browserCaptureEnabled && valid && <details><summary>테스트용 촬영 화면 열기</summary>
+      {valid && <details><summary>휴대폰에서 바로 열기</summary>
         {qr && <img src={qr} width="224" height="224" alt="공간 촬영 화면 바로가기 QR" />}
         <a className="secondary handoff-link" href={link} target="_blank" rel="noreferrer">촬영 화면 열기</a>
       </details>}

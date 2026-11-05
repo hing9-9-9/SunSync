@@ -396,3 +396,62 @@ def test_ui_save_predict_edit_and_stale_prediction(client, payload):
     assert client.post(url, json=request).status_code == 409
     request["expected_scene_revision"] = 2
     assert client.post(url, json=request).status_code == 200
+
+
+def test_saved_ui_space_runs_fr02_and_rejects_old_revision(client, payload):
+    payload["site"]["northConfirmed"] = True
+    payload["windowDimensions"] = {
+        "width": 4,
+        "height": 2.5,
+        "wall": "south",
+        "offset": 1,
+        "sill": 0,
+    }
+    saved_response = client.post("/api/ui/spaces", json=payload)
+    assert saved_response.status_code == 201, saved_response.text
+    saved = saved_response.json()
+    url = f"/api/scenes/{saved['serverSceneId']}/shading-plans"
+    request = {
+        "start_time": "2026-11-02T00:00:00+09:00",
+        "duration_minutes": 1440,
+        "interval_seconds": 1800,
+        "expected_scene_revision": 1,
+    }
+    response = client.post(url, json=request)
+    assert response.status_code == 200, response.text
+    result = response.json()
+    assert result["scene_revision"] == 1
+    assert any(
+        s["state"] == "opaque" for w in result["windows"] for c in w["cells"] for s in c["segments"]
+    )
+    assert client.put("/api/ui/spaces/test-space", json=saved).status_code == 200
+    assert client.post(url, json=request).status_code == 409
+
+
+def test_ui_save_keeps_registration_calibration(client, payload):
+    """A web save must not erase the board/ENU calibration that furniture registration needs."""
+    from app.api.ui_spaces import keep_paired_markers
+    from app.schemas.scene import RegistrationCalibration, Scene
+    from app.ui_scene import UISpace, to_scene
+
+    calibration = RegistrationCalibration.model_validate(
+        {
+            "calibration_id": "a" * 64,
+            "marker": {
+                "marker_id": "board_m",
+                "family": "aruco",
+                "dictionary": "DICT_4X4_50",
+                "code_id": 7,
+                "side_length_m": 0.24,
+                "plane": "vertical",
+                "T_ENU_marker": [1, 0, 0, 1, 0, 0, 1, 0, 0, -1, 0, 1.2, 0, 0, 0, 1],
+            },
+        }
+    )
+    space = UISpace.model_validate(payload)
+    previous = to_scene(space, 1).model_copy(update={"registration_calibration": calibration})
+    renamed = UISpace.model_validate({**payload, "name": "이름 변경"})
+    kept = keep_paired_markers(to_scene(renamed, 2), previous)
+    assert isinstance(kept, Scene)
+    assert kept.registration_calibration == calibration
+    assert kept.room.name == "이름 변경"

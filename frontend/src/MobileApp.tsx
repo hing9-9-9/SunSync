@@ -1,14 +1,19 @@
+import { useState } from "react";
 import NumberField from "./NumberField";
 import { WorkspaceNavigation, WorkspaceHome, WorkspaceCards } from "./WorkspaceDesign";
 import { DeviceHandoff } from "./DeviceHandoff";
+import { CaptureHelp } from "./CaptureHelp";
 import { FilmGrid, ShadingTimeControl } from "./ShadingPlan";
 import { applyShadingTime, formatMinute } from "./sunlight";
-import SpatialCapture from "./SpatialCapture";
+import SpatialCapture, { CameraSetup } from "./SpatialCapture";
+import { savedCamera } from "./measureApi";
 import {
   defaultShadingTime,
   furnitureTypes,
   grades,
   isWidthWall,
+  margin,
+  wallLength,
   resolveWindow,
   upsertSpace,
   walls,
@@ -66,13 +71,11 @@ function MobileApp() {
     draftWarning,
     setPage,
     toast,
-    setToast,
-    undoDraft,
-    setUndoDraft,
-    deleteWithUndo,
+    pendingDelete,
+    confirmDelete,
+    askDelete,
     guideIndex,
     setGuideIndex,
-    pendingPage,
     addingByQr,
     setAddingByQr,
     rememberQrReturn,
@@ -113,6 +116,13 @@ function MobileApp() {
     reloadServerDraft,
     transferSpace,
     unsaved,
+    leaveUnsaved,
+    tempDrafts,
+    tempDeleteId,
+    askDeleteTempDraft,
+    confirmDeleteTempDraft,
+    resumeTempDraft,
+    leaveEditor,
     navigate,
     requireAccount,
     dismissModal,
@@ -150,7 +160,11 @@ function MobileApp() {
     continueManually,
     deleteSpace,
     deleting,
+    setToast,
   } = useSpaceApp();
+  // WEB APP TEST ONLY: camera setup state for 더보기 › 카메라 준비.
+  const [cameraSetupOpen, setCameraSetupOpen] = useState(false);
+  const [cameraReady, setCameraReady] = useState(() => !!savedCamera());
   function websiteNavigate(next: WebsiteDestination) {
     if (next === "home" || next === "guide") {
       navigate(next);
@@ -392,8 +406,9 @@ function MobileApp() {
                   <strong>
                     {space.building || "새 건물"}, {space.name || "새 공간"}
                   </strong>
-                  <span className="context-mode">
-                    {editing ? "편집 중" : "공간 현황"}
+                  {/* Save state rides on the existing "편집 중" label, so nothing shifts when it appears. */}
+                  <span className="context-mode" role="status">
+                    {editing ? `편집 중${!unsaved ? "" : !leaveUnsaved ? " · 임시 저장됨" : " · 저장되지 않은 변경사항"}` : "공간 현황"}
                   </span>
                 </div>
               )}
@@ -469,14 +484,6 @@ function MobileApp() {
                 )}
               </div>
               )}
-              {draft && !editing && page !== "guide" && !(draftPage.current === "capture" && measurementJobs.some(job => job.space_id === draft.id && job.status !== "completed")) && (
-                <button
-                  className="secondary resume-edit"
-                  onClick={() => setPage(draftPage.current)}
-                >
-                  {draftPage.current === "capture" ? "촬영 이어하기" : "공간 편집 이어가기"}
-                </button>
-              )}
               {storageError && (
                 <p className="error" role="alert">
                   저장 공간을 사용할 수 없습니다. 변경 내용이 새로고침 후 사라질
@@ -542,6 +549,27 @@ function MobileApp() {
                     </p>
                   )}
                   {!isApp ? <WorkspaceCards spaces={spaces} selectSpace={selectSpace} onStart={begin} /> : page === "home" ? null : spaceList}
+                  {page === "spaces" && tempDrafts.length > 0 && (
+                    <section className="temp-drafts" aria-labelledby="temp-drafts-title">
+                      <h2 id="temp-drafts-title">작성 중인 공간</h2>
+                      {tempDrafts.map((t) => (
+                        <div className="row" key={t.space.id}>
+                          <button type="button" className="temp-draft-open" onClick={() => resumeTempDraft(t)}>
+                            <span>
+                              {t.space.name || "이름 없는 공간"}
+                              <small>
+                                {[t.space.building, t.space.floor].filter(Boolean).join(" ") || "건물 정보 없음"} · {new Date(t.savedAt).toLocaleDateString("ko-KR", { month: "long", day: "numeric" })} 임시 저장
+                              </small>
+                            </span>
+                            <span className="status-pill todo">작성 중</span>
+                          </button>
+                          <button type="button" className="text-button destructive-text" onClick={() => askDeleteTempDraft(t.space.id)}>
+                            삭제
+                          </button>
+                        </div>
+                      ))}
+                    </section>
+                  )}
                   {unavailable.length > 0 && (
                     <section className="external-spaces">
                       <h2>다른 형식의 공간</h2>
@@ -672,18 +700,37 @@ function MobileApp() {
                       </label>
                       {draftWindow && (
                         <>
+                          {/* Right and top margins are derived: editing them rewrites offset/sill, the stored values. */}
                           <div className="two-fields">
                             <NumberField
                               label={
                                 isWidthWall(draftWindow.wall)
-                                  ? "서쪽 끝에서 창까지"
-                                  : "북쪽 끝에서 창까지"
+                                  ? "왼쪽 여백 · 서쪽 끝부터"
+                                  : "왼쪽 여백 · 북쪽 끝부터"
                               }
                               value={draftWindow.offset}
                               onChange={(offset) => changeWindow({ offset })}
                             />
                             <NumberField
-                              label="바닥에서 창 아래까지"
+                              label={
+                                isWidthWall(draftWindow.wall)
+                                  ? "오른쪽 여백 · 동쪽 끝까지"
+                                  : "오른쪽 여백 · 남쪽 끝까지"
+                              }
+                              value={margin(wallLength(draft, draftWindow.wall) - draftWindow.offset - draftWindow.width)}
+                              onChange={(right) =>
+                                changeWindow({ offset: margin(wallLength(draft, draftWindow.wall) - draftWindow.width - right) })
+                              }
+                            />
+                            <NumberField
+                              label="위 여백 · 천장까지"
+                              value={margin(draft.height - draftWindow.sill - draftWindow.height)}
+                              onChange={(top) =>
+                                changeWindow({ sill: margin(draft.height - draftWindow.height - top) })
+                              }
+                            />
+                            <NumberField
+                              label="아래 여백 · 바닥부터"
                               value={draftWindow.sill}
                               onChange={(sill) => changeWindow({ sill })}
                             />
@@ -838,8 +885,8 @@ function MobileApp() {
                   <h2>앱에서 공간 인식</h2>
                   <ol className="instruction-list">
                     <li>창문 규격·위치 입력 후 필름에 QR 마커 표시</li>
-                    <li>앱에서 가구 이름과 종류 선택</li>
-                    <li>가구 네 모서리에 차례로 서서 창문 QR 마커 촬영</li>
+                    <li>앱에서 가구 이름과 상판 형태 선택</li>
+                    <li>형태별 촬영 지점에서 창문 QR 마커를 지점마다 3장 촬영</li>
                     <li>마커가 다 보이지 않거나 흔들리면 앱이 재촬영 안내</li>
                     <li>촬영이 끝나면 웹에서 도면 확인 후 가구·보호 영역 편집</li>
                   </ol>
@@ -921,14 +968,15 @@ function MobileApp() {
                     <h3>촬영 순서</h3>
                     <ol className="instruction-list">
                       <li>창문 규격 확인 및 필름의 QR 마커 표시</li>
-                      <li>촬영할 가구의 이름과 종류 선택</li>
-                      <li>가구 모서리 1~4에 차례로 서서 마커 전체가 보이게 촬영</li>
-                      <li>재촬영 안내가 나오면 안내대로 같은 모서리 다시 촬영</li>
+                      <li>(웹앱 테스트) 더보기 › 카메라 준비를 휴대폰마다 한 번 완료</li>
+                      <li>촬영할 가구의 이름과 상판 형태 선택</li>
+                      <li>형태 도면의 P1부터 순서대로 이동하며 지점마다 3장 촬영</li>
+                      <li>재촬영 안내가 나오면 안내대로 같은 지점에서 다시 촬영</li>
                       <li>모든 가구 촬영 후 도면과 가로·세로·높이 확인</li>
                     </ol>
                     <button
                       className="secondary"
-                      onClick={() => navigate("guide")}
+                      onClick={() => setModal("capture-help")}
                     >
                       촬영 방법 보기
                     </button>
@@ -965,20 +1013,8 @@ function MobileApp() {
                   {!isApp && <div className="editor-command-bar">
                     <div>
                       <h1>{draft.name || "새 공간"}</h1>
-                      <span>도면·보호 영역 편집</span>
                     </div>
                     <div className="editor-command-actions">
-                      <span className="editor-save-status" role="status">
-                        {!unsaved
-                          ? "변경사항 없음"
-                          : "저장되지 않은 변경사항"}
-                      </span>
-                      <button
-                        className="secondary"
-                        onClick={() => navigate("detail")}
-                      >
-                        편집 종료
-                      </button>
                       <button
                         className="primary"
                         disabled={saving || !!draftWarning}
@@ -986,12 +1022,14 @@ function MobileApp() {
                       >
                         {saving ? "저장 중…" : "저장"}
                       </button>
+                      <button
+                        className="secondary"
+                        onClick={() => navigate(spaces.some((s) => s.id === draft.id) ? "detail" : "spaces")}
+                      >
+                        닫기
+                      </button>
                     </div>
                   </div>}
-                  <p className="editing-help">
-                    가구를 끌어 옮기거나 치수를 수정하세요.
-                    {isApp && " 웹의 넓은 화면에서도 편집할 수 있습니다."}
-                  </p>
                   <p className="step-label editor-step-label">
                     {page === "review"
                       ? "3/3단계, 가구 위치와 치수 확인"
@@ -1169,7 +1207,8 @@ function MobileApp() {
                             <button
                               className="text-button furniture-delete"
                               onClick={() => {
-                                deleteWithUndo(
+                                const linked = draft.regions.filter((r) => r.furnitureId === furniture.id).length;
+                                askDelete(
                                   {
                                     ...draft,
                                     revision: draft.revision + 1,
@@ -1180,10 +1219,13 @@ function MobileApp() {
                                       (r) => r.furnitureId !== furniture.id,
                                     ),
                                   },
-                                  `${furniture.name} 삭제됨`,
+                                  `'${furniture.name}'을 삭제할까요?`,
+                                  linked ? `이 가구에 지정한 보호 영역 ${linked}개도 함께 삭제됩니다.` : undefined,
+                                  () => {
+                                    setSelectedFurniture(null);
+                                    setSelectedRegion(null);
+                                  },
                                 );
-                                setSelectedFurniture(null);
-                                setSelectedRegion(null);
                               }}
                             >
                               가구 삭제
@@ -1271,24 +1313,27 @@ function MobileApp() {
                           <p className="grade-description" aria-live="polite">
                             {grades[region.grade]}
                           </p>
-                          <button
-                            className="text-button danger"
-                            onClick={() => {
-                              deleteWithUndo(
-                                {
-                                  ...draft,
-                                  revision: draft.revision + 1,
-                                  regions: draft.regions.filter(
-                                    (r) => r.id !== region.id,
-                                  ),
-                                },
-                                `${region.name} 삭제됨`,
-                              );
-                              setSelectedRegion(null);
-                            }}
-                          >
-                            보호 영역 삭제
-                          </button>
+                          <div className="furniture-actions">
+                            <button
+                              className="text-button furniture-delete region-delete"
+                              onClick={() => {
+                                askDelete(
+                                  {
+                                    ...draft,
+                                    revision: draft.revision + 1,
+                                    regions: draft.regions.filter(
+                                      (r) => r.id !== region.id,
+                                    ),
+                                  },
+                                  `'${region.name}'을 삭제할까요?`,
+                                  undefined,
+                                  () => setSelectedRegion(null),
+                                );
+                              }}
+                            >
+                              보호 영역 삭제
+                            </button>
+                          </div>
                         </>
                       )}
                       <div className="actions">
@@ -1310,7 +1355,7 @@ function MobileApp() {
                                 className="secondary"
                                 onClick={() => navigate(spaces.some((s) => s.id === draft.id) ? "detail" : "spaces")}
                               >
-                                편집 종료
+                                닫기
                               </button>
                             )}
                           </>
@@ -1338,7 +1383,7 @@ function MobileApp() {
                                 className="secondary"
                                 onClick={() => navigate(spaces.some((s) => s.id === draft.id) ? "detail" : "spaces")}
                               >
-                                편집 종료
+                                닫기
                               </button>
                             )}
                           </>
@@ -1496,12 +1541,7 @@ function MobileApp() {
                       <div className="detail-secondary">
                         <button
                           className="text-button"
-                          onClick={() => {
-                            setDraft(structuredClone(active));
-                            setSelectedFurniture(null);
-                            setSelectedRegion(null);
-                            setPage("register");
-                          }}
+                          onClick={() => editSpace(active, "register")}
                         >
                           공간 정보 수정
                         </button>
@@ -1645,6 +1685,27 @@ function MobileApp() {
                   >
                     사용 가이드 <span>›</span>
                   </button>
+                  {/* WEB APP TEST ONLY: phones testing in the browser need a one-time camera setup
+                      (see CameraSetup in SpatialCapture.tsx). Remove with the native app. */}
+                  <h2 className="section-label">웹앱 테스트</h2>
+                  <Card>
+                    <button className="row" aria-expanded={cameraSetupOpen} onClick={() => setCameraSetupOpen((open) => !open)}>
+                      <span>
+                        카메라 준비
+                        <small>{cameraReady ? "이 휴대폰은 준비 완료" : "촬영 전에 한 번 필요해요"}</small>
+                      </span>
+                      <span>{cameraSetupOpen ? "닫기" : cameraReady ? "다시 준비 ›" : "준비하기 ›"}</span>
+                    </button>
+                  </Card>
+                  {cameraSetupOpen && (
+                    <CameraSetup
+                      onReady={() => {
+                        setCameraReady(true);
+                        setCameraSetupOpen(false);
+                        setToast("카메라 준비 완료 · 이제 사진으로 가구를 측정해요");
+                      }}
+                    />
+                  )}
                 </div>
               )}
               {page === "account" && (
@@ -1785,6 +1846,36 @@ function MobileApp() {
               </button>
             </>
           )}
+          {modal === "delete-item" && pendingDelete && (
+            <>
+              <h2>{pendingDelete.title}</h2>
+              <p className="muted">
+                {pendingDelete.body ? `${pendingDelete.body} ` : ""}삭제한 내용은 저장할 때 반영됩니다.
+              </p>
+              <button className="primary destructive" onClick={confirmDelete}>
+                삭제
+              </button>
+              <button className="secondary" onClick={dismissModal}>
+                취소
+              </button>
+            </>
+          )}
+          {modal === "delete-temp" && (
+            <>
+              <h2>
+                '{tempDrafts.find((t) => t.space.id === tempDeleteId)?.space.name || "이름 없는 공간"}'의 작성 중인 내용을 삭제할까요?
+              </h2>
+              <p className="muted">
+                이 기기에 임시 저장한 내용이 사라지고 되돌릴 수 없습니다. 서버에 저장된 공간은 그대로 남습니다.
+              </p>
+              <button className="primary destructive" onClick={confirmDeleteTempDraft}>
+                삭제
+              </button>
+              <button className="secondary" onClick={dismissModal}>
+                취소
+              </button>
+            </>
+          )}
           {modal === "reload-server" && (
             <>
               <h2>서버의 최신 내용으로 바꿀까요?</h2>
@@ -1841,38 +1932,21 @@ function MobileApp() {
               </button>
             </>
           )}
+          {modal === "capture-help" && <CaptureHelp onClose={() => setModal(null)} />}
           {modal === "discard" && (
             <>
-              <h2>변경 내용을 저장하시겠습니까?</h2>
+              <button type="button" className="dialog-close" aria-label="계속 편집" onClick={() => setModal(null)}>
+                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
+              </button>
+              <h2>저장하지 않은 변경 내용이 있습니다</h2>
               <p className="muted">
-                저장하지 않고 이동하면 수정 내용이 사라집니다.
+                임시 저장하면 입력한 데까지 이 기기에 남고, 내 공간의 작성 중인 공간에서 이어서 편집할 수 있습니다.
               </p>
-              <button
-                className="primary"
-                disabled={saving}
-                onClick={async () => {
-                  setModal(null);
-                  if (await save()) {
-                    if (pendingPage === "guide") setGuideIndex(null);
-                    setPage(pendingPage);
-                  }
-                }}
-              >
-                저장 후 이동
+              <button className="primary" onClick={() => leaveEditor(true)}>
+                임시 저장하고 나가기
               </button>
-              <button
-                className="secondary"
-                onClick={() => {
-                  setDraft(null);
-                  if (pendingPage === "guide") setGuideIndex(null);
-                  setPage(pendingPage);
-                  setModal(null);
-                }}
-              >
-                저장하지 않고 이동
-              </button>
-              <button className="secondary" onClick={() => setModal(null)}>
-                계속 편집
+              <button className="primary destructive" onClick={() => leaveEditor(false)}>
+                저장하지 않고 나가기
               </button>
             </>
           )}
@@ -1880,19 +1954,6 @@ function MobileApp() {
         {toast && (
           <div className="toast" role="status">
             {toast}
-            {undoDraft && draft && (
-              <button
-                type="button"
-                className="toast-action"
-                onClick={() => {
-                  setDraft(undoDraft);
-                  setUndoDraft(null);
-                  setToast("");
-                }}
-              >
-                되돌리기
-              </button>
-            )}
           </div>
         )}
       </div>

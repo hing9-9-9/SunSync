@@ -28,20 +28,20 @@
 }
 .app.award-app.mode-web .guide-refresh .ap-guide-step:last-child { margin-bottom:0; }
 .app.award-app.mode-web .guide-refresh .ap-guide-step-title { margin:0; padding:0; }
-.app.award-app.mode-web .guide-refresh .ap-guide-step-title > button {
+.app.award-app.mode-web .guide-refresh .ap-guide-step-title > .ap-guide-step-head {
  min-height:68px; gap:16px; padding:12px 0 20px; background:transparent; color:var(--guide-ink);
  border:0; border-radius:0; box-shadow:none; transform:none; translate:none; font-size:24px; line-height:1.4; font-weight:700; letter-spacing:-.025em;
 }
-.app.award-app.mode-web .guide-refresh .ap-guide-step-title > button > span:first-child {
+.app.award-app.mode-web .guide-refresh .ap-guide-step-title > .ap-guide-step-head > span:first-child {
  display:grid; place-items:center; width:36px; min-width:36px; height:36px; border-radius:10px;
  background:var(--guide-tint); color:var(--guide-accent); font-size:13px; line-height:1; font-weight:500; letter-spacing:0; transition:color 140ms,background-color 140ms;
 }
-.app.award-app.mode-web .guide-refresh .ap-guide-step-title > button > .guide-step-name { min-width:0; font:inherit; color:inherit; letter-spacing:inherit; }
-.app.award-app.mode-web .guide-refresh .ap-guide-step.is-current .ap-guide-step-title > button > span:first-child { background:var(--c-action); color:var(--guide-paper); }
-.app.award-app.mode-web .guide-refresh .ap-guide-step-title > button:hover { background:transparent; color:var(--guide-ink); }
-.app.award-app.mode-web .guide-refresh .ap-guide-step-title > button > i { width:28px; height:28px; border-radius:50%; background:var(--guide-tint); margin-left:auto; }
-.app.award-app.mode-web .guide-refresh .ap-guide-step-title > button > i::before,
-.app.award-app.mode-web .guide-refresh .ap-guide-step-title > button > i::after { left:8px; top:13px; width:12px; height:1.5px; background:var(--guide-accent); }
+.app.award-app.mode-web .guide-refresh .ap-guide-step-title > .ap-guide-step-head > .guide-step-name { min-width:0; font:inherit; color:inherit; letter-spacing:inherit; }
+.app.award-app.mode-web .guide-refresh .ap-guide-step.is-current .ap-guide-step-title > .ap-guide-step-head > span:first-child { background:var(--c-action); color:var(--guide-paper); }
+.app.award-app.mode-web .guide-refresh .ap-guide-step-title > .ap-guide-step-head:hover { background:transparent; color:var(--guide-ink); }
+.app.award-app.mode-web .guide-refresh .ap-guide-step-title > .ap-guide-step-head > i { width:28px; height:28px; border-radius:50%; background:var(--guide-tint); margin-left:auto; }
+.app.award-app.mode-web .guide-refresh .ap-guide-step-title > .ap-guide-step-head > i::before,
+.app.award-app.mode-web .guide-refresh .ap-guide-step-title > .ap-guide-step-head > i::after { left:8px; top:13px; width:12px; height:1.5px; background:var(--guide-accent); }
 .app.award-app.mode-web .guide-refresh .ap-guide-step-body { display:grid; grid-template-columns:minmax(0,1.05fr) minmax(0,1fr); align-items:center; gap:28px; padding:0; }
 .app.award-app.mode-web .guide-refresh .ap-guide-step-body[hidden] { display:none; }
 .app.award-app.mode-web .guide-refresh .ap-guide-art {
@@ -78,7 +78,7 @@
  .app.award-app.mode-web .guide-refresh .ap-guide-nav > button { flex:0 0 auto; min-height:44px; padding:8px 12px; }
  .app.award-app.mode-web .guide-refresh .ap-guide-nav > button > svg { display:none; }
  .app.award-app.mode-web .guide-refresh .ap-guide-step { scroll-margin-top:calc(var(--guide-header-offset,120px) + 80px); }
- .app.award-app.mode-web .guide-refresh .ap-guide-step-title > button { font-size:21px; }
+ .app.award-app.mode-web .guide-refresh .ap-guide-step-title > .ap-guide-step-head { font-size:21px; }
  .app.award-app.mode-web .guide-refresh .ap-guide-bottom { margin-left:0; padding:24px; }
  .app.award-app.mode-web .guide-refresh .ap-guide-heading > p { font-size:16px; }
 }

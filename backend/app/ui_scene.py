@@ -7,12 +7,12 @@ from hashlib import sha256
 from typing import Annotated, Literal, Self
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 from sqlalchemy import Column, Text
 from sqlmodel import Field as SQLField
-from sqlmodel import SQLModel
+from sqlmodel import Session, SQLModel, select
 
-from app.schemas.scene import Scene
+from app.schemas.scene import Occluder, Scene
 
 Number = Annotated[float, Field(allow_inf_nan=False)]
 Positive = Annotated[Number, Field(gt=0)]
@@ -416,3 +416,82 @@ def to_scene(space: UISpace, revision: int, created_at: str | None = None) -> Sc
             "optical_profiles": optical_profiles,
         }
     )
+
+
+# Fields other modules may change without touching what the UI owns.
+SERVER_OWNED = {
+    "revision",
+    "scenario",
+    "markers",
+    "registration_calibration",
+    "observations",
+    "occluders",
+}
+UI_TYPES: dict[str, FurnitureType] = {"bookshelf": "bookcase", "desk": "desk"}
+
+
+UI_LABELS = {"bookcase": "책장", "desk": "책상"}
+
+
+def ui_furniture(occluder: Occluder, space: UISpace, number: int = 1) -> UIFurniture:
+    """A measured cuboid seen from above: the plan has no rotation, so a turned piece shows as its
+    axis-aligned footprint, moved inside the room."""
+    width, depth, height = occluder.dimensions_m
+    yaw = math.radians(occluder.yaw_deg_ccw_from_east)
+    w = min(abs(width * math.cos(yaw)) + abs(depth * math.sin(yaw)), space.width)
+    d = min(abs(width * math.sin(yaw)) + abs(depth * math.cos(yaw)), space.depth)
+    cx, cy = occluder.base_center_m[0], occluder.base_center_m[1]
+    kind = UI_TYPES.get(occluder.type, "other")
+    # Engine names are machine text ("desk standard-model bounding box"); users read Korean labels.
+    korean = re.search(r"[가-힣]", occluder.name) is not None
+    return UIFurniture(
+        id=occluder.occluder_id,
+        name=occluder.name if korean else f"측정 {UI_LABELS.get(kind, '가구')} {number}",
+        zone=space.zone,
+        type=kind,
+        x=round(min(max(cx - w / 2, 0), space.width - w), 3),
+        y=round(min(max(space.depth - cy - d / 2, 0), space.depth - d), 3),
+        width=round(w, 3),
+        depth=round(d, 3),
+        height=round(min(height, space.height), 3),
+    )
+
+
+def sync_ui_record(session: Session, previous: Scene, scene: Scene) -> None:
+    """Keep a UI-created space editable after a server-only change (calibration, registration).
+
+    Only additions the UI can show are accepted: room, site, windows and regions stay as they
+    were and existing furniture is untouched. Anything else leaves the space marked as changed
+    by another module, as before.
+    """
+    record = session.exec(
+        select(UISpaceRecord).where(UISpaceRecord.scene_id == scene.scene_id)
+    ).first()
+    if record is None or record.scene_revision != previous.revision:
+        return
+    before, after = previous.model_dump(mode="json"), scene.model_dump(mode="json")
+    if any(before[key] != after[key] for key in before if key not in SERVER_OWNED):
+        return
+    old = {o.occluder_id: o for o in previous.occluders}
+    new = {o.occluder_id: o for o in scene.occluders}
+    if any(new.get(key) != value for key, value in old.items()):
+        return
+    space = UISpace.model_validate_json(record.payload_json)
+    fresh = [o for key, o in new.items() if key not in old]
+    added = [ui_furniture(o, space, len(space.furniture) + i + 1) for i, o in enumerate(fresh)]
+    try:
+        synced = UISpace.model_validate(
+            {
+                **space.model_dump(mode="json"),
+                "furniture": [
+                    *space.model_dump(mode="json")["furniture"],
+                    *(f.model_dump() for f in added),
+                ],
+                "serverRevision": scene.revision,
+            }
+        )
+    except ValidationError:
+        return
+    record.scene_revision = scene.revision
+    record.payload_json = synced.model_dump_json()
+    session.add(record)

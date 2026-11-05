@@ -227,7 +227,7 @@
 }
 .app.award-app .ap-guide-step.is-open { border-radius: 0; border-color: var(--mb-ink); }
 .app.award-app .ap-guide-step-title { margin: 0; font-size: var(--fs-h2); font-weight: 500; letter-spacing: -.02em; }
-.app.award-app .ap-guide-step-title > button {
+.app.award-app .ap-guide-step-title > .ap-guide-step-head {
   width: 100%;
   min-height: 72px;
   display: flex;
@@ -239,24 +239,24 @@
   color: var(--mb-text);
   background: transparent;
 }
-.app.award-app .ap-guide-step-title > button > span { font-size: var(--fs-small); color: var(--mb-ink); font-variant-numeric: tabular-nums; min-width: 28px; }
-.app.award-app .ap-guide-step-title > button > i {
+.app.award-app .ap-guide-step-title > .ap-guide-step-head > span { font-size: var(--fs-small); color: var(--mb-ink); font-variant-numeric: tabular-nums; min-width: 28px; }
+.app.award-app .ap-guide-step-title > .ap-guide-step-head > i {
   margin-left: auto;
   width: 14px; height: 14px;
   position: relative;
   flex-shrink: 0;
 }
-.app.award-app .ap-guide-step-title > button > i::before,
-.app.award-app .ap-guide-step-title > button > i::after {
+.app.award-app .ap-guide-step-title > .ap-guide-step-head > i::before,
+.app.award-app .ap-guide-step-title > .ap-guide-step-head > i::after {
   content: ""; position: absolute; left: 0; top: 6px; width: 14px; height: 2px; background: var(--mb-ink);
   transition: rotate 300ms;
 }
-.app.award-app .ap-guide-step-title > button > i::after { rotate: 90deg; }
-.app.award-app .ap-guide-step.is-open .ap-guide-step-title > button > i::after { rotate: 0deg; }
-.app.award-app .ap-guide-step.is-open .ap-guide-step-title > button { background: var(--c-accent, var(--c-action)); color: var(--c-white); }
-.app.award-app .ap-guide-step.is-open .ap-guide-step-title > button > span { color: var(--c-white); }
-.app.award-app .ap-guide-step.is-open .ap-guide-step-title > button > i::before,
-.app.award-app .ap-guide-step.is-open .ap-guide-step-title > button > i::after { background: var(--c-white); }
+.app.award-app .ap-guide-step-title > .ap-guide-step-head > i::after { rotate: 90deg; }
+.app.award-app .ap-guide-step.is-open .ap-guide-step-title > .ap-guide-step-head > i::after { rotate: 0deg; }
+.app.award-app .ap-guide-step.is-open .ap-guide-step-title > .ap-guide-step-head { background: var(--c-accent, var(--c-action)); color: var(--c-white); }
+.app.award-app .ap-guide-step.is-open .ap-guide-step-title > .ap-guide-step-head > span { color: var(--c-white); }
+.app.award-app .ap-guide-step.is-open .ap-guide-step-title > .ap-guide-step-head > i::before,
+.app.award-app .ap-guide-step.is-open .ap-guide-step-title > .ap-guide-step-head > i::after { background: var(--c-white); }
 .app.award-app .ap-guide-step-body { padding: 28px; }
 .app.award-app .ap-guide-step-body > p { font-size: var(--fs-body); line-height: var(--lh-body); color: var(--mb-text); }
 .app.award-app .ap-guide-step-body > .ap-guide-detail { font-size: var(--fs-small); color: var(--mb-muted); margin-top: var(--space-2); }
@@ -273,7 +273,7 @@
   .app.award-app .ap-spec { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: var(--space-4); }
   .app.award-app .ap-spec > div:nth-child(2) { border-right: 0; margin-right: 0; }
   .app.award-app .ap-process-row { padding: var(--space-5); }
-  .app.award-app .ap-guide-step-title > button { padding: var(--space-4) var(--space-5); }
+  .app.award-app .ap-guide-step-title > .ap-guide-step-head { padding: var(--space-4) var(--space-5); }
   .app.award-app .ap-guide-step-body { padding: var(--space-5); }
 }
 
@@ -287,8 +287,8 @@
   .app.award-app .ap-process-art,
   .app.award-app .award-room-card,
   .app.award-app .ap-guide-step,
-  .app.award-app .ap-guide-step-title > button > i::before,
-  .app.award-app .ap-guide-step-title > button > i::after { transition: none; }
+  .app.award-app .ap-guide-step-title > .ap-guide-step-head > i::before,
+  .app.award-app .ap-guide-step-title > .ap-guide-step-head > i::after { transition: none; }
   .app.award-app .ap-reveal .ap-sun-path path { stroke-dashoffset: 0; }
   .app.award-app .ap-process-row:hover,
   .app.award-app .award-room-card:hover { border-radius: var(--mb-radius); }
@@ -576,8 +576,8 @@
 .app.award-app .ap-screen-frame { transition: box-shadow var(--mb-ease); }
 .app.award-app .ap-screens figure:hover .ap-screen-frame { border-radius: 32px; --mb-outline: var(--mb-hair); background: var(--mb-block); box-shadow: var(--mb-lift-shadow); }
 .app.award-app .ap-guide-step.is-open { border-radius: var(--mb-radius); --mb-outline: var(--mb-hair); }
-.app.award-app .ap-guide-step-title > button { transition: background-color var(--mb-ease); }
-.app.award-app .ap-guide-step:not(.is-open) .ap-guide-step-title > button:hover { background: var(--c-fafafa); }
+.app.award-app .ap-guide-step-title > .ap-guide-step-head { transition: background-color var(--mb-ease); }
+.app.award-app .ap-guide-step:not(.is-open) .ap-guide-step-title > .ap-guide-step-head:hover { background: var(--c-fafafa); }
 
 /* account rows: white -> #fafafa, arrow nudge; outline unchanged */
 .app.award-app .acct-space-open { transition: background-color var(--mb-ease); }
@@ -602,7 +602,7 @@
   .app.award-app .ap-process-row > svg,
   .app.award-app .award-room-card,
   .app.award-app .award-room-visual,
-  .app.award-app .ap-guide-step-title > button,
+  .app.award-app .ap-guide-step-title > .ap-guide-step-head,
   .app.award-app .acct-space-open,
   .app.award-app .acct-space-open > svg { transition: none; }
   .app.award-app .ap .ap-round-link:hover b svg,

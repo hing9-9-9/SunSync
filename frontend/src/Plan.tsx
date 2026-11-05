@@ -275,7 +275,7 @@ export default function Plan({
                 width={f.width}
                 height={f.depth}
                 fill={f.id === selectedFurniture ? "var(--c-d8dbe3)" : "var(--c-e4e8ef)"}
-                stroke={f.id === selectedFurniture ? "var(--c-626875)" : "var(--c-a6adba)"}
+                stroke={f.id === selectedFurniture ? "var(--c-action)" : "var(--c-a6adba)"}
                 strokeWidth="1pt"
                 vectorEffect="non-scaling-stroke"
               />
@@ -318,8 +318,8 @@ export default function Plan({
                 height={r.depth}
                 fill={exposedRegionIds.includes(r.id) ? "var(--c-e8ad33)" : "var(--c-8b7ef4)"}
                 fillOpacity={r.id === selectedRegion ? ".28" : ".18"}
-                stroke={r.id === selectedRegion ? "var(--c-6659d8)" : "var(--c-9c93e1)"}
-                strokeDasharray={r.furnitureId ? ".08 .06" : undefined}
+                // A furniture region shares the furniture outline, so only free regions draw their own.
+                stroke={r.furnitureId ? "none" : r.id === selectedRegion ? "var(--c-action)" : "var(--c-9c93e1)"}
                 strokeWidth="1pt"
                 vectorEffect="non-scaling-stroke"
               />

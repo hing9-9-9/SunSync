@@ -6,6 +6,8 @@ import {
   locationUrl,
   readLocation,
   resolveLocation,
+  readTempDrafts,
+  TEMP_DRAFTS_KEY,
 } from "./navigation.ts";
 import { blankSpace, sampleFurniture } from "./model.ts";
 
@@ -88,4 +90,17 @@ test("guide navigation asks before leaving an unsaved editor", () => {
   assert.equal(shouldConfirmNavigation(true, "register", "guide"), true);
   assert.equal(shouldConfirmNavigation(false, "detail", "guide"), false);
   assert.equal(shouldConfirmNavigation(true, "protect", "protect"), false);
+});
+
+test("leaving an editor for the account page asks like every other exit", () => {
+  assert.equal(shouldConfirmNavigation(true, "protect", "account"), true);
+  assert.equal(shouldConfirmNavigation(false, "protect", "account"), false);
+});
+
+test("temporary drafts keep valid entries and drop broken ones", () => {
+  const space = blankSpace();
+  const ok = { space, page: "register", savedAt: "2026-11-05T00:00:00Z" };
+  const storage = (value: unknown) => ({ getItem: (k: string) => (k === TEMP_DRAFTS_KEY ? JSON.stringify(value) : null) });
+  assert.deepEqual(readTempDrafts(storage([ok, { space: {}, page: "register" }, { ...ok, page: "detail" }])), [ok]);
+  assert.deepEqual(readTempDrafts({ getItem: () => "{oops" }), []);
 });

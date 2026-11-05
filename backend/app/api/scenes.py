@@ -13,6 +13,7 @@ from app.models.scene import SceneRecord
 from app.scene_cli import schema_document
 from app.schemas.registration import RegisterFurnitureRequest
 from app.schemas.scene import Scene
+from app.ui_scene import sync_ui_record
 
 router = APIRouter(tags=["scenes"])
 SessionDependency = Annotated[Session, Depends(get_session)]
@@ -138,6 +139,8 @@ def replace_scene(scene_id: str, scene: Scene, session: SessionDependency) -> Sc
             detail="Payload scene_id must match the URL scene_id.",
         )
 
+    stored = session.get(SceneRecord, scene_id)
+    previous = Scene.model_validate_json(stored.scene_json) if stored is not None else None
     result = cast(
         CursorResult[Any],
         session.execute(
@@ -157,5 +160,7 @@ def replace_scene(scene_id: str, scene: Scene, session: SessionDependency) -> Sc
             status_code=status.HTTP_409_CONFLICT,
             detail="Revision conflict: read the current scene and submit its revision plus one.",
         )
+    if previous is not None:
+        sync_ui_record(session, previous, scene)
     session.commit()
     return scene
