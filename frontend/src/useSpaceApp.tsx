@@ -155,6 +155,7 @@ export function useSpaceApp() {
     | "delete-space"
     | "delete-temp"
     | "delete-item"
+    | "capture-help"
     | null
   >(null);
   const [error, setError] = useState("");

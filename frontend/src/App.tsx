@@ -2,6 +2,7 @@ import NumberField from "./NumberField";
 import "./ReferencePreview.css";
 import "./WorkspaceDesign.css";
 import { DeviceHandoff } from "./DeviceHandoff";
+import { CaptureHelp } from "./CaptureHelp";
 import { FilmGrid, ShadingTimeControl } from "./ShadingPlan";
 import { applyShadingTime, formatMinute } from "./sunlight";
 import SpatialCapture from "./SpatialCapture";
@@ -704,7 +705,7 @@ function App() {
                     </ol>
                     <button
                       className="secondary"
-                      onClick={() => navigate("guide")}
+                      onClick={() => setModal("capture-help")}
                     >
                       촬영 방법 보기
                     </button>
@@ -1512,6 +1513,7 @@ function App() {
               </button>
             </>
           )}
+          {modal === "capture-help" && <CaptureHelp onClose={() => setModal(null)} />}
           {modal === "discard" && (
             <>
               <button type="button" className="dialog-close" aria-label="계속 편집" onClick={() => setModal(null)}>

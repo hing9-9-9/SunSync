@@ -2,6 +2,7 @@ import { useState } from "react";
 import NumberField from "./NumberField";
 import { WorkspaceNavigation, WorkspaceHome, WorkspaceCards } from "./WorkspaceDesign";
 import { DeviceHandoff } from "./DeviceHandoff";
+import { CaptureHelp } from "./CaptureHelp";
 import { FilmGrid, ShadingTimeControl } from "./ShadingPlan";
 import { applyShadingTime, formatMinute } from "./sunlight";
 import SpatialCapture, { CameraSetup } from "./SpatialCapture";
@@ -975,7 +976,7 @@ function MobileApp() {
                     </ol>
                     <button
                       className="secondary"
-                      onClick={() => navigate("guide")}
+                      onClick={() => setModal("capture-help")}
                     >
                       촬영 방법 보기
                     </button>
@@ -1931,6 +1932,7 @@ function MobileApp() {
               </button>
             </>
           )}
+          {modal === "capture-help" && <CaptureHelp onClose={() => setModal(null)} />}
           {modal === "discard" && (
             <>
               <button type="button" className="dialog-close" aria-label="계속 편집" onClick={() => setModal(null)}>
