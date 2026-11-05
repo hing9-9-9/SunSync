@@ -176,13 +176,13 @@ def estimate_furniture_3d(
                         rank=2,
                         constraint="soft",
                         rule="intensity_cap",
-                        max_direct_irradiance_W_m2=20,
+                        max_direct_irradiance_W_m2=30,
                     ),
                     C=GradePolicy(
                         rank=3,
                         constraint="soft",
                         rule="intensity_cap",
-                        max_direct_irradiance_W_m2=80,
+                        max_direct_irradiance_W_m2=70,
                     ),
                     D=GradePolicy(
                         rank=4,
