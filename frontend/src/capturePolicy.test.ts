@@ -11,3 +11,7 @@ test("local capture tests require explicit opt-in", () => {
   assert.equal(allowBrowserCapture(true, "false"), false);
   assert.equal(allowBrowserCapture(true, "true"), true);
 });
+test("the mobile screen captures in every build: it is the app until a native one ships", () => {
+  assert.equal(allowBrowserCapture(false, undefined, true), true);
+  assert.equal(allowBrowserCapture(false, undefined, false), false);
+});

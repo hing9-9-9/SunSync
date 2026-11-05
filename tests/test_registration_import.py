@@ -269,6 +269,7 @@ def test_registration_keeps_ui_space_editable_and_shows_furniture(tmp_path):
         assert ui_space["serverRevision"] == 3
         [desk] = ui_space["furniture"]
         assert desk["id"] == fragment["occluders"][0]["occluder_id"]
+        assert desk["name"] == "측정 책상 1"
         assert desk["height"] == pytest.approx(
             fragment["occluders"][0]["dimensions_m"][2], abs=1e-3
         )

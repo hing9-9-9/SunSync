@@ -430,7 +430,10 @@ SERVER_OWNED = {
 UI_TYPES: dict[str, FurnitureType] = {"bookshelf": "bookcase", "desk": "desk"}
 
 
-def ui_furniture(occluder: Occluder, space: UISpace) -> UIFurniture:
+UI_LABELS = {"bookcase": "책장", "desk": "책상"}
+
+
+def ui_furniture(occluder: Occluder, space: UISpace, number: int = 1) -> UIFurniture:
     """A measured cuboid seen from above: the plan has no rotation, so a turned piece shows as its
     axis-aligned footprint, moved inside the room."""
     width, depth, height = occluder.dimensions_m
@@ -438,11 +441,14 @@ def ui_furniture(occluder: Occluder, space: UISpace) -> UIFurniture:
     w = min(abs(width * math.cos(yaw)) + abs(depth * math.sin(yaw)), space.width)
     d = min(abs(width * math.sin(yaw)) + abs(depth * math.cos(yaw)), space.depth)
     cx, cy = occluder.base_center_m[0], occluder.base_center_m[1]
+    kind = UI_TYPES.get(occluder.type, "other")
+    # Engine names are machine text ("desk standard-model bounding box"); users read Korean labels.
+    korean = re.search(r"[가-힣]", occluder.name) is not None
     return UIFurniture(
         id=occluder.occluder_id,
-        name=occluder.name,
+        name=occluder.name if korean else f"측정 {UI_LABELS.get(kind, '가구')} {number}",
         zone=space.zone,
-        type=UI_TYPES.get(occluder.type, "other"),
+        type=kind,
         x=round(min(max(cx - w / 2, 0), space.width - w), 3),
         y=round(min(max(space.depth - cy - d / 2, 0), space.depth - d), 3),
         width=round(w, 3),
@@ -471,7 +477,8 @@ def sync_ui_record(session: Session, previous: Scene, scene: Scene) -> None:
     if any(new.get(key) != value for key, value in old.items()):
         return
     space = UISpace.model_validate_json(record.payload_json)
-    added = [ui_furniture(o, space) for key, o in new.items() if key not in old]
+    fresh = [o for key, o in new.items() if key not in old]
+    added = [ui_furniture(o, space, len(space.furniture) + i + 1) for i, o in enumerate(fresh)]
     try:
         synced = UISpace.model_validate(
             {

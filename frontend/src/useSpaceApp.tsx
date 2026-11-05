@@ -969,9 +969,14 @@ export function useSpaceApp() {
     setConflict(false);
     setError("");
     try {
+      // A phone measuring for the web completes its request, so the web stops waiting on it.
+      const finishing = !editorExample && !!mobileToken;
       const saved = editorExample
         ? { ...draft, savedAt: new Date().toISOString() }
-        : await saveServerSpace(withWindowPosition(draft));
+        : finishing
+          ? await completeHandoff(mobileToken!, withWindowPosition(draft))
+          : await saveServerSpace(withWindowPosition(draft));
+      if (finishing) setMobileToken(null);
       setSpaces((current) => upsertSpace(current, saved));
       dropTempDraft(saved.id);
       setActiveId(saved.id);
@@ -982,7 +987,9 @@ export function useSpaceApp() {
       setToast(
         editorExample
           ? "둘러보기 공간 저장 완료"
-          : "공간과 보호 영역을 서버에 저장했습니다.",
+          : finishing
+            ? "측정 결과를 저장했습니다. PC에서 배치를 확인할 수 있어요."
+            : "공간과 보호 영역을 서버에 저장했습니다.",
       );
       return true;
     } catch (error) {
@@ -1264,7 +1271,9 @@ export function useSpaceApp() {
         ? <button type="button" className="primary" disabled={saving || !!draftWarning} onClick={save}>{saving ? "저장 중…" : "변경사항 저장"}</button>
         : <button type="submit" form="register-form" className="primary">QR 인식으로 계속</button>
       : page === "review" && draft
-        ? <button type="button" className="primary" onClick={confirmReview}>확인하고 보호 영역 지정</button>
+        ? mobileToken
+          ? <button type="button" className="primary" disabled={saving || !!draftWarning} onClick={save}>{saving ? "저장 중…" : "측정 결과 저장"}</button>
+          : <button type="button" className="primary" onClick={confirmReview}>확인하고 보호 영역 지정</button>
         : page === "protect" && draft
           ? <button type="button" className="primary" disabled={saving || !!draftWarning} onClick={save}>{saving ? "저장 중…" : "보호 영역 저장"}</button>
           : page === "detail" && active
