@@ -1,4 +1,4 @@
-import { StrictMode } from "react";
+import { StrictMode, Suspense, lazy } from "react";
 import { createRoot } from "react-dom/client";
 import "./palette.css";
 import "./index.css";
@@ -16,10 +16,15 @@ import "./AccountDesign.css";
 import "./PageTypography.css";
 import "./CaptureDesign.css";
 
-const mode = new URLSearchParams(location.search).get("mode");
+const params = new URLSearchParams(location.search);
+const mode = params.get("mode");
 const mobile = mode === "app" || (mode !== "web" && matchMedia("(max-width: 760px)").matches);
+// three.js loads only for the 3D sample (?sample=3d), so the main app bundle stays the same size.
+const Space3DSample = lazy(() => import("./Space3DSample.tsx"));
 createRoot(document.getElementById("root")!).render(
-  <StrictMode>{mobile ? <MobileApp /> : <App />}</StrictMode>,
+  <StrictMode>
+    {params.get("sample") === "3d" ? <Suspense><Space3DSample /></Suspense> : mobile ? <MobileApp /> : <App />}
+  </StrictMode>,
 );
 
 if (import.meta.env.PROD && "serviceWorker" in navigator) {
