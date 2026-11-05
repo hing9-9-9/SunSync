@@ -1338,6 +1338,7 @@ export function useSpaceApp() {
   };
 
   return {
+    predictionDate,
     deleteSpace,
     deleting,
     continueManually,

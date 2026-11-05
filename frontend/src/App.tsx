@@ -1,3 +1,4 @@
+import { lazy, Suspense, useState } from "react";
 import NumberField from "./NumberField";
 import "./ReferencePreview.css";
 import "./WorkspaceDesign.css";
@@ -28,7 +29,11 @@ import { AccountOverview, AuthPanel } from "./AccountPage";
 import { useSpaceApp, titles } from "./useSpaceApp";
 import { clearFieldIssue } from "./formIssues";
 import { Icon, Card } from "./ShellParts";
+// three.js loads only when someone opens the 3D view.
+const Space3DView = lazy(() => import("./Space3DView.tsx"));
+
 function App() {
+  const [view3d, setView3d] = useState(false);
   const {
     isApp,
     handoffLink,
@@ -141,6 +146,7 @@ function App() {
     continueManually,
     deleteSpace,
     deleting,
+    predictionDate,
   } = useSpaceApp();
   return (
     <>
@@ -1144,7 +1150,31 @@ function App() {
                       </div>
                     </Card>
                     {zoneTabs}
-                    <Card className="plan-card">{plan}</Card>
+                    <Card className="plan-card">
+                      <div className="plan-view-row">
+                        <div className="s3-viewtoggle" role="group" aria-label="도면 보기 방식">
+                          {[false, true].map((on) => (
+                            <button key={String(on)} aria-pressed={view3d === on} className={view3d === on ? "on" : ""} onClick={() => setView3d(on)}>
+                              {on ? "3D" : "2D"}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      {view3d ? (
+                        <Suspense fallback={<p className="muted small">3D 화면을 불러오는 중…</p>}>
+                          <Space3DView
+                            key={`${active.id}:${active.serverRevision ?? active.revision}:${active.zone}`}
+                            space={active}
+                            hour={hour}
+                            onHour={setHour}
+                            date={predictionDate}
+                            selected={selectedFurniture}
+                            onSelect={chooseFurniture}
+                            shading={detailShading}
+                          />
+                        </Suspense>
+                      ) : plan}
+                    </Card>
                     <div className="item-tabs">
                       {active.furniture
                         .filter((f) => f.zone === active.zone)

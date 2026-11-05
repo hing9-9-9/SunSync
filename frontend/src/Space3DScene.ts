@@ -8,14 +8,11 @@ import { sunPosition } from "./sun3d.ts";
 
 export type Level = "basic" | "sun" | "film";
 export type Lit = { open: Record<string, number>; film: Record<string, number>; blocked: number; cells: number };
-export type DayProfile = { hours: number[]; open: Record<string, number[]>; film: Record<string, number[]> };
 export type SceneApi = {
   setLevel(level: Level): void;
   setTime(dayOfYear: number, hour: number, server?: ServerMoment): Lit;
-  setView(view: "3d" | "2d"): void;
   reset(): void;
   select(id: string | null): void;
-  dayProfile(dayOfYear: number): DayProfile;
   dispose(): void;
 };
 type Events = { onSelect(id: string | null): void; onAzimuth(deg: number): void };
@@ -481,11 +478,6 @@ export function createSpaceScene(host: HTMLElement, space: Space, events: Events
   const home = (): Pose => ({ target: at(W / 2, D / 2, 0.4), radius: Math.hypot(W, D) * 1.75 / Math.min(1, camera.aspect / 1.35), phi: 0.98, theta: 0.6, fov: 32 });
   // Sunlight steps look from the north-west, so the window, the sun and its path sit across the room.
   const sunView = (): Pose => ({ ...home(), radius: home().radius * 1.12, phi: 0.9, theta: -Math.PI / 2 - 0.72 });
-  const top = (): Pose => {
-    // Narrow lens for a near-flat plan; the room sits a little high to clear the time bar.
-    const fov = 12, half = Math.max(D / 2 + 2.2, (W / 2 + 1.6) / camera.aspect);
-    return { target: at(W / 2, D / 2 + 0.7, 0), radius: half / Math.tan(THREE.MathUtils.degToRad(fov / 2)), phi: 0.0001, theta: 0, fov };
-  };
   let tween: { from: Pose; to: Pose; start: number; ms: number } | null = null;
   const pose = (): Pose => {
     const s = new THREE.Spherical().setFromVector3(camera.position.clone().sub(controls.target));
@@ -498,7 +490,6 @@ export function createSpaceScene(host: HTMLElement, space: Space, events: Events
     camera.updateProjectionMatrix();
     camera.lookAt(p.target);
   };
-  let view: "3d" | "2d" = "3d";
   const go = (to: Pose) => {
     hovered = null;
     tipLabel.visible = false;
@@ -563,7 +554,7 @@ export function createSpaceScene(host: HTMLElement, space: Space, events: Events
       if (t === 1) tween = null;
     } else controls.update();
     for (const w of wallParts) {
-      const outside = w.normal.dot(toCam.copy(camera.position).sub(w.center)) > 0 && view === "3d";
+      const outside = w.normal.dot(toCam.copy(camera.position).sub(w.center)) > 0;
       w.fade = lerp(w.fade, outside ? 0 : 1, k);
       for (const m of w.fill) {
         m.opacity = w.fade;
@@ -581,38 +572,15 @@ export function createSpaceScene(host: HTMLElement, space: Space, events: Events
   scene.updateMatrixWorld(true);
   return {
     setLevel(next) {
-      if (view === "3d" && (next === "basic") !== (level === "basic")) go(next === "basic" ? home() : sunView());
+      if ((next === "basic") !== (level === "basic")) go(next === "basic" ? home() : sunView());
       level = next;
       for (let i = 0; i < cellCount; i++) cellTarget[i] = level === "film" && closes(cellBlock[i]) ? 1 : 0;
     },
     setTime,
-    setView(next) {
-      view = next;
-      controls.enableRotate = next === "3d";
-      go(next === "2d" ? top() : level === "basic" ? home() : sunView());
-    },
     reset() {
-      go(view === "2d" ? top() : level === "basic" ? home() : sunView());
+      go(level === "basic" ? home() : sunView());
     },
     select,
-    dayProfile(day) {
-      const hours: number[] = [], open: Record<string, number[]> = {}, filmed: Record<string, number[]> = {};
-      const cells = new Uint8Array(cellCount);
-      for (const v of regionViews) {
-        open[v.r.id] = [];
-        filmed[v.r.id] = [];
-      }
-      for (let m = 6 * 60; m <= 18 * 60; m += 15) {
-        const { dir } = sunDir(day, m / 60);
-        const a = litFor(dir, null), b = litFor(dir, cellsFor(dir, cells));
-        hours.push(m / 60);
-        for (const v of regionViews) {
-          open[v.r.id].push(a[v.r.id]);
-          filmed[v.r.id].push(b[v.r.id]);
-        }
-      }
-      return { hours, open, film: filmed };
-    },
     dispose() {
       renderer.setAnimationLoop(null);
       observer.disconnect();
