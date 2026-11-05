@@ -78,6 +78,11 @@ export const titles: Record<Page, string> = {
 // Turning it on shows FR-01 sun times with loading, error and retry states.
 const USE_FR01 = true;
 
+// Spaces saved before the window position was stored get it filled from the form defaults;
+// the server only calculates sunlight through a window whose wall, offset and sill are explicit.
+const withWindowPosition = (s: Space): Space =>
+  s.windowDimensions ? { ...s, windowDimensions: resolveWindow(s) ?? s.windowDimensions } : s;
+
 // State, persistence and server sync shared by the web (App) and mobile (MobileApp) shells.
 export function useSpaceApp() {
   const [initial] = useState(() => {
@@ -653,7 +658,7 @@ export function useSpaceApp() {
       const saved =
         target === "web" && mobileToken
           ? await completeHandoff(mobileToken, draft)
-          : await saveServerSpace(draft);
+          : await saveServerSpace(withWindowPosition(draft));
       if (target === "web" && mobileToken) {
         setMobileToken(null);
         setToast("촬영 결과 저장 완료 · PC에서 도면 확인 가능");
@@ -966,7 +971,7 @@ export function useSpaceApp() {
     try {
       const saved = editorExample
         ? { ...draft, savedAt: new Date().toISOString() }
-        : await saveServerSpace(draft);
+        : await saveServerSpace(withWindowPosition(draft));
       setSpaces((current) => upsertSpace(current, saved));
       dropTempDraft(saved.id);
       setActiveId(saved.id);
@@ -1268,12 +1273,9 @@ export function useSpaceApp() {
   const draftWindow = draft && resolveWindow(draft);
   function changeWindow(patch: Partial<NonNullable<Space["windowDimensions"]>>) {
     if (!draft) return;
-    change({
-      windowDimensions: {
-        ...(draft.windowDimensions ?? { width: NaN, height: NaN }),
-        ...patch,
-      },
-    });
+    const next = { ...(draft.windowDimensions ?? { width: NaN, height: NaN }), ...patch };
+    // Store the wall, margins and marker the form shows (see withWindowPosition).
+    change({ windowDimensions: resolveWindow({ ...draft, windowDimensions: next }) ?? next });
   }
   const draftSite = draft?.site ?? {
     latitude: NaN,
