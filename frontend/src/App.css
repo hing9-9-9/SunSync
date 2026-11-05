@@ -2404,3 +2404,11 @@ dialog[open]::backdrop {
 .app .field-warning { display: block; color: var(--c-b02d3d); font-size: var(--fs-small); line-height: var(--lh-small); font-weight: 500; }
 .app input[aria-invalid="true"] { border-color: var(--c-b02d3d); }
 .app .live-validation { position: sticky; top: 12px; z-index: 25; margin: 0 0 var(--space-4); padding: var(--space-3) var(--space-4); border: 1px solid var(--c-d49ba3); border-radius: 8px; color: var(--c-932737); background: var(--c-fff5f6); font-size: var(--fs-small); line-height: var(--lh-small); }
+
+/* Web space detail (2026-11-05): the 2D/3D stage, then one row for the blocking time and space actions. */
+.app .detail-3d { display: grid; gap: 16px; }
+.app .detail-3d .s3 { margin-bottom: 0; }
+.app .detail-settings { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(280px, 1fr); gap: 16px; align-items: start; margin-bottom: 40px; }
+.app .detail-manage h3 { margin: 0 0 6px; }
+.app .detail-manage .detail-actions { margin-top: 16px; }
+@media (max-width: 900px) { .app .detail-settings { grid-template-columns: 1fr; } }

@@ -30,7 +30,8 @@ const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
 
 export function createSpaceScene(host: HTMLElement, space: Space, events: Events, startView: "3d" | "2d" = "3d"): SceneApi {
-  const W = space.width, D = space.depth, H = space.height, T = 0.14;
+  // T: wall thickness as drawn. Thin, like a plan line; the real wall depth is not measured.
+  const W = space.width, D = space.depth, H = space.height, T = 0.04;
   // Plan coordinates: x east, y south from the north-west corner. Three.js: x east, y up, z south.
   const at = (x: number, y: number, h = 0) => new THREE.Vector3(x - W / 2, h, y - D / 2);
   const win = resolveWindow(space);
@@ -476,8 +477,8 @@ export function createSpaceScene(host: HTMLElement, space: Space, events: Events
   const sunView = (): Pose => ({ ...home(), radius: home().radius * 1.12, phi: 0.9, theta: -Math.PI / 2 - 0.72 });
   const top = (): Pose => {
     // Narrow lens for a near-flat plan; the room sits a little high to clear the time bar.
-    const fov = 12, half = Math.max(D / 2 + 2.2, (W / 2 + 1.6) / camera.aspect);
-    return { target: at(W / 2, D / 2 + 0.7, 0), radius: half / Math.tan(THREE.MathUtils.degToRad(fov / 2)), phi: 0.0001, theta: 0, fov };
+    const fov = 7, half = Math.max(D / 2 + 1.5, (W / 2 + 0.9) / camera.aspect);
+    return { target: at(W / 2, D / 2 + 0.3, 0), radius: half / Math.tan(THREE.MathUtils.degToRad(fov / 2)), phi: 0.0001, theta: 0, fov };
   };
   let view = startView;
   const viewPose = () => (view === "2d" ? top() : level === "basic" ? home() : sunView());

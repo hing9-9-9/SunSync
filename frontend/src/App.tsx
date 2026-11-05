@@ -5,7 +5,6 @@ import "./WorkspaceDesign.css";
 import { DeviceHandoff } from "./DeviceHandoff";
 import { CaptureHelp } from "./CaptureHelp";
 import { FilmGrid, ShadingTimeControl } from "./ShadingPlan";
-import { applyShadingTime, formatMinute } from "./sunlight";
 import SpatialCapture from "./SpatialCapture";
 import {
   defaultShadingTime,
@@ -14,7 +13,6 @@ import {
   isWidthWall,
   margin,
   wallLength,
-  resolveWindow,
   walls,
 } from "./model";
 import type {
@@ -95,7 +93,6 @@ function App() {
     shadingEdit,
     setShadingEdit,
     detailShading,
-    activeRegionCount,
     furniture,
     region,
     refreshServer,
@@ -1132,187 +1129,71 @@ function App() {
                 </>
               )}
               {page === "detail" && active && (
-                // The 2D plan draws while three.js loads, so the page never waits on it.
-                <Suspense fallback={<Card className="plan-card">{plan}</Card>}>
-                  <Space3DView
-                    key={`${active.id}:${active.serverRevision ?? active.revision}:${active.zone}`}
-                    space={active}
-                    hour={hour}
-                    onHour={setHour}
-                    date={predictionDate}
-                    selected={selectedFurniture}
-                    onSelect={chooseFurniture}
-                    shading={detailShading}
-                    planned={!!predictionKey}
-                    sunpath={sunpathResult}
-                    film={filmPrediction}
-                  />
-                </Suspense>
-              )}
-              {page === "detail" && active && (
-                <div className="workspace">
-                  <div className="workspace-main">
-                    <Card className="status-card">
-                      <span
-                        className={`status-dot ${activeRegionCount ? "" : "pending"}`}
+                <div className="detail-3d">
+                  {active.zones.length > 1 && zoneTabs}
+                  {/* The 2D plan draws while three.js loads, so the page never waits on it. */}
+                  <Suspense fallback={<Card className="plan-card">{plan}</Card>}>
+                    <Space3DView
+                      key={`${active.id}:${active.serverRevision ?? active.revision}:${active.zone}`}
+                      space={active}
+                      hour={hour}
+                      onHour={setHour}
+                      date={predictionDate}
+                      selected={selectedFurniture}
+                      onSelect={chooseFurniture}
+                      shading={detailShading}
+                      planned={!!predictionKey}
+                      sunpath={sunpathResult}
+                      film={filmPrediction}
+                    />
+                  </Suspense>
+                  {/* Below the stage only what people set or do; what the stage already shows is not repeated. */}
+                  <div className="detail-settings">
+                    <Card className="detail-shading">
+                      <ShadingTimeControl
+                        space={active}
+                        value={detailShading}
+                        onChange={setShadingEdit}
+                        sunSchedule={sunSchedule}
+                        hour={hour}
+                        onSave={saveShadingTime}
+                        sunSource={sunSource}
+                        dirty={
+                          !!shadingEdit &&
+                          JSON.stringify(shadingEdit) !==
+                            JSON.stringify(active.shadingSchedule ?? defaultShadingTime)
+                        }
+                        saving={saving}
                       />
-                      <div>
-                        <strong>
-                          {activeRegionCount
-                            ? "보호 영역 설정 완료"
-                            : "보호 영역 설정 전"}
-                        </strong>
-                        <p className="muted small">
-                          {active.floor} {active.zone}, 보호 영역{" "}
-                          {activeRegionCount}개
-                        </p>
-                      </div>
                     </Card>
-                    {zoneTabs}
-                    <div className="item-tabs">
-                      {active.furniture
-                        .filter((f) => f.zone === active.zone)
-                        .map((f) => (
-                          <button
-                            className={
-                              selectedFurniture === f.id ? "active" : ""
-                            }
-                            key={f.id}
-                            aria-pressed={selectedFurniture === f.id}
-                            onClick={() => chooseFurniture(f.id)}
-                          >
-                            {f.name}
+                    <Card className="detail-manage">
+                      <h3>공간 관리</h3>
+                      <p className="muted small">가구 위치, 도면, 보호 영역을 바꾸거나 공간 정보를 고쳐요.</p>
+                      <div className="detail-actions">
+                        {!isApp && (
+                          <button className="primary" onClick={() => editSpace(active)}>
+                            가구·도면·보호 영역 수정
                           </button>
-                        ))}
-                    </div>
-                    <Card>
-                      <div className="section-row">
-                        <h3>시간별 햇빛 위치</h3>
-                        <strong className="brand-text">
-                          {formatMinute(Math.round(hour * 60))}
-                        </strong>
+                        )}
+                        <div className="detail-secondary">
+                          <button className="text-button" onClick={() => editSpace(active, "register")}>
+                            공간 정보 수정
+                          </button>
+                          <button className="text-button destructive-text" onClick={() => setModal("delete-space")}>
+                            공간 삭제
+                          </button>
+                        </div>
+                        {isApp && (
+                          <button
+                            className="secondary"
+                            onClick={() => { window.open(`${location.origin}/?mode=web#/detail/${active.id}`, "_blank", "noopener"); }}
+                          >
+                            웹 페이지 이동
+                          </button>
+                        )}
                       </div>
-                      <input
-                        aria-label="햇빛 확인 시각"
-                        type="range"
-                        min="0"
-                        max={1439 / 60}
-                        step={1 / 60}
-                        value={hour}
-                        onChange={(e) => setHour(Number(e.target.value))}
-                      />
-                      <div className="range-labels">
-                        <span>00:00</span>
-                        <span>06:00</span>
-                        <span>12:00</span>
-                        <span>18:00</span>
-                        <span>23:59</span>
-                      </div>
-                    </Card>
-                    <Card>
-                      <div className="section-row">
-                        <h3>{filmPrediction ? "필름 차광 계획" : "필름 차광 시뮬레이션"}</h3>
-                        <strong className="brand-text">
-                          {formatMinute(Math.round(hour * 60))}
-                        </strong>
-                      </div>
-                      {resolveWindow(active) ? (
-                        <FilmGrid space={active} schedule={applyShadingTime(sunSchedule, detailShading)} hour={hour} prediction={filmPrediction} setting={detailShading} />
-                      ) : (
-                        <p className="muted small">
-                          창문 규격을 입력하면 시각별로 가려질 필름 칸을 볼 수 있습니다.
-                        </p>
-                      )}
                     </Card>
                   </div>
-                  <aside className="inspector detail-info">
-                    <h2>{furniture ? "선택한 가구" : "공간 설정"}</h2>
-                    <p className="muted">
-                      {active.building} {active.floor}
-                    </p>
-                    {furniture && (
-                      <div className="summary-box">
-                        <strong>
-                          {furniture.name}
-                          {furniture.type && `, ${furnitureTypes[furniture.type]}`}
-                        </strong>
-                        <p>
-                          {furniture.width} × {furniture.depth} ×{" "}
-                          {furniture.height} m
-                        </p>
-                      </div>
-                    )}
-                    <h3>설정된 보호 영역</h3>
-                    {!activeRegionCount && (
-                      <p className="muted small">
-                        설정된 보호 영역이 없습니다. 편집 화면에서 추가하세요.
-                      </p>
-                    )}
-                    {active.regions
-                      .filter((r) => r.zone === active.zone && r.grade !== "D")
-                      .map((r) => (
-                        <button
-                          key={r.id}
-                          aria-pressed={r.id === selectedRegion}
-                          className={`row ${r.id === selectedRegion ? "selected" : ""}`}
-                          onClick={() => chooseRegion(r.id)}
-                        >
-                          <span>
-                            {r.name}
-                            <small>
-                              {r.face}, {r.bottom}~{r.top} m
-                            </small>
-                          </span>
-                          <span className="grade-summary">
-                            {r.grade}{isApp ? ": " : " : "}{grades[r.grade]}
-                          </span>
-                        </button>
-                      ))}
-                    <ShadingTimeControl
-                      space={active}
-                      value={detailShading}
-                      onChange={setShadingEdit}
-                      sunSchedule={sunSchedule}
-                      hour={hour}
-                      onSave={saveShadingTime}
-                      sunSource={sunSource}
-                      dirty={
-                        !!shadingEdit &&
-                        JSON.stringify(shadingEdit) !==
-                          JSON.stringify(active.shadingSchedule ?? defaultShadingTime)
-                      }
-                      saving={saving}
-                    />
-                    <div className="detail-actions">
-                      {!isApp && (
-                        <button
-                          className="primary"
-                          onClick={() => editSpace(active)}
-                        >
-                          가구·도면·보호 영역 수정
-                        </button>
-                      )}
-                      <div className="detail-secondary">
-                        <button
-                          className="text-button"
-                          onClick={() => editSpace(active, "register")}
-                        >
-                          공간 정보 수정
-                        </button>
-                        <button className="text-button destructive-text" onClick={() => setModal("delete-space")}>
-                          공간 삭제
-                        </button>
-                      </div>
-                      {isApp && (
-                        <button
-                          className="secondary"
-                          onClick={() => { window.open(`${location.origin}/?mode=web#/detail/${active.id}`, "_blank", "noopener"); }}
-                        >
-                          웹 페이지 이동
-                        </button>
-                      )}
-                    </div>
-                  </aside>
                 </div>
               )}
               {(page === "account" || page === "more") && (

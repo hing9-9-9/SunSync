@@ -2,7 +2,6 @@ import { validateShadingPlan } from "./shading";
 import { browserCaptureEnabled } from "./captureEnvironment";
 import { MeasureError, measureAndRegister, savedCamera } from "./measureApi";
 import type { ShadingResult } from "./shading";
-import PredictionSummary from "./PredictionSummary";
 import { createHandoff, connectHandoff, completeHandoff, listMeasurements, predictSunpath, predictShadingPlan } from "./spaceApi";
 import type { HandoffSession, SunpathPrediction } from "./spaceApi";
 import { blockingSchedule, predictionDay, scheduleFromPrediction } from "./sunlight";
@@ -391,8 +390,8 @@ export function useSpaceApp() {
   // FR-01: the saved space's real sun times for today. Results are keyed by scene revision, so a
   // result for an older save is never shown after the space changes.
   const [predictionNow] = useState(() => new Date());
-  const [selectedPredictionDate, setSelectedPredictionDate] = useState("");
-  const predictionDate = selectedPredictionDate || (active?.site ? new Intl.DateTimeFormat("en-CA", { timeZone: active.site.timezone }).format(predictionNow) : "");
+  // Today in the space's time zone; the date picker went away with the forecast details.
+  const predictionDate = active?.site ? new Intl.DateTimeFormat("en-CA", { timeZone: active.site.timezone }).format(predictionNow) : "";
   const windowReady = !!active?.windowDimensions && active.windowDimensions.wall != null && active.windowDimensions.offset != null && active.windowDimensions.sill != null;
   const predictionKey =
     USE_FR01 && page === "detail" && !editorExample && active?.serverSceneId && active.serverRevision && active.site && active.site.northConfirmed && windowReady && active.regions.length
@@ -449,16 +448,13 @@ export function useSpaceApp() {
   const sunSource = predictionKey && active?.site
     ? {
         label: `햇빛이 닿는 시간 (${predictionDate})`,
-        note: <>
-          <PredictionSummary result={!predictionError ? currentPrediction?.result : undefined} space={active} date={predictionDate} onDate={setSelectedPredictionDate} onRetry={retryPrediction} />
-          {predictionError ? (
+        // Forecast details (AI band, assumptions, first-exposure list) stay on the server; people see only a failure.
+        note: predictionError ? (
           <p className="error" role="alert">
             {predictionError}{" "}
             <button type="button" className="text-button" onClick={retryPrediction}>다시 계산</button>
           </p>
-        ) : !predicted ? (
-          <p className="muted small" role="status">선택한 날짜의 햇빛을 계산하는 중…</p>
-        ) : null}</>,
+        ) : <></>,
       }
     : active && !editorExample ? { label: "예측 준비 필요", note: <p className="muted small">햇빛 예측을 사용하려면 보호 영역과 창문 위치·북쪽 방향을 확인한 뒤 공간을 저장하세요. 현재는 간이 계산으로 표시합니다.</p> } : undefined;
   const predictionPill = !predictionKey ? "시뮬레이션" : predictionError ? "예측 실패" : predicted ? "햇빛 예측" : "계산 중";

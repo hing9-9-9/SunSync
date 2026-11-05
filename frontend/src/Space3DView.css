@@ -25,7 +25,7 @@
 
 .s3 .s3-head {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   gap: 24px;
   padding: 20px 24px 16px;
@@ -338,7 +338,7 @@
 }
 .s3 .s3-stat {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   border: 1px solid var(--line);
 }
 .s3 .s3-stat div {
@@ -509,3 +509,4 @@
   .s3 button:hover { transform: none; }
 }
 .s3 .s3-source.is-ready { background: var(--c-protect); color: var(--c-action-ink); }
+.s3 .s3-stat strong small { font-size: 13px; font-weight: 500; color: var(--c-muted); }

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { filmGrid, furnitureTypes, grades, resolveWindow, timeToMinute, walls } from "./model.ts";
-import type { Grade, Region, ShadingTime, Space } from "./model.ts";
+import type { Region, ShadingTime, Space } from "./model.ts";
 import { createSpaceScene } from "./Space3DScene.ts";
 import type { Level, Lit, SceneApi } from "./Space3DScene.ts";
 import { dayOfYear, sunPosition } from "./sun3d.ts";
@@ -11,12 +11,10 @@ import { cellsAt, compactDay, sampleIndex, sunAt } from "./space3dServer.ts";
 import "./Space3DView.css";
 
 const LEVELS: { id: Level; label: string; lead: string }[] = [
-  { id: "basic", label: "기본 보기", lead: "저장된 크기와 위치대로 방, 창, 가구, 보호 영역을 세웠어요. 끌어서 돌려 보고, 가구를 눌러 확인하세요." },
+  { id: "basic", label: "기본 보기", lead: "저장된 크기와 위치 그대로예요. 가구를 누르면 크기와 위치가 나와요." },
   { id: "sun", label: "햇빛과 그림자", lead: "서버가 계산한 해 위치로 창을 통과한 햇빛과 그림자를 그려요. 주황색은 지금 직사광이 닿는 보호 영역이에요." },
   { id: "film", label: "필름 칸", lead: "서버의 차광 계획대로 10 cm 칸을 닫아요. A는 직사광이 닿으면 늘, B·C는 직사광이 상한을 넘을 때만 닫아요." },
 ];
-// Same caps as the server's default grade policy (backend/app/ui_scene.py).
-const CAPS: Partial<Record<Grade, number>> = { B: 30, C: 70 };
 const clock = (h: number) => `${String(Math.floor(h)).padStart(2, "0")}:${String(Math.floor((h % 1) * 60 + 1e-6)).padStart(2, "0")}`;
 const compassWord = (az: number) => ["북", "북동", "동", "남동", "남", "남서", "서", "북서"][Math.round(az / 45) % 8];
 const pct = (v: number) => `${Math.round(v * 100)}%`;
@@ -142,15 +140,16 @@ export default function Space3DView({ space, hour, onHour, date, selected, onSel
   const rowValue = (r: Region, i: number): [string, string] => {
     const d = serverDay, k = moment?.index ?? -1;
     if (d && moment && k >= 0) {
-      const share = d.exposure[i]?.share[k] ?? 0, maxW = d.exposure[i]?.maxW[k];
-      const watts = maxW == null ? "세기 모름" : `${Math.round(maxW)} W/m²`;
-      if (level === "sun") return share > 0 ? [`햇빛 ${pct(share)} · ${watts}`, "sun"] : ["닿지 않음", ""];
+      const share = d.exposure[i]?.share[k] ?? 0;
+      if (level === "sun") return share > 0 ? [`햇빛 ${pct(share)}`, "sun"] : ["닿지 않음", ""];
       if (moment.byRegion[i]) return [`칸 ${moment.byRegion[i]}개 닫음`, "film"];
       if (share === 0) return ["닿지 않음", ""];
       if (r.grade === "D") return [`햇빛 ${pct(share)} · 보호 안 함`, "sun"];
       if (!gateOpen) return [`햇빛 ${pct(share)} · ${shading.enabled ? "차단 시간 밖" : "차단 시간 꺼짐"}`, "sun"];
-      return r.grade === "A" ? ["닫을 칸 없음", ""] : [`${watts} · 상한 ${CAPS[r.grade]} 이하`, ""];
+      // B/C cells stay open while the direct sun is under the grade's cap.
+      return r.grade === "A" ? ["닫을 칸 없음", ""] : ["약한 햇빛이라 열어 둠", ""];
     }
+    if (level === "film" && r.grade === "D") return ["보호 안 함", ""];
     if (level === "film" && !gateOpen) return [shading.enabled ? "차단 시간 밖" : "차단 시간 꺼짐", ""];
     const v = (level === "film" ? lit?.film : lit?.open)?.[r.id] ?? 0;
     return v > 0.005 ? [`햇빛 ${pct(v)}`, "sun"] : [level === "film" && (lit?.open[r.id] ?? 0) > 0.005 ? "막음" : "닿지 않음", ""];
@@ -162,20 +161,18 @@ export default function Space3DView({ space, hour, onHour, date, selected, onSel
     const top = Math.max(...s.open, 0.001);
     return s.open.map(x => x / top);
   };
-  const source = !planned
-    ? "서버 계산 조건(저장된 공간, 북쪽 확인, 창문, 보호 영역)이 모자라 화면 미리보기로 보여 드려요."
+  // Only say something when the picture is not the server's yet.
+  const source = serverDay ? null : !planned
+    ? "북쪽 방향과 창문 위치를 확인하고 저장하면 실제 햇빛으로 보여 드려요. 지금은 미리보기예요."
     : film?.error
-      ? `${film.error} 지금은 화면 미리보기예요.`
-      : serverDay
-        ? `서버 계산 반영 · ${date} · 30분 간격, 2D 화면과 같은 결과 · B·C 상한 ${CAPS.B}·${CAPS.C} W/m²`
-        : "서버에서 햇빛과 차광 계획을 계산하는 중이에요. 그동안은 화면 미리보기예요.";
+      ? `${film.error} 지금은 미리보기예요.`
+      : "햇빛을 계산하는 중이에요. 잠시만 미리보기로 보여 드려요.";
   const time = dayPart(hour);
 
   return (
     <div className="s3">
       <header className="s3-head">
         <div className="s3-title">
-          <p className="s3-kicker">공간 보기 · {view === "2d" ? "2D 도면" : "3D"}</p>
           <p className="s3-meta">
             {space.width.toFixed(1)} × {space.depth.toFixed(1)} × {space.height.toFixed(1)} m
             {win && ` · ${walls[win.wall]} 창 ${win.width.toFixed(1)} × ${win.height.toFixed(1)} m`}
@@ -216,7 +213,7 @@ export default function Space3DView({ space, hour, onHour, date, selected, onSel
               </button>
               <div className="s3-clock">
                 <strong>{clock(hour)}</strong>
-                <span>{sunNow.altitude > 0 ? `해 높이 ${Math.round(sunNow.altitude)}° · ${compassWord(sunNow.azimuth)}쪽` : "해가 진 시간"}</span>
+                <span>{`${month}월 ${dom}일 · `}{sunNow.altitude > 0 ? `해 높이 ${Math.round(sunNow.altitude)}° · ${compassWord(sunNow.azimuth)}쪽` : "해가 진 시간"}</span>
               </div>
               <input
                 className="s3-range" type="range" min={6} max={18} step={1 / 12} value={time} aria-label="시간"
@@ -229,12 +226,11 @@ export default function Space3DView({ space, hour, onHour, date, selected, onSel
 
         <aside className="s3-panel">
           <p className="s3-lead">{info.lead}</p>
-          {level !== "basic" && <p className={`s3-source ${serverDay ? "is-ready" : ""}`} role="status">{source}</p>}
+          {level !== "basic" && source && <p className="s3-source" role="status">{source}</p>}
           {level === "film" && lit && (
             <div className="s3-stat">
-              <div><strong>{lit.blocked}</strong><span>닫은 칸</span></div>
-              <div><strong>{lit.cells - lit.blocked}</strong><span>열어 둔 칸</span></div>
-              <div><strong>{pct(lit.blocked / Math.max(1, lit.cells))}</strong><span>창 면적</span></div>
+              <div><strong>{lit.blocked}<small> / {lit.cells}칸</small></strong><span>지금 닫은 필름 칸</span></div>
+              <div><strong>{pct(lit.blocked / Math.max(1, lit.cells))}</strong><span>창 면적 중</span></div>
             </div>
           )}
           <h2>보호 영역</h2>
@@ -278,7 +274,7 @@ export default function Space3DView({ space, hour, onHour, date, selected, onSel
             <span><i className="sw-sun" />햇빛</span>
             <span><i className="sw-film" />닫은 필름 칸</span>
           </div>
-          <p className="s3-note">마우스 왼쪽으로 돌리기 · 휠로 확대 · 오른쪽으로 이동</p>
+          <p className="s3-note">{view === "3d" ? "끌어서 돌리기 · 휠로 확대 · 오른쪽 버튼으로 이동" : "휠로 확대 · 끌어서 이동"}</p>
         </aside>
       </div>
     </div>
