@@ -3,7 +3,7 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { CSS2DObject, CSS2DRenderer } from "three/examples/jsm/renderers/CSS2DRenderer.js";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { filmGrid, isWidthWall, resolveWindow } from "./model.ts";
-import type { Furniture, Region, Space, Wall } from "./model.ts";
+import type { Face, Furniture, Region, Space, Wall } from "./model.ts";
 import { sunPosition } from "./sun3d.ts";
 
 export type Level = "basic" | "sun" | "film";
@@ -14,14 +14,17 @@ export type SceneApi = {
   setView(view: "3d" | "2d"): void;
   reset(): void;
   select(id: string | null): void;
+  previewFurniture(furniture: Furniture | null): void;
   dispose(): void;
 };
-type Events = { onSelect(id: string | null): void };
+type Events = { onSelect(id: string | null): void; planBounds?: { left: number; right: number; top: number; bottom: number } };
 // FR-01 sun direction (ENU) and FR-04 cell states (server order: row 0 top, column 0 left seen from inside).
 export type ServerMoment = { sun?: [number, number, number] | null; cells?: Uint8Array | null; rows?: number; cols?: number };
 
 const INK = "#1d1c22", ACTION = "#6660e5", SUN = "#ff7426";
 // Cell state codes from space3dServer STATE_CODE: 1 opaque, 2 infeasible (darkest film is not enough). Unknown (3) cells are counted, not drawn.
+// Same rule as the server (backend/app/ui_scene.py protected_face): furniture protects the side facing the window.
+const WINDOW_FACE: Record<Wall, Face> = { south: "남쪽 전면", north: "북쪽 후면", east: "동쪽 측면", west: "서쪽 측면" };
 const STATE_COLOR: Record<number, string> = { 1: "#4b45c6", 2: "#2a2833" };
 const closes = (code: number) => code === 1 || code === 2;
 const TYPE_COLOR: Record<string, string> = { bookcase: "#f2f0ea", desk: "#ececf0", table: "#f3f3f5", cabinet: "#e4e4e9", display: "#f3f3f5", other: "#ececec" };
@@ -51,6 +54,14 @@ export function createSpaceScene(host: HTMLElement, space: Space, events: Events
   const pmrem = new THREE.PMREMGenerator(renderer);
   scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
   const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 400);
+  // The editor's SVG gestures use the same metre coordinates as this orthographic view.
+  const b = events.planBounds;
+  const planCamera = b ? new THREE.OrthographicCamera(-W / 2 - b.left, W / 2 + b.right, D / 2 + b.top, -D / 2 - b.bottom, 0.1, 100) : null;
+  if (planCamera) {
+    planCamera.position.set(0, H + 20, 0);
+    planCamera.up.set(0, 0, -1);
+    planCamera.lookAt(0, 0, 0);
+  }
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
   controls.dampingFactor = 0.08;
@@ -190,7 +201,7 @@ export function createSpaceScene(host: HTMLElement, space: Space, events: Events
   for (let i = 0; i < cellCount; i++) writeCell(i);
 
   // Furniture: one simple shape per type, white-grey with drawn edges.
-  type Item = { f: Furniture; group: THREE.Group; mats: THREE.MeshStandardMaterial[]; line: THREE.LineBasicMaterial; parts: THREE.Mesh[] };
+  type Item = { f: Furniture; group: THREE.Group; mats: THREE.MeshStandardMaterial[]; line: THREE.LineBasicMaterial; parts: THREE.Mesh[]; selection: THREE.Group };
   const items = new Map<string, Item>();
   const random = (() => { let s = 7; return () => ((s = (s * 16807) % 2147483647) / 2147483647); })();
   for (const f of space.furniture) {
@@ -252,11 +263,39 @@ export function createSpaceScene(host: HTMLElement, space: Space, events: Events
       const glass = new THREE.MeshStandardMaterial({ color: "#eeedfb", transparent: true, opacity: 0.22, roughness: 0.1, depthWrite: false });
       part(0, w, 0, h * 0.62, 0, d);
       part(0, w, h * 0.62, h, 0, d, glass, false).castShadow = false;
-      part(w * 0.2, w * 0.45, h * 0.62, h * 0.62 + 0.04, d * 0.3, d * 0.7, new THREE.MeshStandardMaterial({ color: "#c9c5ea", roughness: 0.9 }));
+      part(w * 0.2, w * 0.45, h * 0.62, h * 0.62 + 0.04, d * 0.3, d * 0.7, new THREE.MeshStandardMaterial({ color: "#dcdbe1", roughness: 0.9 }));
       part(w * 0.55, w * 0.8, h * 0.62, h * 0.62 + 0.06, d * 0.25, d * 0.65, new THREE.MeshStandardMaterial({ color: "#e9e9e9", roughness: 0.9 }));
     } else part(0, w, 0, h, 0, d);
+    // Selection is independent of protection grades: a tinted volume and a ground outline.
+    // These decorations never participate in picking, shadowing or sunlight calculations.
+    const selection = new THREE.Group();
+    const tint = new THREE.Mesh(new THREE.BoxGeometry(w + 0.008, h + 0.008, d + 0.008),
+      new THREE.MeshBasicMaterial({ color: ACTION, transparent: true, opacity: 0.14, depthWrite: false }));
+    tint.position.set(w / 2, h / 2, d / 2);
+    tint.raycast = () => {};
+    selection.add(tint);
+    const outline = new THREE.Shape();
+    outline.moveTo(-0.065, 0.065);
+    outline.lineTo(w + 0.065, 0.065);
+    outline.lineTo(w + 0.065, -d - 0.065);
+    outline.lineTo(-0.065, -d - 0.065);
+    outline.closePath();
+    const hole = new THREE.Path();
+    hole.moveTo(-0.035, 0.035);
+    hole.lineTo(-0.035, -d - 0.035);
+    hole.lineTo(w + 0.035, -d - 0.035);
+    hole.lineTo(w + 0.035, 0.035);
+    hole.closePath();
+    outline.holes.push(hole);
+    const ring = new THREE.Mesh(new THREE.ShapeGeometry(outline), new THREE.MeshBasicMaterial({ color: ACTION, side: THREE.DoubleSide }));
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.y = 0.015;
+    ring.raycast = () => {};
+    selection.add(ring);
+    selection.visible = false;
+    group.add(selection);
     scene.add(group);
-    items.set(f.id, { f, group, mats, line, parts });
+    items.set(f.id, { f, group, mats, line, parts, selection });
   }
 
   // Protected regions are surfaces, as the server stores them. Only the grade chip is drawn (no
@@ -272,15 +311,29 @@ export function createSpaceScene(host: HTMLElement, space: Space, events: Events
       "동쪽 측면": [at(x + w, y, lo), new THREE.Vector3(0, 0, d), new THREE.Vector3(0, hi - lo, 0), new THREE.Vector3(1, 0, 0)],
       "서쪽 측면": [at(x, y, lo), new THREE.Vector3(0, 0, d), new THREE.Vector3(0, hi - lo, 0), new THREE.Vector3(-1, 0, 0)],
       "상단": [at(x, y, hi), new THREE.Vector3(w, 0, 0), new THREE.Vector3(0, 0, d), new THREE.Vector3(0, 1, 0)],
-    }[r.face];
+    }[r.furnitureId && r.face !== "상단" && win ? WINDOW_FACE[win.wall] : r.face];
     const chip = document.createElement("div");
     chip.className = `s3-chip g-${r.grade}`;
     chip.textContent = r.grade;
     const label = new CSS2DObject(chip);
-    label.position.copy(corner.clone().addScaledVector(u, 0.5).addScaledVector(v, normal.y ? 0.5 : 1).add(new THREE.Vector3(0, 0.16, 0)));
+    // Every grade chip sits over the middle of its furniture (or of a free area), whatever the face.
+    const host = space.furniture.find(f => f.id === r.furnitureId);
+    label.position.copy(host
+      ? at(host.x + host.width / 2, host.y + host.depth / 2, host.height + 0.16)
+      : at(r.x + r.width / 2, r.y + r.depth / 2, r.top + 0.16));
     scene.add(label);
     const box = new THREE.Box3().setFromPoints([corner, corner.clone().add(u).add(v)]).expandByVector(new THREE.Vector3(1, 1, 1).multiply(normal).multiplyScalar(0.01));
     regionViews.push({ r, box, corner, u, v, normal, chip });
+  }
+  // Furniture without a protection area is grade D (decided 2026-11-06), so it gets a D chip too.
+  for (const f of space.furniture) {
+    if (space.regions.some(r => r.furnitureId === f.id)) continue;
+    const chip = document.createElement("div");
+    chip.className = "s3-chip g-D";
+    chip.textContent = "D";
+    const label = new CSS2DObject(chip);
+    label.position.copy(at(f.x + f.width / 2, f.y + f.depth / 2, f.height + 0.16));
+    scene.add(label);
   }
 
   // The one north sign: painted on the ground outside the north wall, so it turns with the room.
@@ -288,17 +341,24 @@ export function createSpaceScene(host: HTMLElement, space: Space, events: Events
   northCanvas.width = northCanvas.height = 256;
   const nc = northCanvas.getContext("2d")!;
   nc.fillStyle = INK;
+  nc.strokeStyle = INK;
+  nc.lineWidth = 7;
+  nc.lineCap = "round";
+  nc.lineJoin = "round";
   nc.beginPath();
-  nc.moveTo(128, 18);
-  nc.lineTo(168, 104);
-  nc.lineTo(88, 104);
-  nc.fill();
-  nc.font = "700 92px 'Noto Sans KR', sans-serif";
+  nc.moveTo(128, 130);
+  nc.lineTo(128, 30);
+  nc.moveTo(104, 58);
+  nc.lineTo(128, 30);
+  nc.lineTo(152, 58);
+  nc.stroke();
+  nc.font = "500 64px 'Noto Sans KR', sans-serif";
   nc.textAlign = "center";
   nc.fillText("N", 128, 210);
-  const northMark = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.9), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(northCanvas), transparent: true, depthWrite: false }));
+  const northMark = new THREE.Mesh(new THREE.PlaneGeometry(0.48, 0.48), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(northCanvas), transparent: true, depthWrite: false }));
   northMark.rotation.x = -Math.PI / 2;
-  northMark.position.copy(at(W / 2, -0.85, -0.09));
+  northMark.position.copy(at(W / 2, -0.55, -0.09));
+  northMark.visible = !planCamera;
   scene.add(northMark);
 
   // Sun: a disc with a soft glow, travelling along today's dashed sun path.
@@ -408,6 +468,9 @@ export function createSpaceScene(host: HTMLElement, space: Space, events: Events
   const paint = () => {
     for (const [id, it] of items) {
       const on = id === selected;
+      // The tint and ground ring read as depth cues only in 3D; seen from above they looked like a
+      // wrong outline, so the plan views keep just the purple edges (or the editor's own SVG outline).
+      it.selection.visible = on && view === "3d" && !planCamera;
       for (const m of it.mats) m.emissive.set(id === hovered || on ? "#ffffff" : "#000000").multiplyScalar(on ? 0.05 : 0.03);
       it.line.color.set(on ? ACTION : INK);
       it.line.opacity = on ? 1 : 0.42;
@@ -483,6 +546,18 @@ export function createSpaceScene(host: HTMLElement, space: Space, events: Events
     labels.setSize(w, h);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
+    if (planCamera && b && w && h) {
+      // Fit like the SVG above it (preserveAspectRatio "meet"): keep the plan's scale, centre it, and
+      // widen the unused axis, so furniture, outlines and protected-face lines land on the same spot.
+      const viewW = W + b.left + b.right, viewH = D + b.top + b.bottom;
+      const cx = (b.right - b.left) / 2, cz = (b.bottom - b.top) / 2;
+      const scale = Math.max(viewW / w, viewH / h);
+      planCamera.left = cx - (w * scale) / 2;
+      planCamera.right = cx + (w * scale) / 2;
+      planCamera.top = -cz + (h * scale) / 2;
+      planCamera.bottom = -cz - (h * scale) / 2;
+      planCamera.updateProjectionMatrix();
+    }
   };
   const observer = new ResizeObserver(resize);
   observer.observe(host);
@@ -540,8 +615,8 @@ export function createSpaceScene(host: HTMLElement, space: Space, events: Events
       }
       w.line.opacity = 0.16 + 0.3 * w.fade;
     }
-    renderer.render(scene, camera);
-    labels.render(scene, camera);
+    renderer.render(scene, planCamera ?? camera);
+    labels.render(scene, planCamera ?? camera);
   });
 
   // Light rays read world matrices, which are otherwise only filled in by the first render.
@@ -556,6 +631,7 @@ export function createSpaceScene(host: HTMLElement, space: Space, events: Events
     setTime,
     setView(next) {
       view = next;
+      paint();
       controls.enableRotate = next === "3d";
       go(viewPose());
     },
@@ -563,6 +639,12 @@ export function createSpaceScene(host: HTMLElement, space: Space, events: Events
       go(viewPose());
     },
     select,
+    previewFurniture(furniture) {
+      for (const [id, item] of items) {
+        const f = furniture?.id === id ? furniture : item.f;
+        item.group.position.copy(at(f.x, f.y));
+      }
+    },
     dispose() {
       renderer.setAnimationLoop(null);
       observer.disconnect();

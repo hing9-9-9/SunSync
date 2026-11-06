@@ -76,6 +76,8 @@ export default function Space3DView({ space, hour, onHour, date, selected, onSel
       onSelect: id => id && onSelect(id),
     }, viewRef.current);
     api.current = scene;
+    scene.select(selected);
+    scene.setLevel(level);
     return () => scene.dispose();
     // onSelect is a fresh function each render; the scene keeps the first one, which only forwards ids.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -218,7 +220,7 @@ export default function Space3DView({ space, hour, onHour, date, selected, onSel
 
         <aside className="s3-panel">
           {level !== "basic" && source && <p className="s3-source" role="status">{source}</p>}
-          <h2>보호 영역</h2>
+          <h2>가구별 보호 등급</h2>
           <ul className="s3-regions">
             {space.regions.map((r, i) => {
               if (r.zone !== space.zone) return null;
@@ -228,7 +230,7 @@ export default function Space3DView({ space, hour, onHour, date, selected, onSel
                   <button className={selected === r.furnitureId ? "on" : ""} onClick={() => r.furnitureId && onSelect(r.furnitureId)}>
                     <span className={`s3-grade g-${r.grade}`}>{r.grade}</span>
                     <span className="s3-rname">{r.name}<small>{grades[r.grade].split(" · ")[0]}</small></span>
-                    <span className={`s3-rval ${level === "basic" ? "" : tone}`}>{level === "basic" ? `${r.face} · ${r.bottom}~${r.top} m` : text}</span>
+                    <span className={`s3-rval ${level === "basic" ? "" : tone}`}>{level === "basic" ? `높이 ${r.bottom}~${r.top} m` : text}</span>
                     {bars && (
                       <span className="s3-strip" aria-hidden="true" style={{ gridTemplateColumns: `repeat(${bars.length}, 1fr)` }}>
                         {bars.map((b, j) => <i key={j} className={b.film ? "film" : b.value > 0 ? "" : "none"} style={b.value > 0 ? { opacity: 0.2 + b.value * 0.8 } : undefined} />)}
@@ -239,6 +241,16 @@ export default function Space3DView({ space, hour, onHour, date, selected, onSel
                 </li>
               );
             })}
+            {/* Furniture with no protection area is grade D: listed too, with nothing to plan for it. */}
+            {space.furniture.filter(f => f.zone === space.zone && !space.regions.some(r => r.furnitureId === f.id)).map(f => (
+              <li key={f.id}>
+                <button className={selected === f.id ? "on" : ""} onClick={() => onSelect(f.id)}>
+                  <span className="s3-grade g-D">D</span>
+                  <span className="s3-rname">{f.name}<small>{grades.D.split(" · ")[0]}</small></span>
+                  <span className="s3-rval">보호 안 함</span>
+                </button>
+              </li>
+            ))}
           </ul>
           {level !== "basic" && series && <p className="s3-axis"><span>6시</span><span>9</span><span>12</span><span>15</span><span>18시</span></p>}
 
@@ -249,17 +261,14 @@ export default function Space3DView({ space, hour, onHour, date, selected, onSel
               <div><dt>종류</dt><dd>{furnitureTypes[chosen.type ?? "other"]}</dd></div>
               <div><dt>크기</dt><dd>{chosen.width.toFixed(1)} × {chosen.depth.toFixed(1)} × {chosen.height.toFixed(2)} m</dd></div>
               <div><dt>위치</dt><dd>서쪽 벽에서 {chosen.x.toFixed(1)} m · 북쪽 벽에서 {chosen.y.toFixed(1)} m</dd></div>
-              <div><dt>보호</dt><dd>{chosenRegion ? `${chosenRegion.grade}등급 · ${grades[chosenRegion.grade].split(" · ")[1]}` : "보호 영역 없음"}</dd></div>
+              <div><dt>보호</dt><dd>{`${chosenRegion?.grade ?? "D"}등급 · ${grades[chosenRegion?.grade ?? "D"].split(" · ")[1]}` /* no protection area = D */}</dd></div>
             </dl>
           ) : <p className="s3-empty">3D 화면이나 위 목록에서 가구를 누르면 여기에 크기와 위치가 나와요.</p>}
 
           <div className="s3-legend" aria-label="범례">
-            <span><i className="sw-a" />보호 영역 (진할수록 높은 등급)</span>
-            <span><i className="sw-d" />D · 보호 안 함</span>
             <span><i className="sw-sun" />햇빛</span>
             <span><i className="sw-film" />닫은 필름 칸</span>
           </div>
-          <p className="s3-note">{view === "3d" ? "끌어서 돌리기 · 휠로 확대 · 오른쪽 버튼으로 이동" : "휠로 확대 · 끌어서 이동"}</p>
         </aside>
       </div>
     </div>
