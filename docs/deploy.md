@@ -111,6 +111,22 @@ It fast-forwards to `origin/main`, installs the packages, builds the web app, co
 - Allow the camera when the browser asks.
 - Do the whole flow once on every phone that will be used, with the real address, a day before the demo (code freeze: 11/19 and 12/10).
 
+## How a teammate checks the deployment
+
+- **Needs nothing:** read the pull request, the code and the docs, look at the CI results, and open the landing page.
+- **Needs the temporary user name and password:** trying the app yourself, because every request for data (`/api`, `/measure`) is locked until the Google login ships. Ask the person who runs the server for the address and the password. Never write them in the repository, an issue or a pull request: the repository is public. The server key file (`.pem`) is never shared; someone who has to log in to the server sends the public part of their own SSH key instead (`id_ed25519.pub`), and the server owner adds it.
+
+Steps (use a private window on a PC and a phone):
+
+1. Open the address. The landing page opens without a password.
+2. Press "내 공간 열기". The browser asks for the user name and password once; after that the app shows its own account screen (not a real login yet, any name works).
+3. Create a space with the window size and the building location.
+4. Press "휴대폰에서 촬영". A QR code appears; scan it with a phone and the app opens on the capture screen.
+5. On the phone, open the address directly: the app layout appears and the camera asks for permission.
+6. The camera setup and the board capture need the printed 4-marker board (see "Before a demo").
+
+Everyone who has the password sees the same spaces until the spaces are separated by account, so do not enter personal data.
+
 ## Backup and logs
 
 - A daily timer copies the database to `/var/lib/sunsync/backups` and keeps the 14 newest copies. The copy uses SQLite's own backup, because the database runs in WAL mode and a plain file copy can be broken. Download a copy now and then with `scp`; a backup on the same disk does not survive losing the server.
