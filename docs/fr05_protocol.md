@@ -175,3 +175,7 @@ curl -sS -X POST "http://localhost:8000/api/scenes/scene_demo_001/marker-pairing
     ]
   }'
 ```
+
+## FR-03 공용 규격 확정 (2026-11-06)
+
+1m × 1m 필름의 10cm 셀 100개 중 중앙 6×6셀을 사용하는 60cm 단일 ArUco 마커를 채택합니다. 공용 ID는 0이며 기존 다른 ID API는 유지합니다. 좌표계 및 측정 연결은 [단일 마커 계약](fr03_single_marker.md)을 따릅니다.

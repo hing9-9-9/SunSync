@@ -8,22 +8,19 @@
 import { resolveWindow } from "./model.ts";
 import type { Space } from "./model.ts";
 
-// shortcut: one fixed 2×2 board (60 × 60 cm example from the requirement doc, IDs 7–10) until
-// the team settles 4-marker board vs single film marker; replace BOARD when that is decided.
+// 1m film, 10x10 cells: the central 6x6 cells form one 60cm ArUco marker.
+// ID 0 is shared with the default FR-05 display; scenes remain separately identified.
 export const BOARD = {
   board_id: "window_board",
   dictionary: "DICT_4X4_50",
-  ids_by_row: [
-    [7, 8],
-    [9, 10],
-  ],
-  marker_side_m: 0.24,
-  gap_x_m: 0.04,
-  gap_y_m: 0.04,
+  ids_by_row: [[0]],
+  marker_side_m: 0.6,
+  gap_x_m: 0,
+  gap_y_m: 0,
   border_bits: 1,
 } as const;
-const BOARD_W = 2 * BOARD.marker_side_m + BOARD.gap_x_m;
-const BOARD_H = 2 * BOARD.marker_side_m + BOARD.gap_y_m;
+const BOARD_W = BOARD.marker_side_m;
+const BOARD_H = BOARD.marker_side_m;
 
 export type Camera = {
   width: number; height: number; fx: number; fy: number; cx: number; cy: number;
@@ -36,7 +33,7 @@ export type MeasuredPoint = { id: string; frames: Frame[] };
 const LENS = "web-rear";
 // Photos are scaled to one fixed size so every frame shares the intrinsics found by the setup.
 const MAX_SIDE = 1920;
-const CAMERA_KEY = "sunsync-web-camera-v1";
+const CAMERA_KEY = "sunsync-web-camera-single-film-v2";
 
 export class MeasureError extends Error {}
 
@@ -75,7 +72,7 @@ export function serverMessage(detail: string): string {
     [/across more of the screen/i, "보드가 화면 가장자리에도 오도록 위치를 바꿔 가며 찍어 주세요."],
     [/Tilt the phone/i, "휴대폰을 위아래·좌우로 기울여 가며 더 찍어 주세요."],
     [/unstable|independent-view/i, "카메라 준비가 불안정해요. 흔들리지 않게 몇 장 더 찍어 주세요."],
-    [/All four board markers/i, "보드의 마커 4개가 모두 보이게 찍어 주세요."],
+    [/All configured board markers/i, "마커의 검정 테두리와 네 모서리가 모두 보이게 찍어 주세요."],
     [/optical range/i, "이 카메라는 자동 준비를 지원하지 않아요. 다른 카메라(기본 1배)로 찍어 주세요."],
     [/Duplicate target marker/i, "같은 마커가 두 번 보여요. 다른 보드나 화면을 가려 주세요."],
     [/calibration|Register and confirm/i, "측정 기준을 저장하지 못했어요. 창문 위치와 북쪽 확인을 다시 저장해 주세요."],
@@ -168,6 +165,25 @@ export function boardAlignment(space: Space) {
   };
 }
 
+type FilmMarker = { code_id: number; dictionary: string; side_length_m: number; plane: string; T_ENU_marker: number[] };
+
+/** FR-05 marker frame is centre/x-right/y-up; measurement board is top-left/x-right/y-down. */
+export function filmBoardAlignment(marker: FilmMarker) {
+  if (marker.dictionary !== BOARD.dictionary || marker.code_id !== BOARD.ids_by_row[0][0] ||
+      Math.abs(marker.side_length_m - BOARD.marker_side_m) > 1e-6 || marker.T_ENU_marker.length !== 16) {
+    throw new MeasureError("필름 마커 규격이 달라요. ID 0의 60cm 단일 마커를 표시하고 측정 기준을 다시 확인해 주세요.");
+  }
+  const t = marker.T_ENU_marker;
+  const T = [...t];
+  for (let r = 0; r < 3; r++) {
+    T[r * 4 + 1] = -t[r * 4 + 1];
+    T[r * 4 + 2] = -t[r * 4 + 2];
+    T[r * 4 + 3] = t[r * 4 + 3] - t[r * 4] * BOARD_W / 2 + t[r * 4 + 1] * BOARD_H / 2;
+  }
+  return { alignment: { T_enu_board: T, north_confirmed: true, floor_confirmed: true },
+    floor: { board_origin_height_m: T[11], up_board: [T[8], T[9], T[10]] } };
+}
+
 const SERVER_SHAPES: Record<string, string> = { rectangle: "rectangle", circle: "circle", ellipse: "ellipse" };
 
 /** Measure one captured piece of furniture and register it in the space's scene. Returns the
@@ -177,11 +193,17 @@ export async function measureAndRegister(space: Space, camera: Camera, item: {
 }): Promise<Space> {
   if (!space.serverSceneId) throw new MeasureError("공간을 먼저 서버에 저장해 주세요.");
   if (!space.site?.northConfirmed) throw new MeasureError("공간 정보에서 도면의 북쪽을 확인해 주세요.");
-  const pose = boardAlignment(space);
+  let pose = boardAlignment(space);
   if (!pose) throw new MeasureError("공간 정보에서 창문 크기와 위치를 입력해 주세요.");
   const scene = await get<{ revision: number; room: { room_id: string }; registration_calibration: { calibration_id: string } | null } & Record<string, unknown>>(
     `/api/scenes/${encodeURIComponent(space.serverSceneId)}`,
   );
+  const filmMarkers = ((scene.markers ?? []) as FilmMarker[]).filter(m => m.plane === "window");
+  if (filmMarkers.length > 1) throw new MeasureError("측정에 사용할 창문 마커를 하나만 지정해 주세요.");
+  if (filmMarkers.length === 1) pose = filmBoardAlignment(filmMarkers[0]);
+  else if (Math.abs(resolveWindow(space)!.marker.size - BOARD.marker_side_m) > 1e-6) {
+    throw new MeasureError("창문 정보의 마커 크기를 실제 검정 외곽 한 변 60cm로 확인해 주세요.");
+  }
   const kind = SERVER_SHAPES[item.shape] ?? "polygon";
   const plan = {
     space_id: scene.room.room_id,

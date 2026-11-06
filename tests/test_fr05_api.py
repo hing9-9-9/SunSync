@@ -673,6 +673,53 @@ def test_ui_save_keeps_paired_marker_until_window_moves(client: TestClient) -> N
     assert markers() == []
 
 
+@pytest.mark.parametrize("wall", ["south", "north", "east", "west"])
+def test_standard_film_marker_axes_match_window_on_all_walls(client: TestClient, wall: str) -> None:
+    import numpy as np
+
+    space = {
+        "id": "standard_film",
+        "building": "B",
+        "floor": "1F",
+        "name": "Room",
+        "width": 6.0,
+        "depth": 5.0,
+        "height": 3.0,
+        "zone": "z",
+        "zones": ["z"],
+        "source": "manual",
+        "revision": 1,
+        "site": {
+            "latitude": 37.5,
+            "longitude": 127.0,
+            "timezone": "Asia/Seoul",
+            "northConfirmed": True,
+        },
+        "windowDimensions": {"width": 1.0, "height": 1.0, "wall": wall, "offset": 2.0, "sill": 0.8},
+        "furniture": [],
+        "regions": [],
+    }
+    created = client.post("/api/ui/spaces", json=space)
+    assert created.status_code == 201, created.text
+    scene_id = created.json()["serverSceneId"]
+    paired = client.post(f"/api/scenes/{scene_id}/marker-pairing", json={"code_id": 0})
+    assert paired.status_code == 200, paired.text
+    scene = client.get(f"/api/scenes/{scene_id}").json()
+    marker, window = scene["markers"][0], scene["windows"][0]
+    matrix = np.array(marker["T_ENU_marker"]).reshape(4, 4)
+    assert marker["side_length_m"] == 0.6
+    assert (marker["start_row"], marker["start_col"]) == (2, 2)
+    assert matrix[:3, 0] == pytest.approx(window["u_axis"])
+    assert matrix[:3, 1] == pytest.approx(window["v_axis"])
+    assert matrix[:3, 2] == pytest.approx(window["inward_normal"])
+    expected = (
+        np.array(window["vertices_m"][0])
+        + 0.5 * np.array(window["u_axis"])
+        + 0.5 * np.array(window["v_axis"])
+    )
+    assert matrix[:3, 3] == pytest.approx(expected)
+
+
 def test_nonexistent_scene_returns_404(client: TestClient) -> None:
     non_existent = "scene_does_not_exist_999"
     assert client.get(f"/api/scenes/{non_existent}/film-state").status_code == 404
