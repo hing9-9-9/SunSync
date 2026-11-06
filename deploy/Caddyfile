@@ -1,0 +1,33 @@
+# Copy to /etc/caddy/Caddyfile and replace YOUR_NAME, YOUR_USER and YOUR_PASSWORD_HASH.
+# Create the hash with: caddy hash-password
+YOUR_NAME.duckdns.org {
+	encode zstd gzip
+
+	# Keeps the site closed until the Google login (#105) ships; remove this block then.
+	basic_auth {
+		YOUR_USER YOUR_PASSWORD_HASH
+	}
+
+	# The measurement server accepts at most 16 MB per request.
+	request_body {
+		max_size 20MB
+	}
+
+	handle /api/* {
+		reverse_proxy 127.0.0.1:8000
+	}
+
+	# The prefix is removed: the measurement server serves /v1/... and /health.
+	handle_path /measure/* {
+		reverse_proxy 127.0.0.1:8001
+	}
+
+	handle {
+		root * /var/www/sunsync
+		# A new deployment must reach phones at once, so the app shell is never cached.
+		@shell path / /index.html /sw.js
+		header @shell Cache-Control "no-cache"
+		try_files {path} /index.html
+		file_server
+	}
+}
