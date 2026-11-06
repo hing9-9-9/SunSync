@@ -82,6 +82,8 @@ It fast-forwards to `origin/main`, installs the packages, builds the web app, co
 |---|---|
 | Services are running | `systemctl status sunsync-api sunsync-measure` |
 | Timers are set | `systemctl list-timers 'sunsync-*'` |
+| Landing page is public | Open `https://YOUR_NAME.duckdns.org` in a private window: the page opens without a password |
+| Data is locked | `curl -i https://YOUR_NAME.duckdns.org/api/health` returns 401 |
 | API answers | `curl -u USER:PASSWORD https://YOUR_NAME.duckdns.org/api/health` |
 | Measurement server answers | `curl -u USER:PASSWORD https://YOUR_NAME.duckdns.org/measure/health` |
 | Forecast worker works | `sudo systemctl start sunsync-worker.service && journalctl -u sunsync-worker -n 5` |
@@ -106,7 +108,7 @@ It fast-forwards to `origin/main`, installs the packages, builds the web app, co
 
 - **Photos are not stored.** The measurement server receives each photo as base64 inside the request, uses it in memory and returns only the detected markers; no code writes it to disk. Requests are limited to 16 MB by the server and 20 MB by Caddy.
 - **Forecast worker.** The API works without it (it falls back to the clear-sky value), but the forecast comparison needs it. It runs once an hour, only for the building locations saved in spaces, and calls Open-Meteo, so the server needs outbound internet access.
-- **Basic auth** in the `Caddyfile` closes the site until the Google login ships. A browser may fetch the web app manifest without the password, which can stop the phone from offering to install the app while basic auth is on; in that case remove the block and share the address only inside the team.
+- **Basic auth** in the `Caddyfile` locks only the data (`/api` and `/measure`) until the Google login ships. The web app files stay public, so the landing page opens without a password and the phone can load the manifest and install the app. The browser asks for the password when the app first requests data; whether the app handles that prompt cleanly has to be checked on the server. If it does not, move `import locked` to the whole site block.
 - **Remove the server after the last demo (12/11)**: delete the instance and the public IP in the AWS console and download a last backup first. Set an AWS budget alert when you create the account.
 
 ## Not verified yet

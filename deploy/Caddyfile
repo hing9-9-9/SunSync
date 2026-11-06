@@ -1,12 +1,17 @@
 # Copy to /etc/caddy/Caddyfile and replace YOUR_NAME, YOUR_USER and YOUR_PASSWORD_HASH.
 # Create the hash with: caddy hash-password
-YOUR_NAME.duckdns.org {
-	encode zstd gzip
 
-	# Keeps the site closed until the Google login (#105) ships; remove this block then.
+# Keeps the data closed until the Google login (#105) ships; remove "import locked" then.
+# Only /api and /measure are locked. The web app files stay public (they are public on GitHub
+# too), so the landing page opens and the phone can load the manifest and install the app.
+(locked) {
 	basic_auth {
 		YOUR_USER YOUR_PASSWORD_HASH
 	}
+}
+
+YOUR_NAME.duckdns.org {
+	encode zstd gzip
 
 	# The measurement server accepts at most 16 MB per request.
 	request_body {
@@ -14,11 +19,13 @@ YOUR_NAME.duckdns.org {
 	}
 
 	handle /api/* {
+		import locked
 		reverse_proxy 127.0.0.1:8000
 	}
 
 	# The prefix is removed: the measurement server serves /v1/... and /health.
 	handle_path /measure/* {
+		import locked
 		reverse_proxy 127.0.0.1:8001
 	}
 
