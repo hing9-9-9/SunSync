@@ -10,7 +10,7 @@ phone / PC --https--> Caddy (443)
   every hour: forecast worker --> same database file
 ```
 
-Why https: the QR code that opens the phone app is only shown for an `https` address that is not `localhost`, and phone browsers usually allow the camera only on `https`.
+Why https: phone browsers usually allow the camera only on `https`, and the QR code that opens the phone app from the PC is only shown for an `https` address that is not `localhost`. The phone app is a full client of its own: it can be opened directly at this address and used from login to measurement, and the QR code is only a shortcut that continues a space started on the PC.
 
 ## Layout on the server
 
@@ -87,7 +87,15 @@ It fast-forwards to `origin/main`, installs the packages, builds the web app, co
 | Forecast worker works | `sudo systemctl start sunsync-worker.service && journalctl -u sunsync-worker -n 5` |
 | Backup works | `sudo systemctl start sunsync-backup.service && ls /var/lib/sunsync/backups` |
 | Survives a reboot | `sudo reboot`, then open the address again |
-| Phone | Open the address on a phone, create a space on the PC, press "Capture on phone" and scan the QR code |
+| Phone, direct | Open the address on a phone and use the app from creating a space to the measurement result |
+| Phone, QR | Create a space on the PC, press "Capture on phone" and scan the QR code |
+
+## Before a demo
+
+- **Print the 4-marker board at its real size** (four markers, IDs 7 to 10, 24 cm markers with 4 cm gaps as the team currently uses; that is about 52 cm on each side, larger than A3, so confirm the size with whoever prints it) and stick it on the window. The measurement server accepts only this board.
+- **Prepare each phone camera once** in the app under "더보기" (about 12 photos of the board). The result is saved in that phone's browser for this address only, so it has to be repeated when the address changes, in another browser, in the installed app if it was done in the browser, or after the browser data is cleared.
+- Allow the camera when the browser asks.
+- Do the whole flow once on every phone that will be used, with the real address, a day before the demo (code freeze: 11/19 and 12/10).
 
 ## Backup and logs
 
