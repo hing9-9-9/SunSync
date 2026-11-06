@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { WebLoginGoogleStep } from "./WebLoginStep";
 import NumberField from "./NumberField";
 import FurnitureTable from "./FurnitureTable";
@@ -153,9 +153,12 @@ function App() {
     sunpathResult,
   } = useSpaceApp();
   const [loginStep, setLoginStep] = useState<"google" | "details">("google");
-  useEffect(() => {
+  // Every time the login dialog opens it starts at the Google step (reset while rendering, so no stale frame).
+  const [loginOpen, setLoginOpen] = useState(false);
+  if ((modal === "login") !== loginOpen) {
+    setLoginOpen(modal === "login");
     if (modal === "login") setLoginStep("google");
-  }, [modal]);
+  }
   return (
     <>
       <div

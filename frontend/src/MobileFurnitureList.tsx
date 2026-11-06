@@ -98,16 +98,9 @@ export default function MobileFurnitureList({
                 )}
               </span>
               <span className="mobile-furniture-grades">
-                {!opensSettings && shownGrades.map(g => (
+                {shownGrades.map(g => (
                   <span key={g} className={`furniture-grade grade-${g}`}>{g}</span>
                 ))}
-                {opensSettings && [...new Set(row.regions.map((r) => r.grade))]
-                  .sort()
-                  .map((g) => (
-                    <span key={g} className={`furniture-grade grade-${g}`}>
-                      {g}
-                    </span>
-                  ))}
                 {opensSettings && <svg
                   viewBox="0 0 20 20"
                   width="18"

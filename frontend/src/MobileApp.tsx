@@ -1080,9 +1080,9 @@ function MobileApp() {
                           if (!moved && (p.furnitureId || p.regionId)) {
                             if (p.regionId) chooseRegion(p.regionId); else chooseFurniture(p.furnitureId!);
                             openSettings();
-                          } else if (tool === "region" && moved) openSettings();
+                          } else if (tool === "region" && moved && !p.furnitureId && !p.regionId) openSettings();
                         }}
-                        onKeyUpCapture={e => { if (e.key === "Enter" || e.key === " ") openSettings(); }}>
+                        onKeyUpCapture={e => { if ((e.key === "Enter" || e.key === " ") && (e.target as Element).closest('[role="button"]')) openSettings(); }}>
                         <Card className="plan-card">{plan}</Card>
 
                       </div>
