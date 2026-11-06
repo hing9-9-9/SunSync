@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
 # Deploys the latest main on the server. Run as root: sudo /opt/sunsync/deploy/update.sh
+# To try another branch before it is merged: sudo env SUNSYNC_BRANCH=feat/deploy-aws /opt/sunsync/deploy/update.sh
 set -euo pipefail
 
 ROOT=/opt/sunsync
 WEB=/var/www/sunsync
+BRANCH=${SUNSYNC_BRANCH:-main}
 
 cd "$ROOT"
-git fetch origin main
-git merge --ff-only origin/main
+git fetch origin "$BRANCH"
+git checkout "$BRANCH"
+git merge --ff-only "origin/$BRANCH"
 
 "$ROOT/.venv/bin/pip" install --quiet -r requirements.txt -e "measure/registration-core[api]"
 

@@ -33,6 +33,16 @@ The steps assume Ubuntu 24.04 (Python 3.12). The project needs Python 3.11 or ne
    sudo apt install -y git rsync python3-venv python3-pip curl libgl1 libglib2.0-0
    ```
 
+   On a 2 GB server add swap first, so that the install and the web build do not run out of memory:
+
+   ```bash
+   sudo fallocate -l 2G /swapfile
+   sudo chmod 600 /swapfile
+   sudo mkswap /swapfile
+   sudo swapon /swapfile
+   echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+   ```
+
 2. **Node 22** (the web app is built on the server; check with `node -v`) and **Caddy**: follow https://nodejs.org/en/download and https://caddyserver.com/docs/install#debian-ubuntu-raspbian.
 
 3. **User, folders, code.**
@@ -41,7 +51,7 @@ The steps assume Ubuntu 24.04 (Python 3.12). The project needs Python 3.11 or ne
    sudo useradd --system --no-create-home --shell /usr/sbin/nologin sunsync
    sudo mkdir -p /etc/sunsync /var/lib/sunsync /var/www/sunsync
    sudo chown sunsync:sunsync /var/lib/sunsync
-   sudo git clone https://github.com/hing9-9-9/SunSync.git /opt/sunsync
+   sudo git clone https://github.com/hing9-9-9/SunSync.git /opt/sunsync   # before the pull request is merged add: --branch feat/deploy-aws
    sudo python3 -m venv /opt/sunsync/.venv
    ```
 
@@ -54,6 +64,7 @@ The steps assume Ubuntu 24.04 (Python 3.12). The project needs Python 3.11 or ne
    sudo systemctl daemon-reload
    sudo systemctl enable sunsync-api sunsync-measure sunsync-worker.timer sunsync-backup.timer
    sudo /opt/sunsync/deploy/update.sh      # installs, builds the web app and starts the services
+   # before the pull request is merged: sudo env SUNSYNC_BRANCH=feat/deploy-aws /opt/sunsync/deploy/update.sh
    sudo systemctl start sunsync-worker.timer sunsync-backup.timer
    ```
 
@@ -63,6 +74,7 @@ The steps assume Ubuntu 24.04 (Python 3.12). The project needs Python 3.11 or ne
    sudo cp /opt/sunsync/deploy/Caddyfile /etc/caddy/Caddyfile
    caddy hash-password                      # prints the hash for YOUR_PASSWORD_HASH
    sudo nano /etc/caddy/Caddyfile           # set YOUR_NAME, YOUR_USER, YOUR_PASSWORD_HASH
+   caddy validate --config /etc/caddy/Caddyfile
    sudo systemctl reload caddy
    ```
 
