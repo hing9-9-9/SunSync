@@ -230,7 +230,8 @@ export function placeCapturedFurniture(
     return f;
   });
 }
-export function regionForFurniture(f: Furniture): Region {
+// New furniture starts at grade D (no extra blocking): every piece shows a grade, raised to A–C when needed.
+export function regionForFurniture(f: Furniture, grade: Region["grade"] = "D"): Region {
   return {
     id: uid(),
     name: `${f.name} 보호 영역`,
@@ -243,8 +244,13 @@ export function regionForFurniture(f: Furniture): Region {
     face: "남쪽 전면",
     bottom: 0,
     top: f.height,
-    grade: "A",
+    grade,
   };
+}
+/** Gives each listed furniture without a region its default grade-D region. */
+export function withDefaultRegions(s: Space, furniture: Furniture[]): Region[] {
+  const hosted = new Set(s.regions.map((r) => r.furnitureId));
+  return [...s.regions, ...furniture.filter((f) => !hosted.has(f.id)).map((f) => regionForFurniture(f))];
 }
 export function validateSpace(s: Space): string | null {
   if (
@@ -426,4 +432,21 @@ export function removeZone(space: Space, zone: string): Space {
     regions: space.regions.filter((item) => item.zone !== zone),
     revision: space.revision + 1,
   };
+}
+
+/** Furniture lists read A → D (a piece takes its strictest grade; none counts as D), then by name. */
+export function byGradeThenName<T extends { name: string; regions: Pick<Region, "grade">[] }>(rows: T[]): T[] {
+  const rank = (row: T) => Math.min(...row.regions.map((r) => "ABCD".indexOf(r.grade)), 3);
+  return [...rows].sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name, "ko", { numeric: true }));
+}
+
+/** Rows per grade as the furniture lists show them: each piece once at its strictest grade (none = D), plus freely drawn areas. */
+export function gradeCounts(space: Pick<Space, "furniture" | "regions">): Record<Grade, number> {
+  const counts: Record<Grade, number> = { A: 0, B: 0, C: 0, D: 0 };
+  for (const f of space.furniture) {
+    const own = space.regions.filter((r) => r.furnitureId === f.id);
+    counts["ABCD"[Math.min(...own.map((r) => "ABCD".indexOf(r.grade)), 3)] as Grade]++;
+  }
+  for (const r of space.regions) if (!r.furnitureId) counts[r.grade]++;
+  return counts;
 }

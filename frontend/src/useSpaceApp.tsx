@@ -10,7 +10,7 @@ import { useEffect, useCallback, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { editorExample, exampleState } from "./exampleSpace";
 import { markInvalidFields } from "./formIssues";
-import { saveErrorMessage, syncStatus, uploadLocalSpaces } from "./spaceSync";
+import { saveErrorMessage } from "./spaceSync";
 import Plan from "./Plan";
 import {
   blankSpace,
@@ -19,6 +19,7 @@ import {
   readState,
   resolveWindow,
   regionForFurniture,
+  withDefaultRegions,
   removeZone,
   STORAGE_KEY,
   uid,
@@ -342,23 +343,9 @@ export function useSpaceApp() {
   const rememberQrReturn = (next: Page) => {
     qrReturnPage.current = next;
   };
-  // Every space belongs on the server: spaces left only on this device are uploaded once it is reachable.
-  const [syncFailed, setSyncFailed] = useState<string[]>([]);
-  const uploading = useRef(false);
-  const pendingUploads = spaces.filter((s) => syncStatus(s) === "pending" && !syncFailed.includes(s.id));
-  useEffect(() => {
-    if (editorExample || serverState !== "online" || !pendingUploads.length || uploading.current) return;
-    uploading.current = true;
-    void uploadLocalSpaces(pendingUploads).then(({ saved, failed }) => {
-      uploading.current = false;
-      if (saved.length) {
-        setSpaces((current) => saved.reduce(upsertSpace, current));
-        setToast(`이 기기에만 있던 공간 ${saved.length}개를 서버에 저장했습니다.`);
-      }
-      if (failed.length) setSyncFailed((current) => [...current, ...failed]);
-    });
-  }, [serverState, pendingUploads]);
-  const retryUpload = (id: string) => setSyncFailed((current) => current.filter((x) => x !== id));
+  // Saving an editor is explicit. Never recreate server-missing spaces from a browser cache.
+  const [syncFailed] = useState<string[]>([]);
+  const retryUpload = () => { void refreshServer(); };
   const active = spaces.find((s) => s.id === activeId) ?? spaces[0];
   const editing = [
     "register",
@@ -1101,7 +1088,7 @@ export function useSpaceApp() {
       }
       const added = current.furniture.filter((f) => !space.furniture.some((o) => o.id === f.id));
       setSpaces((all) => upsertSpace(all, current));
-      setDraft(current);
+      setDraft({ ...current, regions: withDefaultRegions(current, added) });
       setSelectedFurniture(added[0]?.id ?? null);
       setSelectedRegion(null);
       setAddingByQr(false);
@@ -1131,9 +1118,10 @@ export function useSpaceApp() {
     const measured = placeCapturedFurniture(draft, items, kept);
     change({
       furniture: [...kept, ...measured],
-      regions: addingByQr
-        ? draft.regions
-        : draft.regions.filter((r) => r.zone !== draft.zone),
+      regions: withDefaultRegions(
+        { ...draft, regions: addingByQr ? draft.regions : draft.regions.filter((r) => r.zone !== draft.zone) },
+        measured,
+      ),
       source: "sample",
     });
     setSelectedFurniture(measured[0].id);
@@ -1159,9 +1147,10 @@ export function useSpaceApp() {
       depth: Math.min(0.6, draft.depth),
       height: Math.min(1.8, draft.height),
     };
-    change({ furniture: [...draft.furniture, f] });
+    const regions = withDefaultRegions(draft, [f]);
+    change({ furniture: [...draft.furniture, f], regions });
     setSelectedFurniture(f.id);
-    setSelectedRegion(null);
+    setSelectedRegion(regions.at(-1)!.id);
   }
   function addRegion() {
     if (!draft) return;
@@ -1253,6 +1242,7 @@ export function useSpaceApp() {
   }
   const plan = space && (
     <Plan
+      modeled={page === "review" || page === "protect" || (isApp && page === "detail")}
       space={space}
       selectedFurniture={selectedFurniture}
       selectedRegion={selectedRegion}
@@ -1316,9 +1306,7 @@ export function useSpaceApp() {
           : <button type="button" className="primary" onClick={confirmReview}>확인하고 보호 영역 지정</button>
         : page === "protect" && draft
           ? <button type="button" className="primary" disabled={saving || !!draftWarning} onClick={save}>{saving ? "저장 중…" : "보호 영역 저장"}</button>
-          : page === "detail" && active
-            ? <button type="button" className="primary" onClick={() => editSpace(active)}>가구·도면·보호 영역 수정</button>
-            : null;
+          : null;
   const draftWindow = draft && resolveWindow(draft);
   function changeWindow(patch: Partial<NonNullable<Space["windowDimensions"]>>) {
     if (!draft) return;
