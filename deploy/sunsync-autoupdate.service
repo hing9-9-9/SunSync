@@ -1,0 +1,7 @@
+[Unit]
+Description=Deploy main when it has new commits (started by the timer)
+
+[Service]
+Type=oneshot
+TimeoutStartSec=30min
+ExecStart=/usr/bin/flock -n /run/sunsync-update.lock /opt/sunsync/deploy/auto-update.sh

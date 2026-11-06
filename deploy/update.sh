@@ -5,6 +5,7 @@ set -euo pipefail
 
 ROOT=/opt/sunsync
 WEB=/var/www/sunsync
+STATE=${SUNSYNC_STATE_DIR:-/var/lib/sunsync}
 BRANCH=${SUNSYNC_BRANCH:-main}
 
 cd "$ROOT"
@@ -23,4 +24,6 @@ mkdir -p "$WEB"
 rsync -a --delete frontend/dist/ "$WEB"/
 
 systemctl restart sunsync-api sunsync-measure
+# auto-update.sh compares main with this commit to see whether anything is new.
+git rev-parse HEAD > "$STATE/deployed-commit"
 echo "Deployed $(git rev-parse --short HEAD)"

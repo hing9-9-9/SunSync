@@ -88,6 +88,26 @@ sudo /opt/sunsync/deploy/update.sh
 
 It fast-forwards to `origin/main`, installs the packages, builds the web app, copies it to `/var/www/sunsync` and restarts the API and the measurement server. Do not deploy on the day before a demo (code freeze: 11/19 and 12/10).
 
+## Automatic update
+
+A timer can deploy `main` for you. Every 15 minutes it fetches `main`; when there is a commit that is not deployed yet, it takes a database backup and runs `update.sh`. Nothing happens unless the switch file `/etc/sunsync/autoupdate` exists, so it stays off until you turn it on.
+
+Turn it on (once):
+
+```bash
+sudo cp /opt/sunsync/deploy/sunsync-autoupdate.service /opt/sunsync/deploy/sunsync-autoupdate.timer /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo touch /etc/sunsync/autoupdate
+sudo systemctl enable --now sunsync-autoupdate.timer
+```
+
+- **Freeze** (before a demo; code freeze on 11/19 and 12/10): `sudo rm /etc/sunsync/autoupdate`. To resume: `sudo touch /etc/sunsync/autoupdate`.
+- **Check:** `systemctl list-timers 'sunsync-*'`, `sudo journalctl -u sunsync-autoupdate -n 30 --no-pager`, and `cat /var/lib/sunsync/deployed-commit` for the commit that runs now.
+- **When a deployment fails:** the running services are not restarted, the commit is written to `/var/lib/sunsync/failed-commit` and it is not tried again. Fix the cause and then either merge a new commit or remove that file to try the same commit again.
+- A merged pull request is deployed within about 15 minutes, so merge only when the checks pass.
+- Turn the switch off while you try another branch on the server; otherwise the server is switched back to `main`.
+- `/opt/sunsync` on the server must have no local changes.
+
 ## Check that it works
 
 | Check | How |
