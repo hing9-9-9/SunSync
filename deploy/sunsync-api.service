@@ -1,0 +1,17 @@
+[Unit]
+Description=SunSync API
+After=network.target
+
+[Service]
+User=sunsync
+WorkingDirectory=/opt/sunsync
+EnvironmentFile=/etc/sunsync/sunsync.env
+Environment=PYTHONPATH=/opt/sunsync/backend:/opt/sunsync PYTHONDONTWRITEBYTECODE=1
+ExecStart=/opt/sunsync/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
+Restart=on-failure
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+
+[Install]
+WantedBy=multi-user.target

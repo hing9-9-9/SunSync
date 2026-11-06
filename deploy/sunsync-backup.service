@@ -1,0 +1,6 @@
+[Unit]
+Description=Back up the SunSync database
+
+[Service]
+Type=oneshot
+ExecStart=/opt/sunsync/deploy/backup.sh
