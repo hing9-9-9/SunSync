@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
+import MobileEditorSheet from "./MobileEditorSheet";
+import MobileFurnitureList from "./MobileFurnitureList";
 import NumberField from "./NumberField";
 import { WorkspaceNavigation, WorkspaceHome, WorkspaceCards } from "./WorkspaceDesign";
 import { DeviceHandoff } from "./DeviceHandoff";
@@ -7,15 +9,17 @@ import { FilmGrid, ShadingTimeControl } from "./ShadingPlan";
 import { applyShadingTime, formatMinute } from "./sunlight";
 import SpatialCapture, { CameraSetup } from "./SpatialCapture";
 import { savedCamera } from "./measureApi";
+
 import {
   defaultShadingTime,
   furnitureTypes,
+  gradeCounts,
   grades,
   isWidthWall,
   margin,
   wallLength,
-  resolveWindow,
   upsertSpace,
+  resolveWindow,
   walls,
 } from "./model";
 import type {
@@ -142,8 +146,6 @@ function MobileApp() {
     finishCapture,
     addFurniture,
     addManualFurniture,
-    addRegion,
-    confirmReview,
     registerSubmit,
     plan,
     navItems,
@@ -162,6 +164,13 @@ function MobileApp() {
     deleting,
     setToast,
   } = useSpaceApp();
+  const [settings, setSettings] = useState({ page, open: false });
+  if (settings.page !== page) setSettings({ page, open: false });
+  const settingsOpen = settings.page === page && settings.open;
+  const openSettings = () => setSettings({ page, open: true });
+  const closeSettings = () => setSettings({ page, open: false });
+  const editorPointer = useRef<{x:number;y:number;furnitureId:string|null;regionId:string|null} | null>(null);
+  const cameraTools = import.meta.env.DEV && new URLSearchParams(location.search).get("tools") === "camera";
   // WEB APP TEST ONLY: camera setup state for 더보기 › 카메라 준비.
   const [cameraSetupOpen, setCameraSetupOpen] = useState(false);
   const [cameraReady, setCameraReady] = useState(() => !!savedCamera());
@@ -281,7 +290,7 @@ function MobileApp() {
                               <span className="status-pill todo">보호 설정 전</span>
                             )}
                             <small>보호 영역 {s.regions.filter((r) => r.grade !== "D").length}개</small>
-                            <SyncBadge space={s} />
+                            {!isApp && <SyncBadge space={s} />}
                           </span>
                         </span>
                         <span aria-hidden="true">›</span>
@@ -471,7 +480,7 @@ function MobileApp() {
                       ? "공간 정보 수정"
                       : page === "detail" && active ? active.name : titles[page]}
                   </h1>
-                  {page === "detail" && active && <p className="page-subtitle">{active.building} {active.floor} <span>공간 현황</span></p>}
+                  {page === "detail" && active && <p className="page-subtitle">{active.building} {active.floor} </p>}
                 </div>
                 {(isApp ? page === "spaces" : ["home", "spaces"].includes(page)) && (
                   <button
@@ -525,7 +534,7 @@ function MobileApp() {
                   )}
 
                   {/* App home stays quiet while the server is fine; the status shows when it needs attention. */}
-                  {(!isApp || page === "spaces" || serverState !== "online") && (
+                  {(!isApp || serverState !== "online") && (
                   <div className="server-sync-row" data-state={serverState}>
                     <span>
                       {serverState === "loading"
@@ -938,7 +947,7 @@ function MobileApp() {
                   <div>
                     <div className="capture-intro">
                       <h2>{addingByQr ? "추가할 가구" : "촬영할 가구"}</h2>
-                      <p className="step-label">2/3단계</p>
+                      {!addingByQr && <p className="step-label">2/3단계</p>}
                     </div>
                     {zoneTabs}
                     {draft.windowDimensions?.width &&
@@ -968,7 +977,6 @@ function MobileApp() {
                     <h3>촬영 순서</h3>
                     <ol className="instruction-list">
                       <li>창문 규격 확인 및 필름의 QR 마커 표시</li>
-                      <li>(웹앱 테스트) 더보기 › 카메라 준비를 휴대폰마다 한 번 완료</li>
                       <li>촬영할 가구의 이름과 상판 형태 선택</li>
                       <li>형태 도면의 P1부터 순서대로 이동하며 지점마다 3장 촬영</li>
                       <li>재촬영 안내가 나오면 안내대로 같은 지점에서 다시 촬영</li>
@@ -1030,11 +1038,11 @@ function MobileApp() {
                       </button>
                     </div>
                   </div>}
-                  <p className="step-label editor-step-label">
+                  {!draft.serverRevision && <p className="step-label editor-step-label">
                     {page === "review"
                       ? "3/3단계, 가구 위치와 치수 확인"
                       : "3/3단계, 보호 영역과 높이 설정"}
-                  </p>
+                  </p>}
                   <div className="workspace editor-workspace">
                     <div className="workspace-main">
                       {zoneTabs}
@@ -1043,12 +1051,14 @@ function MobileApp() {
                           <>
                             <button
                               className={`chip ${tool === "furniture" ? "active" : ""}`}
+                              aria-pressed={tool === "furniture"}
                               onClick={() => setTool("furniture")}
                             >
                               가구 선택
                             </button>
                             <button
                               className={`chip ${tool === "region" ? "active" : ""}`}
+                              aria-pressed={tool === "region"}
                               onClick={() => setTool("region")}
                             >
                               영역 그리기
@@ -1056,76 +1066,37 @@ function MobileApp() {
                           </>
                         )}
                       </div>
-                      <Card className="plan-card">{plan}</Card>
-                      <div className="item-tabs" aria-label="측정한 가구">
-                        {draft.furniture
-                          .filter((f) => f.zone === draft.zone)
-                          .map((f) => (
-                            <button
-                              key={f.id}
-                              aria-pressed={selectedFurniture === f.id}
-                              className={
-                                selectedFurniture === f.id ? "active" : ""
-                              }
-                              onClick={() => chooseFurniture(f.id)}
-                            >
-                              {f.name}
-                              {f.type && <small>, {furnitureTypes[f.type]}</small>}
-                            </button>
-                          ))}
-                        <button className="item-add" onClick={addFurniture}>＋ 가구 추가</button>
+                      <div className="mobile-plan-interaction"
+                        onPointerDownCapture={e => {
+                          const g=(e.target as Element).closest('[role="button"]');
+                          editorPointer.current = {x:e.clientX,y:e.clientY,
+                            furnitureId:g?.querySelector('[data-furniture]')?.getAttribute('data-furniture') ?? null,
+                            regionId:g?.querySelector('[data-region]')?.getAttribute('data-region') ?? null};
+                        }}
+                        onPointerUpCapture={e => {
+                          const p=editorPointer.current;
+                          if (!p) return;
+                          const moved=Math.hypot(e.clientX-p.x,e.clientY-p.y)>=6;
+                          if (!moved && (p.furnitureId || p.regionId)) {
+                            if (p.regionId) chooseRegion(p.regionId); else chooseFurniture(p.furnitureId!);
+                            openSettings();
+                          } else if (tool === "region" && moved) openSettings();
+                        }}
+                        onKeyUpCapture={e => { if (e.key === "Enter" || e.key === " ") openSettings(); }}>
+                        <Card className="plan-card">{plan}</Card>
+
                       </div>
-                      {page === "protect" && (
-                        <Card className="shading-time-card">
-                          <ShadingTimeControl
-                            space={draft}
-                            value={draft.shadingSchedule ?? defaultShadingTime}
-                            onChange={(shadingSchedule) => change({ shadingSchedule })}
-                            sunSchedule={sunSchedule}
-                            hour={hour}
-                          />
-                        </Card>
-                      )}
-                      {page === "protect" && (
-                        <div className="region-list">
-                          <div className="section-row">
-                            <h3>보호 영역</h3>
-                            <button className="text-button" onClick={addRegion}>
-                              ＋ 영역 추가
-                            </button>
-                          </div>
-                          {draft.regions.length === 0 && (
-                            <p className="muted small">
-                              가구를 선택하거나 도면에 보호 영역을 그리세요.
-                            </p>
-                          )}
-                          {draft.regions
-                            .filter((r) => r.zone === draft.zone)
-                            .map((r) => (
-                              <button
-                                aria-pressed={r.id === selectedRegion}
-                          className={`row ${r.id === selectedRegion ? "selected" : ""}`}
-                                key={r.id}
-                                onClick={() => chooseRegion(r.id)}
-                              >
-                                <span>
-                                  {r.name}
-                                  <small>
-                                    {r.face}, {r.bottom}~{r.top} m
-                                  </small>
-                                </span>
-                                <span className="grade-summary">
-                                  {r.grade}{isApp ? ": " : " : "}{grades[r.grade]}
-                                </span>
-                              </button>
-                            ))}
-                        </div>
-                      )}
+                      {page === "protect" && <Card className="shading-time-card">
+                        <ShadingTimeControl compact space={draft} value={draft.shadingSchedule ?? defaultShadingTime}
+                          onChange={shadingSchedule=>change({shadingSchedule})} sunSchedule={sunSchedule} hour={hour} />
+                      </Card>}
+                      <MobileFurnitureList opensSettings space={draft} selected={selectedFurniture} selectedRegion={selectedRegion}
+                        schedule={page === "protect" ? sunSchedule : undefined}
+                        onFurniture={id=>{chooseFurniture(id);openSettings();}}
+                        onRegion={id=>{chooseRegion(id);openSettings();}} onAdd={addFurniture} />
                     </div>
-                    <aside className="inspector">
-                      <h2>
-                        {region ? "선택한 보호 영역 설정" : "선택한 가구 설정"}
-                      </h2>
+                    <MobileEditorSheet open={settingsOpen && !!(furniture || region)} title={furniture?.name ?? region?.name ?? "가구 설정"} onClose={closeSettings}>
+                      {draftWarning && <p className="error" role="alert">{draftWarning}</p>}
                       {furniture ? (
                         <>
                           <label className="field">
@@ -1158,18 +1129,12 @@ function MobileApp() {
                               ))}
                             </select>
                           </label>
-                          <p className="muted small">
-                            {draft.source === "sample"
-                              ? "가구 종류별 기본 치수예요. 실제 치수로 고쳐 주세요."
-                              : "직접 입력한 치수예요."}{" "}
-                            단위는 m입니다.
-                          </p>
                           <div className="dimensions">
                             {(["width", "depth", "height"] as const).map(
                               (key, i) => (
                                 <NumberField
                                   key={key}
-                                  label={["가로", "세로", "높이"][i]}
+                                  label={["가로 (m)", "세로 (m)", "높이 (m)"][i]}
                                   value={furniture[key]}
                                   min={0.01}
                                   onChange={(n) =>
@@ -1181,14 +1146,14 @@ function MobileApp() {
                           </div>
                           <div className="two-fields">
                             <NumberField
-                              label="가구 X 위치"
+                              label="서쪽 벽에서 (m)"
                               value={furniture.x}
                               onChange={(x) =>
                                 changeFurniture({ ...furniture, x })
                               }
                             />
                             <NumberField
-                              label="가구 Y 위치"
+                              label="북쪽 벽에서 (m)"
                               value={furniture.y}
                               onChange={(y) =>
                                 changeFurniture({ ...furniture, y })
@@ -1241,7 +1206,7 @@ function MobileApp() {
                       )}
                       {page === "protect" && region && (
                         <>
-                          <div className="divider" />
+                          {furniture && <div className="divider" />}
                           <label className="field">
                             <span>보호 영역 이름</span>
                             <input
@@ -1336,60 +1301,9 @@ function MobileApp() {
                           </div>
                         </>
                       )}
-                      <div className="actions">
-                        {page === "review" ? (
-                          <>
-                            {!isApp && (
-                            <button className="primary" onClick={confirmReview}>
-                              확인하고 보호 영역 지정
-                            </button>
-                            )}
-                            <button
-                              className="secondary"
-                              onClick={() => setPage("capture")}
-                            >
-                              다시 측정
-                            </button>
-                            {isApp && (
-                              <button
-                                className="secondary"
-                                onClick={() => navigate(spaces.some((s) => s.id === draft.id) ? "detail" : "spaces")}
-                              >
-                                닫기
-                              </button>
-                            )}
-                          </>
-                        ) : (
-                          <>
-                            {!isApp && (
-                            <button
-                              className="primary save-protection"
-                              onClick={save}
-                              disabled={saving}
-                            >
-                              보호 영역 저장
-                            </button>
-                            )}
-                            {conflict && (
-                              <button
-                                className="secondary"
-                                onClick={() => setModal("reload-server")}
-                              >
-                                서버의 최신 내용 불러오기
-                              </button>
-                            )}
-                            {isApp && (
-                              <button
-                                className="secondary"
-                                onClick={() => navigate(spaces.some((s) => s.id === draft.id) ? "detail" : "spaces")}
-                              >
-                                닫기
-                              </button>
-                            )}
-                          </>
-                        )}
-                      </div>
-                    </aside>
+                      {conflict && <button className="secondary" onClick={()=>setModal("reload-server")}>최신 내용 불러오기</button>}
+                      {page === "review" && <button className="secondary" onClick={()=>{closeSettings();setPage("capture");}}>다시 측정</button>}
+                    </MobileEditorSheet>
                   </div>
                 </>
               )}
@@ -1404,8 +1318,8 @@ function MobileApp() {
                       <div>
                         <strong>
                           {activeRegionCount
-                            ? "보호 영역 설정 완료"
-                            : "보호 영역 설정 전"}
+                            ? "보호 설정 완료"
+                            : "보호 설정 전"}
                         </strong>
                         <p className="muted small">
                           {active.floor} {active.zone}, 보호 영역{" "}
@@ -1414,28 +1328,22 @@ function MobileApp() {
                       </div>
                       <span className="pill">{predictionPill}</span>
                     </Card>
-                    <Card className="plan-card">{plan}</Card>
-                    <div className="item-tabs">
-                      {active.furniture
-                        .filter((f) => f.zone === active.zone)
-                        .map((f) => (
-                          <button
-                            className={
-                              selectedFurniture === f.id ? "active" : ""
-                            }
-                            key={f.id}
-                            onClick={() => chooseFurniture(f.id)}
-                          >
-                            {f.name}
-                          </button>
-                        ))}
-                    </div>
-                    <Card>
+                    <Card className="plan-card detail-plan-card">
+                      {plan}
+                      {(furniture || region) && <div className="plan-selection-summary" aria-live="polite">
+                        <strong>{furniture?.name ?? region?.name}</strong>
+                        {furniture && <p className="selection-dimensions">{furniture.width} × {furniture.depth} × {furniture.height} m</p>}
+                        {region && <div className="selection-protection">
+                          <p>{region.name} · {region.bottom}–{region.top} m</p>
+                          <p>{region.grade} : {grades[region.grade]}</p>
+                        </div>}
+                      </div>}
+                    </Card>
+                    {/* Right under the plan: the slider moves the sunlight on the plan and the film below. */}
+                    <Card className="detail-preview-card">
                       <div className="section-row">
-                        <h3>시간별 햇빛 위치</h3>
-                        <strong className="brand-text">
-                          {formatMinute(Math.round(hour * 60))}
-                        </strong>
+                        <h3>햇빛·필름 미리보기</h3>
+                        <strong className="brand-text">{formatMinute(Math.round(hour * 60))}</strong>
                       </div>
                       <input
                         aria-label="햇빛 확인 시각"
@@ -1453,14 +1361,9 @@ function MobileApp() {
                         <span>18:00</span>
                         <span>23:59</span>
                       </div>
-                    </Card>
-                    <Card>
-                      <div className="section-row">
-                        <h3>{filmPrediction ? "필름 차광 계획" : "필름 차광 시뮬레이션"}</h3>
-                        <strong className="brand-text">
-                          {formatMinute(Math.round(hour * 60))}
-                        </strong>
-                      </div>
+
+                      <div className="detail-film-preview">
+                        <h4>필름 차광 모습</h4>
                       {resolveWindow(active) ? (
                         <FilmGrid space={active} schedule={applyShadingTime(sunSchedule, detailShading)} hour={hour} prediction={filmPrediction} setting={detailShading} />
                       ) : (
@@ -1468,53 +1371,13 @@ function MobileApp() {
                           창문 규격을 입력하면 시각별로 가려질 필름 칸을 볼 수 있습니다.
                         </p>
                       )}
-                    </Card>
-                  </div>
-                  <aside className="inspector detail-info">
-                    <h2>{active.name}</h2>
-                    <p className="muted">
-                      {active.building} {active.floor}
-                    </p>
-                    {furniture && (
-                      <div className="summary-box">
-                        <strong>
-                          {furniture.name}
-                          {furniture.type && `, ${furnitureTypes[furniture.type]}`}
-                        </strong>
-                        <p>
-                          {furniture.width} × {furniture.depth} ×{" "}
-                          {furniture.height} m
-                        </p>
                       </div>
-                    )}
-                    <h3>설정된 보호 영역</h3>
-                    {!activeRegionCount && (
-                      <p className="muted small">
-                        설정된 보호 영역이 없습니다. 편집 화면에서 추가하세요.
-                      </p>
-                    )}
-                    {active.regions
-                      .filter((r) => r.zone === active.zone && r.grade !== "D")
-                      .map((r) => (
-                        <button
-                          key={r.id}
-                          aria-pressed={r.id === selectedRegion}
-                          className={`row ${r.id === selectedRegion ? "selected" : ""}`}
-                          onClick={() => chooseRegion(r.id)}
-                        >
-                          <span>
-                            {r.name}
-                            <small>
-                              {r.face}, {r.bottom}~{r.top} m
-                            </small>
-                          </span>
-                          <span className="grade-summary">
-                            {r.grade}{isApp ? ": " : " : "}{grades[r.grade]}
-                          </span>
-                        </button>
-                      ))}
-                    <div className="divider" />
+                    </Card>
+                    <MobileFurnitureList space={active} selected={selectedFurniture} selectedRegion={selectedRegion}
+                      onFurniture={chooseFurniture} onRegion={chooseRegion} />
+                    <Card className="detail-schedule-card">
                     <ShadingTimeControl
+                      compact
                       space={active}
                       value={detailShading}
                       onChange={setShadingEdit}
@@ -1529,36 +1392,23 @@ function MobileApp() {
                       }
                       saving={saving}
                     />
-                    <div className="detail-actions">
-                      {!isApp && (
-                        <button
-                          className="primary"
-                          onClick={() => editSpace(active)}
-                        >
-                          가구·도면·보호 영역 수정
+                    </Card>
+                    <Card className="detail-management-card">
+                      <h3>공간 관리</h3>
+                      <div className="detail-management-actions">
+                        <button className="manage-row" onClick={() => editSpace(active)}>
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4ZM13.5 6.5l4 4" /></svg><span>가구·도면·보호 영역 수정</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="m9 5 7 7-7 7" /></svg>
                         </button>
-                      )}
-                      <div className="detail-secondary">
-                        <button
-                          className="text-button"
-                          onClick={() => editSpace(active, "register")}
-                        >
-                          공간 정보 수정
+                        <button className="manage-row" onClick={() => editSpace(active, "register")}>
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="M12 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6M17.5 3.5a2.1 2.1 0 0 1 3 3L13 14l-4 1 1-4 7.5-7.5Z" /></svg><span>공간 정보 수정</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="m9 5 7 7-7 7" /></svg>
                         </button>
-                        <button className="text-button destructive-text" onClick={() => setModal("delete-space")}>
-                          공간 삭제
+                        <button className="manage-row" onClick={() => { window.open(`${location.origin}/?mode=web#/detail/${active.id}`, "_blank", "noopener"); }}>
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5H5V6h5" /></svg><span>웹에서 크게 보기</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="m9 5 7 7-7 7" /></svg>
                         </button>
                       </div>
-                      {isApp && (
-                        <button
-                          className="secondary"
-                          onClick={() => { window.open(`${location.origin}/?mode=web#/detail/${active.id}`, "_blank", "noopener"); }}
-                        >
-                          웹 페이지 이동
-                        </button>
-                      )}
-                    </div>
-                  </aside>
+                      <button className="manage-delete" onClick={() => setModal("delete-space")}>공간 삭제</button>
+                    </Card>
+                  </div>
                 </div>
               )}
               {page === "guide" && (
@@ -1628,16 +1478,18 @@ function MobileApp() {
                   >
                     <span className="account-avatar" aria-hidden="true">{account.name.slice(0, 1)}</span>
                     <span>
-                      <strong>내 계정</strong>
+                      <strong>{account.name}</strong>
                       <small>{account.email}</small>
                     </span>
-                    <span>›</span>
+                    <svg className="more-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m9 5 7 7-7 7" /></svg>
                   </button>
                   <h2 className="section-label">공간</h2>
                   <Card>
                     <button className="row" onClick={() => setPage("spaces")}>
+                      <svg className="more-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 4h16v16H4zM4 12h16M12 4v16" /></svg>
                       <span>내 공간</span>
-                      <span>{spaces.length}개 ›</span>
+                      <span className="more-value">{spaces.length}개</span>
+                      <svg className="more-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m9 5 7 7-7 7" /></svg>
                     </button>
                     <button
                       className="row"
@@ -1645,10 +1497,12 @@ function MobileApp() {
                         active ? selectSpace(active) : setPage("spaces")
                       }
                     >
+                      <svg className="more-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 7l8-4 8 4-8 4-8-4Zm0 5 8 4 8-4M4 17l8 4 8-4" /></svg>
                       <span>구역 정보</span>
-                      <span>
-                        {spaces.reduce((n, s) => n + s.zones.length, 0)}개 ›
+                      <span className="more-value">
+                        {spaces.reduce((n, s) => n + s.zones.length, 0)}개
                       </span>
+                      <svg className="more-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m9 5 7 7-7 7" /></svg>
                     </button>
                   </Card>
                   <h2 className="section-label">보호 정보</h2>
@@ -1659,32 +1513,39 @@ function MobileApp() {
                         active ? selectSpace(active) : setPage("spaces")
                       }
                     >
+                      <svg className="more-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3 5 6v5c0 4.5 3 8 7 10 4-2 7-5.5 7-10V6l-7-3Z" /></svg>
                       <span>보호 영역</span>
-                      <span>
-                        {spaces.reduce((n, s) => n + s.regions.length, 0)}개 ›
+                      <span className="more-value">
+                        {spaces.reduce((n, s) => n + s.regions.filter(r => r.grade !== "D").length, 0)}개
                       </span>
+                      <svg className="more-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m9 5 7 7-7 7" /></svg>
                     </button>
                     <button
                       className="row"
                       onClick={() => (active ? editSpace(active) : begin())}
                     >
+                      <svg className="more-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.3 6.8 19.1l1-5.8L3.5 9.2l5.9-.9L12 3Z" /></svg>
                       <span>보호 등급</span>
-                      <span>
+                      <span className="more-value">
                         {active
-                          ? [
-                              ...new Set(active.regions.map((r) => r.grade)),
-                            ].join(", ")
-                          : "미지정"}{" "}
-                        ›
+                          ? (Object.entries(gradeCounts(active)) as [Grade, number][])
+                              .filter(([, n]) => n)
+                              .map(([g]) => g)
+                              .join(", ") || "없음"
+                          : "미지정"}
                       </span>
+                      <svg className="more-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m9 5 7 7-7 7" /></svg>
                     </button>
                   </Card>
-                  <button
-                    className="row card"
-                    onClick={() => navigate("guide")}
-                  >
-                    사용 가이드 <span>›</span>
-                  </button>
+                  <h2 className="section-label">도움말</h2>
+                  <Card>
+                    <button className="row" onClick={() => navigate("guide")}>
+                      <svg className="more-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 6c-3-2-6-2-9-1v15c3-1 6-1 9 1 3-2 6-2 9-1V5c-3-1-6-1-9 1Zm0 0v15" /></svg>
+                      <span>사용 가이드</span>
+                      <svg className="more-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m9 5 7 7-7 7" /></svg>
+                    </button>
+                  </Card>
+                  {cameraTools && <>
                   {/* WEB APP TEST ONLY: phones testing in the browser need a one-time camera setup
                       (see CameraSetup in SpatialCapture.tsx). Remove with the native app. */}
                   <h2 className="section-label">웹앱 테스트</h2>
@@ -1706,6 +1567,7 @@ function MobileApp() {
                       }}
                     />
                   )}
+                  </>}
                 </div>
               )}
               {page === "account" && (
@@ -1749,7 +1611,7 @@ function MobileApp() {
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
-                    strokeWidth="1.8"
+                    strokeWidth="1.7"
                     strokeLinecap="round"
                     strokeLinejoin="round"
                   >
@@ -1912,7 +1774,7 @@ function MobileApp() {
           {modal === "add-furniture" && (
             <>
               <h2>가구 추가</h2>
-              <button className="primary" onClick={addManualFurniture}>
+              <button className="primary" onClick={()=>{addManualFurniture();openSettings();}}>
                 직접 추가하고 위치·치수 입력
               </button>
               <button

@@ -1,5 +1,7 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
+import { WebLoginGoogleStep } from "./WebLoginStep";
 import NumberField from "./NumberField";
+import FurnitureTable from "./FurnitureTable";
 import "./ReferencePreview.css";
 import "./WorkspaceDesign.css";
 import { DeviceHandoff } from "./DeviceHandoff";
@@ -28,7 +30,12 @@ import { useSpaceApp, titles } from "./useSpaceApp";
 import { clearFieldIssue } from "./formIssues";
 import { Icon, Card } from "./ShellParts";
 // The web detail plan (2D top view and 3D) is a three.js scene, loaded with the detail page only.
-const Space3DView = lazy(() => import("./Space3DView.tsx"));
+// Start fetching the 3D view at once, so the detail page rarely waits on it.
+const load3D = () => import("./Space3DView.tsx");
+void load3D();
+const Space3DView = lazy(load3D);
+// Its stylesheet loads with the page so the placeholder below has the stage's exact frame.
+import "./Space3DView.css";
 
 function App() {
   const {
@@ -44,8 +51,9 @@ function App() {
     draft,
     setDraft,
     selectedFurniture,
-    setSelectedFurniture,
     selectedRegion,
+    chooseRegion,
+    setSelectedFurniture,
     setSelectedRegion,
     tool,
     setTool,
@@ -116,7 +124,6 @@ function App() {
     change,
     changeFurniture,
     chooseFurniture,
-    chooseRegion,
     patchRegion,
     protectFurniture,
     save,
@@ -125,7 +132,6 @@ function App() {
     finishCapture,
     addFurniture,
     addManualFurniture,
-    addRegion,
     confirmReview,
     registerSubmit,
     plan,
@@ -146,6 +152,10 @@ function App() {
     predictionKey,
     sunpathResult,
   } = useSpaceApp();
+  const [loginStep, setLoginStep] = useState<"google" | "details">("google");
+  useEffect(() => {
+    if (modal === "login") setLoginStep("google");
+  }, [modal]);
   return (
     <>
       <div
@@ -701,7 +711,6 @@ function App() {
                     <h3>촬영 순서</h3>
                     <ol className="instruction-list">
                       <li>창문 규격 확인 및 필름의 QR 마커 표시</li>
-                      <li>(웹앱 테스트) 더보기 › 카메라 준비를 휴대폰마다 한 번 완료</li>
                       <li>촬영할 가구의 이름과 상판 형태 선택</li>
                       <li>형태 도면의 P1부터 순서대로 이동하며 지점마다 3장 촬영</li>
                       <li>재촬영 안내가 나오면 안내대로 같은 지점에서 다시 촬영</li>
@@ -792,27 +801,10 @@ function App() {
                         )}
                       </div>
                       <Card className="plan-card">{plan}</Card>
-                      <div className="item-tabs" aria-label="측정한 가구">
-                        {draft.furniture
-                          .filter((f) => f.zone === draft.zone)
-                          .map((f) => (
-                            <button
-                              key={f.id}
-                              aria-pressed={selectedFurniture === f.id}
-                              className={
-                                selectedFurniture === f.id ? "active" : ""
-                              }
-                              onClick={() => chooseFurniture(f.id)}
-                            >
-                              {f.name}
-                              {f.type && <small>, {furnitureTypes[f.type]}</small>}
-                            </button>
-                          ))}
-                        <button className="item-add" onClick={addFurniture}>＋ 가구 추가</button>
-                      </div>
                       {page === "protect" && (
                         <Card className="shading-time-card">
                           <ShadingTimeControl
+                            compact
                             space={draft}
                             value={draft.shadingSchedule ?? defaultShadingTime}
                             onChange={(shadingSchedule) => change({ shadingSchedule })}
@@ -821,41 +813,15 @@ function App() {
                           />
                         </Card>
                       )}
-                      {page === "protect" && (
-                        <div className="region-list">
-                          <div className="section-row">
-                            <h3>보호 영역</h3>
-                            <button className="text-button" onClick={addRegion}>
-                              ＋ 영역 추가
-                            </button>
-                          </div>
-                          {draft.regions.length === 0 && (
-                            <p className="muted small">
-                              가구를 선택하거나 도면에 보호 영역을 그리세요.
-                            </p>
-                          )}
-                          {draft.regions
-                            .filter((r) => r.zone === draft.zone)
-                            .map((r) => (
-                              <button
-                                aria-pressed={r.id === selectedRegion}
-                          className={`row ${r.id === selectedRegion ? "selected" : ""}`}
-                                key={r.id}
-                                onClick={() => chooseRegion(r.id)}
-                              >
-                                <span>
-                                  {r.name}
-                                  <small>
-                                    {r.face}, {r.bottom}~{r.top} m
-                                  </small>
-                                </span>
-                                <span className="grade-summary">
-                                  {r.grade}{isApp ? ": " : " : "}{grades[r.grade]}
-                                </span>
-                              </button>
-                            ))}
-                        </div>
-                      )}
+                      <FurnitureTable
+                        space={draft}
+                        selectedFurniture={selectedFurniture}
+                        selectedRegion={selectedRegion}
+                        schedule={page === "protect" ? sunSchedule : undefined}
+                        onFurniture={chooseFurniture}
+                        onRegion={chooseRegion}
+                        onAdd={addFurniture}
+                      />
                     </div>
                     <aside className="inspector">
                       <h2>
@@ -1131,8 +1097,9 @@ function App() {
               {page === "detail" && active && (
                 <div className="detail-3d">
                   {active.zones.length > 1 && zoneTabs}
-                  {/* The 2D plan draws while three.js loads, so the page never waits on it. */}
-                  <Suspense fallback={<Card className="plan-card">{plan}</Card>}>
+                  {/* While three.js loads, an empty stage of the same size holds the place: showing the
+                      old simple plan here flashed an outdated drawing on reload. */}
+                  <Suspense fallback={<div className="s3 s3-loading" role="status" aria-label="도면을 불러오는 중"><div className="s3-head" /><div className="s3-body"><div className="s3-stage" /></div></div>}>
                     <Space3DView
                       key={`${active.id}:${active.serverRevision ?? active.revision}:${active.zone}`}
                       space={active}
@@ -1171,27 +1138,23 @@ function App() {
                       <p className="muted small">가구 위치, 도면, 보호 영역을 바꾸거나 공간 정보를 고쳐요.</p>
                       <div className="detail-actions">
                         {!isApp && (
-                          <button className="primary" onClick={() => editSpace(active)}>
-                            가구·도면·보호 영역 수정
+                          <button className="manage-row" onClick={() => editSpace(active)}>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4ZM13.5 6.5l4 4" /></svg><span>가구·도면·보호 영역 수정</span><svg className="manage-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="m9 5 7 7-7 7" /></svg>
                           </button>
                         )}
-                        <div className="detail-secondary">
-                          <button className="text-button" onClick={() => editSpace(active, "register")}>
-                            공간 정보 수정
-                          </button>
-                          <button className="text-button destructive-text" onClick={() => setModal("delete-space")}>
-                            공간 삭제
-                          </button>
-                        </div>
+                        <button className="manage-row" onClick={() => editSpace(active, "register")}>
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="M12 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6M17.5 3.5a2.1 2.1 0 0 1 3 3L13 14l-4 1 1-4 7.5-7.5Z" /></svg><span>공간 정보 수정</span><svg className="manage-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="m9 5 7 7-7 7" /></svg>
+                        </button>
                         {isApp && (
                           <button
-                            className="secondary"
+                            className="manage-row"
                             onClick={() => { window.open(`${location.origin}/?mode=web#/detail/${active.id}`, "_blank", "noopener"); }}
                           >
-                            웹 페이지 이동
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5H5V6h5" /></svg><span>웹 페이지 이동</span><svg className="manage-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="m9 5 7 7-7 7" /></svg>
                           </button>
                         )}
                       </div>
+                      <button className="manage-delete" onClick={() => setModal("delete-space")}>공간 삭제</button>
                     </Card>
                   </div>
                 </div>
@@ -1202,7 +1165,6 @@ function App() {
                   spaces={spaces}
                   serverState={serverState}
                   onOpen={selectSpace}
-                  onEdit={editSpace}
                   onRegister={begin}
                   onGuide={() => navigate("guide")}
                   onRefresh={refreshServer}
@@ -1252,7 +1214,7 @@ function App() {
         {<AwardFooter onHome={()=>navigate("home")}/>}
         <dialog
           ref={modalRef}
-          className={modal === "login" ? "acct-login-dialog" : undefined}
+          className={modal === "login" ? "acct-login-dialog" : modal === "add-furniture" ? "furniture-add-dialog" : undefined}
           tabIndex={-1}
           onCancel={dismissModal}
           onClick={(e) => {
@@ -1282,6 +1244,10 @@ function App() {
                 </p>
                 <span className="ap-state-chip on">보호 중</span>
               </aside>
+              {loginStep === "google" ? (
+                <WebLoginGoogleStep onGoogle={() => setLoginStep("details")} onCancel={dismissModal} />
+              ) : (
+                <>
               <h2>계정 정보</h2>
               <label className="field">
                 <span>이름</span>
@@ -1316,6 +1282,8 @@ function App() {
               >
                 취소
               </button>
+                </>
+              )}
             </form>
           )}
           {modal === "delete-space" && active && (
@@ -1396,10 +1364,11 @@ function App() {
             </>
           )}
           {modal === "add-furniture" && (
-            <>
+            <div className="furniture-add-content">
               <h2>가구 추가</h2>
               <button className="primary" onClick={addManualFurniture}>
-                직접 추가하고 위치·치수 입력
+                직접 추가
+                <small>위치와 치수 입력</small>
               </button>
               <button
                 className="secondary"
@@ -1416,7 +1385,7 @@ function App() {
               <button className="text-button" onClick={dismissModal}>
                 취소
               </button>
-            </>
+            </div>
           )}
           {modal === "capture-help" && <CaptureHelp onClose={() => setModal(null)} />}
           {modal === "discard" && (

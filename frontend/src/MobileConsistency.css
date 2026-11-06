@@ -1,0 +1,665 @@
+/* Mobile reference lock: existing SunSync card/token family; grouped lists and a modal inspector.
+   Keep the 26px title, 12px cards, 44px controls, 50px main action and 64px tab bar. */
+.app.award-mobile.mode-app,
+.app.award-mobile.mode-app.has-action-bar {
+  padding-bottom: 0;
+}
+.app.award-mobile.mode-app:is(.page-home,.page-spaces,.page-guide,.page-more,.page-account,.page-capture) > main.main {
+  padding-bottom: calc(104px + env(safe-area-inset-bottom));
+}
+.app.award-mobile.mode-app:is(.page-detail,.page-register,.page-review,.page-protect) > main.main,
+.app.award-mobile.mode-app.page-capture:has(.capture-action) > main.main {
+  padding-bottom: calc(160px + env(safe-area-inset-bottom));
+}
+.app.award-mobile.mode-app .page-heading h1 {
+  padding: 0;
+}
+.app.award-mobile.mode-app .page-heading {
+  gap: 12px;
+}
+.app.award-mobile.mode-app .workspace .card {
+  border: 0;
+  border-radius: var(--radius-card);
+  background: var(--c-white);
+  box-shadow: var(--at-card-shadow);
+}
+.app.award-mobile.mode-app .workspace .plan-card {
+  padding: 12px;
+}
+.app.award-mobile.mode-app .workspace-main > .shading-time-card {
+  margin-top: 16px;
+  padding: 16px;
+}
+.app.award-mobile.mode-app .workspace .card:not(.plan-card) {
+  padding: 16px;
+}
+.app.award-mobile.mode-app .status-card {
+  gap: 12px;
+}
+.app.award-mobile.mode-app .status-card strong {
+  font-size: 15px;
+  font-weight: 500;
+}
+.app.award-mobile.mode-app .status-card p {
+  font-size: 13px;
+  margin: 4px 0 0;
+}
+.app.award-mobile.mode-app :is(.field, .mobile-editor-sheet .field) {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+  margin: 0 0 16px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.app.award-mobile.mode-app .field > span {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--at-muted);
+}
+.app.award-mobile.mode-app
+  .field
+  > :is(
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+    select
+  ) {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  height: 44px;
+  margin: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--c-bdbac5);
+  border-radius: 8px;
+  background-color: #fff;
+  color: var(--at-ink);
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.5;
+  box-shadow: none;
+}
+.app.award-mobile.mode-app .field > select {
+  appearance: none;
+  padding-right: 40px;
+  background-position: right 14px center;
+}
+.app.award-mobile.mode-app .field > :is(input, select):focus-visible {
+  outline: 2px solid var(--at-accent-ink);
+  outline-offset: 2px;
+}
+.app.award-mobile.mode-app .field > :is(input, select):disabled {
+  background-color: var(--at-gray);
+  color: var(--at-muted);
+}
+.app.award-mobile.mode-app .field:focus-within {
+  border: 0;
+}
+.app.award-mobile.mode-app .field > :is(input, select)[aria-invalid="true"] {
+  border-color: var(--c-danger) !important;
+}
+.app.award-mobile.mode-app :is(.dimensions, .two-fields) {
+  gap: 12px;
+}
+.app.award-mobile.mode-app :is(button.primary, button.secondary) {
+  min-height: 44px;
+  font-size: 15px;
+  line-height: 1.5;
+}
+.app.award-mobile.mode-app :is(.app-action-bar, .capture-action) .primary,
+.app.award-mobile.mode-app.page-capture .shape-plan > .primary {
+  min-height: 50px;
+}
+.app.award-mobile.mode-app .grade-picker {
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  margin: 8px 0 16px;
+}
+.app.award-mobile.mode-app .grade-picker legend {
+  margin-bottom: 12px;
+  padding: 0;
+  font-size: 14px;
+  color: var(--at-muted);
+}
+.app.award-mobile.mode-app .grade-picker button {
+  height: 44px;
+  min-height: 44px;
+  font-size: 14px;
+}
+
+.app.award-mobile.mode-app .mobile-furniture-list {
+  margin: 20px 0;
+}
+.app.award-mobile.mode-app .mobile-furniture-list .section-row {
+  gap: 12px;
+  margin: 0 0 12px;
+}
+.app.award-mobile.mode-app .mobile-furniture-list h3 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 500;
+  flex: 1;
+  white-space: nowrap;
+}
+.app.award-mobile.mode-app .mobile-furniture-list .section-row button {
+  width: auto;
+  flex: 0 0 auto;
+  padding: 8px 14px;
+  font-size: 14px;
+}
+.mobile-furniture-rows {
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  background: #fff;
+  box-shadow: var(--at-card-shadow);
+}
+.app.award-mobile.mode-app .mobile-furniture-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  min-height: 68px;
+  margin: 0;
+  padding: 14px 16px;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+  color: var(--at-ink);
+  text-align: left;
+  transform: none;
+  transition: background-color 140ms ease;
+}
+.app.award-mobile.mode-app .mobile-furniture-row + .mobile-furniture-row {
+  border-top: 1px solid #efedf3;
+}
+.app.award-mobile.mode-app .mobile-furniture-row.selected {
+  background: var(--at-tint);
+  box-shadow: inset 3px 0 var(--at-accent);
+}
+.app.award-mobile.mode-app .mobile-furniture-row:active {
+  background: var(--c-pressed);
+}
+.mobile-furniture-row > span:first-child {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+.mobile-furniture-row strong {
+  font-size: 15px;
+  line-height: 1.4;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.app.award-mobile.mode-app .mobile-furniture-row small {
+  font-size: 12px;
+  color: var(--at-muted);
+  line-height: 1.5;
+}
+.mobile-furniture-grades {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.mobile-furniture-grades svg {
+  color: var(--at-muted);
+}
+.app.award-mobile.mode-app .mobile-furniture-row .furniture-grade-caption {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--at-ink);
+  overflow-wrap: anywhere;
+}
+.app.award-mobile.mode-app .list-footnote {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: var(--at-muted);
+}
+.app.award-mobile.mode-app .mobile-plan-interaction {
+  margin-top: 12px;
+}
+.app.award-mobile.mode-app
+  :is(.page-detail, .page-protect)
+  .selected-furniture-info {
+  padding: 16px;
+  background: var(--at-tint);
+  border: 0;
+  border-radius: 8px;
+}
+
+.app.award-mobile.mode-app dialog.mobile-editor-sheet {
+  position: fixed;
+  inset: auto 0 0 0;
+  width: min(480px, 100%);
+  max-width: none;
+  max-height: 82dvh;
+  margin: 0 auto;
+  padding: 0;
+  transform: none;
+  border: 0;
+  border-radius: 24px 24px 0 0;
+  background: #fff;
+  color: var(--at-ink);
+  box-shadow: 0 -8px 40px #201b3526;
+  overflow: hidden;
+  transition:
+    transform 240ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    opacity 180ms ease;
+}
+.app.award-mobile.mode-app dialog.mobile-editor-sheet::before {
+  content: none;
+}
+.app.award-mobile.mode-app dialog.mobile-editor-sheet[open] {
+  display: flex;
+  flex-direction: column;
+}
+.mobile-editor-sheet::backdrop {
+  background: rgba(24, 22, 32, 0.32);
+  backdrop-filter: blur(3px);
+}
+.mobile-editor-sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 20px;
+  flex-shrink: 0;
+}
+.app.award-mobile.mode-app .mobile-editor-sheet-head h2 {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.4;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.app.award-mobile.mode-app .mobile-editor-sheet-head button {
+  width: auto;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 8px 0 8px 12px;
+  margin: 0;
+  font-size: 15px;
+  flex-shrink: 0;
+}
+.mobile-editor-sheet-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0 20px 12px;
+}
+.app.award-mobile.mode-app .mobile-editor-sheet-body .dimensions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.app.award-mobile.mode-app .mobile-editor-sheet-body .two-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.app.award-mobile.mode-app .mobile-editor-sheet-body .furniture-actions {
+  display: flex;
+  gap: 8px;
+  margin: 8px 0 20px;
+}
+.app.award-mobile.mode-app .mobile-editor-sheet-body .furniture-actions button {
+  min-height: 44px;
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  padding: 10px 8px;
+}
+.app.award-mobile.mode-app .mobile-editor-sheet-body .divider {
+  height: 1px;
+  background: #eeecf2;
+  margin: 12px 0 20px;
+}
+.app.award-mobile.mode-app .mobile-editor-sheet-body .grade-description {
+  margin: 0 0 16px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.mobile-editor-sheet > footer {
+  flex-shrink: 0;
+  padding: 12px 20px calc(16px + env(safe-area-inset-bottom));
+}
+.app.award-mobile.mode-app .mobile-editor-sheet > footer button {
+  width: 100%;
+  margin: 0;
+  min-height: 50px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mobile-furniture-row {
+    transition: none;
+  }
+}
+.app.award-mobile.mode-app .workspace .section-row h3,
+.app.award-mobile.mode-app .workspace-main > .card > h3 {
+  font-size: 17px;
+  font-weight: 500;
+}
+.app.award-mobile.mode-app .selected-protection-info {
+  margin: 20px 0;
+}
+.app.award-mobile.mode-app .selected-protection-info h3 {
+  margin: 0 0 10px;
+  font-size: 17px;
+  font-weight: 500;
+}
+.app.award-mobile.mode-app .selected-protection-info p {
+  margin: 6px 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--at-muted);
+}
+.app.award-mobile.mode-app .mobile-editor-sheet-body .error {
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 0 0 16px;
+}
+/* Match the tab-page selector specificity of the former indented title rule. */
+.app.award-mobile.mode-app:is(.page-home, .page-spaces, .page-guide, .page-more)
+  .page-heading
+  h1 {
+  padding: 0;
+}
+.app.award-mobile.mode-app.page-capture .shape-plan text {
+  font-size: 6.5px;
+}
+
+/* Space detail follows the task: select in plan, set hours, inspect the result. */
+.app.award-mobile.mode-app.page-detail .workspace-main {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.app.award-mobile.mode-app.page-detail .workspace-main > * {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+.app.award-mobile.mode-app.page-detail .plan-selection-summary {
+  margin: 12px 4px 4px;
+  padding: 14px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--at-tint);
+  color: var(--at-ink);
+}
+.app.award-mobile.mode-app.page-detail .plan-selection-summary strong {
+  display: block;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+.app.award-mobile.mode-app.page-detail .plan-selection-summary p {
+  margin: 4px 0 0;
+  font-size: 14px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.app.award-mobile.mode-app.page-detail .selection-dimensions {
+  color: var(--at-muted);
+  font-variant-numeric: tabular-nums;
+}
+.app.award-mobile.mode-app.page-detail .selection-protection {
+  margin-top: 10px;
+}
+.app.award-mobile.mode-app.page-detail .detail-schedule-card .blocking-schedule {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  display: grid;
+  gap: 12px;
+}
+.app.award-mobile.mode-app.page-detail .detail-schedule-card .section-row {
+  margin: 0;
+  min-height: 44px;
+}
+.app.award-mobile.mode-app.page-detail .detail-schedule-card .two-fields {
+  margin: 0;
+  gap: 12px;
+}
+.app.award-mobile.mode-app.page-detail .detail-schedule-card .field {
+  margin: 0;
+}
+.app.award-mobile.mode-app.page-detail .detail-schedule-card .blocking-track {
+  margin: 8px 0 0;
+}
+.app.award-mobile.mode-app.page-detail .detail-schedule-card .blocking-axis {
+  margin: 0;
+}
+.app.award-mobile.mode-app.page-detail .detail-schedule-card .secondary {
+  margin: 4px 0 0;
+}
+.app.award-mobile.mode-app.page-detail .detail-preview-card .section-row {
+  margin: 0 0 16px;
+}
+.app.award-mobile.mode-app.page-detail .detail-film-preview {
+  margin-top: 20px;
+}
+.app.award-mobile.mode-app.page-detail .detail-film-preview h4 {
+  margin: 0 0 12px;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.5;
+  color: var(--at-muted);
+}
+.app.award-mobile.mode-app.page-detail .detail-management-card h3 {
+  margin: 0 0 16px;
+}
+.app.award-mobile.mode-app.page-detail .workspace .detail-management-card:not(.plan-card) {
+  padding: 16px 0;
+  overflow: hidden;
+}
+.app.award-mobile.mode-app.page-detail .detail-management-card h3 {
+  padding: 0 16px;
+  margin-bottom: 8px;
+}
+.app.award-mobile.mode-app.page-detail .detail-management-actions {
+  display: grid;
+}
+.app.award-mobile.mode-app.page-detail .detail-management-actions .manage-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
+  margin: 0;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+  color: var(--at-ink);
+  font-size: 16px;
+  font-weight: 400;
+  text-align: left;
+  transition: background-color 0.18s ease;
+}
+.app.award-mobile.mode-app.page-detail .detail-management-actions .manage-row:active {
+  background: var(--c-pressed);
+}
+.app.award-mobile.mode-app.page-detail .detail-management-actions .manage-row svg {
+  flex: none;
+  width: 22px;
+  height: 22px;
+}
+.app.award-mobile.mode-app.page-detail .detail-management-actions .manage-row span {
+  flex: 1;
+}
+.app.award-mobile.mode-app.page-detail .detail-management-actions .manage-row svg:last-child {
+  width: 16px;
+  height: 16px;
+  color: var(--at-muted);
+}
+.app.award-mobile.mode-app.page-detail .detail-management-actions .manage-row + .manage-row {
+  position: relative;
+}
+.app.award-mobile.mode-app.page-detail .detail-management-actions .manage-row + .manage-row::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50px;
+  right: 16px;
+  border-top: 1px solid var(--c-hairline);
+}
+.app.award-mobile.mode-app.page-detail .detail-management-card .manage-delete {
+  display: block;
+  width: calc(100% - 32px);
+  min-height: 44px;
+  margin: 16px 16px 0;
+  border: 0;
+  border-radius: 999px;
+  background: var(--c-block);
+  color: var(--c-danger);
+}
+@media (max-width: 360px) {
+  .app.award-mobile.mode-app.page-detail .detail-schedule-card .two-fields {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Read-only furniture selection uses the same inset surfaces as the plan summary. */
+.app.award-mobile.mode-app.page-detail > main.main {
+  padding-bottom: calc(104px + env(safe-area-inset-bottom));
+}
+.app.award-mobile.mode-app .furniture-selector {
+  margin: 16px 0;
+  padding: 16px 0 0;
+  border-radius: var(--radius-card);
+  background: var(--c-white);
+  box-shadow: var(--at-card-shadow);
+  overflow: hidden;
+}
+.app.award-mobile.mode-app .furniture-selector .section-row {
+  margin: 0;
+  padding: 0 16px 8px;
+}
+.app.award-mobile.mode-app .furniture-selector .furniture-count {
+  font-size: 14px;
+  color: var(--at-muted);
+}
+.app.award-mobile.mode-app .furniture-selector .mobile-furniture-rows {
+  border-radius: 0;
+  box-shadow: none;
+}
+.app.award-mobile.mode-app .furniture-selector .mobile-furniture-row {
+  min-height: 64px;
+  padding: 0 16px;
+  gap: 12px;
+  position: relative;
+  transition: background-color 0.18s ease;
+}
+.app.award-mobile.mode-app .furniture-selector .mobile-furniture-row + .mobile-furniture-row {
+  border-top: 0;
+}
+.app.award-mobile.mode-app .furniture-selector .mobile-furniture-row + .mobile-furniture-row::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 16px;
+  right: 16px;
+  border-top: 1px solid var(--c-hairline);
+}
+.app.award-mobile.mode-app .furniture-selector .mobile-furniture-row.selected {
+  background: var(--at-tint);
+  box-shadow: none;
+}
+.app.award-mobile.mode-app .furniture-selector .mobile-furniture-row.selected .furniture-row-title {
+  color: var(--at-accent-ink);
+}
+.app.award-mobile.mode-app .furniture-selector .furniture-row-title {
+  font-size: 16px;
+  font-weight: 500;
+}
+.app.award-mobile.mode-app .furniture-selector .mobile-furniture-row .furniture-grade-caption {
+  color: var(--at-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.app.award-mobile.mode-app .furniture-selector .furniture-grade {
+  min-width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  font-size: 12px;
+}
+.app.award-mobile.mode-app .furniture-selector .list-footnote {
+  margin: 0;
+  padding: 10px 16px 14px;
+}
+.app.award-mobile.mode-app .furniture-selector .mobile-furniture-row:focus-visible {
+  outline: 2px solid var(--at-accent);
+  outline-offset: -2px;
+}
+/* The selected tint meets the card edge; the dividers next to it would cut through it. */
+.app.award-mobile.mode-app .furniture-selector .mobile-furniture-row.selected::before,
+.app.award-mobile.mode-app .furniture-selector .mobile-furniture-row.selected + .mobile-furniture-row::before {
+  border-top-color: transparent;
+}
+@media (hover: hover) {
+  .app.award-mobile.mode-app .furniture-selector .mobile-furniture-row:not(.selected):hover {
+    background: var(--c-pressed);
+  }
+}
+/* Rows sit in overflow-hidden cards, so their focus ring is drawn inside. */
+.app.award-mobile.mode-app.page-detail .detail-management-actions .manage-row:focus-visible,
+.app.award-mobile.mode-app.page-more .more-content section.card > button.row:focus-visible,
+.app.award-mobile.mode-app.page-more .account-row:focus-visible {
+  outline: 2px solid var(--at-accent);
+  outline-offset: -2px;
+}
+.app.award-mobile.mode-app.page-detail .detail-management-card .manage-delete {
+  transition: background-color 0.18s ease;
+}
+.app.award-mobile.mode-app.page-detail .detail-management-card .manage-delete:active {
+  background: color-mix(in srgb, var(--c-block) 92%, var(--c-ink));
+}
+/* 2026-11-06: name, grade description and grade chip on one line (user request).
+   The rows share one grid (subgrid), so every description starts at the same x after the longest name. */
+.app.award-mobile.mode-app .furniture-selector .mobile-furniture-rows {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr) auto;
+  column-gap: 12px;
+}
+.app.award-mobile.mode-app .furniture-selector .mobile-furniture-row {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+  align-items: center;
+  min-height: 56px;
+  padding-block: 0;
+}
+.app.award-mobile.mode-app .furniture-selector .mobile-furniture-row > span:first-child {
+  display: contents;
+}
+.app.award-mobile.mode-app .furniture-selector .furniture-row-title {
+  min-height: 0;
+  white-space: nowrap;
+}
+.app.award-mobile.mode-app .furniture-selector .mobile-furniture-row .furniture-grade-caption {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.app.award-mobile.mode-app .furniture-selector .mobile-furniture-row .furniture-sun-time {
+  display: none; /* detail passes no schedule; keep the three columns if one ever arrives */
+}
+@media (max-width: 374px) {
+  /* Narrow phones: the description wraps instead of being cut off. */
+  .app.award-mobile.mode-app .furniture-selector .mobile-furniture-row .furniture-grade-caption {
+    white-space: normal;
+    padding-block: 8px;
+  }
+}

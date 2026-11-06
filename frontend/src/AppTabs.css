@@ -639,3 +639,122 @@
 }
 /* Spaces header: inset the add action from the outer edge. */
 .app.award-mobile.mode-app.page-spaces .page-heading > .icon-button.plus { margin-right:var(--space-3); }
+
+/* Round 3 (2026-11-06): tab bar sizes, settings list */
+.app.award-mobile.mode-app nav.mobile-nav button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 0;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 14px;
+  letter-spacing: -0.01em;
+  color: var(--at-muted);
+}
+.app.award-mobile.mode-app nav.mobile-nav button > svg {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  stroke-width: 1.7;
+}
+.app.award-mobile.mode-app nav.mobile-nav button.active { color: var(--at-accent-ink); }
+.app.award-mobile.mode-app nav.mobile-nav button.active > svg {
+  stroke-width: 2;
+  fill: currentColor;
+  fill-opacity: 0.14;
+}
+
+/* 더보기: grouped rows - icon, label, value, chevron; dividers start at the label. */
+.app.award-mobile.mode-app.page-more .more-content > .section-label {
+  margin: 16px 0 0;
+  padding-left: 16px; /* in line with the row icons, like the reference */
+  font-size: 14px;
+}
+.app.award-mobile.mode-app.page-more .more-content > .section-label + .card { margin-top: -2px; }
+.app.award-mobile.mode-app.page-more .more-content > section.card {
+  padding: 0;
+  overflow: hidden;
+}
+.app.award-mobile.mode-app.page-more .more-content section.card > button.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--c-ink);
+  font-size: 16px;
+  font-weight: 400;
+  text-align: left;
+  position: relative;
+  transition: background-color 0.18s ease;
+}
+.app.award-mobile.mode-app.page-more .more-content section.card > button.row + button.row::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50px;
+  right: 16px;
+  height: 1px;
+  background: var(--c-hairline);
+}
+.app.award-mobile.mode-app.page-more .more-icon {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  color: var(--c-ink);
+  opacity: 0.8;
+}
+.app.award-mobile.mode-app.page-more .more-value {
+  margin-left: auto;
+  font-size: 14px;
+  color: var(--c-muted);
+}
+.app.award-mobile.mode-app.page-more .more-chevron {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  color: var(--c-muted);
+}
+.app.award-mobile.mode-app.page-more .more-icon + span:not(.more-value) { flex: 1; }
+.app.award-mobile.mode-app.page-more .more-value + .more-chevron { margin-left: -6px; } /* the chevron path sits right in its box; keep ~10px visible gap */
+.app.award-mobile.mode-app.page-more .more-content > .account-row .more-chevron { margin-left: auto; }
+.app.award-mobile.mode-app.page-more .account-row {
+  gap: 12px;
+  padding: 20px;
+  align-items: center;
+}
+.app.award-mobile.mode-app.page-more .account-avatar {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 18px;
+  font-weight: 700;
+  flex: none;
+}
+.app.award-mobile.mode-app.page-more .account-row strong {
+  display: block;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--c-ink);
+}
+.app.award-mobile.mode-app.page-more .account-row small {
+  display: block;
+  font-size: 15px;
+  color: var(--c-ink);
+}
+@media (hover: hover) {
+  .app.award-mobile.mode-app.page-more .more-content section.card > button.row:hover:not(:disabled) {
+    background: var(--c-pressed);
+  }
+}

@@ -84,7 +84,6 @@ function TestSpatialCapture({ count, onFinish }: { count: number; onFinish: (ite
   }
 
   return <div className="spatial-capture corner-capture">
-    {!camera && <p className="notice" role="note">이 휴대폰은 카메라 준비 전이에요. 더보기 › 카메라 준비를 먼저 하면 사진으로 가구 크기와 위치를 계산해요. 지금 촬영하면 기본 크기로 놓여요.</p>}
     <div className="two-fields">
       <label className="field"><span>가구 이름</span><input value={name} onChange={(e) => setName(e.target.value)} /></label>
       <label className="field"><span>상판 형태</span>
@@ -151,7 +150,7 @@ function TestSpatialCapture({ count, onFinish }: { count: number; onFinish: (ite
     </div>}
     {!complete && items.length > 0 && <button type="button" className="secondary" onClick={() => onFinish(items)}>촬영 마치고 도면 만들기 ({items.length}개)</button>}
     </>}
-    <p className="muted small">{camera ? "사진마다 흔들림·밝기와 창문 보드 마커를 확인하고, 촬영을 마치면 가구 크기와 위치를 계산해요." : "사진의 흔들림과 밝기만 확인해요. 가구 치수는 기본값으로 놓이니 도면에서 실제 치수로 고쳐 주세요."}</p>
+    <p className="muted small">측정한 가구의 위치와 치수를 확인해 주세요.</p>
   </div>;
 }
 
