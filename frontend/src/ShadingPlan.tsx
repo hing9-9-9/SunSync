@@ -75,7 +75,7 @@ export function FilmGrid({ space, schedule, hour, marker = false, prediction, se
 
 // WAR4.2: the user chooses when light may be blocked. The 24-hour bar shows that range and the
 // time picked on the slider; the simplified sun times stay as small reference text only.
-export function ShadingTimeControl({ space, value, onChange, sunSchedule, hour, onSave, dirty = false, saving = false, sunSource }: {
+export function ShadingTimeControl({ space, value, onChange, sunSchedule, hour, onSave, dirty = false, saving = false, sunSource, compact = false }: {
   space: Space;
   value: ShadingTime;
   onChange: (time: ShadingTime) => void;
@@ -86,6 +86,7 @@ export function ShadingTimeControl({ space, value, onChange, sunSchedule, hour, 
   saving?: boolean;
   // Where the sun times come from; without it they are the simplified preview calculation.
   sunSource?: { label: string; note?: ReactNode };
+  compact?: boolean;
 }) {
   const minute = Math.round(hour * 60);
   const regions = protectedRegions(space);
@@ -102,9 +103,9 @@ export function ShadingTimeControl({ space, value, onChange, sunSchedule, hour, 
         <span className="switch-label">{value.enabled ? "켜짐" : "꺼짐"}</span>
       </label>
     </div>
-    <p className="muted small">
+    {!compact && <p className="muted small">
       {value.enabled ? "설정한 시간 안에서 햇빛이 보호 영역에 닿을 때만 필름을 가립니다." : "꺼져 있으면 필름을 가리지 않습니다. 켜고 차단할 시간을 정해 주세요."}
-    </p>
+    </p>}
     <div className="two-fields">
       <label className="field">
         <span>시작</span>
@@ -118,22 +119,22 @@ export function ShadingTimeControl({ space, value, onChange, sunSchedule, hour, 
     {value.enabled && error && <p className="error" role="alert">{error}</p>}
     <div className="blocking-track" aria-hidden="true">
       {active && <span className="period" style={{ left: pct(start), width: pct(end - start) }} />}
-      <span className="now" style={{ left: pct(minute) }} />
+      {!compact && <span className="now" style={{ left: pct(minute) }} />}
     </div>
     <div className="blocking-axis" aria-hidden="true">
       {[0, 6, 12, 18, 24].map((h) => <span key={h} style={{ left: pct(h * 60) }}>{String(h).padStart(2, "0")}</span>)}
     </div>
-    <p className="blocking-status" role="status">
+    {!compact && <p className="blocking-status" role="status">
       {active ? `${value.start} ~ ${value.end} 차단 · 지금 선택한 ${formatMinute(minute)}은 ${minute >= start && minute < end ? "차단 시간" : "차단 시간 밖"}` : "차단 시간이 설정되지 않음"}
-    </p>
-    {regions.length > 0 ? sunSource?.note ?? <ul className="sun-reference muted small">
+    </p>}
+    {!compact && (regions.length > 0 ? sunSource?.note ?? <ul className="sun-reference muted small">
       {regions.map((r) => {
         const periods = sunSchedule.get(r.id) ?? [];
         return <li key={r.id}>
           {r.name} · {sunSource?.label ?? "햇빛 닿는 시간(간이 계산)"} {periods.length ? periods.map((p) => `${formatMinute(p.arrival)}~${formatMinute(p.end)}`).join(", ") : sunSource ? "직사광이 닿지 않음" : "없음"}
         </li>;
       })}
-    </ul> : <p className="muted small">보호 영역이 없어 가릴 곳이 없습니다. D 등급은 채광을 우선해 가리지 않습니다.</p>}
+    </ul> : <p className="muted small">보호 영역이 없어 가릴 곳이 없습니다. D 등급은 채광을 우선해 가리지 않습니다.</p>)}
     {onSave && <button type="button" className="secondary" disabled={!dirty || saving || (value.enabled && !!error)} onClick={onSave}>
       {saving ? "저장 중…" : "차단 시간 저장"}
     </button>}

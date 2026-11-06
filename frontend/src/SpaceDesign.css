@@ -58,7 +58,7 @@
 .app.award-app.mode-web:is(.page-detail,.page-review,.page-protect) .inspector h3 { font-size:17px; line-height:1.5; margin:var(--space-6) 0 var(--space-3); }
 .app.award-app.mode-web:is(.page-detail,.page-review,.page-protect) .workspace-main > .card { margin:var(--space-5) 0 0; padding:var(--space-6) 0; border:0; border-top:1px solid var(--space-ui-line); border-radius:0; background:transparent; box-shadow:none; }
 .app.award-app.mode-web:is(.page-detail,.page-review,.page-protect) .workspace-main > .card::after { content:none; }
-.app.award-app.mode-web:is(.page-detail,.page-review,.page-protect) .workspace-main > .plan-card { padding:0; margin-top:var(--space-4); border:0; border-radius:var(--radius-space-ui); background:var(--space-ui-soft); overflow:hidden; }
+.app.award-app.mode-web:is(.page-detail,.page-review,.page-protect) .workspace-main > .plan-card { padding:0; margin-top:var(--space-4); border:1px solid var(--c-hairline); border-radius:var(--radius-space-ui); background:var(--space-ui-paper); overflow:hidden; } /* white like the page (2026-11-06): no tinted box around the plan */
 .app.award-app.mode-web:is(.page-detail,.page-review,.page-protect) .plan-wrap { padding:var(--space-4); }
 .app.award-app.mode-web:is(.page-detail,.page-review,.page-protect) .plan-caption { font-size:16px; color:var(--space-ui-text); margin-bottom:var(--space-3); }
 .app.award-app.mode-web.page-detail .workspace-main > .status-card { margin-top:var(--space-3); padding:var(--space-3) 0; border:0; }

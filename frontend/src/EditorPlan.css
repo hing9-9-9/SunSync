@@ -1,0 +1,66 @@
+/* Editing uses the saved-space model from directly above, with the existing SVG gestures. */
+.plan-surface { position: relative; }
+.plan-surface > svg.plan { position: relative; display: block; width: 100%; }
+.plan-model-layer { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.plan-model-layer canvas { display: block; width: 100%; height: 100%; }
+.plan-model-layer .s3-labels { position: absolute; inset: 0; pointer-events: none; }
+.plan-model-layer .s3-chip { display: none; }
+.app .modeled-plan { background: #fff !important; }
+.modeled-plan svg.plan { background: transparent !important; }
+.modeled-plan svg.plan > rect:first-child { fill: transparent !important; stroke: transparent !important; }
+.modeled-plan [data-furniture] { fill: transparent !important; stroke: transparent !important; pointer-events: all; }
+.modeled-plan g[aria-pressed="true"] > [data-furniture] { stroke: var(--c-action) !important; stroke-width: 1px; }
+.modeled-plan g[role="button"] > line,
+.modeled-plan g[role="button"] > rect:not([data-furniture]):not([data-region]) { display: none; }
+.modeled-plan [data-region]:not([data-linked]) { fill-opacity: .12; }
+
+/* A single vertical decision list; no generic dialog button reordering. */
+.app dialog.furniture-add-dialog { width: min(420px, calc(100vw - 32px)); padding: 28px; background: #fff; }
+.furniture-add-content { display: flex; flex-direction: column; gap: 12px; }
+.furniture-add-content h2 { margin: 0 0 12px; font-size: 22px; line-height: 1.35; }
+.app dialog.furniture-add-dialog .furniture-add-content > button {
+  position: static; order: 0; width: 100%; margin: 0; min-height: 48px; height: auto;
+  padding: 12px 20px; transform: none; white-space: normal; word-break: keep-all;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+}
+.furniture-add-content small { font-size: 13px; font-weight: 400; opacity: .85; }
+.app dialog.furniture-add-dialog .primary small { color: #fff; opacity: .9; }
+.app dialog.furniture-add-dialog .furniture-add-content > .text-button { min-height: 40px; padding: 8px; margin-top: 4px; }
+
+/* Compact object list: one identity column, grade keys and an actual 24-hour exposure track. */
+.app.mode-web .editor-furniture-list { margin:24px 0 0; }
+.app.mode-web .editor-furniture-list > .section-row { margin-bottom:12px; gap:16px; }
+.app.mode-web .editor-furniture-list h3 { margin:0; font-size:18px; font-weight:600; }
+.app.mode-web .editor-furniture-list > .section-row button { min-height:38px; padding:8px 16px; font-size:14px; }
+.furniture-table-scroll { overflow-x:auto; }
+.app.mode-web .furniture-table { width:100%; min-width:460px; table-layout:fixed; border-collapse:separate; border-spacing:0; font-size:15px; text-align:left; }
+.app.mode-web .furniture-table :is(th,td) { padding:12px 16px; border:0; border-bottom:1px solid #e8e7ed; vertical-align:middle; }
+.app.mode-web .furniture-table thead th { padding-top:10px; padding-bottom:10px; background:transparent; font-size:13px; font-weight:500; color:#5c5864; border-bottom-color:#cbc8d2; }
+.furniture-table thead small { display:inline; margin-left:6px; font-size:11px; font-weight:400; color:#6d6877; white-space:nowrap; }
+.furniture-table th:first-child { width:42%; }
+.furniture-table th:nth-child(2) { width:20%; }
+.furniture-table th:last-child { width:38%; }
+.furniture-table tbody tr { cursor:pointer; transition:background-color 140ms ease; }
+.furniture-table tbody tr:hover { background:#f8f7fb; }
+.furniture-table tbody tr.is-selected { background:#f4f2ff; }
+.furniture-table tbody tr.is-selected > th:first-child { box-shadow:inset 3px 0 #6660e5; }
+.app.mode-web .furniture-table tbody th { font-weight:500; }
+.app.mode-web .furniture-table tbody th button {
+ display:flex; flex-direction:column; align-items:flex-start; gap:3px; width:100%; min-height:40px;
+ padding:0; margin:0; border:0; border-radius:0; background:transparent; color:inherit; box-shadow:none;
+ transform:none; font:inherit; text-align:left; word-break:keep-all;
+}
+.furniture-row-name { font-size:15px; line-height:1.4; color:#24222b; }
+.app.mode-web .furniture-row-type { font-size:12px; line-height:1.4; font-weight:400; color:#625c6a; }
+.app.mode-web .furniture-table tbody th button:focus-visible { outline:1px solid var(--c-action); outline-offset:4px; }
+.furniture-row-grades { display:flex; gap:6px; flex-wrap:wrap; }
+.furniture-grade { display:inline-grid; place-items:center; min-width:28px; height:28px; padding:0 5px; border-radius:7px; font-size:13px; font-weight:600; background:#6660e5; color:#fff; }
+.furniture-grade.grade-B { background:#8580ec; }
+.furniture-grade.grade-C { background:#efedff; color:#5049c5; }
+.furniture-grade.grade-D { background:#fff; color:#625c6a; box-shadow:inset 0 0 0 1px #c9c7d1; }
+.furniture-unset { font-size:12px; color:#706a78; }
+.furniture-exposure { max-width:240px; display:grid; gap:8px; }
+.exposure-time { font-size:14px; line-height:1.4; color:#38333f; font-variant-numeric:tabular-nums; }
+.exposure-time.is-empty { color:#706a78; }
+.furniture-day-track { position:relative; height:4px; border-radius:4px; background:#eeecf1; overflow:hidden; }
+.furniture-day-track i { position:absolute; top:0; height:100%; border-radius:4px; background:#d9903d; }

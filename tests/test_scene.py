@@ -227,7 +227,7 @@ def test_unknown_uncertainty_and_unconfirmed_draft_are_preserved(scene_data):
         (("policy", "grades", "C", "max_direct_irradiance_W_m2"), None),
         (("policy", "grades", "D", "max_direct_irradiance_W_m2"), 0),
         (("policy", "grades", "D", "rank"), 1),
-        (("policy", "brightening_margin_W_m2"), 20),
+        (("policy", "brightening_margin_W_m2"), 30),
         (("scenario", "scene_revision"), 999),
         (("scenario", "scene_revision"), 2**63),
         (("scenario", "time_step_s"), 11),

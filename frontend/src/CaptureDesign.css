@@ -12,7 +12,7 @@
 .app.award-mobile.mode-app.page-capture .field { min-width:0; padding:0; border:0; border-radius:0; background:transparent; gap:var(--space-2); }
 .app.award-mobile.mode-app.page-capture .field > span { font-size:14px; color:var(--at-muted); }
 .app.award-mobile.mode-app.page-capture .field :is(input,select) { width:100%; min-width:0; min-height:44px; padding:var(--space-2) var(--space-3); border:1px solid var(--c-bdbac5); border-radius:8px; background-color:var(--c-white); font-size:16px; color:var(--at-ink); }
-.app.award-mobile.mode-app.page-capture .field select { padding-right:var(--space-8); }
+.app.award-mobile.mode-app.page-capture .field select { padding-right:40px; background-position:right 14px center; }
 .app.award-mobile.mode-app.page-capture .capture-viewfinder { margin:var(--space-4) 0; padding:var(--space-5); gap:var(--space-4); background:var(--c-white); color:var(--at-ink); border-radius:var(--radius-card); box-shadow:var(--at-card-shadow); }
 .app.award-mobile.mode-app.page-capture .viewfinder-frame { width:min(100%,220px); background:var(--at-tint); border-radius:12px; }
 .app.award-mobile.mode-app.page-capture .viewfinder-marker { color:var(--at-accent-ink); }
@@ -70,3 +70,10 @@
 .capture-help p { margin: 0; }
 .capture-help .mobile-guide-visual { width: 100%; max-width: 240px; margin: var(--space-2) auto; }
 .capture-help .guide-pagination { margin-top: var(--space-2); }
+
+/* Labels carry no inherited outer margin inside the compact input card. */
+.app.award-mobile.mode-app.page-capture .spatial-capture > .two-fields { margin:0; padding:16px; align-items:start; }
+.app.award-mobile.mode-app.page-capture .spatial-capture > .two-fields > .field { margin:0; gap:8px; }
+.app.award-mobile.mode-app.page-capture .spatial-capture > .two-fields > .field > span { margin:0; }
+.app.award-mobile.mode-app.page-capture .spatial-capture > p.muted.small:last-child { margin:0; padding:16px 0; }
+.app.award-mobile.mode-app.page-capture .capture-layout { gap:0; }
