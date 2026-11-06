@@ -42,7 +42,7 @@ test("failed server saves reject without pretending local storage succeeded", as
   );
 });
 
-test("lists collect pages and preserve local-only legacy spaces", async (t) => {
+test("lists collect pages and exclude local-only legacy spaces", async (t) => {
   let calls = 0;
   const remote = { ...blankSpace(), serverRevision: 2 };
   t.mock.method(
@@ -62,6 +62,6 @@ test("lists collect pages and preserve local-only legacy spaces", async (t) => {
   const local = blankSpace();
   assert.deepEqual(
     mergeServerSpaces([{ ...remote, serverRevision: 1 }, local], [remote]),
-    [remote, local],
+    [remote],
   );
 });

@@ -14,12 +14,9 @@ test("sync status separates server, pending and location-less spaces", () => {
   assert.equal(syncStatus({ ...local("c"), site: undefined } as Space), "needs-site");
 });
 
-test("a space the server lost is kept and becomes a new upload", () => {
+test("a space missing from the server is removed without becoming a new upload", () => {
   const lost = { ...local("lost"), serverRevision: 4, serverSceneId: "scene" };
-  const [kept] = mergeServerSpaces([lost], []);
-  assert.equal(kept.name, "lost");
-  assert.equal(kept.serverRevision, undefined);
-  assert.equal(syncStatus(kept), "pending");
+  assert.deepEqual(mergeServerSpaces([lost], []), []);
   assert.deepEqual(mergeServerSpaces([lost], [], [{ scene_id: lost.id, reason: "x" }]), []);
 });
 
@@ -69,7 +66,7 @@ test("offline save message tells people their edits are kept", () => {
 test("deleted spaces are dropped from every device instead of uploaded again", () => {
   const gone = { ...local("gone"), serverRevision: 2 };
   const kept = local("kept");
-  assert.deepEqual(mergeServerSpaces([gone, kept], [], [], [gone.id]).map((s) => s.name), ["kept"]);
+  assert.deepEqual(mergeServerSpaces([gone, kept], [], [], [gone.id]), []);
 });
 
 test("delete uses DELETE and accepts an empty 204 reply", async (t) => {

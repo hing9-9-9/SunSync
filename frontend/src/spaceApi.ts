@@ -128,23 +128,17 @@ export function getServerSpace(id: string) {
   return request<Space>(`/api/ui/spaces/${encodeURIComponent(id)}`);
 }
 /**
- * Server spaces first, then every local space the server does not have. A space the server
- * has lost keeps its content and drops its server stamps, so it is uploaded again as new.
+ * A successful server listing is authoritative. Browser caches must neither add
+ * missing spaces to this list nor turn removed spaces into new uploads.
+ * Unsaved editor content is kept separately in drafts.
  */
 export function mergeServerSpaces(
-  current: Space[],
+  _current: Space[],
   remote: Space[],
-  unavailable: UnavailableScene[] = [],
-  deleted: string[] = [],
+  _unavailable: UnavailableScene[] = [],
+  _deleted: string[] = [],
 ) {
-  // Spaces deleted on any device are dropped here instead of being uploaded again.
-  const ids = new Set([...remote.map((s) => s.id), ...unavailable.map((s) => s.scene_id), ...deleted]);
-  return [
-    ...remote,
-    ...current
-      .filter((s) => !ids.has(s.id))
-      .map(({ serverRevision: _r, serverSceneId: _s, ...s }) => s),
-  ];
+  return [...remote];
 }
 
 export type HandoffSession = {
