@@ -455,3 +455,26 @@ def test_ui_save_keeps_registration_calibration(client, payload):
     assert isinstance(kept, Scene)
     assert kept.registration_calibration == calibration
     assert kept.room.name == "이름 변경"
+
+
+@pytest.mark.parametrize(
+    "wall,face,normal",
+    [
+        ("east", "남쪽 전면", [1, 0, 0]),
+        ("north", "서쪽 측면", [0, 1, 0]),
+        ("west", "상단", [0, 0, 1]),
+    ],
+)
+def test_furniture_protects_the_side_facing_the_window(client, payload, wall, face, normal):
+    # People never pick a face: a furniture side region is planned on the side toward the window;
+    # a top region stays the top. The saved UI value itself is left as sent.
+    payload["windowDimensions"] = {"width": 2, "height": 1.5, "wall": wall, "offset": 0.5, "sill": 0.6}
+    payload["regions"][0]["face"] = face
+    if face == "상단":
+        payload["regions"][0]["bottom"] = 1.9
+    response = client.post("/api/ui/spaces", json=payload)
+    assert response.status_code == 201, response.text
+    saved = response.json()
+    scene = client.get(f"/api/scenes/{saved['serverSceneId']}").json()
+    assert scene["protected_regions"][0]["receiving_normal"] == normal
+    assert saved["regions"][0]["face"] == face
