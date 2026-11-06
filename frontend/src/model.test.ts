@@ -180,7 +180,7 @@ test("window position defaults keep older spaces valid and centre the window", (
   const win = resolveWindow(space)!;
   assert.equal(win.wall, "south");
   assert.equal(win.offset, (space.width - 4) / 2);
-  assert.deepEqual(win.marker, { size: 0.3, x: 2, y: 1 });
+  assert.deepEqual(win.marker, { size: 0.6, x: 2, y: 1 });
   assert.deepEqual(filmGrid(win), { cols: 40, rows: 20 });
 });
 

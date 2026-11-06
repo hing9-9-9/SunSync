@@ -60,11 +60,11 @@ function TestSpatialCapture({ count, onFinish }: { count: number; onFinish: (ite
     setError(""); setChecking(true);
     try {
       const metrics = await analyse(file);
-      // The measurement server finds the board; at least two markers give a camera pose.
+      // The configured single marker supplies all four pose corners.
       const frame = camera ? await detectFrame(file) : undefined;
-      const found = frame?.detections.length ?? 4;
+      const found = frame?.detections.length ?? 1;
       const url = URL.createObjectURL(file);
-      const photo = { file, url, metrics, frame, issue: photoIssue({ ...metrics, marker: found >= 2 ? "visible" : found ? "partial" : "missing" }) };
+      const photo = { file, url, metrics, frame, issue: photoIssue({ ...metrics, marker: found === 1 ? "visible" : found ? "partial" : "missing" }) };
       const replaced = photos[slot.point]?.[slot.photo];
       if (replaced) URL.revokeObjectURL(replaced.url);
       setPhotos(all => points.map((_,i)=>Array.from({length:photosPerPoint},(_,j)=>i===slot.point&&j===slot.photo ? photo : all[i]?.[j] ?? null)));
@@ -173,7 +173,7 @@ export function CameraSetup({ onReady }: { onReady: (camera: Camera) => void }) 
     setBusy(true); setMessage("");
     try {
       const frame = await detectFrame(file);
-      if (frame.detections.length < 4) setMessage("보드의 마커 4개가 모두 보이게 다시 찍어 주세요.");
+      if (frame.detections.length !== 1) setMessage("마커의 검정 테두리와 네 모서리가 모두 보이게 다시 찍어 주세요.");
       else if (frames.length && (frame.width !== frames[0].width || frame.height !== frames[0].height)) setMessage("같은 카메라·같은 방향으로 찍어 주세요.");
       else setFrames((all) => [...all, frame].slice(0, SETUP_MAX));
     } catch (e) {

@@ -41,7 +41,7 @@ test("automatic setup completes separately from furniture capture and is invalid
     if (String(url).endsWith("automatic-setup")) return Response.json({ camera, stream_id: "stream" });
     if (String(url).endsWith("/v1/detect")) return Response.json({ detections: [], pose: { status: "ok" } });
     n++;
-    return Response.json({ camera: null, detections: [7, 8, 9, 10].map(marker_id => ({ marker_id,
+    return Response.json({ camera: null, detections: [0].map(marker_id => ({ marker_id,
       corners_px: [[n * 10, 1], [n * 10 + 5, 1], [n * 10 + 5, 6], [n * 10, 6]] })) });
   });
   for (let i = 0; i < 11; i++) assert.equal((await client.capture(frame(String(i)))).status, "setup_required");

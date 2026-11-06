@@ -50,9 +50,7 @@ class Camera(Strict):
             12,
             14,
         ):
-            raise ValueError(
-                "Raw pixels require explicit OpenCV distortion coefficients"
-            )
+            raise ValueError("Raw pixels require explicit OpenCV distortion coefficients")
         if self.pixel_space == "rectified" and self.distortion:
             raise ValueError("Rectified pixels use distortion=[]")
         return self
@@ -66,24 +64,35 @@ class Camera(Strict):
 class Board(Strict):
     board_id: str = Field(min_length=1, max_length=100)
     dictionary: Literal["DICT_4X4_50"] = "DICT_4X4_50"
-    ids_by_row: tuple[tuple[int, int], tuple[int, int]] = ((7, 8), (9, 10))
-    marker_side_m: float = Field(gt=0, le=5)
-    gap_x_m: float = Field(ge=0, le=5)
-    gap_y_m: float = Field(ge=0, le=5)
+    # Production film: one 6x6-cell marker on a 10x10 grid of 10cm cells.
+    # Explicit 2x2 layouts remain readable for historical experiments.
+    ids_by_row: tuple[tuple[int, ...], ...] = ((0,),)
+    marker_side_m: float = Field(default=0.6, gt=0, le=5)
+    gap_x_m: float = Field(default=0, ge=0, le=5)
+    gap_y_m: float = Field(default=0, ge=0, le=5)
     border_bits: int = Field(default=1, ge=1, le=3)
 
     @model_validator(mode="after")
     def ids(self):
         ids = [v for row in self.ids_by_row for v in row]
-        if len(set(ids)) != 4 or any(not 0 <= x < 50 for x in ids):
-            raise ValueError("Board requires four distinct DICT_4X4_50 IDs")
+        layout = tuple(len(row) for row in self.ids_by_row)
+        if (
+            layout not in ((1,), (2, 2))
+            or len(set(ids)) != len(ids)
+            or any(not 0 <= x < 50 for x in ids)
+        ):
+            raise ValueError(
+                "Board requires a single ID or an explicit legacy 2x2 layout with distinct DICT_4X4_50 IDs"
+            )
+        if layout == (1,) and (self.gap_x_m or self.gap_y_m):
+            raise ValueError("Single-marker board has no inter-marker gaps")
         return self
 
     def objects(self):
         result = {}
         s = self.marker_side_m
-        for row in range(2):
-            for col in range(2):
+        for row in range(len(self.ids_by_row)):
+            for col in range(len(self.ids_by_row[row])):
                 x, y = col * (s + self.gap_x_m), row * (s + self.gap_y_m)
                 result[self.ids_by_row[row][col]] = np.array(
                     [[x, y, 0], [x + s, y, 0], [x + s, y + s, 0], [x, y + s, 0]], float
@@ -113,9 +122,7 @@ class PlanRequest(Strict):
     model_id: str = Field(min_length=1, max_length=200)
     shape: Shape
     samples_per_point: int = Field(default=3, ge=1, le=5)
-    height_mode: Literal["surface_is_top", "capture_highest", "manual"] = (
-        "surface_is_top"
-    )
+    height_mode: Literal["surface_is_top", "capture_highest", "manual"] = "surface_is_top"
     manual_height_m: float | None = Field(default=None, gt=0, le=10)
     floor_supported: bool = True
     manual_base_height_m: float | None = Field(default=None, ge=0, le=10)
@@ -123,15 +130,11 @@ class PlanRequest(Strict):
     @model_validator(mode="after")
     def heights(self):
         if (self.height_mode == "manual") != (self.manual_height_m is not None):
-            raise ValueError(
-                "manual mode requires manual_height_m; other modes must omit it"
-            )
+            raise ValueError("manual mode requires manual_height_m; other modes must omit it")
         if not self.floor_supported and (
             self.height_mode != "manual" or self.manual_base_height_m is None
         ):
-            raise ValueError(
-                "Floating furniture requires manual height and manual base height"
-            )
+            raise ValueError("Floating furniture requires manual height and manual base height")
         if self.floor_supported and self.manual_base_height_m is not None:
             raise ValueError("Floor-supported model base is floor, not manual")
         return self

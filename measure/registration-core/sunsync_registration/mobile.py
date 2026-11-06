@@ -36,9 +36,7 @@ class AppleCalibration(Strict):
     full_reference_frame: Literal[True]
 
 
-Calibration = Annotated[
-    AndroidCalibration | AppleCalibration, Field(discriminator="kind")
-]
+Calibration = Annotated[AndroidCalibration | AppleCalibration, Field(discriminator="kind")]
 
 
 class NativeFrame(Strict):
@@ -71,9 +69,7 @@ def decode_frame(frame: NativeFrame):
                 frame.width,
                 frame.height,
             ):
-                raise ValueError(
-                    "Native encoded pixels disagree with capture dimensions"
-                )
+                raise ValueError("Native encoded pixels disagree with capture dimensions")
             header.verify()
     except (OSError, Image.DecompressionBombError) as error:
         raise ValueError("Invalid native image") from error
@@ -138,25 +134,17 @@ def normalize_camera(frame: NativeFrame, pixels):
         pixel_space = "raw_opencv"
     else:
         k = np.array(metadata.intrinsic).reshape(3, 3)
-        if (
-            not np.allclose(k[2], [0, 0, 1])
-            or abs(k[0, 1]) > 1e-6
-            or abs(k[1, 0]) > 1e-6
-        ):
+        if not np.allclose(k[2], [0, 0, 1]) or abs(k[0, 1]) > 1e-6 or abs(k[1, 0]) > 1e-6:
             raise ValueError("Invalid native intrinsic matrix")
         sx, sy = (
             frame.width / metadata.reference_width,
             frame.height / metadata.reference_height,
         )
         if not np.isclose(sx, sy, rtol=0.002):
-            raise ValueError(
-                "Apple image must preserve the full calibration reference frame"
-            )
+            raise ValueError("Apple image must preserve the full calibration reference frame")
         fx, fy, cx, cy = k[0, 0] * sx, k[1, 1] * sy, k[0, 2] * sx, k[1, 2] * sy
         ox, oy = metadata.distortion_center
-        if not (
-            0 <= ox < metadata.reference_width and 0 <= oy < metadata.reference_height
-        ):
+        if not (0 <= ox < metadata.reference_width and 0 <= oy < metadata.reference_height):
             raise ValueError("Distortion centre outside reference image")
         # Destination (rectilinear) pixel -> distorted source sample, per Apple's LUT.
         radius = np.hypot(
@@ -233,7 +221,7 @@ class SetupView(Strict):
     lens_id: str
     width: int = Field(gt=0, le=4096)
     height: int = Field(gt=0, le=4096)
-    detections: list[Detection] = Field(min_length=4, max_length=4)
+    detections: list[Detection] = Field(min_length=1, max_length=4)
 
 
 class AutomaticSetup(Strict):
@@ -255,11 +243,10 @@ def calibrate_automatically(request: AutomaticSetup):
     board = request.board.objects()
     for view in views:
         found = {
-            entry.marker_id: np.array(entry.corners_px, np.float32)
-            for entry in view.detections
+            entry.marker_id: np.array(entry.corners_px, np.float32) for entry in view.detections
         }
-        if len(found) != 4 or set(found) != set(board):
-            raise ValueError("All four board markers are required for automatic setup")
+        if len(view.detections) != len(board) or set(found) != set(board):
+            raise ValueError("All configured board markers are required for automatic setup")
         points = np.concatenate([found[key] for key in sorted(board)])
         if (
             np.any(points < 0)
@@ -268,19 +255,12 @@ def calibrate_automatically(request: AutomaticSetup):
         ):
             raise ValueError("Setup corners outside image")
         if any(np.sqrt(np.mean((points - prior) ** 2)) < 5 for prior in signatures):
-            raise ValueError(
-                "Move the phone: repeated viewpoints do not calibrate the camera"
-            )
+            raise ValueError("Move the phone: repeated viewpoints do not calibrate the camera")
         signatures.append(points)
-        objects.append(
-            np.concatenate([board[key] for key in sorted(board)]).astype(np.float32)
-        )
+        objects.append(np.concatenate([board[key] for key in sorted(board)]).astype(np.float32))
         images.append(points)
     coverage = np.concatenate(images)
-    if (
-        np.ptp(coverage[:, 0]) < first.width * 0.5
-        or np.ptp(coverage[:, 1]) < first.height * 0.5
-    ):
+    if np.ptp(coverage[:, 0]) < first.width * 0.5 or np.ptp(coverage[:, 1]) < first.height * 0.5:
         raise ValueError("Move the marker view across more of the screen")
     # Hold out every fourth view to avoid accepting a model solely on training residuals.
     train = [i for i in range(len(views)) if i % 4]

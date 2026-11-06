@@ -565,46 +565,17 @@
             "default": "DICT_4X4_50"
           },
           "ids_by_row": {
-            "prefixItems": [
-              {
-                "prefixItems": [
-                  {
-                    "type": "integer"
-                  },
-                  {
-                    "type": "integer"
-                  }
-                ],
-                "type": "array",
-                "maxItems": 2,
-                "minItems": 2
+            "items": {
+              "items": {
+                "type": "integer"
               },
-              {
-                "prefixItems": [
-                  {
-                    "type": "integer"
-                  },
-                  {
-                    "type": "integer"
-                  }
-                ],
-                "type": "array",
-                "maxItems": 2,
-                "minItems": 2
-              }
-            ],
+              "type": "array"
+            },
             "type": "array",
-            "maxItems": 2,
-            "minItems": 2,
             "title": "Ids By Row",
             "default": [
               [
-                7,
-                8
-              ],
-              [
-                9,
-                10
+                0
               ]
             ]
           },
@@ -612,19 +583,22 @@
             "type": "number",
             "maximum": 5.0,
             "exclusiveMinimum": 0.0,
-            "title": "Marker Side M"
+            "title": "Marker Side M",
+            "default": 0.6
           },
           "gap_x_m": {
             "type": "number",
             "maximum": 5.0,
             "minimum": 0.0,
-            "title": "Gap X M"
+            "title": "Gap X M",
+            "default": 0
           },
           "gap_y_m": {
             "type": "number",
             "maximum": 5.0,
             "minimum": 0.0,
-            "title": "Gap Y M"
+            "title": "Gap Y M",
+            "default": 0
           },
           "border_bits": {
             "type": "integer",
@@ -637,10 +611,7 @@
         "additionalProperties": false,
         "type": "object",
         "required": [
-          "board_id",
-          "marker_side_m",
-          "gap_x_m",
-          "gap_y_m"
+          "board_id"
         ],
         "title": "Board"
       },
@@ -1748,7 +1719,7 @@
             },
             "type": "array",
             "maxItems": 4,
-            "minItems": 4,
+            "minItems": 1,
             "title": "Detections"
           }
         },

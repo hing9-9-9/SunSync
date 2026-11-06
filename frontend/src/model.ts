@@ -126,7 +126,7 @@ export function resolveWindow(s: Space): Required<WindowSpec> | null {
   const w = s.windowDimensions;
   if (!w || !(w.width > 0) || !(w.height > 0)) return null;
   const wall = w.wall ?? "south";
-  const size = Math.min(0.3, w.width, w.height);
+  const size = Math.min(0.6, w.width, w.height);
   return {
     width: w.width,
     height: w.height,
