@@ -468,7 +468,13 @@ def test_ui_save_keeps_registration_calibration(client, payload):
 def test_furniture_protects_the_side_facing_the_window(client, payload, wall, face, normal):
     # People never pick a face: a furniture side region is planned on the side toward the window;
     # a top region stays the top. The saved UI value itself is left as sent.
-    payload["windowDimensions"] = {"width": 2, "height": 1.5, "wall": wall, "offset": 0.5, "sill": 0.6}
+    payload["windowDimensions"] = {
+        "width": 2,
+        "height": 1.5,
+        "wall": wall,
+        "offset": 0.5,
+        "sill": 0.6,
+    }
     payload["regions"][0]["face"] = face
     if face == "상단":
         payload["regions"][0]["bottom"] = 1.9
