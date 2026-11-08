@@ -12,13 +12,11 @@ export function GoogleMark({ size = 18 }: { size?: number }) {
   );
 }
 
-/** "Google로 계속하기": the primary action of every login surface, with Google's mark in a white circle. */
+/** "Google로 계속하기": the primary action of every login surface, white like a secondary button, with Google's mark. */
 export function GoogleButton({ onClick, autoFocus, className = "" }: { onClick: () => void; autoFocus?: boolean; className?: string }) {
   return (
-    <button type="button" className={`primary google-btn ${className}`.trim()} autoFocus={autoFocus} onClick={onClick}>
-      <span className="google-g" aria-hidden="true">
-        <GoogleMark />
-      </span>
+    <button type="button" className={`secondary google-btn ${className}`.trim()} autoFocus={autoFocus} onClick={onClick}>
+      <GoogleMark />
       <span>Google로 계속하기</span>
     </button>
   );

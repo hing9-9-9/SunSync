@@ -1,19 +1,11 @@
-/* The Google button is a primary button (purple, white text); only the mark sits in a white circle. */
+/* The Google button is a secondary-style button (white, 1px neutral border, ink text) from the button system; only the layout lives here. */
 .google-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 12px;
   width: 100%;
+  --btn-line: var(--c-dedede); /* one step darker than --c-block: #e9e9e9 vanished on white and beside 취소 */
   cursor: pointer;
-}
-.google-btn .google-g {
-  display: grid;
-  place-items: center;
-  flex: none;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: var(--c-white);
 }
 .google-btn .google-mark { flex: none; }
