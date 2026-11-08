@@ -1,0 +1,16 @@
+[Unit]
+Description=SunSync measurement server
+After=network.target
+
+[Service]
+User=sunsync
+WorkingDirectory=/opt/sunsync/measure/registration-core
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=/opt/sunsync/.venv/bin/uvicorn sunsync_registration.api:app --host 127.0.0.1 --port 8001
+Restart=on-failure
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+
+[Install]
+WantedBy=multi-user.target

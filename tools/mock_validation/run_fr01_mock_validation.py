@@ -81,13 +81,13 @@ def _policy() -> dict[str, Any]:
                 "rank": 2,
                 "constraint": "soft",
                 "rule": "intensity_cap",
-                "max_direct_irradiance_W_m2": 20,
+                "max_direct_irradiance_W_m2": 30,
             },
             "C": {
                 "rank": 3,
                 "constraint": "soft",
                 "rule": "intensity_cap",
-                "max_direct_irradiance_W_m2": 80,
+                "max_direct_irradiance_W_m2": 70,
             },
             "D": {
                 "rank": 4,

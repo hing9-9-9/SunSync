@@ -74,7 +74,7 @@ def estimate(board: Board, camera: Camera, detections: list[Detection], max_rmse
         if abs(cv2.contourArea(pixels.astype(np.float32))) < 16:
             raise ValueError("Marker area too small")
         found[entry.marker_id] = pixels
-    if len(found) < 2:
+    if len(found) < (1 if len(objmap) == 1 else 2):
         return {"status": "insufficient_markers", "detected_ids": sorted(found)}
     ids = sorted(found)
     obj = np.concatenate([objmap[i] for i in ids])

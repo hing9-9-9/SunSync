@@ -382,3 +382,7 @@
 /* The inspector column already spaces children 12px; the grade note must not add its own gap on top. */
 :is(.app.award-app, .app.award-mobile) .inspector .grade-description:has(+ .furniture-actions) { padding-bottom: 0 !important; margin-bottom: 0 !important; }
 :is(.app.award-app, .app.award-mobile) .inspector .furniture-actions > button { width: auto !important; flex: 1 1 0; min-width: 0; padding: 0 var(--space-3) !important; border-color: var(--c-bdbac5) !important; }
+
+/* Placeholder for the lazily loaded 3D stage: .s3 frame from Space3DView.css, header row height kept. */
+.s3.s3-loading .s3-head { min-height: 84px; }
+

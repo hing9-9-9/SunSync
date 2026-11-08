@@ -180,7 +180,7 @@ test("window position defaults keep older spaces valid and centre the window", (
   const win = resolveWindow(space)!;
   assert.equal(win.wall, "south");
   assert.equal(win.offset, (space.width - 4) / 2);
-  assert.deepEqual(win.marker, { size: 0.3, x: 2, y: 1 });
+  assert.deepEqual(win.marker, { size: 0.6, x: 2, y: 1 });
   assert.deepEqual(filmGrid(win), { cols: 40, rows: 20 });
 });
 
@@ -247,4 +247,37 @@ test("blocking time is the user's choice and must run forwards", () => {
   s.building = "도서관"; s.floor = "1층"; s.name = "열람실";
   s.shadingSchedule = { enabled: true, start: "15:00", end: "10:00" };
   assert.match(validateSpace(s) ?? "", /늦어야/);
+});
+
+test("new furniture starts with a grade-D region, existing regions stay", async () => {
+  const { withDefaultRegions, blankSpace } = await import("./model.ts");
+  const space = { ...blankSpace(), regions: [] };
+  const f = { id: "f1", name: "책상", zone: space.zone, type: "desk" as const, x: 0, y: 0, width: 1, depth: 0.6, height: 0.75 };
+  const regions = withDefaultRegions(space, [f]);
+  assert.equal(regions.length, 1);
+  assert.equal(regions[0].grade, "D");
+  assert.equal(regions[0].furnitureId, "f1");
+  assert.equal(withDefaultRegions({ ...space, regions }, [f]).length, 1);
+});
+
+test("furniture lists go A to D, then by name, with no region counting as D", async () => {
+  const { byGradeThenName } = await import("./model.ts");
+  const rows = [
+    { name: "책장 10", regions: [] },
+    { name: "책장 2", regions: [{ grade: "B" as const }] },
+    { name: "가구", regions: [{ grade: "D" as const }, { grade: "A" as const }] },
+    { name: "책장 1", regions: [{ grade: "B" as const }] },
+    { name: "다", regions: [] },
+  ];
+  assert.deepEqual(byGradeThenName(rows).map((r) => r.name), ["가구", "책장 1", "책장 2", "다", "책장 10"]);
+});
+
+test("grade counts match the furniture list: no region counts as D, a piece counts once", async () => {
+  const { gradeCounts } = await import("./model.ts");
+  const r = (furnitureId: string | null, grade: "A" | "B" | "C" | "D") => ({ furnitureId, grade });
+  const counts = gradeCounts({
+    furniture: [{ id: "a" }, { id: "b" }, { id: "c" }] as never,
+    regions: [r("a", "C"), r("a", "A"), r(null, "B")] as never,
+  });
+  assert.deepEqual(counts, { A: 1, B: 1, C: 0, D: 2 });
 });

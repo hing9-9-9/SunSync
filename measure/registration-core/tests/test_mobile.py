@@ -31,7 +31,13 @@ def frame(calibration=None, width=800, height=600):
         pixel_rotation_degrees=0,
         mirrored=False,
         image_base64=base64.b64encode(encoded).decode(),
-        board=Board(board_id="board", marker_side_m=0.115, gap_x_m=0.02, gap_y_m=0.02),
+        board=Board(
+            board_id="board",
+            ids_by_row=((7, 8), (9, 10)),
+            marker_side_m=0.115,
+            gap_x_m=0.02,
+            gap_y_m=0.02,
+        ),
         calibration=calibration,
     )
 
@@ -49,9 +55,7 @@ def test_android_intrinsics_crop_scale_and_coefficient_order():
     )
     value = frame(metadata, 1920, 1080)
     camera, _ = normalize_camera(value, np.zeros((1080, 1920), np.uint8))
-    assert [camera.fx, camera.fy, camera.cx, camera.cy] == pytest.approx(
-        [960, 1008, 960, 540]
-    )
+    assert [camera.fx, camera.fy, camera.cx, camera.cy] == pytest.approx([960, 1008, 960, 540])
     assert camera.distortion == [0.1, 0.2, 0.004, 0.005, 0.3]
     assert camera.pixel_space == "raw_opencv"
 
@@ -78,9 +82,7 @@ def test_apple_lut_rectifies_pixels_before_using_zero_distortion():
 
 
 def test_missing_camera_uses_guided_setup_never_default_focal_length():
-    response = TestClient(app).post(
-        "/v1/mobile/captures", json=frame().model_dump(mode="json")
-    )
+    response = TestClient(app).post("/v1/mobile/captures", json=frame().model_dump(mode="json"))
     assert response.status_code == 200, response.text
     assert response.json()["status"] == "automatic_setup_required"
     assert response.json()["camera"] is None
@@ -100,8 +102,8 @@ def test_invalid_native_capture_is_rejected(change):
     assert TestClient(app).post("/v1/mobile/captures", json=payload).status_code == 422
 
 
-def setup_fixture():
-    board = frame().board
+def setup_fixture(single=False):
+    board = Board(board_id="single", marker_side_m=0.25) if single else frame().board
     k = np.array([[900.0, 0, 640], [0, 910.0, 480], [0, 0, 1]])
     distortion = np.array([0.04, -0.015, 0.001, -0.002, 0.0])
     rng = np.random.default_rng(7)
@@ -124,9 +126,9 @@ def setup_fixture():
         ) - r @ [0.125, 0.125, 0]
         detections = []
         for code, objects in board.objects().items():
-            pixels = cv2.projectPoints(objects, rotation, translation, k, distortion)[
-                0
-            ].reshape(-1, 2)
+            pixels = cv2.projectPoints(objects, rotation, translation, k, distortion)[0].reshape(
+                -1, 2
+            )
             pixels += rng.normal(0, 0.03, pixels.shape)
             detections.append({"marker_id": code, "corners_px": pixels.tolist()})
         views.append(
@@ -142,8 +144,9 @@ def setup_fixture():
     return {"board": board.model_dump(), "views": views}, k
 
 
-def test_guided_setup_recovers_intrinsics_and_validates_held_out_views():
-    request, k = setup_fixture()
+@pytest.mark.parametrize("single", [False, True])
+def test_guided_setup_recovers_intrinsics_and_validates_held_out_views(single):
+    request, k = setup_fixture(single=single)
     result = calibrate_automatically(AutomaticSetup.model_validate(request))
     camera = result["camera"]
     assert camera["fx"] == pytest.approx(k[0, 0], rel=0.01)
@@ -152,9 +155,7 @@ def test_guided_setup_recovers_intrinsics_and_validates_held_out_views():
     assert result["metric_accuracy_verified"] is False
 
 
-@pytest.mark.parametrize(
-    "change", ["lens", "stream", "resolution", "duplicates", "same_view"]
-)
+@pytest.mark.parametrize("change", ["lens", "stream", "resolution", "duplicates", "same_view"])
 def test_guided_setup_rejects_mixed_and_repeated_frames(change):
     request, _ = setup_fixture()
     if change == "lens":

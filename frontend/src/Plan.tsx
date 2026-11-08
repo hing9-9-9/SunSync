@@ -1,11 +1,14 @@
 import { sunlightPolygon } from "./sunlight";
+import { floorSunlight } from "./floorSun";
 
 // The drawn light fades in and out around sunrise and sunset instead of switching at 06:00 / 18:00.
 const duskFade = (hour: number) => Math.max(0, Math.min(1, hour - 5.5, 18.5 - hour));
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { clamp, isWidthWall, resolveWindow, uid } from "./model";
 import type { Furniture, Space, Region } from "./model";
+import type { SceneApi } from "./Space3DScene";
+import "./Space3DView.css";
 
 type Props = {
   space: Space;
@@ -19,6 +22,7 @@ type Props = {
   hour?: number;
   showDemoSun?: boolean;
   exposedRegionIds?: string[];
+  modeled?: boolean;
 };
 type Gesture =
   | { kind: "draw" | "move" | "resize"; x: number; y: number; region: Region }
@@ -59,10 +63,16 @@ export default function Plan({
   hour = 14,
   showDemoSun = true,
   exposedRegionIds = [],
+  modeled = false,
 }: Props) {
   const svg = useRef<SVGSVGElement>(null);
   const gesture = useRef<Gesture | null>(null);
   const live = useRef<Region | null>(null);
+  const modelHost = useRef<HTMLDivElement>(null);
+  const modelApi = useRef<SceneApi | null>(null);
+  const [modelReady, setModelReady] = useState(false);
+  const selectedModel = useRef(selectedFurniture);
+  useEffect(() => { selectedModel.current = selectedFurniture; }, [selectedFurniture]);
   // A dragged piece is previewed locally and committed once, so a drag is one edit.
   const [moving, setMoving] = useState<Furniture | null>(null);
   // Margins only where something is drawn outside the room (the window and its label); elsewhere
@@ -71,6 +81,35 @@ export default function Plan({
   const edge = 0.05, labelRoom = 0.45;
   const left = wall === "west" ? labelRoom : edge, right = wall === "east" ? labelRoom : edge;
   const top = wall === "north" ? labelRoom : edge, bottom = wall === "south" ? labelRoom : edge;
+  // Names and blocking-time edits do not change the model. Keep its canvas alive while typing.
+  const modelSnapshot = JSON.stringify({
+    id: "plan", name: "", building: "", floor: "", source: "manual", revision: 0,
+    width: space.width, depth: space.depth, height: space.height,
+    zone: space.zone, zones: [space.zone], windowDimensions: space.windowDimensions, site: space.site,
+    furniture: space.furniture.filter(f => f.zone === space.zone).map(f => ({ ...f, name: "" })),
+    regions: space.regions.filter(r => r.zone === space.zone).map(r => ({ ...r, name: "" })),
+  });
+  useEffect(() => {
+    if (!modeled) return;
+    let stopped = false;
+    let scene: SceneApi | undefined;
+    void import("./Space3DScene").then(({ createSpaceScene }) => {
+      if (stopped || !modelHost.current) return;
+      try {
+        scene = createSpaceScene(modelHost.current, JSON.parse(modelSnapshot) as Space,
+          { onSelect: () => {}, planBounds: { left, right, top, bottom } }, "2d");
+        modelApi.current = scene;
+        scene.select(selectedModel.current);
+        setModelReady(true);
+      } catch (error) {
+        console.warn("2D model unavailable; keeping the interactive plan", error);
+        setModelReady(false);
+      }
+    });
+    return () => { stopped = true; scene?.dispose(); modelApi.current = null; };
+  }, [modeled, modelSnapshot, left, right, top, bottom]);
+  useEffect(() => { modelApi.current?.select(selectedFurniture); }, [selectedFurniture, space]);
+  useEffect(() => { modelApi.current?.previewFurniture(moving); }, [moving]);
   // Keep plan labels readable at phone and desktop sizes, in SVG user units.
   const [textSize, setTextSize] = useState(0.25);
   useEffect(() => {
@@ -197,14 +236,21 @@ export default function Plan({
     live.current = null;
   }
   const original = moving && space.furniture.find((f) => f.id === moving.id);
+  // Real window light when the space has a window position and a site; else the old demo patch.
+  // Drawn with the server prediction too: the patch shows where the light falls, the prediction which areas it reaches.
+  const floorSun = floorSunlight(space, hour);
+  const sunMask = `floor-sun-${useId().replace(/:/g, "")}`;
+  const pts = (poly: { x: number; y: number }[]) => poly.map((p) => `${p.x + left},${p.y + top}`).join(" ");
   const shownFurniture = space.furniture.map((f) => (f.id === moving?.id ? moving : f));
+  // Grade D adds no blocking, so the plan draws it as plain furniture (the inspector still shows D).
+  const visibleRegions = space.regions.filter((r) => r.grade !== "D");
   const shownRegions = original
-    ? space.regions.map((r) =>
+    ? visibleRegions.map((r) =>
         r.furnitureId === original.id
           ? { ...r, x: r.x + moving.x - original.x, y: r.y + moving.y - original.y }
           : r,
       )
-    : space.regions;
+    : visibleRegions;
   // Window drawn on its wall; offsets run from the plan's left (west) or top (north) end.
   const win = resolveWindow(space);
   const windowLine = win && (() => {
@@ -216,13 +262,15 @@ export default function Plan({
     return { line: { x1: x, x2: x, y1: a, y2: b }, label: { x: x + (win.wall === "east" ? label : -label), y: (a + b) / 2 } };
   })();
   return (
-    <div className="plan-wrap">
+    <div className={`plan-wrap${modeled && modelReady ? " modeled-plan" : ""}`}>
       <div className="plan-caption">
         <span>
           {space.width} × {space.depth} m
         </span>
         <span>N ↑</span>
       </div>
+      <div className="plan-surface">
+      {modeled && <div ref={modelHost} className="plan-model-layer" aria-hidden="true" />}
       <svg
         ref={svg}
         className={`plan ${tool === "region" ? "drawing" : ""} ${onFurnitureMove && tool === "furniture" ? "dragging-furniture" : ""}`}
@@ -245,12 +293,19 @@ export default function Plan({
           strokeWidth="1pt"
           vectorEffect="non-scaling-stroke"
         />
-        {showDemoSun && <polygon
+        {(!modeled || !onFurnitureMove) && (floorSun ? <>
+          {/* Window light on the floor for this hour; furniture shadows are cut out of it. */}
+          <mask id={sunMask} maskUnits="userSpaceOnUse">
+            <polygon points={pts(floorSun.patch)} fill="#fff" />
+            {floorSun.shadows.map((sh, i) => <polygon key={i} points={pts(sh)} fill="#000" />)}
+          </mask>
+          <polygon points={pts(floorSun.patch)} fill="#ff7426" fillOpacity={0.22} mask={`url(#${sunMask})`} pointerEvents="none" />
+        </> : showDemoSun && <polygon
           points={sunlightPolygon(space, Math.min(Math.max(hour, 6), 17.99)).map(p => `${p.x + left},${p.y + top}`).join(" ")}
           fill="var(--c-fff2d3)"
           opacity={duskFade(hour)}
           pointerEvents="none"
-        />}
+        />)}
         {shownFurniture
           .filter((f) => f.zone === space.zone)
           .map((f, i) => (
@@ -312,29 +367,19 @@ export default function Plan({
             >
               <rect
                 data-region={r.id}
+                data-linked={r.furnitureId ? "" : undefined}
                 x={left + r.x}
                 y={top + r.y}
                 width={r.width}
                 height={r.depth}
                 fill={exposedRegionIds.includes(r.id) ? "var(--c-e8ad33)" : "var(--c-8b7ef4)"}
-                fillOpacity={r.id === selectedRegion ? ".28" : ".18"}
+                // A region on furniture is shown by its protected face line, not by tinting the furniture.
+                fillOpacity={r.furnitureId ? "0" : r.id === selectedRegion ? ".28" : ".18"}
                 // A furniture region shares the furniture outline, so only free regions draw their own.
                 stroke={r.furnitureId ? "none" : r.id === selectedRegion ? "var(--c-action)" : "var(--c-9c93e1)"}
                 strokeWidth="1pt"
                 vectorEffect="non-scaling-stroke"
               />
-              {r.furnitureId && r.face !== "상단" && (
-                <line
-                  x1={left + r.x + (r.face === "동쪽 측면" ? r.width : 0)}
-                  x2={left + r.x + (r.face === "서쪽 측면" ? 0 : r.width)}
-                  y1={top + r.y + (r.face === "남쪽 전면" ? r.depth : 0)}
-                  y2={top + r.y + (r.face === "북쪽 후면" ? 0 : r.depth)}
-                  stroke="var(--c-7060cf)"
-                  strokeWidth="1pt"
-                  vectorEffect="non-scaling-stroke"
-                  pointerEvents="none"
-                />
-              )}
               {!r.furnitureId && r.width >= .7 && r.depth >= .3 && <text x={left + r.x + r.width / 2} y={top + r.y + r.depth / 2} textAnchor="middle" dominantBaseline="central" fontSize={Math.min(textSize, r.width / Math.max(r.name.length * 0.65, 1))} fill="var(--c-51488b)" pointerEvents="none">{r.name}</text>}
               {!r.furnitureId && r.id === selectedRegion && onRegions && (
                 <rect
@@ -370,6 +415,7 @@ export default function Plan({
           </>
         )}
       </svg>
+      </div>
       <div className="plan-legend">
         <span>
           <i />
@@ -379,10 +425,10 @@ export default function Plan({
           <i className="purple" />
           보호 영역
         </span>
-        <span>
+        {(!modeled || !onFurnitureMove) && <span>
           <i className="yellow" />
           {showDemoSun ? "예상 햇빛(시뮬레이션)" : "예측 시각의 직사광선 노출"}
-        </span>
+        </span>}
       </div>
     </div>
   );

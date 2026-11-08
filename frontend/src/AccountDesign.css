@@ -6,6 +6,16 @@
  --account-soft:var(--c-f6f4fb); --account-accent:var(--c-action-ink);
  --account-danger:var(--c-danger); --account-ease:cubic-bezier(.2,0,0,1);
 }
+
+/* Only names and edit buttons navigate; protection data remains plain information. */
+.app.award-app.mode-web .acct-name-link {
+ display:flex; flex-direction:column; align-items:flex-start; gap:6px;
+ min-height:44px; margin:0; padding:8px 0; border:0; border-radius:0;
+ background:transparent; color:var(--account-ink); text-align:left; box-shadow:none;
+}
+.app.award-app.mode-web .acct-name-link:hover { background:transparent; color:var(--account-accent); }
+.app.award-app.mode-web .acct-name-link:hover strong { text-decoration:underline; text-underline-offset:4px; }
+.app.award-app.mode-web .acct-status-label { font-size:14px; font-weight:400; color:var(--account-text); }
 .app.award-app.mode-web:is(.page-account,.page-more) > .main { width:92%; max-width:1440px; margin:0 auto; padding:32px 0 48px; }
 .app.award-app.mode-web .acct { max-width:none; margin:0; padding:0; display:grid; gap:28px; }
 .app.award-app.mode-web .acct-page-heading h1 { margin:0; font-size:32px; line-height:1.3; letter-spacing:-.035em; color:var(--account-ink); }
@@ -19,7 +29,7 @@
 .app.award-app.mode-web .acct-id p { font-size:16px; line-height:1.6; color:var(--account-text); }
 .app.award-app.mode-web .acct-logout { min-height:44px; border:1px solid var(--account-line); background:var(--account-paper); color:var(--account-danger); font-size:15px; padding:10px 20px; transform:none; transition:background-color 160ms var(--account-ease); }
 .app.award-app.mode-web .acct-logout:hover { background:var(--account-soft); color:var(--account-danger); border-color:var(--account-line); }
-.app.award-app.mode-web .acct-spec { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); margin:0; padding:20px 24px; border:0; border-radius:12px; background:var(--account-soft); }
+.app.award-app.mode-web .acct-spec { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); margin:0; padding:20px 24px; border:0; border-radius:12px; background:var(--account-soft); }
 .app.award-app.mode-web .acct-spec > div { padding:0 20px; margin:0; border:0; border-right:1px solid var(--account-line); }
 .app.award-app.mode-web .acct-spec > div:first-child { padding-left:0; }
 .app.award-app.mode-web .acct-spec > div:last-child { border:0; }
@@ -32,9 +42,9 @@
 .app.award-app.mode-web .acct-building h3 { color:var(--account-text); font-size:15px; letter-spacing:0; margin:0 0 12px; }
 .app.award-app.mode-web .acct-building ul { gap:0; }
 .app.award-app.mode-web .acct-space { gap:16px; border-bottom:1px solid var(--account-line); padding:12px 0; }
-.app.award-app.mode-web .acct-space-open { grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) minmax(0,1fr) 20px; min-height:76px; gap:20px; padding:12px; border:0; border-radius:8px; background:transparent; color:var(--account-ink); box-shadow:none; translate:none; transform:none; transition:background-color 160ms var(--account-ease); }
+.app.award-app.mode-web .acct-space-open { grid-template-columns:minmax(0,1.3fr) minmax(220px,1fr); min-height:76px; gap:20px; padding:12px; border:0; border-radius:8px; background:transparent; color:var(--account-ink); box-shadow:none; translate:none; transform:none; }
 .app.award-app.mode-web .acct-space-open::after { content:none; }
-.app.award-app.mode-web .acct-space-open:hover { border-radius:8px; background:var(--account-soft); translate:none; transform:none; }
+.app.award-app.mode-web .acct-space-open:hover { background:transparent; translate:none; transform:none; }
 .app.award-app.mode-web .acct-space-name strong { font-size:17px; line-height:1.5; color:var(--account-ink); }
 .app.award-app.mode-web .acct-space-name small,
 .app.award-app.mode-web .acct-status small { font-size:14px; line-height:1.6; color:var(--account-text); }
@@ -121,3 +131,11 @@
 
 /* Logout belongs to login information, as a secondary capsule action inside the group. */
 .app.award-mobile.mode-app .account-info .account-logout { margin-top:20px; background:var(--c-block); box-shadow:none; }
+
+/* Empty counts keep the same grade key as populated counts. */
+.app.award-app.mode-web .acct-grade.is-empty { opacity:1; }
+.app.award-app.mode-web .acct-grade i { box-sizing:border-box; opacity:1; flex-shrink:0; }
+@media(max-width:900px) {
+ .app.award-app.mode-web .acct-space-open { grid-template-columns:minmax(0,1fr); }
+ .app.award-app.mode-web .acct-grades { width:min(100%,260px); }
+}

@@ -193,30 +193,43 @@ def canonical_id(kind: str, identifier: str) -> str:
     return f"ui_{kind}_{sha256(identifier.encode()).hexdigest()}"
 
 
+# The protected side of a piece of furniture is the side that looks at the window (2026-11-06);
+# people never pick it. A top face (e.g. a reading table) stays the top.
+WINDOW_FACE = {"south": "남쪽 전면", "north": "북쪽 후면", "east": "동쪽 측면", "west": "서쪽 측면"}
+
+
+def protected_face(space: UISpace, region: UIRegion) -> str:
+    wall = space.windowDimensions.wall if space.windowDimensions else None
+    if region.furnitureId and region.face != "상단" and wall:
+        return WINDOW_FACE[wall]
+    return region.face
+
+
 def region_surface(space: UISpace, region: UIRegion) -> tuple[list[list[float]], list[int]]:
     """Screen y grows down; ENU y grows north. Wind every face along its normal."""
     west, east = region.x, region.x + region.width
     south, north = space.depth - region.y - region.depth, space.depth - region.y
     low, high = region.bottom, region.top
-    if region.face == "남쪽 전면":
+    face = protected_face(space, region)
+    if face == "남쪽 전면":
         return [[west, south, low], [east, south, low], [east, south, high], [west, south, high]], [
             0,
             -1,
             0,
         ]
-    if region.face == "북쪽 후면":
+    if face == "북쪽 후면":
         return [[east, north, low], [west, north, low], [west, north, high], [east, north, high]], [
             0,
             1,
             0,
         ]
-    if region.face == "동쪽 측면":
+    if face == "동쪽 측면":
         return [[east, south, low], [east, north, low], [east, north, high], [east, south, high]], [
             1,
             0,
             0,
         ]
-    if region.face == "서쪽 측면":
+    if face == "서쪽 측면":
         return [[west, north, low], [west, south, low], [west, south, high], [west, north, high]], [
             -1,
             0,
@@ -278,13 +291,13 @@ def to_scene(space: UISpace, revision: int, created_at: str | None = None) -> Sc
                     "rank": 2,
                     "constraint": "soft",
                     "rule": "intensity_cap",
-                    "max_direct_irradiance_W_m2": 20,
+                    "max_direct_irradiance_W_m2": 30,
                 },
                 "C": {
                     "rank": 3,
                     "constraint": "soft",
                     "rule": "intensity_cap",
-                    "max_direct_irradiance_W_m2": 80,
+                    "max_direct_irradiance_W_m2": 70,
                 },
                 "D": {
                     "rank": 4,

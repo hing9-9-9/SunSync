@@ -60,11 +60,11 @@ function TestSpatialCapture({ count, onFinish }: { count: number; onFinish: (ite
     setError(""); setChecking(true);
     try {
       const metrics = await analyse(file);
-      // The measurement server finds the board; at least two markers give a camera pose.
+      // The configured single marker supplies all four pose corners.
       const frame = camera ? await detectFrame(file) : undefined;
-      const found = frame?.detections.length ?? 4;
+      const found = frame?.detections.length ?? 1;
       const url = URL.createObjectURL(file);
-      const photo = { file, url, metrics, frame, issue: photoIssue({ ...metrics, marker: found >= 2 ? "visible" : found ? "partial" : "missing" }) };
+      const photo = { file, url, metrics, frame, issue: photoIssue({ ...metrics, marker: found === 1 ? "visible" : found ? "partial" : "missing" }) };
       const replaced = photos[slot.point]?.[slot.photo];
       if (replaced) URL.revokeObjectURL(replaced.url);
       setPhotos(all => points.map((_,i)=>Array.from({length:photosPerPoint},(_,j)=>i===slot.point&&j===slot.photo ? photo : all[i]?.[j] ?? null)));
@@ -84,7 +84,6 @@ function TestSpatialCapture({ count, onFinish }: { count: number; onFinish: (ite
   }
 
   return <div className="spatial-capture corner-capture">
-    {!camera && <p className="notice" role="note">이 휴대폰은 카메라 준비 전이에요. 더보기 › 카메라 준비를 먼저 하면 사진으로 가구 크기와 위치를 계산해요. 지금 촬영하면 기본 크기로 놓여요.</p>}
     <div className="two-fields">
       <label className="field"><span>가구 이름</span><input value={name} onChange={(e) => setName(e.target.value)} /></label>
       <label className="field"><span>상판 형태</span>
@@ -151,7 +150,7 @@ function TestSpatialCapture({ count, onFinish }: { count: number; onFinish: (ite
     </div>}
     {!complete && items.length > 0 && <button type="button" className="secondary" onClick={() => onFinish(items)}>촬영 마치고 도면 만들기 ({items.length}개)</button>}
     </>}
-    <p className="muted small">{camera ? "사진마다 흔들림·밝기와 창문 보드 마커를 확인하고, 촬영을 마치면 가구 크기와 위치를 계산해요." : "사진의 흔들림과 밝기만 확인해요. 가구 치수는 기본값으로 놓이니 도면에서 실제 치수로 고쳐 주세요."}</p>
+    <p className="muted small">측정한 가구의 위치와 치수를 확인해 주세요.</p>
   </div>;
 }
 
@@ -174,7 +173,7 @@ export function CameraSetup({ onReady }: { onReady: (camera: Camera) => void }) 
     setBusy(true); setMessage("");
     try {
       const frame = await detectFrame(file);
-      if (frame.detections.length < 4) setMessage("보드의 마커 4개가 모두 보이게 다시 찍어 주세요.");
+      if (frame.detections.length !== 1) setMessage("마커의 검정 테두리와 네 모서리가 모두 보이게 다시 찍어 주세요.");
       else if (frames.length && (frame.width !== frames[0].width || frame.height !== frames[0].height)) setMessage("같은 카메라·같은 방향으로 찍어 주세요.");
       else setFrames((all) => [...all, frame].slice(0, SETUP_MAX));
     } catch (e) {

@@ -56,7 +56,7 @@
 .guide-step-notes > li { margin:0 0 8px; padding-left:2px; }
 .guide-step-notes > li:last-child { margin-bottom:0; }
 .guide-step-notes > li::marker { color:var(--guide-accent); font-size:10px; }
-.app.award-app.mode-web .guide-refresh .ap-guide-bottom { display:flex; justify-content:space-between; align-items:center; gap:28px; margin:44px 0 0 272px; padding:28px; border:0; border-radius:12px; background:var(--guide-tint); text-align:left; }
+.app.award-app.mode-web .guide-refresh .ap-guide-bottom { display:flex; justify-content:space-between; align-items:center; gap:20px; margin:24px 0 0 272px; padding:12px 20px; border:0; border-radius:12px; background:var(--guide-tint); text-align:left; }
 .app.award-app.mode-web .guide-refresh .ap-guide-bottom > p { margin:0; font-size:15px; line-height:1.8; color:var(--guide-text); }
 .app.award-app.mode-web .guide-refresh .ap-guide-bottom strong { font-size:20px; font-weight:700; color:var(--guide-ink); }
 .app.award-app.mode-web .guide-refresh .ap-guide-bottom .ap-round-link { min-height:46px; padding:10px 16px; gap:12px; margin:0; border:0; border-radius:999px; background:var(--c-action); color:var(--guide-paper); font-size:14px; white-space:nowrap; box-shadow:none; transform:none; transition:background-color 140ms; }
@@ -79,7 +79,7 @@
  .app.award-app.mode-web .guide-refresh .ap-guide-nav > button > svg { display:none; }
  .app.award-app.mode-web .guide-refresh .ap-guide-step { scroll-margin-top:calc(var(--guide-header-offset,120px) + 80px); }
  .app.award-app.mode-web .guide-refresh .ap-guide-step-title > .ap-guide-step-head { font-size:21px; }
- .app.award-app.mode-web .guide-refresh .ap-guide-bottom { margin-left:0; padding:24px; }
+ .app.award-app.mode-web .guide-refresh .ap-guide-bottom { margin-left:0; padding:12px 16px; }
  .app.award-app.mode-web .guide-refresh .ap-guide-heading > p { font-size:16px; }
 }
 @media(prefers-reduced-motion:reduce) {
@@ -90,4 +90,4 @@
 
 .app.award-app.mode-web .guide-refresh .ap-guide-nav { scrollbar-width:thin; }
 
-.app.award-app.mode-web .guide-refresh .ap-guide-bottom p { font-size:20px; font-weight:400; color:var(--guide-ink); }
+.app.award-app.mode-web .guide-refresh .ap-guide-bottom p { font-size:17px; line-height:1.5; font-weight:400; color:var(--guide-ink); }

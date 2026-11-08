@@ -1,29 +1,16 @@
-import { useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import type { Account, Grade, Space } from "./model";
-import { defaultShadingTime, grades } from "./model";
-import { applyShadingTime, blockingSchedule, formatMinute } from "./sunlight";
+import { gradeCounts, grades } from "./model";
 import { Arrow, Scribble, SunMark } from "./AwardPreview";
+import { GoogleMark } from "./GoogleMark";
 
 const gradeOrder: Grade[] = ["A", "B", "C", "D"];
-
-// Today's protection state for one space, from the same simple sun calculation as the detail page.
-function protectionStatus(space: Space, minute: number) {
-  const regions = space.regions.filter((r) => r.grade !== "D");
-  if (!regions.length) return { tone: "idle", label: "보호 설정 전", time: null as string | null };
-  const periods = [...applyShadingTime(blockingSchedule(space), space.shadingSchedule ?? defaultShadingTime).values()].flat();
-  const current = periods.find((p) => minute >= p.start && minute < p.end);
-  if (current) return { tone: "on", label: "보호 중", time: `${formatMinute(current.end)}까지` };
-  const next = periods.filter((p) => p.start > minute).sort((a, b) => a.start - b.start)[0];
-  return { tone: "set", label: "보호 설정", time: next ? `다음 차단 ${formatMinute(next.start)}` : null };
-}
 
 export function AccountOverview({
   account,
   spaces,
   serverState,
   onOpen,
-  onEdit,
   onRegister,
   onGuide,
   onRefresh,
@@ -33,23 +20,13 @@ export function AccountOverview({
   spaces: Space[];
   serverState: "loading" | "online" | "offline";
   onOpen: (s: Space) => void;
-  onEdit: (s: Space) => void;
   onRegister: () => void;
   onGuide: () => void;
   onRefresh: () => void;
   onLogout: () => void;
 }) {
-  const [minute] = useState(() => {
-    const now = new Date();
-    return now.getHours() * 60 + now.getMinutes();
-  });
   const regions = spaces.flatMap((s) => s.regions.filter((r) => r.grade !== "D"));
   const zones = spaces.reduce((n, s) => n + s.zones.length, 0);
-  const statuses = new Map(spaces.map((s) => [s.id, protectionStatus(s, minute)]));
-  const nextAll = spaces
-    .flatMap((s) => [...applyShadingTime(blockingSchedule(s), s.shadingSchedule ?? defaultShadingTime).values()].flat())
-    .filter((p) => p.start > minute)
-    .sort((a, b) => a.start - b.start)[0];
   const buildings = [...new Set(spaces.map((s) => s.building || "건물 미지정"))];
   return (
     <div className="acct">
@@ -81,10 +58,6 @@ export function AccountOverview({
           <dt>보호 영역</dt>
           <dd>{regions.length}곳</dd>
         </div>
-        <div>
-          <dt>오늘의 다음 차단</dt>
-          <dd className="is-sun">{nextAll ? formatMinute(nextAll.start) : "—"}</dd>
-        </div>
       </dl>
 
       <section className="acct-spaces" aria-labelledby="acct-spaces-title">
@@ -108,18 +81,18 @@ export function AccountOverview({
                 {spaces
                   .filter((s) => (s.building || "건물 미지정") === b)
                   .map((s) => {
-                    const st = statuses.get(s.id)!;
-                    const counts = gradeOrder.map((g) => [g, s.regions.filter((r) => r.grade === g).length] as const);
+                    const perGrade = gradeCounts(s);
+                    const counts = gradeOrder.map((g) => [g, perGrade[g]] as const);
                     return (
                       <li className="acct-space" key={s.id}>
-                        <button type="button" className="acct-space-open" onClick={() => onOpen(s)} aria-label={`${s.name} 공간 현황 열기`}>
+                        <div className="acct-space-open">
                           <span className="acct-space-name">
                             <strong>{s.name || "이름 없는 공간"}</strong>
                             <small>
                               {s.floor} · 구역 {s.zones.length}개
                             </small>
                           </span>
-                          <span className="acct-grades" aria-label="등급별 보호 영역 수">
+                          <span className="acct-grades" aria-label="등급별 가구·영역 수">
                             {counts.map(([g, n]) => (
                               <span key={g} className={`acct-grade grade-${g} ${n ? "" : "is-empty"}`} title={grades[g]}>
                                 <i aria-hidden="true" />
@@ -127,14 +100,9 @@ export function AccountOverview({
                               </span>
                             ))}
                           </span>
-                          <span className="acct-status">
-                            <span className={`ap-state-chip ${st.tone === "on" ? "on" : ""}`}>{st.label}</span>
-                            {st.time && <small>{st.time}</small>}
-                          </span>
-                          <Arrow diagonal />
-                        </button>
-                        <button type="button" className="secondary acct-edit" onClick={() => onEdit(s)}>
-                          편집
+                        </div>
+                        <button type="button" className="secondary acct-edit" onClick={() => onOpen(s)} aria-label={`${s.name} 공간 열기`}>
+                          공간 열기
                         </button>
                       </li>
                     );
@@ -178,7 +146,7 @@ export function AuthPanel({ hidden, brand, onLogin }: { hidden: boolean; brand: 
         <p>Google 계정으로 로그인하고 저장한 공간을 확인하세요.</p>
         <button type="button" className="google-button acct-google" onClick={onLogin}>
           <Scribble />
-          <span className="google-g" aria-hidden="true">G</span>
+          <span className="google-g" aria-hidden="true"><GoogleMark size={18} /></span>
           Google로 계속하기
         </button>
       </div>

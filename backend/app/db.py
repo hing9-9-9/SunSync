@@ -1,3 +1,4 @@
+import os
 import sqlite3
 from collections.abc import Iterator
 from typing import Any
@@ -5,7 +6,16 @@ from typing import Any
 from sqlalchemy import Engine, event
 from sqlmodel import Session, SQLModel, create_engine
 
-DATABASE_URL = "sqlite:///./sunsync.db"
+DEFAULT_DATABASE_URL = "sqlite:///./sunsync.db"
+
+
+def database_url() -> str:
+    """Return the database URL; a deployed server sets an absolute path in the environment."""
+
+    return os.environ.get("SUNSYNC_DATABASE_URL") or DEFAULT_DATABASE_URL
+
+
+DATABASE_URL = database_url()
 engine = create_engine(
     DATABASE_URL,
     connect_args={"check_same_thread": False, "timeout": 30.0},
