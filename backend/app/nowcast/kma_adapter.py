@@ -18,6 +18,10 @@ from app.nowcast.adapters import RawPoint, RawSnapshot
 from engine.fr01.models import Site
 
 KMA_GK2A_URL = "https://apihub.kma.go.kr/api/typ01/cgi-bin/url/nph_sun_sat_txt"
+KMA_DSR_UNIT_SOURCE_URL = (
+    "https://api.nmsc.kma.go.kr/homepage/html/base/cmm/selectPage.do"
+    "?page=static.convergence.utilizationProducts"
+)
 KMA_INTERVAL_MINUTES = 10
 KMA_MAX_POINTS_PER_REQUEST = 24
 MISSING_TOKENS = {
@@ -153,8 +157,6 @@ def parse_kma_wide_payload(
             raise KmaGk2aError("kma_invalid_value")
         if variable == "DSR" and value < 0:
             raise KmaGk2aError("kma_invalid_dsr")
-        if variable == "CA" and not 0.0 <= value <= 1.0:
-            raise KmaGk2aError("kma_invalid_cloud_fraction")
         parsed.append((timestamp, value))
 
     return KmaSeries(
@@ -190,7 +192,10 @@ def build_kma_snapshot(
     degraded = False
     for timestamp in timestamps:
         dsr_value = dsr_values.get(timestamp)
-        cloud_fraction = cloud_values.get(timestamp)
+        cloud_raw = cloud_values.get(timestamp)
+        cloud_fraction = (
+            cloud_raw if cloud_raw is not None and 0.0 <= cloud_raw <= 1.0 else None
+        )
         if dsr_value is None or cloud_fraction is None:
             degraded = True
         points.append(
@@ -226,8 +231,9 @@ def build_kma_snapshot(
             "fetched_at_utc": fetched_at.isoformat(),
             "interval_minutes": KMA_INTERVAL_MINUTES,
             "variables": ["DSR", "CA"],
-            "dsr_unit": "unknown",
-            "unit_confirmed": False,
+            "dsr_unit": "W/m2",
+            "unit_confirmed": True,
+            "dsr_unit_source": KMA_DSR_UNIT_SOURCE_URL,
             "cloud_source_scale": "fraction_0_1",
         },
     )
@@ -274,6 +280,41 @@ class KmaGk2aAdapter:
             self.sleeper(self.retry_base_seconds * (2 ** (attempt - 1)))
         raise KmaGk2aError("kma_transport_error")
 
+    def fetch_chunk(
+        self, start_time: datetime, end_time: datetime, variable: str
+    ) -> tuple[bytes, KmaSeries]:
+        """Fetch and validate one provider-sized chunk for a durable work queue."""
+
+        if not self.api_key.strip():
+            raise KmaGk2aError("kma_api_key_missing")
+        start = _utc(start_time, "start_time")
+        end = _utc(end_time, "end_time")
+        normalized_variable = variable.upper()
+        if normalized_variable not in {"DSR", "CA"}:
+            raise ValueError("variable must be DSR or CA")
+        if start > end:
+            raise ValueError("start_time must not be after end_time")
+        if any(
+            value.second
+            or value.microsecond
+            or value.minute % KMA_INTERVAL_MINUTES
+            for value in (start, end)
+        ):
+            raise ValueError("chunk boundaries must align to 10-minute UTC boundaries")
+        point_count = int((end - start) / timedelta(minutes=KMA_INTERVAL_MINUTES)) + 1
+        if point_count > KMA_MAX_POINTS_PER_REQUEST:
+            raise ValueError("chunk exceeds provider 24-point limit")
+
+        payload = self._fetch_variable(start, end, normalized_variable)
+        series = parse_kma_wide_payload(payload, normalized_variable)
+        if (
+            not series.values
+            or series.values[0][0] != start
+            or series.values[-1][0] != end
+        ):
+            raise KmaGk2aError("kma_unexpected_range")
+        return payload, series
+
     def _fetch_series(
         self, start: datetime, end: datetime, variable: str
     ) -> tuple[tuple[bytes, ...], KmaSeries]:
@@ -289,9 +330,7 @@ class KmaGk2aAdapter:
 
         def fetch_chunk(time_range: tuple[datetime, datetime]) -> tuple[bytes, KmaSeries]:
             chunk_start, chunk_end = time_range
-            payload = self._fetch_variable(chunk_start, chunk_end, variable)
-            series = parse_kma_wide_payload(payload, variable)
-            return payload, series
+            return self.fetch_chunk(chunk_start, chunk_end, variable)
 
         workers = min(max(1, self.max_concurrency), len(ranges))
         with ThreadPoolExecutor(max_workers=workers) as executor:

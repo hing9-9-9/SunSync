@@ -1,0 +1,191 @@
+{
+  "artifact_schema_version": "1.0",
+  "factor_bounds": [
+    0.0,
+    1.05
+  ],
+  "feature_names": [
+    "intercept",
+    "direct_prior_factor",
+    "open_meteo_factor",
+    "cloud_transmittance",
+    "advection_impact"
+  ],
+  "feature_units": {
+    "advection_impact": "dimensionless",
+    "cloud_transmittance": "dimensionless",
+    "direct_prior_factor": "dimensionless",
+    "intercept": "dimensionless",
+    "open_meteo_factor": "dimensionless"
+  },
+  "horizon_minutes": 10,
+  "model_type": "linear_quantile_regression_p10_p50_p90",
+  "model_version": "fr01_kma_quantile_v1",
+  "postprocessing": {
+    "p10": "clip(raw_p10, 0.0, 1.05)",
+    "p50": "max(p10, clip(raw_p50, 0.0, 1.05))",
+    "p90": "max(p50, clip(raw_p90, 0.0, 1.05))"
+  },
+  "preprocessing_contract": {
+    "advection_impact": "fixed_zero",
+    "cloud_patch_used": false,
+    "direct_prior_observation_weight": "exp(-(horizon_minutes / 60) / 1.5)",
+    "dsr_to_dni": "pvlib.irradiance.erbs",
+    "dsr_unit": "W/m2 (project assumption recorded in source summary)",
+    "minimum_solar_elevation_deg": 5.0,
+    "open_meteo_aggregation": "preceding_hour_mean; no linear interpolation",
+    "open_meteo_minimum_availability_delay_hours": 7,
+    "reference": "future KMA DSR converted to DNI with pvlib Erbs",
+    "reference_type": "dsr_proxy",
+    "version": "fr01_kma_features_v1"
+  },
+  "quantiles": [
+    0.1,
+    0.5,
+    0.9
+  ],
+  "status": "frozen",
+  "training_metadata": {
+    "code": {
+      "commit": "c3615d3b770a932f1013be7feb334b0d8c00d07a",
+      "source_sha256": {
+        "backend/app/nowcast/kma_linear_model.py": "3912ef56e6c2973b5b1cc1497c82a1cce9136846187a2167ec63de5d455d844c",
+        "backend/app/nowcast/kma_ml.py": "35f3c8681c1e09d159c4cff8227809a602c81abe299a96001171cac0a71ba0ca",
+        "backend/app/nowcast/kma_model_artifact.py": "6da41f15f023bc5d6189fa39f58a5c05f7043107f1e68c8ec36c4c3cc4745835",
+        "backend/app/nowcast/kma_model_dataset.py": "0a7f2db89ee75cc0177fbe25a138dd650165a584cfe645b805c7ef4078d5ad0a",
+        "tools/ai_experiments/package_fr01_kma_models.py": "a1de4785b8abe1d26253df481f679576d67ae6ecf0c95650163355c0655bb851"
+      },
+      "working_tree_dirty_at_packaging": true
+    },
+    "development_period_utc": [
+      "2026-10-05T00:00:00Z",
+      "2026-11-01T23:50:00Z"
+    ],
+    "diagnostic_used_for_selection": false,
+    "final_test_used": false,
+    "frozen_on": "2026-11-08",
+    "input_files": {
+      "kma": {
+        "bytes": 357337,
+        "path": "data/fr01/datasets/development_20261005_20261101/kma_gk2a.csv",
+        "sha256": "00e8259d5dbb5dd56bfee7a82e5b3f892b3a81a588bb5cfb70c4c8d18396d413"
+      },
+      "open_meteo": {
+        "bytes": 490980,
+        "path": "data/fr01/datasets/development_20261005_20261101/open_meteo_runs.csv",
+        "sha256": "484e7b97d0ba27231948657451f86ec132cbba9427951fe4eba1e6fb8881cfa2"
+      }
+    },
+    "selection_policy": "train and validation only; diagnostic report-only",
+    "source_summary": {
+      "bytes": 3862,
+      "path": "data/fr01/model/quantile_stage4_train_20261005/quantile_model_summary.json",
+      "sha256": "a369fbc0b704c40698d53cecda1026eb67466714384397fb03c4ae6e09930bcc"
+    },
+    "split_boundaries_utc": {
+      "diagnostic_start": "2026-10-31T00:00:00Z",
+      "diagnostic_target_before": "2026-11-02T00:00:00Z",
+      "split_embargo_rule": "valid_time < next_split_start",
+      "train_start": "2026-10-05T00:00:00Z",
+      "train_target_before": "2026-10-29T00:00:00Z",
+      "validation_start": "2026-10-29T00:00:00Z",
+      "validation_target_before": "2026-10-31T00:00:00Z"
+    },
+    "split_counts": {
+      "diagnostic": 97,
+      "train": 1266,
+      "validation": 97
+    }
+  },
+  "weight_bounds": {
+    "p10": [
+      [
+        -0.5,
+        0.5
+      ],
+      [
+        0.0,
+        1.5
+      ],
+      [
+        0.0,
+        1.5
+      ],
+      [
+        -0.5,
+        0.5
+      ],
+      [
+        0.0,
+        0.0
+      ]
+    ],
+    "p50": [
+      [
+        -0.5,
+        0.5
+      ],
+      [
+        0.0,
+        1.5
+      ],
+      [
+        0.0,
+        1.5
+      ],
+      [
+        -0.5,
+        0.5
+      ],
+      [
+        0.0,
+        0.0
+      ]
+    ],
+    "p90": [
+      [
+        -0.5,
+        0.5
+      ],
+      [
+        0.0,
+        1.5
+      ],
+      [
+        0.0,
+        1.5
+      ],
+      [
+        -0.5,
+        0.5
+      ],
+      [
+        0.0,
+        0.0
+      ]
+    ]
+  },
+  "weights": {
+    "p10": [
+      -0.13177931396839113,
+      0.5829738738093839,
+      0.0,
+      0.38425539457016267,
+      0.0
+    ],
+    "p50": [
+      -0.005406465890973672,
+      1.0084778452873229,
+      0.0,
+      0.015838667691265764,
+      0.0
+    ],
+    "p90": [
+      0.36392467578085536,
+      0.7566848500162618,
+      0.0,
+      -0.07916727226258788,
+      0.0
+    ]
+  }
+}

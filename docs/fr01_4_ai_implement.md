@@ -1,4 +1,25 @@
-# FR-01.4 KMA AI 실측 실험 구현 계획
+# FR-01.4 KMA AI 초기 구현 계획 기록
+
+> **문서 역할:** 개발 초기에 작성한 수집·실험 계획과 의사결정 기록이다. Phase 0~2의
+> 수집기 이해에 사용한다. 현재 모델 계약은
+> [`fr01_4_ai_model_implementation.md`](fr01_4_ai_model_implementation.md), 실제 결과는
+> [`fr01_4_ai_kma_analysis.md`](fr01_4_ai_kma_analysis.md)를 따른다.
+
+## 현재 진행 상태 — 2026-11-08
+
+| 범위 | 상태 | 현재 산출물 |
+|---|---|---|
+| Phase 0~2 수집·정규화·queue | 완료 | KMA raw/CSV/manifest와 durable queue |
+| Phase 3 Open-Meteo·정답 결합 | 완료 | 28일 개발 dataset |
+| Phase 4~5 모델 학습·누수 방지 | 완료 | 10·30·60분 P10·P50·P90 동결 모델 |
+| Phase 6 지표·EDA | 완료 | Validation 전체·구간별 JSON 평가 |
+| Phase 7 테스트 | 완료 | artifact·누수·회귀 테스트 |
+| Phase 8 로컬 문서 | 완료 | FR-01.4 문서 묶음 정리 |
+| GitHub Issue #86 반영 | 별도 작업 | PR·artifact 경로 확정 후 갱신 |
+| Final test | 미실행 | Open-Meteo final-test run 준비 필요 |
+
+초기 계획의 `synthetic|real|both` 통합 CLI, PNG 그래프, ASOS, CLL·CT, GK2A patch는
+현재 V1에 필요하지 않아 구현하지 않았다. 삭제된 요구가 아니라 후속 후보 또는 초기 설계 기록이다.
 
 ## 1. 목표
 
@@ -59,7 +80,7 @@ Open-Meteo vs KMA AI 비교
 - [x] DSR 기반 proxy DNI를 사용한다.
 - [x] 결과 표와 artifact에 `reference_type=dsr_proxy`를 표시한다.
 - [x] 독립 실측 DNI 정확도로 표현하지 않는다.
-- [ ] 예측 대상 시각의 DSR이 입력 feature에 포함되지 않는지 자동 테스트한다.
+- [x] 예측 대상 시각의 DSR이 입력 feature에 포함되지 않는지 자동 테스트한다.
 
 ### Gate B: GK2A 입력 — API 동작 확인 완료
 
@@ -69,9 +90,9 @@ Open-Meteo vs KMA AI 비교
 - [x] KMA API 키를 발급받고 해당 서비스 활용신청을 완료한다.
 - [x] 직접 query로 HTTP 200과 실제 10분 간격을 확인한다.
 - [x] 응답의 기본 필드와 wide-format 구조를 확인한다.
-- [ ] DSR 공식 단위는 첨부 명세 또는 추가 검증으로 확정한다.
+- [x] 국가기상위성센터 공식 정의에서 DSR 범위와 단위 `0~1500 W/m²`를 확인했다.
 - [x] provider 결측 토큰 `nan`, `6553.5`를 실제 표본에서 확인했다.
-- [ ] `CLL`, `CT`의 추가 사용 여부를 sample 응답 확인 후 결정한다.
+- [x] V1에서는 `CLL`, `CT`를 사용하지 않고 DSR·CA만 사용하기로 확정했다.
 
 공식 endpoint:
 
@@ -180,9 +201,9 @@ timestamp_utc,variable,longitude,latitude,value
 
 - [x] `tm1`, `tm2`가 UTC 기준으로 반환된다.
 - [x] 실제 timestamp가 10분 간격이다.
-- [ ] DSR의 단위와 유효 범위는 무엇인가?
+- [x] DSR 공식 범위와 단위는 `0~1500 W/m²`다.
 - [x] CA 표본은 `0.0~1.0` 범위로 반환됐다.
-- [ ] 더 긴 표본으로 CA가 항상 `0~1`인지 확인한다.
+- [x] 장기 표본에서 `1.1`이 확인되어 원문은 보존하고 모델 값은 null 처리한다.
 - [x] 결측값은 `nan`과 DSR fill sentinel `6553.5`로 반환될 수 있다.
 - [x] 이번 표본에서는 요청 좌표와 반환 좌표가 같았다.
 - [ ] 자료 생산 후 조회 가능해지기까지 지연이 얼마나 되는가?
@@ -438,6 +459,9 @@ KMA_API_KEY=발급받은_인증키
 - [x] 키가 로그·CSV·Git diff와 객체 repr에 노출되지 않는다.
 
 ---
+
+<details>
+<summary>초기 Phase 3~8 상세 계획 보기 — 현재 구현은 모델 구현 문서를 우선</summary>
 
 ## 7. Phase 3 — Open-Meteo와 reference DNI 결합
 
@@ -721,3 +745,9 @@ GitHub Issue 수정은 로컬 구현·검증 완료 후 별도 승인하에 수�
 - [ ] 관련 테스트와 기존 FR-01.4 테스트가 통과한다.
 
 성능 향상 자체는 완료 조건으로 고정하지 않는다. 데이터와 방법을 바꾸지 않고 얻은 결과를 정직하게 보고하는 것이 이 실험의 완료 조건이다.
+
+</details>
+
+현재 V1은 위 초기 완료 정의 중 PNG 그래프와 통합 `--mode` CLI를 제외한 데이터 수집,
+누수 방지, 실제 Open-Meteo 비교, 분위수 지표, 구간 평가, artifact 저장과 테스트를 완료했다.
+그래프 대신 재계산 가능한 CSV·JSON을 남겼으며 final test와 운영 API 연결은 다음 작업이다.

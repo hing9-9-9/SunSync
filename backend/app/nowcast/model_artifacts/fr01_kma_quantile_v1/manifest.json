@@ -1,0 +1,56 @@
+{
+  "artifact_schema_version": "1.0",
+  "code": {
+    "commit": "c3615d3b770a932f1013be7feb334b0d8c00d07a",
+    "source_sha256": {
+      "backend/app/nowcast/kma_linear_model.py": "3912ef56e6c2973b5b1cc1497c82a1cce9136846187a2167ec63de5d455d844c",
+      "backend/app/nowcast/kma_ml.py": "35f3c8681c1e09d159c4cff8227809a602c81abe299a96001171cac0a71ba0ca",
+      "backend/app/nowcast/kma_model_artifact.py": "6da41f15f023bc5d6189fa39f58a5c05f7043107f1e68c8ec36c4c3cc4745835",
+      "backend/app/nowcast/kma_model_dataset.py": "0a7f2db89ee75cc0177fbe25a138dd650165a584cfe645b805c7ef4078d5ad0a",
+      "tools/ai_experiments/package_fr01_kma_models.py": "a1de4785b8abe1d26253df481f679576d67ae6ecf0c95650163355c0655bb851"
+    },
+    "working_tree_dirty_at_packaging": true
+  },
+  "generation_command": ".\\.venv\\Scripts\\python.exe tools/ai_experiments/package_fr01_kma_models.py",
+  "model_family": "FR-01 KMA/Open-Meteo linear quantile nowcast",
+  "model_version": "fr01_kma_quantile_v1",
+  "models": [
+    {
+      "bytes": 4993,
+      "horizon_minutes": 10,
+      "path": "horizon_10/model.json",
+      "sha256": "d7f38b71e16634cd231972cb4da3609fdd463f4da5183d68aa2c6af1504477ec"
+    },
+    {
+      "bytes": 5015,
+      "horizon_minutes": 30,
+      "path": "horizon_30/model.json",
+      "sha256": "b418ecf4f6887ca22c742a85075bbfebfbf2c477654aa199b85e285a950802dd"
+    },
+    {
+      "bytes": 4966,
+      "horizon_minutes": 60,
+      "path": "horizon_60/model.json",
+      "sha256": "0e9315da4da53ce0268fbf5af55bdbf9cf81e57b32c1b261d7afd60fc17c3064"
+    }
+  ],
+  "packaged_on": "2026-11-08",
+  "round_trip_validation": {
+    "dni_tolerance_W_m2": 1e-06,
+    "factor_tolerance": 1e-10,
+    "maximum_dni_absolute_error_W_m2": 0.0,
+    "maximum_factor_absolute_error": 0.0,
+    "sample_count_per_horizon": 3,
+    "status": "PASS"
+  },
+  "selection_policy": {
+    "diagnostic_used_for_selection": false,
+    "final_test_used": false
+  },
+  "status": "frozen",
+  "supported_horizons_minutes": [
+    10,
+    30,
+    60
+  ]
+}

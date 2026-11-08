@@ -11,7 +11,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from uuid import uuid4
 
-from app.nowcast.kma_adapter import KMA_GK2A_URL, KmaCollection
+from app.nowcast.kma_adapter import KMA_DSR_UNIT_SOURCE_URL, KMA_GK2A_URL, KmaCollection
 
 TRANSFORM_VERSION = "kma_gk2a_wide_to_long_v1"
 
@@ -54,7 +54,7 @@ def write_kma_collection(collection: KmaCollection, output_root: Path) -> KmaArt
     end_stamp = _file_stamp(collection.end_time)
     stem = f"{start_stamp}_{end_stamp}"
     raw_directory = output_root / "raw" / "kma_gk2a"
-    normalized_directory = output_root / "normalized"
+    normalized_directory = output_root / "normalized" / "kma_gk2a"
     manifest_directory = output_root / "manifests"
     multiple_dsr = len(collection.dsr_payloads) > 1
     multiple_cloud = len(collection.cloud_payloads) > 1
@@ -93,6 +93,7 @@ def write_kma_collection(collection: KmaCollection, output_root: Path) -> KmaArt
         "returned_latitude",
         "returned_longitude",
         "dsr_raw",
+        "ca_raw_provider",
         "ca_fraction",
         "cloud_cover_pct",
         "dsr_unit",
@@ -106,8 +107,16 @@ def write_kma_collection(collection: KmaCollection, output_root: Path) -> KmaArt
     writer.writeheader()
     for timestamp in timestamps:
         dsr = dsr_values.get(timestamp)
-        cloud = cloud_values.get(timestamp)
-        if dsr is None and cloud is None:
+        cloud_raw = cloud_values.get(timestamp)
+        cloud = (
+            cloud_raw
+            if cloud_raw is not None and 0.0 <= cloud_raw <= 1.0
+            else None
+        )
+        cloud_out_of_range = cloud_raw is not None and cloud is None
+        if cloud_out_of_range:
+            quality = "ca_out_of_range"
+        elif dsr is None and cloud is None:
             quality = "missing"
         elif dsr is None or cloud is None:
             quality = "partial"
@@ -121,10 +130,11 @@ def write_kma_collection(collection: KmaCollection, output_root: Path) -> KmaArt
                 "returned_latitude": collection.dsr.latitude_deg,
                 "returned_longitude": collection.dsr.longitude_deg,
                 "dsr_raw": "" if dsr is None else dsr,
+                "ca_raw_provider": "" if cloud_raw is None else cloud_raw,
                 "ca_fraction": "" if cloud is None else cloud,
                 "cloud_cover_pct": "" if cloud is None else cloud * 100.0,
-                "dsr_unit": "unknown",
-                "unit_confirmed": "false",
+                "dsr_unit": "W/m2",
+                "unit_confirmed": "true",
                 "quality_flag": quality,
             }
         )
@@ -146,9 +156,17 @@ def write_kma_collection(collection: KmaCollection, output_root: Path) -> KmaArt
         "variables": ["DSR", "CA"],
         "row_count": len(timestamps),
         "valid_dsr_count": sum(value is not None for value in dsr_values.values()),
-        "valid_cloud_count": sum(value is not None for value in cloud_values.values()),
-        "dsr_unit": "unknown",
-        "unit_confirmed": False,
+        "valid_cloud_count": sum(
+            value is not None and 0.0 <= value <= 1.0
+            for value in cloud_values.values()
+        ),
+        "out_of_range_cloud_count": sum(
+            value is not None and not 0.0 <= value <= 1.0
+            for value in cloud_values.values()
+        ),
+        "dsr_unit": "W/m2",
+        "unit_confirmed": True,
+        "dsr_unit_source": KMA_DSR_UNIT_SOURCE_URL,
         "transform_version": TRANSFORM_VERSION,
         "raw_payloads": {
             "DSR": [

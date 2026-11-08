@@ -17,7 +17,12 @@ if str(WORKSPACE_ROOT) not in sys.path:
 
 from app.config import load_local_environment
 from app.nowcast.kma_adapter import KmaGk2aAdapter
-from app.nowcast.kma_dataset import write_kma_collection
+from app.nowcast.kma_collection_queue import (
+    finalize_queue,
+    prepare_queue,
+    queue_summary,
+    run_queue,
+)
 
 from engine.fr01.models import Site
 
@@ -47,30 +52,60 @@ def main() -> int:
     parser.add_argument("--output-dir", type=Path, default=WORKSPACE_ROOT / "data" / "fr01")
     parser.add_argument("--timeout-seconds", type=float, default=90.0)
     parser.add_argument("--max-attempts", type=int, default=3)
-    parser.add_argument("--max-concurrency", type=int, default=6)
+    parser.add_argument("--max-concurrency", type=int, default=3)
+    parser.add_argument(
+        "--resume", action="store_true", help="resume an existing durable queue"
+    )
+    parser.add_argument(
+        "--retry-failed", action="store_true", help="move failed queue tasks back to pending"
+    )
+    parser.add_argument(
+        "--prepare-only",
+        action="store_true",
+        help="create or inspect the queue without making KMA requests",
+    )
     args = parser.parse_args()
 
     if set(args.variables) != {"DSR", "CA"}:
         parser.error("this collector requires both DSR and CA")
+    site = Site(args.latitude, args.longitude, "UTC")
+    queue_path = prepare_queue(
+        site=site,
+        start_time=args.start,
+        end_time=args.end,
+        output_root=args.output_dir,
+        resume=args.resume,
+    )
+    if args.prepare_only:
+        print(f"queue={queue_path} summary={queue_summary(queue_path)}")
+        return 0
+
     api_key = os.getenv("KMA_API_KEY", "")
     if not api_key.strip():
         parser.error("KMA_API_KEY is missing; set it in the repository .env")
 
-    site = Site(args.latitude, args.longitude, "UTC")
     adapter = KmaGk2aAdapter(
         site,
         api_key,
         timeout_seconds=args.timeout_seconds,
         max_attempts=args.max_attempts,
-        max_concurrency=args.max_concurrency,
     )
-    collection = adapter.fetch_range(args.start, args.end)
-    paths = write_kma_collection(collection, args.output_dir)
+    summary = run_queue(
+        queue_path=queue_path,
+        output_root=args.output_dir,
+        adapter=adapter,
+        max_concurrency=args.max_concurrency,
+        retry_failed=args.retry_failed,
+    )
+    print(f"queue={queue_path} summary={summary}")
+    if summary["succeeded"] != summary["total"]:
+        print("queue incomplete; rerun with --resume --retry-failed after reviewing failures")
+        return 2
+
+    paths = finalize_queue(queue_path=queue_path, output_root=args.output_dir, site=site)
     print(
         " ".join(
             [
-                f"rows={len(collection.snapshot.points)}",
-                f"quality={collection.snapshot.quality_status}",
                 f"raw_dsr_files={len(paths.dsr_raw)}",
                 f"raw_ca_files={len(paths.cloud_raw)}",
                 f"raw_dir={paths.dsr_raw[0].parent}",

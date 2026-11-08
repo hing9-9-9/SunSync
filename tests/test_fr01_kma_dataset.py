@@ -21,6 +21,12 @@ from app.nowcast.kma_adapter import (
     build_kma_snapshot,
     parse_kma_wide_payload,
 )
+from app.nowcast.kma_collection_queue import (
+    finalize_queue,
+    prepare_queue,
+    queue_summary,
+    run_queue,
+)
 from app.nowcast.kma_dataset import write_kma_collection
 from sqlalchemy import text
 from sqlmodel import Session, create_engine
@@ -117,12 +123,12 @@ def test_parser_preserves_provider_missing_tokens_as_null(missing: str) -> None:
     assert dsr.values[2][1] == 0.0
 
 
-def test_parser_rejects_non_ten_minute_or_out_of_range_cloud() -> None:
+def test_parser_rejects_non_ten_minute_but_preserves_out_of_range_cloud() -> None:
     bad_interval = payload("CA").replace(b"202611050310", b"202611050315")
     with pytest.raises(KmaGk2aError, match="kma_unexpected_interval"):
         parse_kma_wide_payload(bad_interval, "CA")
-    with pytest.raises(KmaGk2aError, match="kma_invalid_cloud_fraction"):
-        parse_kma_wide_payload(payload("CA", ("0.8", "1.1", "0.9")), "CA")
+    cloud = parse_kma_wide_payload(payload("CA", ("0.8", "1.1", "0.9")), "CA")
+    assert cloud.values[1] == (START + timedelta(minutes=10), 1.1)
 
 
 def test_adapter_fetches_both_variables_without_exposing_key() -> None:
@@ -194,11 +200,45 @@ def test_artifact_writer_preserves_raw_and_creates_readable_csv(tmp_path: Path) 
     csv_text = paths.normalized_csv.read_text(encoding="utf-8")
     assert "timestamp_utc" in csv_text
     assert "2026-11-05T03:00:00Z" in csv_text
-    assert ",505.7,0.8,80.0,unknown,false,ok" in csv_text
+    assert ",505.7,0.8,0.8,80.0,W/m2,true,ok" in csv_text
     manifest = json.loads(paths.manifest.read_text(encoding="utf-8"))
     assert manifest["row_count"] == 3
-    assert manifest["unit_confirmed"] is False
+    assert manifest["unit_confirmed"] is True
+    assert manifest["dsr_unit"] == "W/m2"
     assert "authKey" not in paths.manifest.read_text(encoding="utf-8")
+
+
+def test_artifact_writer_preserves_invalid_cloud_raw_but_nulls_fraction(
+    tmp_path: Path,
+) -> None:
+    dsr_payload = payload("DSR")
+    cloud_payload = payload("CA", ("0.8", "1.1", "0.9"))
+    dsr = parse_kma_wide_payload(dsr_payload, "DSR")
+    cloud = parse_kma_wide_payload(cloud_payload, "CA")
+    snapshot = build_kma_snapshot(
+        SITE, START, END, FETCHED, dsr_payload, cloud_payload, dsr, cloud
+    )
+    from app.nowcast.kma_adapter import KmaCollection
+
+    result = KmaCollection(
+        site=SITE,
+        start_time=START,
+        end_time=END,
+        fetched_at=FETCHED,
+        dsr_payloads=(dsr_payload,),
+        cloud_payloads=(cloud_payload,),
+        dsr=dsr,
+        cloud=cloud,
+        snapshot=snapshot,
+    )
+    paths = write_kma_collection(result, tmp_path / "data" / "fr01")
+    rows = paths.normalized_csv.read_text(encoding="utf-8").splitlines()
+    assert "ca_raw_provider" in rows[0]
+    assert ",451.2,1.1,,,W/m2,true,ca_out_of_range" in rows[2]
+    assert snapshot.points[1].cloud_cover_percent is None
+    manifest = json.loads(paths.manifest.read_text(encoding="utf-8"))
+    assert manifest["valid_cloud_count"] == 2
+    assert manifest["out_of_range_cloud_count"] == 1
 
 
 def test_worker_stores_snapshot_and_request_path_does_not_call_worker(tmp_path: Path) -> None:
@@ -252,3 +292,75 @@ def test_collector_cli_help_runs_from_repository_root() -> None:
     )
     assert result.returncode == 0, result.stderr
     assert "--latitude" in result.stdout
+    assert "--prepare-only" in result.stdout
+    assert "--resume" in result.stdout
+
+
+def test_durable_queue_prepares_seven_days_without_fetching(tmp_path: Path) -> None:
+    start = datetime(2026, 10, 26, 0, 0, tzinfo=UTC)
+    end = datetime(2026, 11, 1, 23, 50, tzinfo=UTC)
+    output_root = tmp_path / "data" / "fr01"
+
+    queue_path = prepare_queue(
+        site=SITE,
+        start_time=start,
+        end_time=end,
+        output_root=output_root,
+        created_at=FETCHED,
+    )
+
+    journal = json.loads(queue_path.read_text(encoding="utf-8"))
+    assert len(journal["tasks"]) == 84
+    assert queue_summary(queue_path) == {
+        "pending": 84,
+        "running": 0,
+        "succeeded": 0,
+        "failed": 0,
+        "total": 84,
+    }
+    assert not (output_root / "raw").exists()
+    assert "authKey" not in queue_path.read_text(encoding="utf-8")
+
+
+def test_durable_queue_retries_only_failed_tasks_and_finalizes(tmp_path: Path) -> None:
+    output_root = tmp_path / "data" / "fr01"
+    queue_path = prepare_queue(
+        site=SITE,
+        start_time=START,
+        end_time=END,
+        output_root=output_root,
+        created_at=FETCHED,
+    )
+    calls = {"DSR": 0, "CA": 0}
+
+    class Adapter:
+        def fetch_chunk(self, start: datetime, end: datetime, variable: str):
+            calls[variable] += 1
+            if variable == "DSR" and calls[variable] == 1:
+                raise KmaGk2aError("kma_transport_error")
+            body = range_payload(variable, start, end)
+            return body, parse_kma_wide_payload(body, variable)
+
+    first = run_queue(
+        queue_path=queue_path,
+        output_root=output_root,
+        adapter=Adapter(),  # type: ignore[arg-type]
+        max_concurrency=2,
+    )
+    assert first["succeeded"] == 1
+    assert first["failed"] == 1
+
+    second = run_queue(
+        queue_path=queue_path,
+        output_root=output_root,
+        adapter=Adapter(),  # type: ignore[arg-type]
+        max_concurrency=2,
+        retry_failed=True,
+    )
+    assert second["succeeded"] == second["total"] == 2
+    assert calls == {"DSR": 2, "CA": 1}
+
+    paths = finalize_queue(queue_path=queue_path, output_root=output_root, site=SITE)
+    assert paths.normalized_csv.exists()
+    assert len(paths.dsr_raw) == len(paths.cloud_raw) == 1
+    assert "2026-11-05T03:20:00Z" in paths.normalized_csv.read_text(encoding="utf-8")

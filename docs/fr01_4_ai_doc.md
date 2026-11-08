@@ -1,5 +1,27 @@
 # FR-01.4 KMA AI 실측 실험 이해 및 분석
 
+> **문서 역할:** DSR·DNI·Open-Meteo·분위수 예측을 처음 이해하기 위한 개념 설명서다.
+> 현재 구현 사양과 수치는 [`fr01_4_ai_model_implementation.md`](fr01_4_ai_model_implementation.md)와
+> [`fr01_4_ai_kma_analysis.md`](fr01_4_ai_kma_analysis.md)를 우선한다.
+
+## 현재 구현 요약 — 2026-11-08
+
+초기 계획과 달리 현재 모델은 ASOS나 GK2A 영상 patch가 아니라, **GK2A 지점 조회 API의
+10분 DSR·CA**와 당시 이용 가능한 Open-Meteo DNI를 사용한다.
+
+```text
+입력             현재 KMA DSR·CA + 당시 이용 가능한 Open-Meteo DNI + 태양 위치
+예측             10·30·60분 뒤 DSR 환산 DNI의 P10·P50·P90
+모델             horizon별 선형 분위수 회귀
+개발 기간        2026-10-05 ~ 2026-11-01
+상태             학습·Validation·동결·JSON 저장/로드 완료
+Final test       2026-11-02 ~ 2026-11-05, 아직 미평가
+위성 patch       미사용, cloud_patch_used=false
+```
+
+DSR 환산 DNI는 독립 DNI 센서의 실측값이 아니다. 따라서 현재 결과는 “실제 DNI 정확도
+증명”이 아니라 동일한 proxy 기준에서 모델과 Open-Meteo를 비교한 결과다.
+
 ## 1. 이 문서의 목적
 
 이 문서는 GitHub Issue `#86 [FR-01-AI]`에서 요구하는 작업을 처음 접한 개발자가 다음 질문에 답할 수 있도록 정리한 설명서다.
@@ -89,7 +111,7 @@ GHI = DNI × cos(태양 천정각) + DHI
 
 ## 5. 가져와야 할 데이터
 
-### 5.1 KMA 지상 관측 데이터
+### 5.1 초기 검토한 KMA 지상 관측 데이터 — V1 미사용
 
 한 지점에서 최소 3일, 권장 7일 이상 다음 자료를 같은 시간축으로 수집한다.
 
@@ -116,7 +138,7 @@ KMA 공식 자료에서 ASOS는 일사·구름·기온·습도 등을 제공하�
 - [KMA API Hub 지상관측 API](https://apihub.kma.go.kr/apiList.do)
 - [KMA 기상자료개방포털 ASOS 설명](https://data.kma.go.kr/data/grnd/selectAsosRltmList.do?pgmNo=36&tabNo=4)
 
-### 5.2 GK2A 위성 일사·구름 데이터
+### 5.2 V1에 사용한 GK2A 지점 일사·구름 데이터
 
 위성 자료는 지상 관측소 한 점만 보는 대신 건물 주변에 구름이 어느 방향으로 분포하는지 알려준다. 모델이 원하는 최종 형태는 원본 영상 전체가 아니라 다음과 같은 작은 patch 요약값이다.
 
@@ -129,7 +151,8 @@ KMA 공식 자료에서 ASOS는 일사·구름·기온·습도 등을 제공하�
 | 구름 이동 남북 성분 | `motion_v_m_s` | 구름 이동 방향과 속도의 남북 성분이다. |
 | 구름 꼭대기 높이 | `cloud_top_height_m` | 선택 입력이며 구름 특성 분석에 사용한다. |
 
-현재 코드와 합성 실험은 이 값들을 이미 받을 수 있지만 실제 GK2A 파일이나 API 응답에서 patch를 만드는 수집·전처리 코드는 없다.
+기존 합성 코드는 patch 값을 받을 수 있지만 실제 GK2A 지점 API로 공간 patch를 만드는
+전처리는 구현하지 않았다. V1은 단일 좌표의 DSR·CA만 사용한다.
 
 이번 구현에서는 KMA API Hub의 **천리안2A호 기상산출물(복사, 구름, 안개) 지점 조회서비스**를 사용한다. 이 서비스는 생산시간 간격을 10분 단위로 조회할 수 있고 다음 변수를 제공한다.
 
@@ -152,7 +175,8 @@ https://apihub.kma.go.kr/api/typ01/cgi-bin/url/nph_sun_sat_txt
 
 - [KMA API Hub 산업특화 태양광 API](https://apihub.kma.go.kr/specialApiList.do)
 
-첫 스프린트에서는 위성 patch가 확보되지 않더라도 지상 DSR·운량 기반 실험이 가능하다. 다만 이 경우 결과에 `cloud_patch_used=false`를 기록하고 “위성 이동 보정 효과를 검증했다”고 주장하면 안 된다.
+현재 V1은 patch 없이 지점 DSR·운량으로 학습했고 모든 결과에 `cloud_patch_used=false`를
+기록한다. 따라서 “위성 이동 보정 효과를 검증했다”고 주장하지 않는다.
 
 ### 5.3 Open-Meteo 예보 데이터
 
@@ -188,7 +212,7 @@ proxy DNI는 평가 대상 시각의 DSR, 태양 위치, clear-sky GHI/DNI와 Er
 정답: 예측 대상 시각의 DSR로 사후 생성한 proxy DNI
 ```
 
-예측 대상 시각의 DSR을 모델 입력과 proxy 정답에 동시에 사용하면 안 된다. 예를 들어 12:30의 proxy DNI를 평가할 때 모델 입력은 12:20까지 알 수 있었던 자료만 사용한다. 최소 lead time은 원자료 간격과 같은 10분으로 두고, 10·30·60·120분 lead time을 나누어 평가한다.
+예측 대상 시각의 DSR을 모델 입력과 proxy 정답에 동시에 사용하면 안 된다. 예를 들어 12:30의 proxy DNI를 평가할 때 모델 입력은 12:20까지 알 수 있었던 자료만 사용한다. 최소 lead time은 원자료 간격과 같은 10분으로 두고, 10·30·60분 lead time을 나누어 평가한다.
 
 정답값이 없으면 다음 지표는 계산할 수 없다.
 
@@ -408,7 +432,23 @@ Ground truth: reference DNI
 
 ---
 
-## 10. 현재 구현 분석
+## 10. 구현 상태
+
+현재 완료된 항목:
+
+- KMA API 수집기, 정규화 CSV, durable queue와 중단 복구
+- 28일 KMA·Open-Meteo 개발 dataset과 시간 누수 방지
+- 10·30·60분 P10·P50·P90 선형 분위수 모델
+- Validation 전체·시간대·태양 고도·구름 구간 평가
+- 동결 모델 JSON, SHA-256 검증 loader와 저장·재로드 동일성 검사
+
+남은 항목은 final test용 Open-Meteo archived run 준비, final test 1회 평가, 팀 검토 후
+운영 API 연결이다. 실제 GK2A 영상 patch와 cloud motion은 V1 범위가 아니다.
+
+<details>
+<summary>초기 작성 당시 구현 분석 보기</summary>
+
+### 초기 구현 분석
 
 이미 구현된 항목:
 
@@ -436,9 +476,11 @@ Ground truth: reference DNI
 
 현재 `docs/fr01_4_kma_ai_nowcast.md`의 benchmark 표는 합성 결과다. 실측 결과와 섞이지 않도록 향후 문서에서 `Synthetic Benchmark`와 `Real-data Evaluation`을 별도 절로 유지한다.
 
+</details>
+
 ---
 
-## 11. 확정된 결정과 남은 확인사항
+## 11. 확정된 결정
 
 ### 결정 1: 평가용 DNI 정답 — 확정
 
@@ -452,28 +494,21 @@ Ground truth: reference DNI
 - `nph_sun_sat_txt` 기상산출물 지점 조회서비스를 사용한다.
 - `int=10`으로 API가 제공하는 최소 10분 간격을 요청한다.
 - 필수 변수는 `DSR`, `CA`다.
-- `CLL`, `CT`는 실제 응답 품질을 확인한 뒤 선택한다.
-- API 키 발급 및 서비스 활용신청 후 직접 query로 응답 계약을 확정한다.
-- 현재 개발 환경에는 KMA API 키가 아직 설정되어 있지 않다.
+- V1 필수 변수는 `DSR`, `CA`다. `CLL`, `CT`와 영상 patch는 후속 후보로 남긴다.
+- API 키 발급·활용신청·직접 query와 응답 계약 확인을 완료했다.
 
-### 결정 3: 첫 실험 범위
+### 결정 3: 확정된 개발 범위
 
-권장 첫 범위는 다음과 같다.
-
-- 관측소 1곳
-- 연속 7일
-- ASOS DSR/일사, 운량, 기온, 습도
-- 같은 위치의 Open-Meteo snapshot
-- 가능한 경우 GK2A patch
-- 실제 존재한 기상 구간만 보고
+좌표 `37.5714, 126.9658`의 GK2A DSR·CA 28일과 ECMWF IFS 0.25° archived run을
+사용한다. 실제 존재하는 구간만 평가하며 patch·기온·습도는 V1 feature에 포함하지 않는다.
 
 ### 결정 4: 성공 기준
 
-첫 스프린트의 성공 기준은 “항상 더 정확함”이 아니라 다음으로 잡는다.
+성공 기준은 “항상 더 정확함”이 아니라 다음으로 잡았다.
 
 - 실데이터가 자동으로 수집·정규화된다.
-- `--kma-csv`로 재현 가능한 실험이 실행된다.
-- 미래 데이터 누수 없이 지표와 그래프가 만들어진다.
+- 재현 가능한 dataset·학습·평가 명령이 실행된다.
+- 미래 데이터 누수 없이 지표와 JSON artifact가 만들어진다.
 - 데이터와 정답의 한계가 문서화된다.
 
 성능 개선 여부는 그 파이프라인에서 얻는 실험 결과이며, 미리 보장할 완료 조건이 아니다.

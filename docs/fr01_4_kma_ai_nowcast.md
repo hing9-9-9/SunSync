@@ -1,5 +1,16 @@
 # FR-01.4: KMA AI × Open-Meteo Hybrid Quantile Nowcasting & Uncertainty Band
 
+> **상태: 레거시 설계·합성 benchmark 기록.** 아래의 GK2A patch advection, Gradient
+> Ensemble, API·DB·프론트엔드 흐름과 성능 표는 현재 동결된 실데이터 V1 모델의 구현
+> 사양이나 final-test 결과가 아니다. 삭제하지 않고 초기 방향과 합성 회귀 결과로 보존한다.
+>
+> 현재 모델은 `fr01_4_ai_model_implementation.md`, 실제 Validation 결과는
+> `fr01_4_ai_kma_analysis.md`를 따른다. V1은 GK2A 지점 DSR·CA와 Open-Meteo를 사용하는
+> 10·30·60분 **선형 분위수 모델**이며 `cloud_patch_used=false`다.
+
+<details>
+<summary>레거시 설계와 합성 benchmark 전체 보기</summary>
+
 ## 1. Executive Summary
 
 In high-performance smart window film automation and direct-sun protection (FR-01 / FR-02 / FR-04), building occupants require dependable solar irradiance forecasting. While synoptic numerical weather models like Open-Meteo provide 1-hour mean irradiance forecasts, passing cumulus clouds cause severe intra-hour intermittency that static forecasts cannot capture.
@@ -224,3 +235,5 @@ PYTHONPATH=backend .venv/bin/python tools/ai_experiments/run_fr01_kma_nowcast_ex
    - The uncertainty spread ($p90 - p10$) provides the exact confidence margin needed for dynamic programming film transitions, avoiding annoying rapid on/off cycling during partly cloudy days.
 2. **Degradation & Optical Profiling (Track 3 - FR-05):**
    - True DNI exposure integrated over time using $p50$ prevents cumulative UV/irradiance degradation under-counting caused by diffuse-only approximations.
+
+</details>
