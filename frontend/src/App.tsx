@@ -1229,7 +1229,7 @@ function App() {
                 <p>
                   햇빛은 들이고,
                   <br />
-                  <mark className="ap-mark">책은 지킨다.</mark>
+                  <mark className="ap-mark">공간은 지킨다.</mark>
                 </p>
                 <span className="ap-state-chip on">보호 중</span>
               </aside>

@@ -499,6 +499,8 @@
 .app.award-app > dialog.acct-login-dialog p.muted { font-size: var(--fs-small); color: var(--mb-muted); margin: 0 0 var(--space-6); }
 .app.award-app > dialog.acct-login-dialog .field { margin-bottom: var(--space-4); }
 .app.award-app > dialog.acct-login-dialog .field input { border-radius: 12px; border-color: var(--mb-ink); }
+.app.award-app > dialog.acct-login-dialog .primary { min-height: 52px; border-radius: 999px; margin-top: var(--space-2); }
+.app.award-app > dialog.acct-login-dialog .secondary { min-height: 48px; border-radius: 999px; border-color: var(--mb-ink); }
 @media (max-width: 700px) {
   .app.award-app > dialog.acct-login-dialog > form { grid-template-columns: 1fr; padding: 0 var(--space-5) var(--space-6); }
   .app.award-app > dialog.acct-login-dialog > form > :not(aside) { grid-column: 1; }

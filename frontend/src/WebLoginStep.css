@@ -12,3 +12,4 @@
 @media (max-width: 700px) {
   .app.award-app > dialog.acct-login-dialog .web-login-start { grid-row: auto; }
 }
+.app.award-app > dialog.acct-login-dialog .web-login-start > button.google-btn { min-height: 52px; }
