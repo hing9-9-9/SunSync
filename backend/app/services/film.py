@@ -39,6 +39,7 @@ from app.schemas.scene import (
     Window,
 )
 from app.schemas.shading_plan import ShadingPlan, WindowPlan
+from app.services.stored_scene import load_scene_for_pairing, load_stored_scene
 from app.ui_scene import UISpaceRecord
 
 
@@ -491,7 +492,7 @@ def apply_film_commands(
     if scene_record is None:
         raise HTTPException(status_code=404, detail=f"Scene '{scene_id}' not found")
 
-    scene = Scene.model_validate_json(scene_record.scene_json)
+    scene = load_stored_scene(scene_record.scene_json)
     target_window_id = (
         request.window_id
         if request.window_id is not None
@@ -599,7 +600,7 @@ def set_marker_mode(
     if scene_record is None:
         raise HTTPException(status_code=404, detail=f"Scene '{scene_id}' not found")
 
-    scene = Scene.model_validate_json(scene_record.scene_json)
+    scene = load_stored_scene(scene_record.scene_json)
     target_window_id = (
         request.window_id
         if request.window_id is not None
@@ -727,7 +728,7 @@ def get_scene_film_state(
     if scene_record is None:
         raise HTTPException(status_code=404, detail=f"Scene '{scene_id}' not found")
 
-    scene = Scene.model_validate_json(scene_record.scene_json)
+    scene = load_stored_scene(scene_record.scene_json)
 
     if at is not None:
         try:
@@ -1062,7 +1063,7 @@ def pair_marker_for_scene(
     if scene_record is None:
         raise HTTPException(status_code=404, detail=f"Scene '{scene_id}' not found")
 
-    scene = Scene.model_validate_json(scene_record.scene_json)
+    scene = load_scene_for_pairing(scene_record.scene_json)
 
     # 1. Target window
     target_window: Window
@@ -1110,29 +1111,7 @@ def pair_marker_for_scene(
 
     u_center = (start_col + 3) * target_window.cell_width_m
     v_center = target_window.height_m - (start_row + 3) * target_window.cell_height_m
-    tx, ty, tz = target_window.uv_to_enu(u_center, v_center)
-    u = target_window.u_axis
-    v = target_window.v_axis
-    n = target_window.inward_normal
-
-    t_enu = [
-        u[0],
-        v[0],
-        n[0],
-        tx,
-        u[1],
-        v[1],
-        n[1],
-        ty,
-        u[2],
-        v[2],
-        n[2],
-        tz,
-        0.0,
-        0.0,
-        0.0,
-        1.0,
-    ]
+    t_enu = target_window.marker_transform(u_center, v_center)
 
     marker_id = f"marker_{target_window.window_id}"
     existing_marker = next(
