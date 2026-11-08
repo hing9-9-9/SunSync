@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { fetchSession, googleLoginUrl, logout, notifyUnauthorized, onUnauthorized } from "./auth.ts";
+import { EXPIRED_MESSAGE, LOGIN_FAILED_MESSAGE, fetchSession, googleLoginUrl, logout, noticeRole, notifyUnauthorized, onUnauthorized } from "./auth.ts";
 
 const mockFetch = (t: test.TestContext, impl: (url: string, init?: RequestInit) => Promise<Response>) =>
   t.mock.method(globalThis, "fetch", impl as typeof fetch);
@@ -61,4 +61,9 @@ test("unauthorized listeners are called until they unsubscribe", () => {
   off();
   notifyUnauthorized();
   assert.equal(count, 1);
+});
+
+test("a failed login is an alert, an expired session a status", () => {
+  assert.equal(noticeRole(LOGIN_FAILED_MESSAGE), "alert");
+  assert.equal(noticeRole(EXPIRED_MESSAGE), "status");
 });

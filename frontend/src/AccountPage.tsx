@@ -2,6 +2,7 @@ import type { CSSProperties, ReactNode } from "react";
 import type { Account, Grade, Space } from "./model";
 import { gradeCounts, grades } from "./model";
 import { Arrow, Scribble, SunMark } from "./AwardPreview";
+import { AuthLead } from "./AuthNotice";
 import { GoogleButton } from "./GoogleMark";
 
 const gradeOrder: Grade[] = ["A", "B", "C", "D"];
@@ -143,8 +144,7 @@ export function AuthPanel({ hidden, brand, notice, onLogin }: { hidden: boolean;
           SunSync 계정
         </span>
         <h1>내 공간을 확인하세요.</h1>
-        <p>Google 계정으로 로그인하고 저장한 공간을 확인하세요.</p>
-        {notice && <p className="auth-notice" role="status">{notice}</p>}
+        <AuthLead description="Google 계정으로 로그인하고 저장한 공간을 확인하세요." message={notice ?? ""} />
         <GoogleButton className="acct-google" onClick={onLogin} />
       </div>
       <div className="acct-auth-visual" aria-hidden="true">

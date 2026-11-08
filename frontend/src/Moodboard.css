@@ -370,7 +370,7 @@
 .app.award-app .auth.acct-auth.landing-auth-hidden { display: none; }
 .app.award-app .acct-auth-copy { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: var(--space-6); padding: var(--space-6) 0; }
 .app.award-app .acct-auth h1 { font-size: var(--fs-h1); line-height: var(--lh-h1); letter-spacing: -.045em; font-weight: 700; color: var(--mb-text); margin: 0; }
-.app.award-app .acct-auth-copy > p { font-size: var(--fs-body); line-height: var(--lh-body); color: var(--mb-muted); max-width: 30em; margin: 0; }
+.app.award-app .acct-auth-copy > p, .app.award-app .acct-auth-copy > .auth-lead > p:first-child { font-size: var(--fs-body); line-height: var(--lh-body); color: var(--mb-muted); max-width: 30em; margin: 0; }
 .app.award-app .acct-auth-copy > small { font-size: var(--fs-small); color: var(--mb-muted); }
 .app.award-app .acct-auth-visual {
   position: relative; overflow: hidden; min-height: 460px; border-radius: var(--mb-radius); background: var(--mb-block);

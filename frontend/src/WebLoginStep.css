@@ -6,22 +6,9 @@
   gap: var(--space-3);
 }
 .app.award-app > dialog.acct-login-dialog .web-login-start > * { margin: 0; }
-.app.award-app > dialog.acct-login-dialog .web-login-start > p.muted { margin-bottom: var(--space-5); }
+.app.award-app > dialog.acct-login-dialog .web-login-start > .auth-lead { margin-bottom: var(--space-5); }
+.app.award-app > dialog.acct-login-dialog .web-login-start .auth-lead > p:first-child { margin: 0; }
 .app.award-app > dialog.acct-login-dialog .web-login-start > .google-btn { margin-top: var(--space-2); }
 @media (max-width: 700px) {
   .app.award-app > dialog.acct-login-dialog .web-login-start { grid-row: auto; }
 }
-
-/* Short grey line above the Google button: login failed or the session ended. */
-.auth-notice {
-  margin: 0;
-  padding: 10px 14px;
-  border-radius: 8px;
-  background: var(--c-f4f4f6);
-  color: var(--c-ink);
-  font-family: inherit;
-  font-size: 14px;
-  line-height: 1.5;
-  align-self: stretch;
-}
-.acct-auth-copy > .auth-notice { align-self: flex-start; }

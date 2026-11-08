@@ -8,6 +8,11 @@ export type Session =
 export const EXPIRED_MESSAGE = "로그인이 만료됐어요. 다시 로그인해 주세요.";
 export const LOGIN_FAILED_MESSAGE = "로그인하지 못했어요. 다시 시도해 주세요.";
 
+/** A failed login is announced at once (alert); an ended session is a calm status. */
+export function noticeRole(message: string): "alert" | "status" {
+  return message === LOGIN_FAILED_MESSAGE ? "alert" : "status";
+}
+
 /** The page the person is on, as an internal path the server may redirect back to. */
 export function currentPath(): string {
   const l = globalThis.location;
