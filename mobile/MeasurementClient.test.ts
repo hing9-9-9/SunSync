@@ -51,3 +51,40 @@ test("automatic setup completes separately from furniture capture and is invalid
   assert.equal((await client.capture({ ...frame("13"), lens_id: "other" })).status, "setup_required");
   assert.ok(paths.at(-1)?.endsWith("/v1/mobile/captures"));
 });
+
+
+test("film capture binds the random board and refuses old marker IDs", async () => {
+  const board={board_id:"window_board",dictionary:"DICT_4X4_50",ids_by_row:[[37]],marker_side_m:.6,gap_x_m:0,gap_y_m:0,border_bits:1};
+  const session={session_id:"session",scene_id:"scene",expires_at:"2030-01-01",display_status:"virtual_applied",board,marker:{T_ENU_marker:[1,0,0,0]}};
+  let detected=37;
+  const calls:string[]=[];
+  const client = new MeasurementClient("https://measure",async(url,init)=>{
+    calls.push(String(url));
+    if(String(url).includes("capture-marker")) return Response.json(session);
+    assert.deepEqual(JSON.parse(init!.body as string).board,board);
+    return Response.json({camera,detections:[{marker_id:detected,corners_px:[[1,1],[2,1],[2,2],[1,2]]}],pose:{status:"ok"}});
+  });
+  const selected=await client.startFilmCapture("https://backend","scene","request");
+  const payload={...frame(),board:selected.board};
+  const result=await client.capture(payload);
+  assert.equal(result.status,"accepted");
+  if(result.status==="accepted") assert.equal(result.capture.marker_session_id,"session");
+  detected=0;
+  assert.equal((await client.capture({...payload,capture_id:"two"})).status,"retake");
+  const before=calls.length;
+  assert.equal((await client.capture({...payload,capture_id:"three",board:{...board,ids_by_row:[[0]]}})).status,"retake");
+  assert.equal(calls.length,before);
+  await client.endFilmCapture();
+  assert.ok(calls.at(-1)?.endsWith("/end"));
+});
+
+test("expired film session prevents sending a photo to measurement", async () => {
+  const board={ids_by_row:[[37]]};
+  const session={session_id:"session",scene_id:"scene",board,marker:{T_ENU_marker:[]}};
+  const client=new MeasurementClient("https://measure",async(url,init)=>{
+    if(init?.method==="POST" && String(url).endsWith("capture-marker"))return Response.json(session);
+    return Response.json({detail:"expired"},{status:410});
+  });
+  await client.startFilmCapture("https://backend","scene","request");
+  assert.equal((await client.capture({...frame(),board})).status,"retake");
+});

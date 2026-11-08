@@ -594,6 +594,8 @@ def set_marker_mode(
     session: Session,
     scene_id: str,
     request: MarkerModeRequest,
+    *,
+    commit: bool = True,
 ) -> WindowFilmStateResponse:
     """FR-05.2: Toggle 6x6 ArUco marker display on smart film window."""
     scene_record = session.get(SceneRecord, scene_id)
@@ -699,7 +701,10 @@ def set_marker_mode(
     record.cells_json = json.dumps(new_grid)
     record.updated_at = now_iso
     session.add(record)
-    session.commit()
+    if commit:
+        session.commit()
+    else:
+        session.flush()
 
     return WindowFilmStateResponse(
         scene_id=scene_id,
@@ -1057,6 +1062,8 @@ def pair_marker_for_scene(
     session: Session,
     scene_id: str,
     request: MarkerPairingRequest,
+    *,
+    commit: bool = True,
 ) -> MarkerPairingResponse:
     """Multi-user isolated ArUco auto-bind and room-boundary clamping."""
     scene_record = session.get(SceneRecord, scene_id)
@@ -1264,7 +1271,10 @@ def pair_marker_for_scene(
         record.updated_at = datetime.now(UTC).isoformat()
         session.add(record)
 
-    session.commit()
+    if commit:
+        session.commit()
+    else:
+        session.flush()
 
     grid = device.get_grid()
     film_resp = WindowFilmStateResponse(

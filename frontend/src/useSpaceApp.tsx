@@ -1,6 +1,6 @@
 import { validateShadingPlan } from "./shading";
 import { browserCaptureEnabled } from "./captureEnvironment";
-import { MeasureError, measureAndRegister, savedCamera } from "./measureApi";
+import { MeasureError, measureAndRegister, savedCamera, endCaptureMarker } from "./measureApi";
 import type { ShadingResult } from "./shading";
 import { createHandoff, connectHandoff, completeHandoff, listMeasurements, predictSunpath, predictShadingPlan } from "./spaceApi";
 import type { HandoffSession, SunpathPrediction } from "./spaceApi";
@@ -1071,14 +1071,16 @@ export function useSpaceApp() {
   // Real measurement when every photo was checked by the measurement server and this phone's
   // camera is set up; otherwise the default-size placement below.
   async function measureCaptured(space: Space, items: CapturedFurniture[]) {
-    const camera = savedCamera();
+    const camera = items[0]?.capture?.camera ?? savedCamera();
     measuring.current = true;
     setProgress(10);
     setPage("processing");
     try {
       let current = space;
       for (const [i, item] of items.entries()) {
+        if (!item.capture?.session) throw new MeasureError("촬영 세션을 다시 시작해 주세요.");
         current = await measureAndRegister(current, camera!, {
+          session: item.capture.session,
           name: item.name,
           shape: item.capture!.shape,
           vertices: item.capture!.points.map((p) => p.position),
@@ -1086,13 +1088,16 @@ export function useSpaceApp() {
         });
         setProgress(10 + Math.round((90 * (i + 1)) / items.length));
       }
+      const markerSession = items[0].capture?.session;
+      let markerEndFailed = false;
+      if (markerSession) { try { await endCaptureMarker(markerSession); } catch { markerEndFailed = true; } }
       const added = current.furniture.filter((f) => !space.furniture.some((o) => o.id === f.id));
       setSpaces((all) => upsertSpace(all, current));
       setDraft({ ...current, regions: withDefaultRegions(current, added) });
       setSelectedFurniture(added[0]?.id ?? null);
       setSelectedRegion(null);
       setAddingByQr(false);
-      setToast(`측정 완료 · 가구 ${added.length}개를 배치했어요. 위치와 크기를 확인해 주세요.`);
+      setToast(`측정 완료 · 가구 ${added.length}개를 배치했어요. ${markerEndFailed ? "마커 표시 종료에 실패했어요. 촬영 화면에서 종료를 다시 시도해 주세요." : "위치와 크기를 확인해 주세요."}`);
     } catch (e) {
       setError(e instanceof MeasureError ? e.message : "측정하지 못했어요. 다시 촬영해 주세요.");
       setPageState("capture");
@@ -1106,12 +1111,13 @@ export function useSpaceApp() {
     if (!browserCaptureEnabled) return;
     capturedPhotos.current = items;
     if (!draft || !items.length) return;
-    const measurable = !!savedCamera() && !!draft.serverSceneId &&
+    const measurable = !!(items[0]?.capture?.camera ?? savedCamera()) && !!draft.serverSceneId &&
       items.every((item) => item.capture?.points.every((p) => p.frames?.length));
     if (measurable) {
       void measureCaptured(draft, items);
       return;
     }
+    if (items.some(item => item.capture?.session)) { setError("카메라 준비와 사진 검증을 완료한 뒤 측정해 주세요."); return; }
     const kept = addingByQr
       ? draft.furniture
       : draft.furniture.filter((f) => f.zone !== draft.zone);

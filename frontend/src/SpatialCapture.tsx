@@ -5,8 +5,8 @@ import { shapes, validPolygon, nextPhotoSlot, photosPerPoint } from "./capturePl
 import type { Shape, CapturePoint } from "./capturePlan";
 import type { CapturedFurniture } from "./model";
 import { browserCaptureEnabled } from "./captureEnvironment";
-import { BOARD, MeasureError, detectFrame, savedCamera, setupCamera } from "./measureApi";
-import type { Camera, Frame } from "./measureApi";
+import { BOARD, MeasureError, detectFrame, savedCamera, setupCamera, startCaptureMarker, endCaptureMarker } from "./measureApi";
+import type { Camera, Frame, Board, CaptureMarker } from "./measureApi";
 
 type Photo = { file: File; url: string; issue: PhotoIssue | null; metrics: { brightness: number; sharpness: number }; frame?: Frame };
 
@@ -25,17 +25,54 @@ async function analyse(file: File) {
 }
 
 // MAR3.2: stand at each of the four corners of one piece of furniture and photograph the window marker.
-export default function SpatialCapture(props: { count: number; onFinish: (items: CapturedFurniture[]) => void }) {
+export default function SpatialCapture(props: { sceneId?: string; count: number; onFinish: (items: CapturedFurniture[]) => void }) {
   if (!browserCaptureEnabled) return <section role="status">
     <h3>촬영은 SunSync 앱에서 진행해 주세요</h3>
     <p>앱에서 같은 공간을 선택해 촬영하면 측정 결과를 웹에서 확인할 수 있어요.</p>
   </section>;
-  return <TestSpatialCapture {...props} />;
+  if (!props.sceneId) return <p role="alert">공간을 먼저 서버에 저장해 주세요.</p>;
+  return <SessionSpatialCapture key={props.sceneId} {...props} />;
 }
 
-function TestSpatialCapture({ count, onFinish }: { count: number; onFinish: (items: CapturedFurniture[]) => void }) {
+function SessionSpatialCapture(props: { sceneId?: string; count: number; onFinish: (items: CapturedFurniture[]) => void }) {
+  const [session, setSession] = useState<CaptureMarker | null>(null);
+  const [camera, setCamera] = useState<Camera | null>(() => savedCamera());
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(true);
+  const [retry, setRetry] = useState(0);
+  useEffect(() => {
+    let live = true;
+    if (!props.sceneId) return;
+    void startCaptureMarker(props.sceneId).then(value => { if (live) setSession(value); })
+      .catch(e => { if (live) setError(e instanceof Error ? e.message : "촬영 마커를 준비하지 못했어요."); })
+      .finally(() => { if (live) setBusy(false); });
+    // A remount must not end a server session or rotate its marker.
+    return () => { live = false; };
+  }, [props.sceneId, retry]);
+  async function cancel() {
+    if (!session || busy) return;
+    setBusy(true); setError("");
+    try { await endCaptureMarker(session); setSession(null); }
+    catch (e) { setError(e instanceof Error ? e.message : "촬영을 종료하지 못했어요."); }
+    finally { setBusy(false); }
+  }
+  if (busy) return <p role="status">촬영 마커를 준비하고 있어요…</p>;
+  if (!session) return <section><p role="alert">{error || "촬영이 종료됐어요."}</p><button onClick={() => { setBusy(true); setError(""); setSession(null); setRetry(n => n + 1); }}>촬영 다시 시작</button></section>;
+  return <section>
+    <details><summary>가상 필름 표시 확인 · 테스트용</summary>
+      <svg viewBox="0 0 10 10" width="200" height="200" role="img" aria-label="이번 촬영의 가상 필름 마커" shapeRendering="crispEdges">
+        {session.film_cells.flatMap((row, y) => row.map((opacity, x) => <rect key={`${x}:${y}`} x={x} y={y} width="1" height="1" fill={opacity >= 0.5 ? "black" : "white"} />))}
+      </svg>
+      <p>가상 필름에 촬영용 마커를 표시했어요. 실제 필름 장치는 아직 연결되지 않았어요.</p>
+    </details>
+    {error && <p role="alert">{error}</p>}
+    {camera ? <TestSpatialCapture {...props} session={session} camera={camera} /> : <CameraSetup board={session.board} session={session} onReady={setCamera} />}
+    <button type="button" onClick={() => void cancel()}>촬영 취소 · 마커 표시 종료</button>
+  </section>;
+}
+
+function TestSpatialCapture({ count, onFinish, session, camera }: { count: number; onFinish: (items: CapturedFurniture[]) => void; session: CaptureMarker; camera: Camera }) {
   // WEB APP TEST ONLY: intrinsics come from the camera setup in 더보기 (see CameraSetup below).
-  const [camera] = useState<Camera | null>(() => savedCamera());
   const [items, setItems] = useState<CapturedFurniture[]>([]);
   const [name, setName] = useState(`가구 ${count + 1}`);
   const [shape, setShape] = useState<Shape>('rectangle');
@@ -61,7 +98,7 @@ function TestSpatialCapture({ count, onFinish }: { count: number; onFinish: (ite
     try {
       const metrics = await analyse(file);
       // The configured single marker supplies all four pose corners.
-      const frame = camera ? await detectFrame(file) : undefined;
+      const frame = camera ? await detectFrame(file, session.board, session) : undefined;
       const found = frame?.detections.length ?? 1;
       const url = URL.createObjectURL(file);
       const photo = { file, url, metrics, frame, issue: photoIssue({ ...metrics, marker: found === 1 ? "visible" : found ? "partial" : "missing" }) };
@@ -75,7 +112,7 @@ function TestSpatialCapture({ count, onFinish }: { count: number; onFinish: (ite
     }
   }
   function nextFurniture() {
-    const captured: CapturedFurniture[] = [...items, { name: name.trim() || `가구 ${count + items.length + 1}`, type: "other", capture: {shape, points: points.map((p,i)=>({id:`P${i+1}`,position:p,photos:photos[i].map(p=>p!.file),frames:photos[i].every(p=>p?.frame)?photos[i].map(p=>p!.frame!):undefined}))} }];
+    const captured: CapturedFurniture[] = [...items, { name: name.trim() || `가구 ${count + items.length + 1}`, type: "other", capture: {session, camera, shape, points: points.map((p,i)=>({id:`P${i+1}`,position:p,photos:photos[i].map(p=>p!.file),frames:photos[i].every(p=>p?.frame)?photos[i].map(p=>p!.frame!):undefined}))} }];
     setItems(captured);
     setName(`가구 ${count + captured.length + 1}`);
     reset();
@@ -164,7 +201,7 @@ const SETUP_MIN = 12, SETUP_MAX = 30;
  * (/v1/mobile/automatic-setup). Lives in 더보기 › 카메라 준비; the result is kept on this phone.
  * Remove this screen (and savedCamera use) once capture moves to the native app.
  */
-export function CameraSetup({ onReady }: { onReady: (camera: Camera) => void }) {
+export function CameraSetup({ onReady, board = BOARD, session }: { onReady: (camera: Camera) => void; board?: Board; session?: CaptureMarker }) {
   const [frames, setFrames] = useState<Frame[]>([]);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -172,7 +209,7 @@ export function CameraSetup({ onReady }: { onReady: (camera: Camera) => void }) 
     if (!file || busy) return;
     setBusy(true); setMessage("");
     try {
-      const frame = await detectFrame(file);
+      const frame = await detectFrame(file, board, session);
       if (frame.detections.length !== 1) setMessage("마커의 검정 테두리와 네 모서리가 모두 보이게 다시 찍어 주세요.");
       else if (frames.length && (frame.width !== frames[0].width || frame.height !== frames[0].height)) setMessage("같은 카메라·같은 방향으로 찍어 주세요.");
       else setFrames((all) => [...all, frame].slice(0, SETUP_MAX));
@@ -182,13 +219,13 @@ export function CameraSetup({ onReady }: { onReady: (camera: Camera) => void }) 
   }
   async function finish() {
     setBusy(true); setMessage("");
-    try { onReady(await setupCamera(frames)); }
+    try { onReady(await setupCamera(frames, board)); }
     catch (e) { setMessage(e instanceof MeasureError ? e.message : "카메라를 준비하지 못했어요."); }
     finally { setBusy(false); }
   }
   return <section className="spatial-capture camera-setup" aria-labelledby="camera-setup-title">
     <h3 id="camera-setup-title">카메라 준비 · 웹앱 테스트용</h3>
-    <p className="muted small">창문의 마커 보드({BOARD.ids_by_row.flat().length}개 마커) 전체가 보이게, 휴대폰 위치와 기울기를 바꿔 가며 {SETUP_MIN}장 이상 찍어 주세요. 보드가 화면 가운데·가장자리에 골고루 오도록 찍으면 정확해져요.</p>
+    <p className="muted small">창문의 마커 보드({board.ids_by_row.flat().length}개 마커) 전체가 보이게, 휴대폰 위치와 기울기를 바꿔 가며 {SETUP_MIN}장 이상 찍어 주세요. 보드가 화면 가운데·가장자리에 골고루 오도록 찍으면 정확해져요.</p>
     <p role="status" className="tracking-status">{busy ? "확인 중…" : `${frames.length} / ${SETUP_MIN}장`}</p>
     {message && <p role="alert" className="error">{message}</p>}
     <div className="camera-setup-action">

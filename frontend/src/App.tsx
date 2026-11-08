@@ -690,6 +690,7 @@ function App() {
                     {draft.windowDimensions?.width &&
                     draft.windowDimensions?.height ? (
                       <SpatialCapture
+                        sceneId={draft.serverSceneId}
                         key={`${draft.id}:${draft.zone}`}
                         count={
                           addingByQr

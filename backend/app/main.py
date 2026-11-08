@@ -10,6 +10,7 @@ from sqlmodel import Session
 
 from app.api import (
     adaptive_control,
+    capture_markers,
     film,
     handoffs,
     health,
@@ -55,6 +56,7 @@ def create_app(database_engine: Engine | None = None) -> FastAPI:
     application.include_router(measurements.router, prefix="/api")
     application.include_router(shading.router, prefix="/api")
     application.include_router(film.router, prefix="/api")
+    application.include_router(capture_markers.router, prefix="/api")
     application.include_router(nowcast_ai.router, prefix="/api")
     application.include_router(vision_ai.router, prefix="/api")
     application.include_router(adaptive_control.router, prefix="/api")
