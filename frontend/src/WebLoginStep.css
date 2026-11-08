@@ -66,8 +66,8 @@
   padding: 10px 14px;
   border-radius: 8px;
   background: var(--c-f4f4f6);
-  color: var(--c-ink, #1d1c22);
-  font-family: "Noto Sans KR", sans-serif;
+  color: var(--c-ink);
+  font-family: inherit;
   font-size: 14px;
   line-height: 1.5;
   align-self: stretch;
