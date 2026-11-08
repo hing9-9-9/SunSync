@@ -10,6 +10,16 @@
 	}
 }
 
+# Use this instead of "import locked" on /measure once the Google login is switched on
+# (see docs/auth.md). The app then checks /api by itself, and /measure asks the app who is
+# logged in before the request reaches the measurement server. /api/auth/check answers 401 also
+# when the login is off, so a switch made too early closes /measure instead of opening it.
+(login) {
+	forward_auth 127.0.0.1:8000 {
+		uri /api/auth/check
+	}
+}
+
 YOUR_NAME.duckdns.org {
 	encode zstd gzip
 

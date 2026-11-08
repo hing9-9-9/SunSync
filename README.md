@@ -27,6 +27,7 @@ Browser photo capture is an opt-in development test and is disabled in productio
 - FR-03 & FR-06 Vision AI 3D furniture estimation: [ArUco-calibrated depth & 3D bounding box pipeline](docs/fr03_vision_ai_3d_estimation.md)
 - FR-05 film control: [protocol](docs/fr05_protocol.md) and [database persistence](docs/db.md)
 - [Deployment on one server](docs/deploy.md): https address, services, backup
+- [Google login](docs/auth.md): how it works, the settings, the Google console and how to switch it on
 - [AI & Applications Proposal](docs/ai_applications/README.md): Project proposal blog for ITE 351 (Task 1 & Task 3)
 - Requirement document: `docs/reports/SunSync_Requirements.pdf`
 - Meeting notes: shared Google document (not in the repository)

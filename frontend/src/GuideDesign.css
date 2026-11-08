@@ -63,7 +63,6 @@
 .app.award-app.mode-web .guide-refresh .ap-guide-bottom .ap-scribble { display:none; }
 .app.award-app.mode-web .guide-refresh .ap-guide-bottom .ap-round-link > b,
 .app.award-app.mode-web .guide-refresh .ap-guide-bottom .ap-round-link:hover > b { width:22px; height:22px; border:0; color:inherit; background:transparent; transform:none; }
-.app.award-app.mode-web .guide-refresh .ap-guide-bottom .ap-round-link:hover { background:var(--c-5049c5); }
 .app.award-app.mode-web .guide-refresh button:focus-visible { outline:2px solid var(--guide-accent); outline-offset:3px; }
 @media(max-width:1100px) {
  .app.award-app.mode-web .guide-refresh .ap-guide-layout { grid-template-columns:200px minmax(0,1fr); gap:28px; }

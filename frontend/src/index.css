@@ -75,8 +75,6 @@ button {
   color: inherit;
 }
 button:focus-visible,
-input:focus-visible,
-select:focus-visible,
 svg g:focus-visible {
   outline: 2px solid var(--c-737883);
   outline-offset: 3px;

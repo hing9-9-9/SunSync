@@ -370,18 +370,8 @@
 .app.award-app .auth.acct-auth.landing-auth-hidden { display: none; }
 .app.award-app .acct-auth-copy { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: var(--space-6); padding: var(--space-6) 0; }
 .app.award-app .acct-auth h1 { font-size: var(--fs-h1); line-height: var(--lh-h1); letter-spacing: -.045em; font-weight: 700; color: var(--mb-text); margin: 0; }
-.app.award-app .acct-auth-copy > p { font-size: var(--fs-body); line-height: var(--lh-body); color: var(--mb-muted); max-width: 30em; margin: 0; }
+.app.award-app .acct-auth-copy > p, .app.award-app .acct-auth-copy > .auth-lead > p:first-child { font-size: var(--fs-body); line-height: var(--lh-body); color: var(--mb-muted); max-width: 30em; margin: 0; }
 .app.award-app .acct-auth-copy > small { font-size: var(--fs-small); color: var(--mb-muted); }
-.app.award-app .acct-auth .google-button.acct-google {
-  position: relative; isolation: isolate; display: inline-flex; align-items: center; justify-content: center; gap: var(--space-3);
-  min-height: 56px; padding: 0 28px; border-radius: 999px; border: 0;
-  background: var(--c-accent, var(--c-action)); color: var(--c-white); font-size: var(--fs-body); font-weight: 500; width: auto;
-}
-.app.award-app .acct-auth .google-button.acct-google .google-g {
-  display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--c-white); color: var(--c-accent, var(--c-action)); font-weight: 700; font-size: var(--fs-small);
-}
-.app.award-app .acct-google:hover .ap-scribble path,
-.app.award-app .acct-google:focus-visible .ap-scribble path { stroke-dashoffset: 0; }
 .app.award-app .acct-auth-visual {
   position: relative; overflow: hidden; min-height: 460px; border-radius: var(--mb-radius); background: var(--mb-block);
   display: flex; align-items: flex-end; padding: var(--space-8);
@@ -509,7 +499,6 @@
 .app.award-app > dialog.acct-login-dialog p.muted { font-size: var(--fs-small); color: var(--mb-muted); margin: 0 0 var(--space-6); }
 .app.award-app > dialog.acct-login-dialog .field { margin-bottom: var(--space-4); }
 .app.award-app > dialog.acct-login-dialog .field input { border-radius: 12px; border-color: var(--mb-ink); }
-.app.award-app > dialog.acct-login-dialog .field input:focus-visible { outline: 2px solid var(--c-accent, var(--c-action)); outline-offset: 2px; }
 .app.award-app > dialog.acct-login-dialog .primary { min-height: 52px; border-radius: 999px; margin-top: var(--space-2); }
 .app.award-app > dialog.acct-login-dialog .secondary { min-height: 48px; border-radius: 999px; border-color: var(--mb-ink); }
 @media (max-width: 700px) {
@@ -520,16 +509,13 @@
   .app.award-app .acct-login-visual p { font-size: var(--fs-h2); }
 }
 .app.award-app > dialog.acct-login-dialog .field { border-color: var(--mb-ink); border-radius: 12px; }
-.app.award-app > dialog.acct-login-dialog .field:focus-within { outline: 2px solid var(--c-accent, var(--c-action)); outline-offset: 2px; }
 .app.award-app.page-account .main > .page-heading,
 .app.award-app.page-more .main > .page-heading { display: none; }
 .app.award-app .acct-grade, .app.award-app .acct-grades { letter-spacing: 0; }
 /* hide the round-cap dot the undrawn scribble leaves behind */
 .app.award-app .ap-scribble path { opacity: 0; transition: stroke-dashoffset 650ms cubic-bezier(.65, 0, .35, 1), opacity 0s 650ms; }
 .app.award-app .ap-round-link:hover .ap-scribble path,
-.app.award-app .ap-round-link:focus-visible .ap-scribble path,
-.app.award-app .acct-google:hover .ap-scribble path,
-.app.award-app .acct-google:focus-visible .ap-scribble path { opacity: 1; transition: stroke-dashoffset 650ms cubic-bezier(.65, 0, .35, 1), opacity 0s; }
+.app.award-app .ap-round-link:focus-visible .ap-scribble path { opacity: 1; transition: stroke-dashoffset 650ms cubic-bezier(.65, 0, .35, 1), opacity 0s; }
 @media (prefers-reduced-motion: reduce) { .app.award-app .ap-scribble path { transition: none !important; } }
 
 /* ===== Hover (option A, 2026-10-23): shapes and outlines never change.
@@ -540,8 +526,6 @@
 
 /* purple main buttons: ~4% deeper fill, arrow nudges up-right */
 .app.award-app .ap .ap-round-link { background: var(--c-action); transition: background-color var(--mb-ease); }
-.app.award-app .ap .ap-round-link:hover,
-.app.award-app .ap .ap-round-link:focus-visible { background: var(--c-5f59dc); box-shadow: none; }
 .app.award-app .ap .ap-round-link:active { transform: none; }
 .app.award-app .ap .ap-round-link b,
 .app.award-app .ap .ap-round-link:hover b,
@@ -549,8 +533,6 @@
 .app.award-app .ap .ap-round-link b svg { transition: translate var(--mb-ease); }
 .app.award-app .ap .ap-round-link:hover b svg,
 .app.award-app .ap .ap-round-link:focus-visible b svg { translate: 2px -2px; }
-.app.award-app .acct-auth .google-button.acct-google { transition: background-color var(--mb-ease); }
-.app.award-app .acct-auth .google-button.acct-google:hover { background: var(--c-5f59dc); box-shadow: none; }
 
 /* home step cards: lift 2px + faint wide shadow, arrow nudge */
 .app.award-app .ap .ap-process-row,
@@ -597,7 +579,6 @@
 @media (prefers-reduced-motion: reduce) {
   .app.award-app .ap .ap-round-link,
   .app.award-app .ap .ap-round-link b svg,
-  .app.award-app .acct-google,
   .app.award-app .ap-process-row,
   .app.award-app .ap-process-row > svg,
   .app.award-app .award-room-card,
@@ -752,7 +733,7 @@
 .sync-badge { display: block; font-size: var(--fs-label); font-weight: 400; color: var(--c-6b6577); }
 .sync-badge.pending, .sync-badge.needs-site { color: var(--c-sun-ink); }
 .sync-retry { margin-top: var(--space-2); font-size: var(--fs-small); color: var(--c-sun-ink); background: var(--c-white); border: 1px solid var(--c-block); border-radius: 999px; padding: 6px var(--space-3); transition: filter .2s, box-shadow .2s, translate .2s; }
-.sync-retry:hover { filter: brightness(.97); box-shadow: 0 2px 8px var(--c-343040-a8); translate: 0 -1px; }
+.sync-retry:hover { filter: var(--hover-dim); box-shadow: var(--hover-shadow); translate: 0 var(--hover-lift); }
 
 /* The autoplay sets the sun position every frame; a CSS transition on top only lags behind it. */
 .app.award-app .ap-sun-glow { transition: none; }

@@ -13,6 +13,7 @@ from app.models.scene import SceneRecord
 from app.scene_cli import schema_document
 from app.schemas.registration import RegisterFurnitureRequest
 from app.schemas.scene import Scene
+from app.services.stored_scene import load_stored_scene
 from app.ui_scene import sync_ui_record
 
 router = APIRouter(tags=["scenes"])
@@ -61,7 +62,7 @@ def list_scenes(
     records = session.exec(
         select(SceneRecord).order_by(col(SceneRecord.scene_id)).offset(offset).limit(limit)
     ).all()
-    return [Scene.model_validate_json(record.scene_json) for record in records]
+    return [load_stored_scene(record.scene_json) for record in records]
 
 
 @router.get("/scenes/{scene_id}", response_model=Scene)
@@ -69,7 +70,7 @@ def get_scene(scene_id: str, session: SessionDependency) -> Scene:
     record = session.get(SceneRecord, scene_id)
     if record is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Scene not found.")
-    return Scene.model_validate_json(record.scene_json)
+    return load_stored_scene(record.scene_json)
 
 
 @router.post("/scenes/{scene_id}/registrations", response_model=Scene)
@@ -140,7 +141,7 @@ def replace_scene(scene_id: str, scene: Scene, session: SessionDependency) -> Sc
         )
 
     stored = session.get(SceneRecord, scene_id)
-    previous = Scene.model_validate_json(stored.scene_json) if stored is not None else None
+    previous = load_stored_scene(stored.scene_json) if stored is not None else None
     result = cast(
         CursorResult[Any],
         session.execute(

@@ -35,7 +35,6 @@
 }
 .ap button:focus-visible,
 .ap a:focus-visible,
-.ap input:focus-visible,
 .ap g[role="button"]:focus-visible {
   outline: 2px solid var(--c-action);
   outline-offset: 6px;

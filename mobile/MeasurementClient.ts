@@ -18,7 +18,40 @@ export type CaptureOutcome =
   | { status: "retake"; message: string }
   | { status: "accepted"; capture: Record<string, unknown> };
 
+export type FilmCaptureSession = {
+  session_id: string; scene_id: string; expires_at: string; display_status: "virtual_applied";
+  board: Record<string, unknown>; marker: { T_ENU_marker: number[] };
+};
+
+function sameBoard(a: Record<string, unknown>, b: Record<string, unknown>): boolean {
+  return ["board_id", "dictionary", "marker_side_m", "gap_x_m", "gap_y_m", "border_bits", "ids_by_row"]
+    .every(key => JSON.stringify(a[key]) === JSON.stringify(b[key]));
+}
+
 export class MeasurementClient {
+  private filmSession: FilmCaptureSession | null = null;
+  private filmURL = "";
+
+  /** Persist requestId in the host until finish/cancel; retry it after a lost response. */
+  async startFilmCapture(backendURL: string, sceneId: string, requestId: string): Promise<FilmCaptureSession> {
+    const url = `${backendURL.replace(/\/$/, "")}/api/scenes/${encodeURIComponent(sceneId)}/capture-marker`;
+    const response = await this.fetcher(url, { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ request_id: requestId }), signal: AbortSignal.timeout(30000) });
+    if (!response.ok) throw new Error(`Film capture start failed: ${response.status}`);
+    const session = await response.json() as FilmCaptureSession;
+    this.reset();
+    this.filmURL = `${url}/${session.session_id}`;
+    this.filmSession = session;
+    return session;
+  }
+
+  async endFilmCapture(): Promise<void> {
+    if (!this.filmSession) return;
+    const response = await this.fetcher(`${this.filmURL}/end`, { method: "POST", signal: AbortSignal.timeout(30000) });
+    if (!response.ok) throw new Error(`Film capture end failed: ${response.status}`);
+    this.filmSession = null; this.filmURL = ""; this.reset();
+  }
+
   private profile: Camera | null = null;
   private identity = "";
   private generation = 0;
@@ -57,6 +90,15 @@ export class MeasurementClient {
     this.seen.add(frame.capture_id);
     const generation = this.generation;
     try {
+      const filmSession = this.filmSession;
+      if (filmSession) {
+        if (!sameBoard(frame.board, filmSession.board)) throw new Error("Wrong capture board");
+        const response = await this.fetcher(this.filmURL, { signal: AbortSignal.timeout(30000) });
+        if (!response.ok) throw new Error("Capture session is no longer active");
+        const current = await response.json() as FilmCaptureSession;
+        if (current.session_id !== filmSession.session_id || !sameBoard(current.board, filmSession.board) ||
+            JSON.stringify(current.marker.T_ENU_marker) !== JSON.stringify(filmSession.marker.T_ENU_marker)) throw new Error("Capture marker changed");
+      }
       let result: DetectionResult;
       if (frame.calibration === null && this.profile) {
         result = await this.post<DetectionResult>("/v1/detect", {
@@ -98,8 +140,15 @@ export class MeasurementClient {
         return { status: "setup_required", acceptedViews: this.views.length,
           message: "마커의 검정 테두리와 네 모서리가 모두 보이도록 화면의 가운데와 가장자리, 좌우·위아래 기울인 각도로 천천히 비춰 주세요." };
       }
+      if (filmSession) {
+        const ids = (filmSession.board.ids_by_row as number[][]).flat();
+        if (result.detections.length !== ids.length || !ids.every(id => result.detections.some(d => d.marker_id === id))) {
+          return { status: "retake", message: "이번 촬영에 지정된 마커가 보이도록 다시 촬영해 주세요." };
+        }
+      }
       if (result.pose?.status !== "ok") return { status: "retake", message: "마커가 선명하게 보이도록 잠시 멈춰 다시 촬영해 주세요." };
       return { status: "accepted", capture: {
+        marker_session_id: filmSession?.session_id,
         capture_id: frame.capture_id, point_id: frame.point_id, captured_at: frame.captured_at,
         camera: result.camera, detections: result.detections, camera_to_point_m: [0, 0, 0],
       } };

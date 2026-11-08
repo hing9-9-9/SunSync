@@ -88,6 +88,28 @@ sudo /opt/sunsync/deploy/update.sh
 
 It fast-forwards to `origin/main`, installs the packages, builds the web app, copies it to `/var/www/sunsync` and restarts the API and the measurement server. Do not deploy on the day before a demo (code freeze: 11/19 and 12/10).
 
+## Automatic update
+
+A timer can deploy `main` for you. Every 15 minutes it fetches `main`; when there is a commit that is not deployed yet, it takes a database backup and runs `update.sh`. Nothing happens unless the switch file `/etc/sunsync/autoupdate` exists, so it stays off until you turn it on.
+
+Turn it on (once):
+
+```bash
+sudo cp /opt/sunsync/deploy/sunsync-autoupdate.service /opt/sunsync/deploy/sunsync-autoupdate.timer /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo touch /etc/sunsync/autoupdate
+sudo systemctl enable --now sunsync-autoupdate.timer
+```
+
+- **Freeze** (before a demo; code freeze on 11/19 and 12/10): `sudo rm /etc/sunsync/autoupdate`. To resume: `sudo touch /etc/sunsync/autoupdate`.
+- **Check:** `systemctl list-timers 'sunsync-*'`, `sudo journalctl -u sunsync-autoupdate -n 30 --no-pager`, and `cat /var/lib/sunsync/deployed-commit` for the commit that runs now.
+- **When a deployment fails:** the running services are not restarted, the commit is written to `/var/lib/sunsync/failed-commit` and it is not tried again. Fix the cause and then either merge a new commit or remove that file to try the same commit again.
+- A merged pull request is deployed within about 15 minutes, so merge only when the checks pass.
+- Turn the switch off while you try another branch on the server; otherwise the server is switched back to `main`.
+- `/opt/sunsync` on the server must have no local changes.
+- **The update runs the code of the repository as root** (`update.sh`, `pip install`, `npm ci`). Whoever can merge into `main` controls the server. Keep the branch protection of `main` (required checks and a review) and the list of people with write access short.
+- The web build gets only `VITE_PUBLIC_URL` from `/etc/sunsync/sunsync.env` (a line `VITE_PUBLIC_URL=https://...` without quotes), so the Google secret is not visible to the packages that are installed there.
+
 ## Check that it works
 
 | Check | How |
@@ -129,6 +151,8 @@ Everyone who has the password sees the same spaces until the spaces are separate
 
 ## Backup and logs
 
+The database and its copies hold e-mail addresses once the Google login is on, so they must not be readable by other users. The services now create their files private (`UMask=0077`; copy the unit files to `/etc/systemd/system/` and run `sudo systemctl daemon-reload` to apply this) and `backup.sh` writes private copies. One time, for the files that already exist: `sudo chmod -R go-rwx /var/lib/sunsync` (the owner keeps access, so the services keep working).
+
 - A daily timer copies the database to `/var/lib/sunsync/backups` and keeps the 14 newest copies. The copy uses SQLite's own backup, because the database runs in WAL mode and a plain file copy can be broken. Download a copy now and then with `scp`; a backup on the same disk does not survive losing the server.
 - Logs: `journalctl -u sunsync-api -u sunsync-measure -u caddy`.
 
@@ -136,7 +160,7 @@ Everyone who has the password sees the same spaces until the spaces are separate
 
 - **Photos are not stored.** The measurement server receives each photo as base64 inside the request, uses it in memory and returns only the detected markers; no code writes it to disk. Requests are limited to 16 MB by the server and 20 MB by Caddy.
 - **Forecast worker.** The API works without it (it falls back to the clear-sky value), but the forecast comparison needs it. It runs once an hour, only for the building locations saved in spaces, and calls Open-Meteo, so the server needs outbound internet access.
-- **Basic auth** in the `Caddyfile` locks only the data (`/api` and `/measure`) until the Google login ships. The web app files stay public, so the landing page opens without a password and the phone can load the manifest and install the app. The browser asks for the password when the app first requests data; whether the app handles that prompt cleanly has to be checked on the server. If it does not, move `import locked` to the whole site block.
+- **Basic auth** in the `Caddyfile` locks only the data (`/api` and `/measure`) until the Google login ships. The web app files stay public, so the landing page opens without a password and the phone can load the manifest and install the app. The browser asks for the password when the app first requests data; whether the app handles that prompt cleanly has to be checked on the server. If it does not, move `import locked` to the whole site block. The Google login in [auth.md](auth.md) replaces it.
 - **Remove the server after the last demo (12/11)**: delete the instance and the public IP in the AWS console and download a last backup first. Set an AWS budget alert when you create the account.
 
 ## Not verified yet

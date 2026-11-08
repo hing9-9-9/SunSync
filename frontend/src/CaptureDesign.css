@@ -35,7 +35,7 @@
 .app.award-mobile.mode-app.page-capture .capture-action { left:50%; right:auto; width:min(448px,calc(100% - 32px)); transform:translateX(-50%); bottom:calc(88px + env(safe-area-inset-bottom)); padding:var(--space-2); border:0; border-radius:var(--radius-card); background:var(--c-white); box-shadow:var(--at-card-shadow); backdrop-filter:none; }
 .app.award-mobile.mode-app.page-capture .capture-action :is(.file-button,.primary) { display:flex; align-items:center; justify-content:center; min-height:44px; padding:var(--space-2) var(--space-4); border:0; border-radius:999px; background:var(--at-accent); color:var(--c-white); font-size:16px; line-height:1.5; font-weight:500; }
 .app.award-mobile.mode-app.page-capture .capture-action .file-button:focus-within { outline:2px solid var(--at-accent-ink); outline-offset:3px; }
-.app.award-mobile.mode-app.page-capture :is(button,input,select):focus-visible { outline:2px solid var(--at-accent-ink); outline-offset:2px; }
+.app.award-mobile.mode-app.page-capture :is(button):focus-visible { outline:2px solid var(--at-accent-ink); outline-offset:2px; }
 .app.award-mobile.mode-app.page-capture .capture-intro { display:flex; align-items:center; justify-content:space-between; gap:var(--space-3); margin-bottom:var(--space-3); }
 .app.award-mobile.mode-app.page-capture .capture-intro :is(h2,p) { margin:0; }
 .app.award-mobile.mode-app.page-capture .capture-intro .step-label { color:var(--at-muted); font-size:13px; }

@@ -47,6 +47,8 @@ import type { WebsiteDestination } from "./Website";
 import { useSpaceApp, titles } from "./useSpaceApp";
 import { clearFieldIssue } from "./formIssues";
 import { Icon, Card, SyncBadge, SyncRetry } from "./ShellParts";
+import { AuthAction, AuthLead } from "./AuthNotice";
+import { GoogleButton } from "./GoogleMark";
 function MobileApp() {
   const {
     isApp,
@@ -55,12 +57,14 @@ function MobileApp() {
     measurementJobs,
     measurementReady,
     account,
-    setAccount,
+    authStatus,
+    authNotice,
+    startLogin,
+    signOut,
     spaces,
     setSpaces,
     page,
     draft,
-    setDraft,
     selectedFurniture,
     setSelectedFurniture,
     selectedRegion,
@@ -98,10 +102,6 @@ function MobileApp() {
     receiveMeasurement,
     joinMeasurement,
     locateBuilding,
-    loginName,
-    setLoginName,
-    loginEmail,
-    setLoginEmail,
     modalRef,
     errorRef,
     draftPage,
@@ -179,7 +179,7 @@ function MobileApp() {
       navigate(next);
       return;
     }
-    requireAccount(() => navigate("spaces"));
+    requireAccount(() => navigate("spaces"), "spaces");
   }
 
   function openWebsiteGuide(index: number | null) {
@@ -319,12 +319,14 @@ function MobileApp() {
       )}
     </>
   );
+  // The app has no public pages; the web keeps home and guide open while the session is checked.
+  const checking = authStatus === "checking" && (isApp || !(page === "home" || page === "guide"));
   return (
     <>
       <div
         inert={saving || undefined}
         aria-busy={saving}
-        className={`app ${account && !isApp ? "rp-shell actual-workspace" : ""} ${isApp ? "mode-app award-mobile" : "mode-web"} page-${page} ${page === "more" ? "more-page" : ""} ${!account ? "auth-page" : ""} ${actionBar || (isApp && page === "capture" && draft) ? "has-action-bar" : ""}`}
+        className={`app ${account && !isApp ? "rp-shell actual-workspace" : ""} ${isApp ? "mode-app award-mobile" : "mode-web"} page-${page} ${page === "more" ? "more-page" : ""} ${!account || checking ? "auth-page" : ""} ${actionBar || (isApp && page === "capture" && draft) ? "has-action-bar" : ""}`}
       >
         {account && (
           <button
@@ -336,6 +338,7 @@ function MobileApp() {
           </button>
         )}
         {account && !isApp && <WorkspaceNavigation page={page} account={account} count={spaces.length} online={serverState === "online"} navigate={navigate} onStart={begin} />}
+        {(!isApp || (account && !checking)) && (
         <WebsiteHeader
           account={account}
           active={page}
@@ -345,28 +348,30 @@ function MobileApp() {
             takePendingWebAction();
             setModal("login");
           }}
-          onStart={() => requireAccount(begin)}
+          onStart={() => requireAccount(begin, "spaces")}
         />
+        )}
         {page === "home" && !isApp && !account && (
           <WebsiteHome
             onGuide={openWebsiteGuide}
-            onStart={() => requireAccount(begin)}
+            onStart={() => requireAccount(begin, "spaces")}
           />
         )}
-        {page === "guide" && (
+        {page === "guide" && (isApp ? !!account && !checking : true) && (
           <WebsiteGuide index={guideIndex} onIndex={setGuideIndex} />
         )}
-        {!account ? (
-          <main className={`auth ${(!isApp && page === "home") || page === "guide" ? "landing-auth-hidden" : ""}`}>
+        {checking ? (
+          <main className="auth" aria-busy="true" />
+        ) : !account ? (
+          <main className={`auth ${!isApp && (page === "home" || page === "guide") ? "landing-auth-hidden" : ""}`}>
             <div className="auth-brand">
               <Icon name="sun" />
               <span>SunSync</span>
             </div>
             <h1>로그인 또는 회원가입</h1>
-            <button className="google-button" onClick={() => setModal("login")}>
-              <span className="google-g">G</span> Google로 계속하기
-            </button>
-            
+            <AuthAction message={authNotice}>
+              <GoogleButton onClick={startLogin} />
+            </AuthAction>
           </main>
         ) : (
           <>
@@ -953,6 +958,7 @@ function MobileApp() {
                     {draft.windowDimensions?.width &&
                     draft.windowDimensions?.height ? (
                       <SpatialCapture
+                        sceneId={draft.serverSceneId}
                         key={`${draft.id}:${draft.zone}`}
                         count={
                           addingByQr
@@ -1636,7 +1642,7 @@ function MobileApp() {
             </nav>
           </>
         )}
-        <WebsiteFooter />
+        {(!isApp || (account && !checking)) && <WebsiteFooter />}
         <dialog
           ref={modalRef}
           tabIndex={-1}
@@ -1646,53 +1652,14 @@ function MobileApp() {
           }}
         >
           {modal === "login" && (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                setAccount({
-                  name: loginName.trim(),
-                  email: loginEmail.trim(),
-                });
-                setPage("home");
-                setModal(null);
-                takePendingWebAction()?.();
-              }}
-            >
-              <h2>계정 정보</h2>
-              <label className="field">
-                <span>이름</span>
-                <input
-                  autoFocus
-                  required
-                  name="name"
-                  autoComplete="name"
-                  value={loginName}
-                  onChange={(e) => setLoginName(e.target.value)}
-                />
-              </label>
-              <label className="field">
-                <span>이메일</span>
-                <input
-                  required
-                  type="email"
-                  name="email"
-                  autoComplete="email"
-                  spellCheck={false}
-                  value={loginEmail}
-                  onChange={(e) => setLoginEmail(e.target.value)}
-                />
-              </label>
-              <button className="primary" type="submit">
-                계속
-              </button>
-              <button
-                className="secondary"
-                type="button"
-                onClick={dismissModal}
-              >
+            <>
+              <h2>SunSync 시작하기</h2>
+              <AuthLead className="muted" description="Google 계정으로 로그인하거나 새로 가입하세요." message={authNotice} />
+              <GoogleButton autoFocus onClick={startLogin} />
+              <button className="secondary" type="button" onClick={dismissModal}>
                 취소
               </button>
-            </form>
+            </>
           )}
           {modal === "delete-space" && active && (
             <>
@@ -1757,12 +1724,7 @@ function MobileApp() {
               <h2>로그아웃하시겠어요?</h2>
               <button
                 className="primary destructive"
-                onClick={() => {
-                  setAccount(null);
-                  setDraft(null);
-                  setPage("home");
-                  setModal(null);
-                }}
+                onClick={() => void signOut()}
               >
                 로그아웃
               </button>

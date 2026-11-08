@@ -2,7 +2,7 @@
   "id": "/",
   "name": "SunSync · 공간 관리",
   "short_name": "SunSync",
-  "description": "공간 측정 및 보호구역 설정 UI 데모",
+  "description": "공간의 햇빛을 예측하고 보호 영역을 관리합니다",
   "lang": "ko",
   "start_url": "/",
   "scope": "/",
@@ -11,10 +11,28 @@
   "theme_color": "#6660e5",
   "icons": [
     {
-      "src": "/design/sun.svg",
+      "src": "/icons/icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }
