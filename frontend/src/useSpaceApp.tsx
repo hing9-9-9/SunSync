@@ -13,6 +13,7 @@ import { markInvalidFields } from "./formIssues";
 import { saveErrorMessage } from "./spaceSync";
 import { EXPIRED_MESSAGE, LOGIN_FAILED_MESSAGE, currentPath, fetchSession, googleLoginUrl, logout, onUnauthorized } from "./auth";
 import type { Session } from "./auth";
+import { mergeStash, saveStash, splitForStash, takeStash } from "./userStash";
 import Plan from "./Plan";
 import {
   blankSpace,
@@ -683,6 +684,11 @@ export function useSpaceApp() {
       setSaving(false);
     }
   }
+  // applySession runs from a one-time effect; this keeps it reading the current values.
+  const latest = useRef({ spaces, draft, tempDrafts });
+  useEffect(() => {
+    latest.current = { spaces, draft, tempDrafts };
+  });
   function applySession(session: Session) {
     if (session.status === "out") {
       setAccount(null);
@@ -695,13 +701,25 @@ export function useSpaceApp() {
       let last = initial.account?.email || "";
       try { last ||= localStorage.getItem(LAST_EMAIL_KEY) ?? ""; } catch { /* storage blocked */ }
       if (last && user.email && last.toLowerCase() !== user.email.toLowerCase()) {
-        // Another person: nothing cached for the previous one stays visible.
+        // Another person: server copies are dropped (they return from the server); their local-only
+        // work is parked under their email and disappears from this person's screens.
+        try { saveStash(localStorage, last, splitForStash(latest.current.spaces, latest.current.draft, latest.current.tempDrafts)); } catch { /* storage blocked */ }
         setSpaces([]);
         setUnavailable([]);
         setDraft(null);
         setTempDrafts([]);
         setActiveId(null);
         setPageState((p) => (isEditingPage(p) || p === "detail" ? "spaces" : p));
+      }
+      // Work this person parked earlier on this device comes back.
+      let back = null;
+      try { back = takeStash(localStorage, user.email); } catch { /* storage blocked */ }
+      if (back) {
+        const parked = back;
+        const base = last && user.email && last.toLowerCase() !== user.email.toLowerCase() ? { spaces: [], tempDrafts: [] } : { spaces: latest.current.spaces, tempDrafts: latest.current.tempDrafts };
+        const merged = mergeStash(base, parked);
+        setSpaces(merged.spaces);
+        setTempDrafts(merged.tempDrafts);
       }
       try { if (user.email) localStorage.setItem(LAST_EMAIL_KEY, user.email); } catch { /* storage blocked */ }
     }
