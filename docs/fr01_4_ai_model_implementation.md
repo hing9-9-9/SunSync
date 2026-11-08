@@ -1,8 +1,8 @@
 # FR-01.4 KMA AI DNI 선형 분위수 모델 구현·동결 사양
 
 > **상태:** 2026-11-08에 Stage 1~6, V1 동결과 Final test 1회 평가를 완료했다.
-> 이 문서는 현재 모델 계약의 기준 문서다. V1 재튜닝은 금지하며 운영 API 연결은
-> 팀 검토 후 별도로 진행한다.
+> **분류:** PR·팀 공유용 기준 문서다. V1 재튜닝은 금지한다. 운영 연결 코드는 구현됐으며
+> 기본 Shadow에서 Active로 전환하는 일과 서버 배포는 팀 검토 후 진행한다.
 
 ## 현재 모델 한눈에 보기
 
@@ -782,7 +782,7 @@ Stage 6 운영 모델 위치는 `backend/app/nowcast/model_artifacts/`로 확정
 - [x] 전체·한국 시간대·태양 고도·구름 구간별 Validation 평가 artifact를 생성했다.
 - [x] 실행 명령, 입력 SHA-256, split 경계와 코드 commit을 metadata에 저장했다.
 - [x] 터미널에 핵심 결과와 artifact 경로를 출력했다.
-- [ ] 팀 검토 후에만 운영 API의 model artifact 로딩을 연결한다.
+- [x] 팀 승인 후 읽기 전용 운영 추론 worker에 동결 artifact 로딩을 연결했다.
 
 #### Stage 6 구현 결과 — 2026-11-08
 
@@ -992,6 +992,21 @@ AI가 아닐 때 `p10_dni_W_m2`, `p50_dni_W_m2`, `p90_dni_W_m2`는 `null`로 둔
 운영 연결 완료 조건은 미래 정보 누수 0건, 모델 hash 검증 통과, fallback 원인 추적 가능,
 외부 API 장애 시 요청 처리 안정성 확인이다. Shadow 관찰 기간과 허용 오류율·fallback률은
 배포 환경의 수집 주기와 트래픽을 확인한 뒤 팀 검토에서 수치로 확정한다.
+
+### 15.6 운영 연결 구현 결과 — 2026-11-08
+
+- `kma_worker`와 `open_meteo_worker`가 site별 snapshot을 저장한다. Open-Meteo 모델은
+  학습 계약과 같은 `ecmwf_ifs025`로 고정했다.
+- `operational_nowcast_worker`가 동결 artifact의 hash를 검증한 뒤 10·30·60분 결과를
+  `ai_nowcast_run`, `ai_nowcast_point`에 저장한다. worker에는 학습 기능이 없다.
+- 기본 `FR01_AI_ROLLOUT_MODE=shadow`에서는 사용자 값은 Open-Meteo이고 AI 분위수는 내부
+  shadow 필드에만 남는다. `active` 전환 후 10·30분만 AI, 60분은 Open-Meteo를 제공한다.
+- `GET /api/scenes/{scene_id}/ai-nowcast/latest`는 저장된 최신 유효 결과만 반환한다.
+  요청 경로에서는 모델 실행과 외부 provider 호출을 하지 않는다.
+- KMA 관측이 20분보다 오래되거나 필수값이 없으면 Open-Meteo로 fallback한다.
+  Open-Meteo도 없으면 `unavailable`이며 임의의 clear-sky·직전값을 만들지 않는다.
+- `/nowcast-comparison` GET은 한시적 deprecated alias이고, 외부 입력을 받던 POST는 제거했다.
+- 정식 전환은 shadow 운영 지표를 팀이 검토한 뒤 환경 변수만 `active`로 변경한다.
 
 ## 16. 후속 개선 후보
 

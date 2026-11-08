@@ -86,3 +86,43 @@ class NowcastComparisonResponse(BaseModel):
     interval_seconds: int
     points: list[QuantileNowcastPoint]
     metrics: ComparisonMetrics
+
+
+OperationalPredictionSource = Literal[
+    "ai_model", "open_meteo_default", "open_meteo_fallback", "unavailable"
+]
+
+
+class OperationalNowcastPoint(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True, allow_inf_nan=False)
+
+    horizon_minutes: Literal[10, 30, 60]
+    valid_time: str
+    prediction_source: OperationalPredictionSource
+    dni_W_m2: float | None
+    p10_dni_W_m2: float | None
+    p50_dni_W_m2: float | None
+    p90_dni_W_m2: float | None
+    open_meteo_dni_W_m2: float | None
+    fallback_used: bool
+    fallback_reason: str | None
+    quality_flags: list[str]
+    kma_snapshot_id: str | None
+    kma_observed_at: str | None
+    open_meteo_snapshot_id: str | None
+    open_meteo_fetched_at: str | None
+
+
+class OperationalNowcastResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True, allow_inf_nan=False)
+
+    run_id: str
+    scene_id: str
+    prediction_origin: str
+    created_at: str
+    model_version: str
+    model_manifest_sha256: str
+    rollout_mode: Literal["shadow", "active"]
+    status: Literal["ready", "degraded"]
+    result_hash: str
+    points: list[OperationalNowcastPoint]

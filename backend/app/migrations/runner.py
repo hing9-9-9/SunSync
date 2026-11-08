@@ -6,7 +6,7 @@ schema and record their progress in SQLite's built-in ``user_version``.
 
 from sqlalchemy import Engine
 
-LATEST_VERSION = 3
+LATEST_VERSION = 4
 
 
 def _upgrade_1(connection) -> None:  # type: ignore[no-untyped-def]
@@ -113,6 +113,76 @@ def _upgrade_3(connection) -> None:  # type: ignore[no-untyped-def]
 
 
 MIGRATIONS[3] = _upgrade_3
+
+
+def _upgrade_4(connection) -> None:  # type: ignore[no-untyped-def]
+    """Add site-scoped source snapshots and production AI nowcast tables."""
+
+    connection.exec_driver_sql("ALTER TABLE weather_snapshot ADD COLUMN site_key TEXT")
+    connection.exec_driver_sql(
+        "CREATE INDEX IF NOT EXISTS ix_weather_snapshot_site_provider "
+        "ON weather_snapshot(site_key, provider, fetched_at)"
+    )
+    connection.exec_driver_sql(
+        """
+        CREATE TABLE IF NOT EXISTS ai_nowcast_run (
+          run_id TEXT PRIMARY KEY,
+          scene_id TEXT NOT NULL,
+          site_key TEXT NOT NULL,
+          prediction_origin TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          model_version TEXT NOT NULL,
+          model_manifest_sha256 TEXT NOT NULL,
+          input_snapshot_ids_json TEXT NOT NULL,
+          rollout_mode TEXT NOT NULL CHECK (rollout_mode IN ('shadow', 'active')),
+          status TEXT NOT NULL CHECK (status IN ('ready', 'degraded')),
+          result_hash TEXT NOT NULL,
+          expires_at TEXT NOT NULL
+        )
+        """
+    )
+    connection.exec_driver_sql(
+        """
+        CREATE TABLE IF NOT EXISTS ai_nowcast_point (
+          id INTEGER PRIMARY KEY,
+          run_id TEXT NOT NULL REFERENCES ai_nowcast_run(run_id) ON DELETE CASCADE,
+          horizon_minutes INTEGER NOT NULL CHECK (horizon_minutes IN (10, 30, 60)),
+          valid_time TEXT NOT NULL,
+          prediction_source TEXT NOT NULL CHECK (
+            prediction_source IN (
+              'ai_model', 'open_meteo_default', 'open_meteo_fallback', 'unavailable'
+            )
+          ),
+          dni_W_m2 REAL,
+          dni_p10_W_m2 REAL,
+          dni_p50_W_m2 REAL,
+          dni_p90_W_m2 REAL,
+          open_meteo_dni_W_m2 REAL,
+          shadow_dni_p10_W_m2 REAL,
+          shadow_dni_p50_W_m2 REAL,
+          shadow_dni_p90_W_m2 REAL,
+          kma_snapshot_id TEXT,
+          kma_observed_at TEXT,
+          open_meteo_snapshot_id TEXT,
+          open_meteo_fetched_at TEXT,
+          fallback_used INTEGER NOT NULL CHECK (fallback_used IN (0, 1)),
+          fallback_reason TEXT,
+          quality_flags_json TEXT NOT NULL,
+          UNIQUE(run_id, horizon_minutes)
+        )
+        """
+    )
+    connection.exec_driver_sql(
+        "CREATE INDEX IF NOT EXISTS ix_ai_nowcast_run_scene_created "
+        "ON ai_nowcast_run(scene_id, created_at)"
+    )
+    connection.exec_driver_sql(
+        "CREATE INDEX IF NOT EXISTS ix_ai_nowcast_run_site_origin "
+        "ON ai_nowcast_run(site_key, prediction_origin)"
+    )
+
+
+MIGRATIONS[4] = _upgrade_4
 
 
 def upgrade_database(engine: Engine) -> None:

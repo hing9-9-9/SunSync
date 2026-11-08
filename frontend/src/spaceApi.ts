@@ -212,138 +212,74 @@ export function predictShadingPlan(sceneId: string, revision: number, startTime:
 }
 
 export type QuantileNowcastPoint = {
-  timestamp: string;
-  solar_elevation_deg: number;
-  clear_sky_dni_W_m2: number;
+  horizon_minutes: 10 | 30 | 60;
+  valid_time: string;
+  prediction_source: "ai_model" | "open_meteo_default" | "open_meteo_fallback" | "unavailable";
+  dni_W_m2: number | null;
+  p10_dni_W_m2: number | null;
+  p50_dni_W_m2: number | null;
+  p90_dni_W_m2: number | null;
   open_meteo_dni_W_m2: number | null;
-  kma_ai_dni_W_m2: number | null;
-  dni_p10_W_m2: number;
-  dni_p50_W_m2: number;
-  dni_p90_W_m2: number;
-  clear_sky_index_p50: number;
-  uncertainty_spread_W_m2: number;
-  selected_dni_W_m2: number;
-  selected_source: string;
   fallback_used: boolean;
-};
-
-export type ComparisonMetrics = {
-  sample_count: number;
-  mean_uncertainty_spread_W_m2: number;
-  cloud_volatility_index: number;
-  kma_vs_open_meteo_mae_W_m2: number | null;
-  kma_ai_rmse_W_m2?: number | null;
-  open_meteo_rmse_W_m2?: number | null;
-  kma_ai_pinball_loss?: number | null;
+  fallback_reason: string | null;
+  quality_flags: string[];
+  kma_snapshot_id: string | null;
+  kma_observed_at: string | null;
+  open_meteo_snapshot_id: string | null;
+  open_meteo_fetched_at: string | null;
 };
 
 export type NowcastComparisonResponse = {
   run_id: string;
   scene_id: string;
-  mode: "kma_ai_ensemble" | "open_meteo_only" | "shadow_compare";
+  prediction_origin: string;
+  created_at: string;
   model_version: string;
-  start_time: string;
-  end_time: string;
-  interval_seconds: number;
+  model_manifest_sha256: string;
+  rollout_mode: "shadow" | "active";
+  status: "ready" | "degraded";
+  result_hash: string;
   points: QuantileNowcastPoint[];
-  metrics: ComparisonMetrics;
 };
 
-export function fetchNowcastComparison(sceneId: string, startTime: string) {
+export function fetchNowcastComparison(sceneId: string) {
   return request<NowcastComparisonResponse>(
-    `/api/scenes/${encodeURIComponent(sceneId)}/nowcast-comparison?start_time=${encodeURIComponent(startTime)}&duration_minutes=720&interval_seconds=900`,
+    `/api/scenes/${encodeURIComponent(sceneId)}/ai-nowcast/latest`,
   );
 }
 
+/** Test/Storybook fixture only. Production never falls back to these values. */
 export function buildDemoNowcastComparison(startTime: string): NowcastComparisonResponse {
   const start = new Date(startTime);
   const baseTime = Number.isNaN(start.getTime()) ? new Date("2026-10-14T02:00:00Z") : start;
-  const points: QuantileNowcastPoint[] = [];
-  const totalSteps = 24;
-  const intervalSeconds = 1800; // 30 min
-
-  let sumSpread = 0;
-  let sumDiff = 0;
-  let countSun = 0;
-
-  for (let i = 0; i <= totalSteps; i++) {
-    const ptDate = new Date(baseTime.getTime() + i * intervalSeconds * 1000);
-    const iso = ptDate.toISOString();
-    // Daylight fraction: bell curve for daytime (midday peak)
-    const sinProgress = Math.sin((Math.PI * i) / totalSteps);
-    const elevation = Math.max(0, Number((62 * sinProgress).toFixed(1)));
-
-    if (elevation <= 0) {
-      points.push({
-        timestamp: iso,
-        solar_elevation_deg: 0,
-        clear_sky_dni_W_m2: 0,
-        open_meteo_dni_W_m2: 0,
-        kma_ai_dni_W_m2: 0,
-        dni_p10_W_m2: 0,
-        dni_p50_W_m2: 0,
-        dni_p90_W_m2: 0,
-        clear_sky_index_p50: 0,
-        uncertainty_spread_W_m2: 0,
-        selected_dni_W_m2: 0,
-        selected_source: "pvlib_clear_sky",
-        fallback_used: false,
-      });
-      continue;
-    }
-
-    const clearDni = Math.round(890 * Math.pow(sinProgress, 0.75));
-    // Simulated cloud variability and Open-Meteo synoptic forecast
-    const cloudWave = 0.72 + 0.18 * Math.cos(i * 0.9);
-    const omDni = Math.round(clearDni * 0.78);
-    const kmaP50 = Math.min(clearDni, Math.round(clearDni * cloudWave));
-
-    const p10 = Math.max(0, Math.round(kmaP50 - (90 + 35 * Math.sin(i * 1.2))));
-    const p90 = Math.min(Math.round(clearDni * 1.02), Math.max(kmaP50, Math.round(kmaP50 + (110 + 40 * Math.sin(i * 1.2)))));
-    const spread = p90 - p10;
-
-    sumSpread += spread;
-    sumDiff += Math.abs(kmaP50 - omDni);
-    countSun++;
-
-    points.push({
-      timestamp: iso,
-      solar_elevation_deg: elevation,
-      clear_sky_dni_W_m2: clearDni,
-      open_meteo_dni_W_m2: omDni,
-      kma_ai_dni_W_m2: kmaP50,
-      dni_p10_W_m2: p10,
-      dni_p50_W_m2: kmaP50,
-      dni_p90_W_m2: p90,
-      clear_sky_index_p50: clearDni > 0 ? Number((kmaP50 / clearDni).toFixed(3)) : 0,
-      uncertainty_spread_W_m2: spread,
-      selected_dni_W_m2: kmaP50,
-      selected_source: "kma_ai_ensemble",
-      fallback_used: false,
-    });
-  }
-
-  const meanSpread = countSun > 0 ? Number((sumSpread / countSun).toFixed(1)) : 0;
-  const mae = countSun > 0 ? Number((sumDiff / countSun).toFixed(1)) : 0;
-
+  const points: QuantileNowcastPoint[] = ([10, 30, 60] as const).map((horizon) => ({
+    horizon_minutes: horizon,
+    valid_time: new Date(baseTime.getTime() + horizon * 60_000).toISOString(),
+    prediction_source: horizon === 60 ? "open_meteo_default" : "ai_model",
+    dni_W_m2: horizon === 10 ? 520 : horizon === 30 ? 470 : 410,
+    p10_dni_W_m2: horizon === 60 ? null : horizon === 10 ? 390 : 310,
+    p50_dni_W_m2: horizon === 60 ? null : horizon === 10 ? 520 : 470,
+    p90_dni_W_m2: horizon === 60 ? null : horizon === 10 ? 650 : 640,
+    open_meteo_dni_W_m2: horizon === 10 ? 480 : horizon === 30 ? 450 : 410,
+    fallback_used: false,
+    fallback_reason: null,
+    quality_flags: [],
+    kma_snapshot_id: "demo-kma",
+    kma_observed_at: baseTime.toISOString(),
+    open_meteo_snapshot_id: "demo-open-meteo",
+    open_meteo_fetched_at: baseTime.toISOString(),
+  }));
   return {
-    run_id: "demo-hybrid-run",
+    run_id: "demo-operational-run",
     scene_id: "demo-scene",
-    mode: "kma_ai_ensemble",
-    model_version: "kma_openmeteo_quantile_nowcast_v1",
-    start_time: baseTime.toISOString(),
-    end_time: new Date(baseTime.getTime() + totalSteps * intervalSeconds * 1000).toISOString(),
-    interval_seconds: intervalSeconds,
+    prediction_origin: baseTime.toISOString(),
+    created_at: baseTime.toISOString(),
+    model_version: "fr01_kma_quantile_v1",
+    model_manifest_sha256: "demo",
+    rollout_mode: "active",
+    status: "ready",
+    result_hash: "demo",
     points,
-    metrics: {
-      sample_count: points.length,
-      mean_uncertainty_spread_W_m2: meanSpread,
-      cloud_volatility_index: 0.285,
-      kma_vs_open_meteo_mae_W_m2: mae,
-      kma_ai_rmse_W_m2: 42.6,
-      open_meteo_rmse_W_m2: 89.4,
-      kma_ai_pinball_loss: 23.8,
-    },
   };
 }
 
@@ -386,9 +322,12 @@ export function buildQuantileBandPolygon(
   const bottomCoords: string[] = [];
 
   for (let i = 0; i < points.length; i++) {
+    const p90 = points[i].p90_dni_W_m2;
+    const p10 = points[i].p10_dni_W_m2;
+    if (p90 === null || p10 === null) continue;
     const x = computeX(i, points.length, width, margin).toFixed(1);
-    const yTop = computeY(points[i].dni_p90_W_m2, maxDni, height, margin).toFixed(1);
-    const yBottom = computeY(points[i].dni_p10_W_m2, maxDni, height, margin).toFixed(1);
+    const yTop = computeY(p90, maxDni, height, margin).toFixed(1);
+    const yBottom = computeY(p10, maxDni, height, margin).toFixed(1);
     topCoords.push(`${x},${yTop}`);
     bottomCoords.unshift(`${x},${yBottom}`);
   }

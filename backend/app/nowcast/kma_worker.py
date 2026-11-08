@@ -52,7 +52,12 @@ def run_once(
         try:
             collection: KmaCollection = factory(site, api_key).fetch_recent(current)
             paths = write_kma_collection(collection, output_root)
-            repository.store(collection.snapshot, current, str(paths.manifest))
+            repository.store(
+                collection.snapshot,
+                current,
+                str(paths.manifest),
+                site_key=f"{site.latitude_deg:.6f},{site.longitude_deg:.6f}",
+            )
             stored += 1
         except (KmaGk2aError, OSError, ValueError):
             failed += 1

@@ -22,7 +22,12 @@ class SnapshotRepository:
         self.id_factory = id_factory or (lambda: str(uuid4()))
 
     def store(
-        self, raw: RawSnapshot, fetched_at: datetime, raw_payload_path: str | None = None
+        self,
+        raw: RawSnapshot,
+        fetched_at: datetime,
+        raw_payload_path: str | None = None,
+        *,
+        site_key: str | None = None,
     ) -> str:
         fetched = utc_z(fetched_at)
         payload_hash = hashlib.sha256(raw.payload).hexdigest()
@@ -32,12 +37,14 @@ class SnapshotRepository:
             existing = conn.execute(
                 text("""SELECT snapshot_id FROM weather_snapshot
                     WHERE provider=:provider AND product=:product
+                      AND COALESCE(site_key, '')=COALESCE(:site_key, '')
                       AND COALESCE(issued_at, '')=COALESCE(:issued_at, '')
                       AND raw_payload_hash=:payload_hash"""),
                 {
                     "provider": raw.provider,
                     "product": raw.product,
                     "issued_at": issued,
+                    "site_key": site_key,
                     "payload_hash": payload_hash,
                 },
             ).scalar_one_or_none()
@@ -46,8 +53,8 @@ class SnapshotRepository:
             snapshot_id = self.id_factory()
             conn.execute(
                 text("""INSERT INTO weather_snapshot
-                (snapshot_id,provider,product,model,observed_at,issued_at,fetched_at,raw_payload_hash,raw_payload_path,quality_status)
-                VALUES (:snapshot_id,:provider,:product,:model,:observed_at,:issued_at,:fetched_at,:payload_hash,:raw_payload_path,:quality_status)"""),
+                (snapshot_id,provider,product,model,observed_at,issued_at,fetched_at,raw_payload_hash,raw_payload_path,quality_status,site_key)
+                VALUES (:snapshot_id,:provider,:product,:model,:observed_at,:issued_at,:fetched_at,:payload_hash,:raw_payload_path,:quality_status,:site_key)"""),
                 {
                     "snapshot_id": snapshot_id,
                     "provider": raw.provider,
@@ -59,6 +66,7 @@ class SnapshotRepository:
                     "payload_hash": payload_hash,
                     "raw_payload_path": raw_payload_path,
                     "quality_status": raw.quality_status,
+                    "site_key": site_key,
                 },
             )
             if raw.provenance:

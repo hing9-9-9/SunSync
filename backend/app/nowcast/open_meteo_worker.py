@@ -40,7 +40,11 @@ def run_once(
     for site in sites:
         try:
             snapshot = OpenMeteoDniAdapter(site).fetch(current)
-            repository.store(snapshot, current)
+            repository.store(
+                snapshot,
+                current,
+                site_key=f"{site.latitude_deg:.6f},{site.longitude_deg:.6f}",
+            )
             stored += 1
         except (OpenMeteoSnapshotError, ValueError):
             # No invalid snapshot is written.  The last successful one remains.

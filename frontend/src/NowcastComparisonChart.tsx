@@ -6,19 +6,16 @@ import {
   buildQuantileBandPolygon,
   computeX,
   computeY,
-  formatTimeLabel,
 } from "./spaceApi.ts";
 
 export interface NowcastComparisonChartProps {
   data: NowcastComparisonResponse;
-  timezone?: string;
   width?: number;
   height?: number;
 }
 
 export default function NowcastComparisonChart({
   data,
-  timezone = "Asia/Seoul",
   width = 560,
   height = 240,
 }: NowcastComparisonChartProps) {
@@ -28,7 +25,7 @@ export default function NowcastComparisonChart({
   const margin = DEFAULT_CHART_MARGIN;
 
   const rawMax = Math.max(
-    ...points.map((p) => Math.max(p.clear_sky_dni_W_m2, p.dni_p90_W_m2, p.open_meteo_dni_W_m2 ?? 0)),
+    ...points.map((p) => Math.max(p.dni_W_m2 ?? 0, p.p90_dni_W_m2 ?? 0, p.open_meteo_dni_W_m2 ?? 0)),
     800,
   );
   // Round up to clean 100s
@@ -36,7 +33,7 @@ export default function NowcastComparisonChart({
 
   const bandPolygon = buildQuantileBandPolygon(points, width, height, maxDni, margin);
   const p50Points = buildPolylinePoints(
-    points.map((p) => p.dni_p50_W_m2),
+    points.map((p) => p.p50_dni_W_m2),
     width,
     height,
     maxDni,
@@ -49,8 +46,8 @@ export default function NowcastComparisonChart({
     maxDni,
     margin,
   );
-  const clearSkyPoints = buildPolylinePoints(
-    points.map((p) => p.clear_sky_dni_W_m2),
+  const selectedPoints = buildPolylinePoints(
+    points.map((p) => p.dni_W_m2),
     width,
     height,
     maxDni,
@@ -98,7 +95,7 @@ export default function NowcastComparisonChart({
             fontWeight: 600,
           }}
         >
-          AI 불확실성 ±{data.metrics.mean_uncertainty_spread_W_m2} W/m²
+          운영 모드 {data.rollout_mode === "active" ? "AI 활성" : "Shadow"}
         </span>
         <span
           className="pill"
@@ -108,20 +105,18 @@ export default function NowcastComparisonChart({
             padding: "3px 10px",
           }}
         >
-          구름 변동성 지수 {data.metrics.cloud_volatility_index.toFixed(2)}
+          모델 {data.model_version}
         </span>
-        {data.metrics.kma_vs_open_meteo_mae_W_m2 !== null && (
-          <span
-            className="pill"
-            style={{
-              background: "var(--c-block, #e9e9e9)",
-              color: "var(--c-protect-ink, #343434)",
-              padding: "3px 10px",
-            }}
-          >
-            기상청 AI vs Open-Meteo 편차 {data.metrics.kma_vs_open_meteo_mae_W_m2} W/m²
-          </span>
-        )}
+        <span
+          className="pill"
+          style={{
+            background: "var(--c-block, #e9e9e9)",
+            color: "var(--c-protect-ink, #343434)",
+            padding: "3px 10px",
+          }}
+        >
+          {data.status === "ready" ? "입력 정상" : "일부 입력 불가"}
+        </span>
       </div>
 
       <div style={{ position: "relative", width: "100%", overflowX: "auto" }}>
@@ -173,7 +168,7 @@ export default function NowcastComparisonChart({
                 fill="var(--c-muted, #75727d)"
                 fontSize="10"
               >
-                {formatTimeLabel(pt.timestamp, timezone)}
+                +{pt.horizon_minutes}분
               </text>
             );
           })}
@@ -187,14 +182,13 @@ export default function NowcastComparisonChart({
             />
           )}
 
-          {/* Clear Sky curve */}
-          {clearSkyPoints && (
+          {/* Selected operational output */}
+          {selectedPoints && (
             <polyline
-              points={clearSkyPoints}
+              points={selectedPoints}
               fill="none"
-              stroke="#9d9d9d"
-              strokeDasharray="2 3"
-              strokeWidth="1.5"
+              stroke="var(--c-action, #6660e5)"
+              strokeWidth="2.5"
             />
           )}
 
@@ -209,13 +203,14 @@ export default function NowcastComparisonChart({
             />
           )}
 
-          {/* KMA AI Median (q50) curve */}
+          {/* KMA AI Median (q50) curve where public quantiles exist */}
           {p50Points && (
             <polyline
               points={p50Points}
               fill="none"
-              stroke="var(--c-action, #6660e5)"
-              strokeWidth="2.5"
+              stroke="var(--c-action-ink, #554ed0)"
+              strokeDasharray="3 2"
+              strokeWidth="1.5"
             />
           )}
 
@@ -286,7 +281,7 @@ export default function NowcastComparisonChart({
                 background: "var(--c-action, #6660e5)",
               }}
             />
-            KMA+Open-Meteo AI 중앙값(q50)
+            선택된 운영 DNI
           </span>
           <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
             <span
@@ -308,13 +303,16 @@ export default function NowcastComparisonChart({
                 borderBottom: "1px dotted #9d9d9d",
               }}
             />
-            맑은 하늘 한계(Clear-Sky)
+            AI 중앙값(q50, 10·30분 활성 시)
           </span>
         </div>
 
         {hoveredPoint && (
           <div style={{ fontWeight: 600, color: "var(--c-ink, #1d1c22)" }}>
-            {formatTimeLabel(hoveredPoint.timestamp, timezone)}: q50={hoveredPoint.dni_p50_W_m2} W/m² (밴드 {hoveredPoint.dni_p10_W_m2}~{hoveredPoint.dni_p90_W_m2})
+            +{hoveredPoint.horizon_minutes}분: {hoveredPoint.dni_W_m2 ?? "확인 불가"} W/m²
+            {hoveredPoint.p50_dni_W_m2 !== null
+              ? ` (AI 밴드 ${hoveredPoint.p10_dni_W_m2}~${hoveredPoint.p90_dni_W_m2})`
+              : ""}
           </div>
         )}
       </div>

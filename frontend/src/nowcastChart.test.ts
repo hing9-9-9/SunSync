@@ -12,33 +12,23 @@ import {
 
 test("buildDemoNowcastComparison produces valid structure and positive samples", () => {
   const demo = buildDemoNowcastComparison("2026-10-14T00:00:00Z");
-  assert.equal(demo.mode, "kma_ai_ensemble");
-  assert.equal(demo.model_version, "kma_openmeteo_quantile_nowcast_v1");
-  assert.ok(demo.points.length > 10, "Should generate a multi-step timeline");
-  assert.ok(demo.metrics.sample_count === demo.points.length);
-  assert.ok(demo.metrics.mean_uncertainty_spread_W_m2 > 0);
-  assert.ok(demo.metrics.cloud_volatility_index >= 0 && demo.metrics.cloud_volatility_index <= 1);
+  assert.equal(demo.rollout_mode, "active");
+  assert.equal(demo.model_version, "fr01_kma_quantile_v1");
+  assert.deepEqual(demo.points.map((point) => point.horizon_minutes), [10, 30, 60]);
 });
 
 test("quantile monotonicity: p10 <= p50 <= p90 across all demo points", () => {
   const demo = buildDemoNowcastComparison("2026-10-14T02:00:00Z");
   for (const pt of demo.points) {
-    assert.ok(pt.dni_p10_W_m2 >= 0, `p10 must be non-negative: ${pt.dni_p10_W_m2}`);
+    if (pt.p10_dni_W_m2 === null || pt.p50_dni_W_m2 === null || pt.p90_dni_W_m2 === null) continue;
+    assert.ok(pt.p10_dni_W_m2 >= 0, `p10 must be non-negative: ${pt.p10_dni_W_m2}`);
     assert.ok(
-      pt.dni_p10_W_m2 <= pt.dni_p50_W_m2,
-      `p10 (${pt.dni_p10_W_m2}) must be <= p50 (${pt.dni_p50_W_m2})`,
+      pt.p10_dni_W_m2 <= pt.p50_dni_W_m2,
+      `p10 (${pt.p10_dni_W_m2}) must be <= p50 (${pt.p50_dni_W_m2})`,
     );
     assert.ok(
-      pt.dni_p50_W_m2 <= pt.dni_p90_W_m2,
-      `p50 (${pt.dni_p50_W_m2}) must be <= p90 (${pt.dni_p90_W_m2})`,
-    );
-    assert.ok(
-      pt.uncertainty_spread_W_m2 === pt.dni_p90_W_m2 - pt.dni_p10_W_m2,
-      "uncertainty spread must equal p90 - p10",
-    );
-    assert.ok(
-      pt.dni_p90_W_m2 <= pt.clear_sky_dni_W_m2 * 1.05 + 1.0,
-      `p90 must not exceed clear sky upper bound: ${pt.dni_p90_W_m2} vs ${pt.clear_sky_dni_W_m2}`,
+      pt.p50_dni_W_m2 <= pt.p90_dni_W_m2,
+      `p50 (${pt.p50_dni_W_m2}) must be <= p90 (${pt.p90_dni_W_m2})`,
     );
   }
 });
@@ -68,13 +58,13 @@ test("buildQuantileBandPolygon generates closed non-empty coordinates without Na
   assert.ok(!poly.includes("NaN"), "Coordinates must not contain NaN");
   assert.ok(!poly.includes("undefined"), "Coordinates must not contain undefined");
   const pairs = poly.split(" ");
-  assert.equal(pairs.length, demo.points.length * 2, "Polygon should contain 2 * N coordinate pairs");
+  assert.equal(pairs.length, 4, "Only the two AI horizons form the quantile polygon");
 });
 
 test("buildPolylinePoints generates sequential coordinates for valid series", () => {
   const demo = buildDemoNowcastComparison("2026-10-14T02:00:00Z");
   const line = buildPolylinePoints(
-    demo.points.map((p) => p.dni_p50_W_m2),
+    demo.points.map((p) => p.p50_dni_W_m2),
     500,
     200,
     1000,
@@ -82,7 +72,7 @@ test("buildPolylinePoints generates sequential coordinates for valid series", ()
   assert.ok(line.length > 0);
   assert.ok(!line.includes("NaN"));
   const pairs = line.split(" ");
-  assert.equal(pairs.length, demo.points.length);
+  assert.equal(pairs.length, 2);
 });
 
 test("formatTimeLabel formats Korean time string with timezone", () => {

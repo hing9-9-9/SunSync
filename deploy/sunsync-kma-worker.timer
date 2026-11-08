@@ -1,0 +1,9 @@
+[Unit]
+Description=Collect KMA GK2A observations every 10 minutes
+
+[Timer]
+OnCalendar=*-*-* *:02/10:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -18,7 +18,7 @@ from app.schemas.adaptive_control import (
 )
 from app.schemas.shading_plan import ShadingPlan
 from fastapi.testclient import TestClient
-from sqlalchemy import Engine
+from sqlalchemy import Engine, text
 from sqlmodel import Session, create_engine
 
 from engine.fr04 import (
@@ -598,15 +598,43 @@ def test_cross_track_auto_fetch_nowcast_from_database(
         )
         session.commit()
 
-    # Step 1: Run Track 1 AI nowcast endpoint, which persists points into SQLite nowcast_point
-    nowcast_req = {
-        "start_time": "2026-10-14T04:30:00Z",
-        "duration_minutes": 30,
-        "interval_seconds": 300,
-        "mode": "kma_ai_ensemble",
-    }
-    nowcast_resp = client.post(f"/api/scenes/{scene_id}/ai-nowcast", json=nowcast_req)
-    assert nowcast_resp.status_code == 200, nowcast_resp.text
+    # Step 1: Persist the active worker output consumed by Track 3.
+    site_key = (
+        f"{scene_payload['site']['latitude_deg']:.6f},"
+        f"{scene_payload['site']['longitude_deg']:.6f}"
+    )
+    current = datetime.now(UTC)
+    with database_engine.begin() as connection:
+        connection.execute(
+            text("""
+            INSERT INTO ai_nowcast_run(
+              run_id,scene_id,site_key,prediction_origin,created_at,model_version,
+              model_manifest_sha256,input_snapshot_ids_json,rollout_mode,status,result_hash,expires_at
+            ) VALUES (
+              'active-run',:scene,:site,'2026-10-14T04:30:00Z',:created,
+              'fr01_kma_quantile_v1','hash','[]','active','ready','result',:expires
+            )
+            """),
+            {
+                "scene": scene_id,
+                "site": site_key,
+                "created": current.isoformat(),
+                "expires": (current + timedelta(minutes=20)).isoformat(),
+            },
+        )
+        for horizon, valid_time in ((10, "2026-10-14T04:40:00Z"), (30, "2026-10-14T05:00:00Z")):
+            connection.execute(
+                text("""
+                INSERT INTO ai_nowcast_point(
+                  run_id,horizon_minutes,valid_time,prediction_source,dni_W_m2,
+                  dni_p10_W_m2,dni_p50_W_m2,dni_p90_W_m2,open_meteo_dni_W_m2,
+                  fallback_used,quality_flags_json
+                ) VALUES (
+                  'active-run',:horizon,:valid,'ai_model',500,350,500,650,480,0,'[]'
+                )
+                """),
+                {"horizon": horizon, "valid": valid_time},
+            )
 
     # Step 2: Call Track 3 adaptive plan endpoint with empty uncertainty_timeline
     adaptive_req = {
