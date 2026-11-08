@@ -526,8 +526,6 @@
 
 /* purple main buttons: ~4% deeper fill, arrow nudges up-right */
 .app.award-app .ap .ap-round-link { background: var(--c-action); transition: background-color var(--mb-ease); }
-.app.award-app .ap .ap-round-link:hover,
-.app.award-app .ap .ap-round-link:focus-visible { background: var(--c-5f59dc); box-shadow: none; }
 .app.award-app .ap .ap-round-link:active { transform: none; }
 .app.award-app .ap .ap-round-link b,
 .app.award-app .ap .ap-round-link:hover b,
@@ -735,7 +733,7 @@
 .sync-badge { display: block; font-size: var(--fs-label); font-weight: 400; color: var(--c-6b6577); }
 .sync-badge.pending, .sync-badge.needs-site { color: var(--c-sun-ink); }
 .sync-retry { margin-top: var(--space-2); font-size: var(--fs-small); color: var(--c-sun-ink); background: var(--c-white); border: 1px solid var(--c-block); border-radius: 999px; padding: 6px var(--space-3); transition: filter .2s, box-shadow .2s, translate .2s; }
-.sync-retry:hover { filter: brightness(.97); box-shadow: 0 2px 8px var(--c-343040-a8); translate: 0 -1px; }
+.sync-retry:hover { filter: var(--hover-dim); box-shadow: var(--hover-shadow); translate: 0 var(--hover-lift); }
 
 /* The autoplay sets the sun position every frame; a CSS transition on top only lags behind it. */
 .app.award-app .ap-sun-glow { transition: none; }

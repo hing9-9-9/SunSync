@@ -21,15 +21,14 @@
   letter-spacing: 0;
   box-shadow: none;
   cursor: pointer;
-  transition: filter .2s, transform .2s, box-shadow .2s;
 }
 .app button.google-btn .google-mark { flex: none; }
 @media (hover: hover) {
   .app.mode-web button.google-btn:hover {
-    filter: brightness(0.97);
-    transform: translateY(-1px);
-    box-shadow: 0 2px 6px var(--c-27202d-a9);
+    filter: var(--hover-dim);
+    transform: translateY(var(--hover-lift));
+    box-shadow: var(--hover-shadow);
   }
 }
-.app button.google-btn:active { filter: brightness(0.95); transform: none; box-shadow: none; }
-@media (prefers-reduced-motion: reduce) { .app button.google-btn { transition: none; } }
+.app.mode-web button.google-btn:active,
+.app button.google-btn:active { filter: var(--press-dim); transform: none; box-shadow: none; }

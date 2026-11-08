@@ -46,14 +46,14 @@
 /* Hover (web, option A): shape and border stay; 3% darker, light shadow, 1px lift, 200ms. The same on every page. */
 @media (hover: hover) {
   .app.mode-web :is(.auth, dialog:not(.furniture-add-dialog, .mobile-editor-sheet, .acct-login-dialog)) :is(button.primary, button.secondary):not(:disabled):hover {
-    filter: brightness(0.97) !important;
-    transform: translateY(-1px) !important;
-    box-shadow: 0 2px 6px var(--c-27202d-a9) !important;
+    filter: var(--hover-dim) !important;
+    transform: translateY(var(--hover-lift)) !important;
+    box-shadow: var(--hover-shadow) !important;
   }
 }
 /* Pressed: 5% darker, back in place, no shadow. Same on web and app. */
 :is(.app.award-app, .app.award-mobile, .app.mode-web) :is(.auth, dialog:not(.furniture-add-dialog, .mobile-editor-sheet, .acct-login-dialog)) :is(button.primary, button.secondary):not(:disabled):active {
-  filter: brightness(0.95) !important;
+  filter: var(--press-dim) !important;
   transform: none !important;
   box-shadow: none !important;
 }
@@ -65,8 +65,40 @@
   transform: none !important;
   box-shadow: none !important;
 }
+
+/* Motion for every button, web and app, in one place (2026-11-08). Timing comes from the tokens in tokens.css:
+   hover 200ms in and out, press 90ms (lands at once, comes back slowly), colour fades 160ms, one curve.
+   No scale, no bounce: pressed means 5% darker and flat. Reduced motion removes the transition entirely.
+   The hover values themselves stay in the web blocks above and in WebInteractions.css. */
+.app :is(button.primary, button.secondary, button.chip, button.zone-action, button.icon-button, .item-tabs > button, .mobile-nav button, button.toast-action, button.furniture-delete, button.item-add, button.google-btn, .ap-round-link) {
+  transition:
+    filter var(--dur-hover) var(--ease-out),
+    transform var(--dur-hover) var(--ease-out),
+    box-shadow var(--dur-hover) var(--ease-out),
+    background-color var(--dur-fade) ease,
+    border-color var(--dur-fade) ease,
+    color var(--dur-fade) ease !important;
+}
+.app :is(button.primary, button.secondary, button.chip, button.zone-action, button.icon-button, .item-tabs > button, .mobile-nav button, button.toast-action, button.furniture-delete, button.item-add, button.google-btn, .ap-round-link):not(:disabled):active {
+  transition-duration: var(--dur-press), var(--dur-press), var(--dur-press), var(--dur-fade), var(--dur-fade), var(--dur-fade) !important;
+}
 @media (prefers-reduced-motion: reduce) {
-  :is(.app.award-app, .app.award-mobile, .app.mode-web) :is(.auth, dialog) :is(button.primary, button.secondary) { transition: none !important; }
+  .app :is(button.primary, button.secondary, button.chip, button.zone-action, button.icon-button, .item-tabs > button, .mobile-nav button, button.toast-action, button.furniture-delete, button.item-add, button.google-btn, .ap-round-link) { transition: none !important; }
+}
+
+/* The page's round CTA (home, guide, account): one hover and one press, like every other button.
+   The arrow keeps its own small move; the fill never changes colour. */
+@media (hover: hover) {
+  .app.award-app.mode-web .ap-round-link:not([aria-disabled="true"]):hover {
+    filter: var(--hover-dim) !important;
+    transform: translateY(var(--hover-lift)) !important;
+    box-shadow: var(--hover-shadow) !important;
+  }
+}
+.app.award-app.mode-web .ap-round-link:not([aria-disabled="true"]):active {
+  filter: var(--press-dim) !important;
+  transform: none !important;
+  box-shadow: none !important;
 }
 
 /* The page's login button hugs its text; everywhere else the Google button fills the row. */

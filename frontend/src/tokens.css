@@ -28,9 +28,18 @@
   --radius-plan: 0;
   --radius-card: 12px;
   --radius-pill: 999px;
-  --dur-hover: 200ms;
+  /* Motion tokens (2026-11-08). Every button, card and surface takes its timing from here. */
+  --dur-press: 90ms; /* finger or mouse goes down: lands almost at once */
+  --dur-hover: 200ms; /* hover in and release back out */
+  --dur-fade: 160ms; /* colour fades and short opacity changes */
+  --dur-enter: 260ms; /* dialogs, sheets and toasts arriving */
   --dur-text: 600ms;
-  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1); /* the one curve */
+  /* Hover A and the press, written once: 3% darker, light shadow, 1px lift; pressed 5% darker, flat. */
+  --hover-dim: brightness(0.97);
+  --press-dim: brightness(0.95);
+  --hover-lift: -1px;
+  --hover-shadow: 0 2px 6px var(--c-27202d-a9);
 }
 .app.award-app {
   --mb-sun: var(--c-sun);
