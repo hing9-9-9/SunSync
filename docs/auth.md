@@ -75,7 +75,7 @@ Do this only after the screen change (issue #121) is deployed. With the old scre
 the server would lock everybody out.
 
 1. Add the four settings to `/etc/sunsync/sunsync.env` (see `deploy/env.example`), keep the mode `600`, and restart the API: `sudo systemctl restart sunsync-api`. Check `sudo journalctl -u sunsync-api -n 20 --no-pager` for a start without errors.
-2. In `/etc/caddy/Caddyfile` take the temporary password away: remove `import locked` from `/api/*`, and in `/measure/*` replace `import locked` with `import login`. Then `caddy validate --config /etc/caddy/Caddyfile` and `sudo systemctl reload caddy`.
+2. In `/etc/caddy/Caddyfile` (the server copy is not updated by the automatic update) add the `(login)` block from `deploy/Caddyfile` next to the `(locked)` block. Then take the temporary password away: remove `import locked` from `/api/*`, and in `/measure/*` replace `import locked` with `import login`. Then `caddy validate --config /etc/caddy/Caddyfile` and `sudo systemctl reload caddy`.
 3. Check in a private window: the landing page opens; going into a space leads to Google; after the login the page opens again; after 30 minutes without use the login is asked again.
 4. Check with `curl -i https://YOUR_NAME.duckdns.org/api/ui/spaces` (401) and `curl -i https://YOUR_NAME.duckdns.org/measure/health` (401).
 
