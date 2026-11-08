@@ -1,0 +1,19 @@
+/* The Google button is a primary button (purple, white text); only the mark sits in a white circle. */
+.google-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  cursor: pointer;
+}
+.google-btn .google-g {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--c-white);
+}
+.google-btn .google-mark { flex: none; }

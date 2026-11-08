@@ -1,0 +1,73 @@
+/* Controls (2026-11-08): one button system and one input-focus rule for web (.award-app) and app (.award-mobile).
+   Loaded last. Buttons in login surfaces and confirm dialogs share height, pill radius, size, weight and
+   padding; only fill and border tell primary, secondary and destructive apart. Same four states everywhere:
+   default / hover / pressed / disabled. Keyboard focus is the shared 2px #6660E5 ring (tokens.css). */
+:root {
+  --btn-h: 48px; /* web */
+  --btn-pad: 24px;
+  --btn-fs: 15px;
+  --btn-fw: 500; /* the weight primary already used */
+  --btn-line: var(--c-block); /* the one neutral grey of a secondary button's 1px border */
+}
+.app.award-mobile { --btn-h: 50px; /* app: matches the 50px bottom actions */ }
+
+/* Login surfaces (.auth) and confirm / login dialogs. The furniture chooser and the editor sheet keep their own buttons. */
+:is(.app.award-app, .app.award-mobile, .app.mode-web) :is(.auth, dialog:not(.furniture-add-dialog, .mobile-editor-sheet)) :is(button.primary, button.secondary) {
+  box-sizing: border-box;
+  min-height: var(--btn-h) !important;
+  padding: 0 var(--btn-pad) !important;
+  border-radius: var(--radius-pill) !important;
+  font-family: inherit;
+  font-size: var(--btn-fs) !important;
+  font-weight: var(--btn-fw) !important;
+  line-height: 1.3;
+  letter-spacing: 0;
+  box-shadow: none !important;
+}
+/* Primary: accent fill, white text. */
+:is(.app.award-app, .app.award-mobile, .app.mode-web) :is(.auth, dialog:not(.furniture-add-dialog, .mobile-editor-sheet)) button.primary:not(.destructive) {
+  border: 1px solid var(--c-action) !important;
+  background: var(--c-action) !important;
+  color: var(--c-white) !important;
+}
+/* Secondary (취소 and similar): white, 1px neutral border, ink text. No inset ring on top of the border. */
+:is(.app.award-app, .app.award-mobile, .app.mode-web) :is(.auth, dialog:not(.furniture-add-dialog, .mobile-editor-sheet)) button.secondary:not(.destructive) {
+  border: 1px solid var(--btn-line) !important;
+  background: var(--c-white) !important;
+  color: var(--c-ink) !important;
+}
+/* Destructive (삭제, 로그아웃): grey fill, ink text, no border. */
+:is(.app.award-app, .app.award-mobile, .app.mode-web) :is(.auth, dialog:not(.furniture-add-dialog, .mobile-editor-sheet)) :is(button.primary, button.secondary).destructive {
+  border: 0 !important;
+  background: var(--c-block) !important;
+  color: var(--c-ink) !important;
+}
+
+/* Hover (web, option A): shape and border stay; 3% darker, light shadow, 1px lift, 200ms. The same on every page. */
+@media (hover: hover) {
+  .app.mode-web :is(.auth, dialog:not(.furniture-add-dialog, .mobile-editor-sheet)) :is(button.primary, button.secondary):not(:disabled):hover {
+    filter: brightness(0.97) !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 2px 6px var(--c-27202d-a9) !important;
+  }
+}
+/* Pressed: 5% darker, back in place, no shadow. Same on web and app. */
+:is(.app.award-app, .app.award-mobile, .app.mode-web) :is(.auth, dialog:not(.furniture-add-dialog, .mobile-editor-sheet)) :is(button.primary, button.secondary):not(:disabled):active {
+  filter: brightness(0.95) !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+/* Disabled: faded, no reaction. */
+:is(.app.award-app, .app.award-mobile, .app.mode-web) :is(.auth, dialog:not(.furniture-add-dialog, .mobile-editor-sheet)) :is(button.primary, button.secondary):disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  filter: none !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  :is(.app.award-app, .app.award-mobile, .app.mode-web) :is(.auth, dialog) :is(button.primary, button.secondary) { transition: none !important; }
+}
+
+/* The page's login button hugs its text; everywhere else the Google button fills the row. */
+.app.award-app .acct-auth .google-btn { width: auto; align-self: flex-start; }

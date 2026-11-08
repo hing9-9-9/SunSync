@@ -47,6 +47,7 @@ import type { WebsiteDestination } from "./Website";
 import { useSpaceApp, titles } from "./useSpaceApp";
 import { clearFieldIssue } from "./formIssues";
 import { Icon, Card, SyncBadge, SyncRetry } from "./ShellParts";
+import { GoogleButton } from "./GoogleMark";
 function MobileApp() {
   const {
     isApp,
@@ -368,9 +369,7 @@ function MobileApp() {
             </div>
             <h1>로그인 또는 회원가입</h1>
             {authNotice && <p className="auth-notice" role="status">{authNotice}</p>}
-            <button className="google-button" onClick={startLogin}>
-              <span className="google-g">G</span> Google로 계속하기
-            </button>
+            <GoogleButton onClick={startLogin} />
           </main>
         ) : (
           <>
@@ -1655,9 +1654,7 @@ function MobileApp() {
               <h2>SunSync 시작하기</h2>
               <p className="muted">Google 계정으로 로그인하거나 새로 가입하세요.</p>
               {authNotice && <p className="auth-notice" role="status">{authNotice}</p>}
-              <button className="primary" type="button" autoFocus onClick={startLogin}>
-                Google로 계속하기
-              </button>
+              <GoogleButton autoFocus onClick={startLogin} />
               <button className="secondary" type="button" onClick={dismissModal}>
                 취소
               </button>

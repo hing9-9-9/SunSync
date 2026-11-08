@@ -372,16 +372,6 @@
 .app.award-app .acct-auth h1 { font-size: var(--fs-h1); line-height: var(--lh-h1); letter-spacing: -.045em; font-weight: 700; color: var(--mb-text); margin: 0; }
 .app.award-app .acct-auth-copy > p { font-size: var(--fs-body); line-height: var(--lh-body); color: var(--mb-muted); max-width: 30em; margin: 0; }
 .app.award-app .acct-auth-copy > small { font-size: var(--fs-small); color: var(--mb-muted); }
-.app.award-app .acct-auth .google-button.acct-google {
-  position: relative; isolation: isolate; display: inline-flex; align-items: center; justify-content: center; gap: var(--space-3);
-  min-height: 56px; padding: 0 28px; border-radius: 999px; border: 0;
-  background: var(--c-accent, var(--c-action)); color: var(--c-white); font-size: var(--fs-body); font-weight: 500; width: auto;
-}
-.app.award-app .acct-auth .google-button.acct-google .google-g {
-  display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--c-white); color: var(--c-accent, var(--c-action)); font-weight: 700; font-size: var(--fs-small);
-}
-.app.award-app .acct-google:hover .ap-scribble path,
-.app.award-app .acct-google:focus-visible .ap-scribble path { stroke-dashoffset: 0; }
 .app.award-app .acct-auth-visual {
   position: relative; overflow: hidden; min-height: 460px; border-radius: var(--mb-radius); background: var(--mb-block);
   display: flex; align-items: flex-end; padding: var(--space-8);
@@ -510,8 +500,6 @@
 .app.award-app > dialog.acct-login-dialog .field { margin-bottom: var(--space-4); }
 .app.award-app > dialog.acct-login-dialog .field input { border-radius: 12px; border-color: var(--mb-ink); }
 .app.award-app > dialog.acct-login-dialog .field input:focus-visible { outline: 2px solid var(--c-accent, var(--c-action)); outline-offset: 2px; }
-.app.award-app > dialog.acct-login-dialog .primary { min-height: 52px; border-radius: 999px; margin-top: var(--space-2); }
-.app.award-app > dialog.acct-login-dialog .secondary { min-height: 48px; border-radius: 999px; border-color: var(--mb-ink); }
 @media (max-width: 700px) {
   .app.award-app > dialog.acct-login-dialog > form { grid-template-columns: 1fr; padding: 0 var(--space-5) var(--space-6); }
   .app.award-app > dialog.acct-login-dialog > form > :not(aside) { grid-column: 1; }
@@ -527,9 +515,7 @@
 /* hide the round-cap dot the undrawn scribble leaves behind */
 .app.award-app .ap-scribble path { opacity: 0; transition: stroke-dashoffset 650ms cubic-bezier(.65, 0, .35, 1), opacity 0s 650ms; }
 .app.award-app .ap-round-link:hover .ap-scribble path,
-.app.award-app .ap-round-link:focus-visible .ap-scribble path,
-.app.award-app .acct-google:hover .ap-scribble path,
-.app.award-app .acct-google:focus-visible .ap-scribble path { opacity: 1; transition: stroke-dashoffset 650ms cubic-bezier(.65, 0, .35, 1), opacity 0s; }
+.app.award-app .ap-round-link:focus-visible .ap-scribble path { opacity: 1; transition: stroke-dashoffset 650ms cubic-bezier(.65, 0, .35, 1), opacity 0s; }
 @media (prefers-reduced-motion: reduce) { .app.award-app .ap-scribble path { transition: none !important; } }
 
 /* ===== Hover (option A, 2026-10-23): shapes and outlines never change.
@@ -549,8 +535,6 @@
 .app.award-app .ap .ap-round-link b svg { transition: translate var(--mb-ease); }
 .app.award-app .ap .ap-round-link:hover b svg,
 .app.award-app .ap .ap-round-link:focus-visible b svg { translate: 2px -2px; }
-.app.award-app .acct-auth .google-button.acct-google { transition: background-color var(--mb-ease); }
-.app.award-app .acct-auth .google-button.acct-google:hover { background: var(--c-5f59dc); box-shadow: none; }
 
 /* home step cards: lift 2px + faint wide shadow, arrow nudge */
 .app.award-app .ap .ap-process-row,
@@ -597,7 +581,6 @@
 @media (prefers-reduced-motion: reduce) {
   .app.award-app .ap .ap-round-link,
   .app.award-app .ap .ap-round-link b svg,
-  .app.award-app .acct-google,
   .app.award-app .ap-process-row,
   .app.award-app .ap-process-row > svg,
   .app.award-app .award-room-card,
