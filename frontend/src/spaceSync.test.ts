@@ -85,3 +85,13 @@ test("delete while offline fails without touching local spaces", async (t) => {
   });
   await assert.rejects(deleteServerSpace("space-1"), (e: unknown) => e instanceof SpaceApiError && e.status === 0);
 });
+
+test("a 401 stops the upload run and marks nothing failed", async () => {
+  const sent: string[] = [];
+  const result = await uploadLocalSpaces([local("a"), local("b")], async (s) => {
+    sent.push(s.name);
+    throw new SpaceApiError(401, "로그인이 만료됐어요. 다시 로그인해 주세요.");
+  });
+  assert.deepEqual(sent, ["a"]);
+  assert.deepEqual(result, { saved: [], failed: [] });
+});

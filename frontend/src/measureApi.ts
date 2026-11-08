@@ -7,6 +7,7 @@
 // from the OS camera instead; drop savedCamera/setupCamera/prepare's fixed size when it ships.
 import { resolveWindow } from "./model.ts";
 import type { Space } from "./model.ts";
+import { EXPIRED_MESSAGE, notifyUnauthorized } from "./auth.ts";
 
 // 1m film, 10x10 cells: the central 6x6 cells form one 60cm ArUco marker.
 // ID 0 remains a standalone test default; app capture uses the server session board.
@@ -40,6 +41,11 @@ export class MeasureError extends Error {
   status?: number;
   constructor(message: string, status?: number) { super(message); this.status = status; }
 }
+// The measurement server may answer 401 with a non-JSON body (Caddy forward_auth): status only.
+function unauthorized() {
+  notifyUnauthorized();
+  return new MeasureError(EXPIRED_MESSAGE, 401);
+}
 
 async function post<T>(url: string, body: unknown): Promise<T> {
   return JSON.parse(await postRaw(url, typeof body === "string" ? body : JSON.stringify(body))) as T;
@@ -53,6 +59,7 @@ async function postRaw(url: string, body: string): Promise<string> {
   } catch {
     throw new MeasureError("측정 서버에 연결하지 못했어요. 네트워크를 확인해 주세요.");
   }
+  if (response.status === 401) throw unauthorized();
   const text = await response.text();
   let data: { detail?: unknown } | null = null;
   try { data = JSON.parse(text); } catch { /* non-JSON error page */ }
@@ -66,6 +73,7 @@ async function postRaw(url: string, body: string): Promise<string> {
 async function get<T>(url: string): Promise<T> {
   const response = await fetch(url).catch(() => null);
   if (!response) throw new MeasureError("서버의 공간 정보를 읽지 못했어요.");
+  if (response.status === 401) throw unauthorized();
   if (!response.ok) {
     const detail = JSON.stringify((await response.json().catch(() => null))?.detail ?? response.status);
     throw new MeasureError(serverMessage(detail), response.status);
@@ -272,6 +280,7 @@ export async function measureAndRegister(space: Space, camera: Camera, item: {
 async function put(url: string, body: unknown) {
   const response = await fetch(url, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).catch(() => null);
   if (!response) throw new MeasureError("서버에 연결하지 못했어요.");
+  if (response.status === 401) throw unauthorized();
   if (!response.ok) {
     const detail = JSON.stringify((await response.json().catch(() => null))?.detail ?? response.status);
     console.warn("[measure]", url, detail);

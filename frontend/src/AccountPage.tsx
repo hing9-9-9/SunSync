@@ -2,7 +2,8 @@ import type { CSSProperties, ReactNode } from "react";
 import type { Account, Grade, Space } from "./model";
 import { gradeCounts, grades } from "./model";
 import { Arrow, Scribble, SunMark } from "./AwardPreview";
-import { GoogleMark } from "./GoogleMark";
+import { AuthLead } from "./AuthNotice";
+import { GoogleButton } from "./GoogleMark";
 
 const gradeOrder: Grade[] = ["A", "B", "C", "D"];
 
@@ -134,7 +135,7 @@ export function AccountOverview({
   );
 }
 
-export function AuthPanel({ hidden, brand, onLogin }: { hidden: boolean; brand: ReactNode; onLogin: () => void }) {
+export function AuthPanel({ hidden, brand, notice, onLogin }: { hidden: boolean; brand: ReactNode; notice?: string; onLogin: () => void }) {
   return (
     <main className={`auth acct-auth ${hidden ? "landing-auth-hidden" : ""}`}>
       <div className="acct-auth-copy">
@@ -143,12 +144,8 @@ export function AuthPanel({ hidden, brand, onLogin }: { hidden: boolean; brand: 
           SunSync 계정
         </span>
         <h1>내 공간을 확인하세요.</h1>
-        <p>Google 계정으로 로그인하고 저장한 공간을 확인하세요.</p>
-        <button type="button" className="google-button acct-google" onClick={onLogin}>
-          <Scribble />
-          <span className="google-g" aria-hidden="true"><GoogleMark size={18} /></span>
-          Google로 계속하기
-        </button>
+        <AuthLead description="Google 계정으로 로그인하고 저장한 공간을 확인하세요." message={notice ?? ""} />
+        <GoogleButton className="acct-google" onClick={onLogin} />
       </div>
       <div className="acct-auth-visual" aria-hidden="true">
         <div className="acct-auth-glow" style={{ "--sun": 0.62 } as CSSProperties} />

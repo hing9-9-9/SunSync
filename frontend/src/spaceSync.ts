@@ -28,7 +28,8 @@ export async function uploadLocalSpaces(
     try {
       saved.push(await save(space));
     } catch (error) {
-      if (!(error instanceof SpaceApiError) || error.status === 0) break;
+      // Offline or signed out: stop; the rest stay pending and nothing is dropped.
+      if (!(error instanceof SpaceApiError) || error.status === 0 || error.status === 401) break;
       if (error.status === 409) {
         try {
           saved.push(await fetchOne(space.id));

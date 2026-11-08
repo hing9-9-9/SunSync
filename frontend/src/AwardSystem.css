@@ -318,10 +318,6 @@
 .app.award-app .field:focus-within {
   border-color: var(--c-8b79a6);
 }
-.app.award-app .field > input:focus-visible,
-.app.award-app .field > select:focus-visible {
-  outline: 1px solid var(--c-8b79a6);
-}
 .app.award-app input[type="range"] {
   accent-color: var(--c-action);
   width: 100%;
@@ -1009,9 +1005,7 @@
   margin-left: var(--space-4);
 }
 .app.award-app button:focus-visible,
-.app.award-app a:focus-visible,
-.app.award-app input:focus-visible,
-.app.award-app select:focus-visible {
+.app.award-app a:focus-visible {
   outline: 2px solid var(--c-8870a5);
   outline-offset: 4px;
 }

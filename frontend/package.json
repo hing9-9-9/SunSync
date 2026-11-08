@@ -8,7 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "format": "prettier --write src vite.config.ts index.html public/manifest.webmanifest",
-    "test": "node --experimental-strip-types --test src/model.test.ts src/navigation.test.ts src/spaceApi.test.ts src/sunlight.test.ts src/captureCheck.test.ts src/spaceSync.test.ts src/sunpath.test.ts src/shading.test.ts src/nowcastChart.test.ts src/capturePlan.test.ts src/capturePolicy.test.ts src/measureApi.test.ts src/sun3d.test.ts src/space3dServer.test.ts src/floorSun.test.ts",
+    "test": "node --experimental-strip-types --test src/model.test.ts src/navigation.test.ts src/spaceApi.test.ts src/sunlight.test.ts src/captureCheck.test.ts src/spaceSync.test.ts src/sunpath.test.ts src/shading.test.ts src/nowcastChart.test.ts src/capturePlan.test.ts src/capturePolicy.test.ts src/measureApi.test.ts src/sun3d.test.ts src/space3dServer.test.ts src/floorSun.test.ts src/auth.test.ts src/userStash.test.ts",
     "preview": "vite preview"
   },
   "dependencies": {

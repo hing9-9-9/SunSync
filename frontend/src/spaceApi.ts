@@ -1,4 +1,5 @@
 import type { Space } from "./model.ts";
+import { EXPIRED_MESSAGE, notifyUnauthorized } from "./auth.ts";
 
 export type UnavailableScene = {
   scene_id: string;
@@ -69,6 +70,11 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
       0,
       "저장 서버에 연결할 수 없습니다. 연결을 확인한 뒤 다시 시도해 주세요.",
     );
+  }
+  if (response.status === 401) {
+    // Never an empty listing: callers keep what they have and the app shows the login screen.
+    notifyUnauthorized();
+    throw new SpaceApiError(401, EXPIRED_MESSAGE);
   }
   const data = await response.json().catch(() => null);
   if (!response.ok) {
