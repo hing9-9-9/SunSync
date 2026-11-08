@@ -1,0 +1,3 @@
+# Frozen model artifacts were packaged with CRLF and are integrity-checked
+# byte-for-byte. Use the same checkout bytes on every operating system.
+backend/app/nowcast/model_artifacts/**/*.json text eol=crlf
