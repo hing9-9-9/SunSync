@@ -2,6 +2,7 @@
 # Copies the live database consistently (it runs in WAL mode, so a plain file copy can be broken).
 # Keeps the 14 newest copies. Run by sunsync-backup.timer as root.
 set -euo pipefail
+umask 077
 
 DB=${SUNSYNC_DB_FILE:-/var/lib/sunsync/sunsync.db}
 DEST=${SUNSYNC_BACKUP_DIR:-/var/lib/sunsync/backups}

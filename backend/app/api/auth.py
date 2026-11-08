@@ -7,9 +7,9 @@ from fastapi.responses import RedirectResponse
 from sqlmodel import Session
 
 from app.auth import (
-    COOKIE_NAME,
     LOCAL_USER,
     LOGIN_REQUIRED,
+    NO_STORE,
     LoginError,
     auth_settings,
     check_origin,
@@ -24,43 +24,64 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 DB = Annotated[Session, Depends(get_session)]
 
 LOGIN_FAILED = "/?login=failed"
+LOGIN_OFF = "구글 로그인이 켜져 있지 않습니다."
 
 
 @router.get("/session")
-def read_session(request: Request, db: DB) -> dict:
-    """Who is logged in. The web app asks this when it starts, and Caddy asks it for /measure."""
+def read_session(request: Request, db: DB, response: Response) -> dict:
+    """Who is logged in. The web app asks this when it starts."""
 
+    response.headers.update(NO_STORE)
     settings = auth_settings()
     if not settings.enabled:
         return {"auth_enabled": False, "user": LOCAL_USER}
-    user = user_for_token(db, settings, request.cookies.get(COOKIE_NAME))
+    user = user_for_token(db, settings, request.cookies.get(settings.cookie_name))
     if user is None:
-        raise HTTPException(401, LOGIN_REQUIRED)
+        raise HTTPException(401, LOGIN_REQUIRED, NO_STORE)
     return {"auth_enabled": True, "user": {"name": user.name, "email": user.email}}
+
+
+@router.get("/check", status_code=204)
+def check_session(request: Request, db: DB) -> Response:
+    """For Caddy's forward_auth: 204 only with a valid session, 401 in every other case.
+
+    Unlike /session this refuses also when the login is off, so a switch of the Caddyfile
+    before the login is on closes /measure instead of opening it.
+    """
+
+    settings = auth_settings()
+    user = (
+        user_for_token(db, settings, request.cookies.get(settings.cookie_name))
+        if settings.enabled
+        else None
+    )
+    if user is None:
+        raise HTTPException(401, LOGIN_REQUIRED, NO_STORE)
+    return Response(status_code=204, headers=NO_STORE)
 
 
 @router.get("/google/login")
 def google_login(db: DB, next_path: Annotated[str, Query(alias="next")] = "/") -> RedirectResponse:
     settings = auth_settings()
     if not settings.enabled:
-        raise HTTPException(404, "구글 로그인이 켜져 있지 않습니다.")
-    return RedirectResponse(start_login(db, settings, next_path), status_code=302)
+        raise HTTPException(404, LOGIN_OFF)
+    return RedirectResponse(start_login(db, settings, next_path), status_code=302, headers=NO_STORE)
 
 
 @router.get("/google/callback")
 def google_callback(db: DB, code: str = "", state: str = "", error: str = "") -> RedirectResponse:
     settings = auth_settings()
     if not settings.enabled:
-        raise HTTPException(404, "구글 로그인이 켜져 있지 않습니다.")
+        raise HTTPException(404, LOGIN_OFF)
     if error or not code or not state:
-        return RedirectResponse(LOGIN_FAILED, status_code=302)
+        return RedirectResponse(LOGIN_FAILED, status_code=302, headers=NO_STORE)
     try:
         token, next_path = finish_login(db, settings, code, state)
     except LoginError:
-        return RedirectResponse(LOGIN_FAILED, status_code=302)
-    response = RedirectResponse(next_path, status_code=302)
+        return RedirectResponse(LOGIN_FAILED, status_code=302, headers=NO_STORE)
+    response = RedirectResponse(next_path, status_code=302, headers=NO_STORE)
     response.set_cookie(
-        COOKIE_NAME,
+        settings.cookie_name,
         token,
         max_age=int(settings.max_age.total_seconds()),
         httponly=True,
@@ -76,7 +97,13 @@ def logout(request: Request, db: DB) -> Response:
     settings = auth_settings()
     if settings.enabled:
         check_origin(request, settings)
-        end_session(db, request.cookies.get(COOKIE_NAME))
-    response = Response(status_code=204)
-    response.delete_cookie(COOKIE_NAME, path="/")
+        end_session(db, request.cookies.get(settings.cookie_name))
+    response = Response(status_code=204, headers=NO_STORE)
+    response.delete_cookie(
+        settings.cookie_name,
+        path="/",
+        secure=settings.cookie_secure,
+        httponly=True,
+        samesite="lax",
+    )
     return response

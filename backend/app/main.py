@@ -1,3 +1,4 @@
+import logging
 from collections.abc import AsyncIterator, Iterator
 from contextlib import asynccontextmanager
 
@@ -31,7 +32,9 @@ def create_app(database_engine: Engine | None = None) -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-        auth_settings().check()
+        settings = auth_settings()
+        settings.check()
+        logging.getLogger("uvicorn.error").info(settings.describe())
         init_db(database_engine)
         yield
 

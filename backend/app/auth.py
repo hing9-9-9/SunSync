@@ -21,12 +21,13 @@ from urllib.request import Request as HttpRequest
 from urllib.request import urlopen
 
 from fastapi import Depends, HTTPException, Request
-from sqlmodel import Session, select
+from sqlalchemy import delete, func, or_
+from sqlmodel import Session, col, select
 
 from app.db import get_session
 from app.models.auth import AuthSession, AuthUser, LoginAttempt
 
-COOKIE_NAME = "sunsync_session"
+NO_STORE = {"Cache-Control": "no-store"}
 LOGIN_REQUIRED = "로그인이 필요합니다."
 LOCAL_USER = {"name": "개발용 사용자", "email": "dev@localhost"}
 
@@ -35,6 +36,7 @@ GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 GOOGLE_ISSUERS = ("https://accounts.google.com", "accounts.google.com")
 
 LOGIN_ATTEMPT_LIFETIME = timedelta(minutes=10)
+MAX_LOGIN_ATTEMPTS = 1000  # logins in progress; the route is open to everybody, so it is capped
 LAST_SEEN_STEP = timedelta(minutes=1)  # the last-seen time is written at most once a minute
 SAFE_METHODS = ("GET", "HEAD", "OPTIONS")
 
@@ -45,12 +47,21 @@ class LoginError(Exception):
 
 @dataclass(frozen=True)
 class AuthSettings:
-    enabled: bool
+    mode: str
     client_id: str
     client_secret: str
     public_url: str
     idle: timedelta
     max_age: timedelta
+
+    @property
+    def enabled(self) -> bool:
+        return self.mode == "google"
+
+    @property
+    def cookie_name(self) -> str:
+        # The __Host- prefix makes browsers accept the cookie only from this exact host over https.
+        return "__Host-sunsync_session" if self.cookie_secure else "sunsync_session"
 
     @property
     def redirect_uri(self) -> str:
@@ -65,8 +76,10 @@ class AuthSettings:
         return self.public_url.startswith("https://")
 
     def check(self) -> None:
-        """Stop the server at start-up when the login is on but not fully set."""
+        """Stop the server at start-up when the login is set wrongly or not fully."""
 
+        if self.mode not in ("", "off", "google"):
+            raise RuntimeError(f"SUNSYNC_AUTH must be google or empty, not {self.mode!r}")
         missing = [
             name
             for name, value in (
@@ -79,11 +92,14 @@ class AuthSettings:
         if missing:
             raise RuntimeError(f"SUNSYNC_AUTH=google needs {', '.join(missing)}")
 
+    def describe(self) -> str:
+        return "Google login is ON" if self.enabled else "Google login is OFF: every route is open"
+
 
 def auth_settings() -> AuthSettings:
     env = os.environ
     return AuthSettings(
-        enabled=env.get("SUNSYNC_AUTH", "") == "google",
+        mode=env.get("SUNSYNC_AUTH", "").strip().lower(),
         client_id=env.get("SUNSYNC_GOOGLE_CLIENT_ID", ""),
         client_secret=env.get("SUNSYNC_GOOGLE_CLIENT_SECRET", ""),
         public_url=env.get("SUNSYNC_PUBLIC_URL", ""),
@@ -112,7 +128,8 @@ def safe_next(value: str | None) -> str:
         and value.startswith("/")
         and not value.startswith("//")
         and len(value) <= 500
-        and not any(char in value for char in "\\\r\n")
+        and "\\" not in value
+        and not any(ord(char) < 32 or ord(char) == 127 for char in value)
     ):
         return value
     return "/"
@@ -208,9 +225,11 @@ def start_login(db: Session, settings: AuthSettings, next_path: str | None) -> s
     """Remember the login that is sent to Google and return the address to send the user to."""
 
     now = utcnow()
-    for old in db.exec(select(LoginAttempt)).all():
-        if now - datetime.fromisoformat(old.created_at) > LOGIN_ATTEMPT_LIFETIME:
-            db.delete(old)
+    expired = (now - LOGIN_ATTEMPT_LIFETIME).isoformat()
+    db.exec(delete(LoginAttempt).where(col(LoginAttempt.created_at) < expired))  # type: ignore[call-overload]
+    if db.exec(select(func.count()).select_from(LoginAttempt)).one() >= MAX_LOGIN_ATTEMPTS:
+        db.commit()
+        raise HTTPException(429, "로그인 요청이 많습니다. 잠시 후 다시 시도해 주세요.", NO_STORE)
     state, nonce, verifier = new_token(), new_token(), secrets.token_urlsafe(48)
     db.add(
         LoginAttempt(
@@ -263,9 +282,14 @@ def save_user(db: Session, claims: dict, now: datetime) -> AuthUser:
 
 
 def create_session(db: Session, settings: AuthSettings, user: AuthUser, now: datetime) -> str:
-    for old in db.exec(select(AuthSession)).all():
-        if is_expired(settings, old, now):
-            db.delete(old)
+    db.exec(  # type: ignore[call-overload]
+        delete(AuthSession).where(
+            or_(
+                col(AuthSession.last_seen_at) < (now - settings.idle).isoformat(),
+                col(AuthSession.created_at) < (now - settings.max_age).isoformat(),
+            )
+        )
+    )
     token = new_token()
     db.add(
         AuthSession(
@@ -330,7 +354,7 @@ def current_user(request: Request, db: Annotated[Session, Depends(get_session)])
     settings = auth_settings()
     if not settings.enabled:
         return None
-    user = user_for_token(db, settings, request.cookies.get(COOKIE_NAME))
+    user = user_for_token(db, settings, request.cookies.get(settings.cookie_name))
     if user is None:
         raise HTTPException(401, LOGIN_REQUIRED)
     check_origin(request, settings)

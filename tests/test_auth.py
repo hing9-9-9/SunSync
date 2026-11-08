@@ -2,6 +2,8 @@
 
 import base64
 import json
+import logging
+import re
 from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -9,7 +11,7 @@ from urllib.parse import parse_qs, urlparse
 
 import pytest
 from app import auth
-from app.auth import COOKIE_NAME, LoginError, safe_next
+from app.auth import LoginError, safe_next
 from app.main import create_app
 from app.models.auth import AuthSession, AuthUser, LoginAttempt
 from fastapi.testclient import TestClient
@@ -17,6 +19,8 @@ from sqlalchemy import Engine
 from sqlmodel import Session, create_engine, select
 
 PUBLIC_URL = "https://sunsync.example"
+COOKIE = "__Host-sunsync_session"  # the name used over https
+DEPLOY = Path(__file__).resolve().parents[1] / "deploy"
 CLIENT_ID = "client-id.apps.googleusercontent.com"
 START = datetime(2026, 11, 8, 9, 0, tzinfo=UTC)
 
@@ -164,7 +168,7 @@ def test_a_login_gives_a_session_cookie_and_goes_back_to_the_page(client, databa
     assert response.status_code == 302
     assert response.headers["location"] == "/?mode=app#/capture"
     cookie = response.headers["set-cookie"].lower()
-    assert f"{COOKIE_NAME}=" in cookie
+    assert f"{COOKIE.lower()}=" in cookie
     assert "httponly" in cookie and "secure" in cookie and "samesite=lax" in cookie
 
     session = client.get("/api/auth/session")
@@ -178,7 +182,7 @@ def test_a_login_gives_a_session_cookie_and_goes_back_to_the_page(client, databa
 
 def test_only_the_hash_of_the_cookie_is_stored(client, database_engine, google):
     log_in(client, database_engine, google)
-    token = client.cookies.get(COOKIE_NAME)
+    token = client.cookies.get(COOKIE)
     with Session(database_engine) as db:
         rows = db.exec(select(AuthSession)).all()
     assert len(rows) == 1 and token not in rows[0].token_hash
@@ -209,7 +213,7 @@ def test_the_same_google_account_is_one_user(client, database_engine, google):
 def test_a_login_with_wrong_claims_is_refused(client, database_engine, google, changes):
     response = log_in(client, database_engine, google, **changes)
     assert response.headers["location"] == "/?login=failed"
-    assert COOKIE_NAME not in response.headers.get("set-cookie", "")
+    assert COOKIE not in response.headers.get("set-cookie", "")
     assert client.get("/api/auth/session").status_code == 401
 
 
@@ -267,6 +271,8 @@ def test_a_failed_exchange_with_google_is_refused(client, database_engine, monke
         ("/\\evil.example", "/"),
         ("javascript:alert(1)", "/"),
         ("/a\r\nSet-Cookie: x=1", "/"),
+        ("/\t/evil.example", "/"),
+        ("/a\x00b", "/"),
         ("/" + "a" * 600, "/"),
         ("", "/"),
         (None, "/"),
@@ -316,9 +322,9 @@ def test_a_logout_ends_the_session(client, database_engine, google):
 
 def test_a_cookie_that_was_logged_out_cannot_be_used_again(client, database_engine, google):
     log_in(client, database_engine, google)
-    token = client.cookies.get(COOKIE_NAME)
+    token = client.cookies.get(COOKIE)
     client.post("/api/auth/logout")
-    client.cookies.set(COOKIE_NAME, token)
+    client.cookies.set(COOKIE, token)
     assert client.get("/api/auth/session").status_code == 401
 
 
@@ -335,3 +341,134 @@ def test_a_change_from_another_site_is_refused_on_protected_routes(client, datab
     log_in(client, database_engine, google)
     response = client.delete("/api/ui/spaces/none", headers={"Origin": "https://evil.example"})
     assert response.status_code == 403
+
+
+def test_the_login_setting_ignores_case_and_refuses_unknown_values(
+    login_on, database_engine, monkeypatch
+):
+    monkeypatch.setenv("SUNSYNC_AUTH", " Google ")
+    with TestClient(create_app(database_engine), base_url=PUBLIC_URL) as client:
+        assert client.get("/api/ui/spaces").status_code == 401
+    for wrong in ("true", "yes", "1", "goggle"):
+        monkeypatch.setenv("SUNSYNC_AUTH", wrong)
+        with (
+            pytest.raises(RuntimeError, match="SUNSYNC_AUTH"),
+            TestClient(create_app(database_engine)),
+        ):
+            pass
+
+
+def test_the_start_says_whether_the_login_is_on(database_engine, monkeypatch, caplog):
+    caplog.set_level(logging.INFO, logger="uvicorn.error")
+    monkeypatch.delenv("SUNSYNC_AUTH", raising=False)
+    with TestClient(create_app(database_engine)):
+        pass
+    assert "Google login is OFF" in caplog.text
+
+
+def test_the_start_says_the_login_is_on(client, caplog):
+    assert auth.auth_settings().describe() == "Google login is ON"
+
+
+def test_check_is_204_only_with_a_session(client, database_engine, google):
+    assert client.get("/api/auth/check").status_code == 401
+    log_in(client, database_engine, google)
+    assert client.get("/api/auth/check").status_code == 204
+
+
+def test_check_is_401_when_the_login_is_off(database_engine, monkeypatch):
+    monkeypatch.delenv("SUNSYNC_AUTH", raising=False)
+    with TestClient(create_app(database_engine)) as client:
+        assert client.get("/api/auth/session").status_code == 200
+        assert client.get("/api/auth/check").status_code == 401
+
+
+def test_the_cookie_name_has_the_host_prefix_only_over_https(monkeypatch):
+    monkeypatch.setenv("SUNSYNC_PUBLIC_URL", "https://sunsync.example")
+    assert auth.auth_settings().cookie_name == "__Host-sunsync_session"
+    monkeypatch.setenv("SUNSYNC_PUBLIC_URL", "http://localhost:8000")
+    assert auth.auth_settings().cookie_name == "sunsync_session"
+
+
+def test_login_answers_are_not_cached(client, database_engine, google):
+    assert client.get("/api/auth/session").headers["cache-control"] == "no-store"
+    started = client.get("/api/auth/google/login", follow_redirects=False)
+    assert started.headers["cache-control"] == "no-store"
+    state = parse_qs(urlparse(started.headers["location"]).query)["state"][0]
+    google["claims"] = good_claims(attempt(database_engine).nonce)
+    done = client.get(
+        "/api/auth/google/callback", params={"code": "c", "state": state}, follow_redirects=False
+    )
+    assert done.headers["cache-control"] == "no-store"
+    assert client.get("/api/auth/check").headers["cache-control"] == "no-store"
+    assert client.post("/api/auth/logout").headers["cache-control"] == "no-store"
+
+
+def test_logout_removes_the_cookie_with_the_attributes_of_the_prefix(
+    client, database_engine, google
+):
+    log_in(client, database_engine, google)
+    cleared = client.post("/api/auth/logout").headers["set-cookie"].lower()
+    assert f"{COOKIE.lower()}=" in cleared and "secure" in cleared and "path=/" in cleared
+
+
+def test_only_a_limited_number_of_logins_can_wait_for_google(client, monkeypatch, clock):
+    monkeypatch.setattr(auth, "MAX_LOGIN_ATTEMPTS", 3)
+    for _ in range(3):
+        assert client.get("/api/auth/google/login", follow_redirects=False).status_code == 302
+    full = client.get("/api/auth/google/login", follow_redirects=False)
+    assert full.status_code == 429
+    clock.advance(minutes=11)  # the waiting logins are too old and are removed
+    assert client.get("/api/auth/google/login", follow_redirects=False).status_code == 302
+
+
+def test_sessions_that_ended_are_removed_when_a_new_one_starts(
+    client, database_engine, google, clock
+):
+    log_in(client, database_engine, google)
+    clock.advance(minutes=31)
+    log_in(client, database_engine, google)
+    with Session(database_engine) as db:
+        assert len(db.exec(select(AuthSession)).all()) == 1
+
+
+def test_every_api_route_needs_a_login(client):
+    """A router that is added later without the login check shows up here."""
+
+    open_routes = {
+        ("GET", "/api/health"),
+        ("GET", "/api/auth/session"),
+        ("GET", "/api/auth/check"),
+        ("GET", "/api/auth/google/login"),
+        ("GET", "/api/auth/google/callback"),
+        ("POST", "/api/auth/logout"),
+    }
+    checked = 0
+    for path, methods in client.app.openapi()["paths"].items():
+        for method in methods:
+            if (
+                method.upper() in ("GET", "POST", "PUT", "PATCH", "DELETE")
+                and (
+                    method.upper(),
+                    path,
+                )
+                not in open_routes
+            ):
+                response = client.request(
+                    method.upper(),
+                    re.sub(r"\{[^}]+\}", "x", path),
+                    json=None if method == "get" else {},
+                )
+                assert response.status_code == 401, f"{method.upper()} {path} is open"
+                checked += 1
+    assert checked > 30  # the check really looked at the routes
+
+
+def test_the_web_build_gets_only_the_public_address():
+    script = (DEPLOY / "update.sh").read_text()
+    assert "set -a" not in script and ". /etc/sunsync/sunsync.env" not in script
+    assert "VITE_PUBLIC_URL" in script
+
+
+def test_database_copies_are_private():
+    assert "umask 077" in (DEPLOY / "backup.sh").read_text()

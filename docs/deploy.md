@@ -107,6 +107,8 @@ sudo systemctl enable --now sunsync-autoupdate.timer
 - A merged pull request is deployed within about 15 minutes, so merge only when the checks pass.
 - Turn the switch off while you try another branch on the server; otherwise the server is switched back to `main`.
 - `/opt/sunsync` on the server must have no local changes.
+- **The update runs the code of the repository as root** (`update.sh`, `pip install`, `npm ci`). Whoever can merge into `main` controls the server. Keep the branch protection of `main` (required checks and a review) and the list of people with write access short.
+- The web build gets only `VITE_PUBLIC_URL` from `/etc/sunsync/sunsync.env` (a line `VITE_PUBLIC_URL=https://...` without quotes), so the Google secret is not visible to the packages that are installed there.
 
 ## Check that it works
 
@@ -148,6 +150,8 @@ Steps (use a private window on a PC and a phone):
 Everyone who has the password sees the same spaces until the spaces are separated by account, so do not enter personal data.
 
 ## Backup and logs
+
+The database and its copies hold e-mail addresses once the Google login is on, so they must not be readable by other users. The services now create their files private (`UMask=0077`; copy the unit files to `/etc/systemd/system/` and run `sudo systemctl daemon-reload` to apply this) and `backup.sh` writes private copies. One time, for the files that already exist: `sudo chmod -R go-rwx /var/lib/sunsync` (the owner keeps access, so the services keep working).
 
 - A daily timer copies the database to `/var/lib/sunsync/backups` and keeps the 14 newest copies. The copy uses SQLite's own backup, because the database runs in WAL mode and a plain file copy can be broken. Download a copy now and then with `scp`; a backup on the same disk does not survive losing the server.
 - Logs: `journalctl -u sunsync-api -u sunsync-measure -u caddy`.
