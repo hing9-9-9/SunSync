@@ -86,10 +86,6 @@
   padding-right: 40px;
   background-position: right 14px center;
 }
-.app.award-mobile.mode-app .field > :is(input, select):focus-visible {
-  outline: 2px solid var(--at-accent-ink);
-  outline-offset: 2px;
-}
 .app.award-mobile.mode-app .field > :is(input, select):disabled {
   background-color: var(--at-gray);
   color: var(--at-muted);

@@ -71,3 +71,17 @@
 
 /* The page's login button hugs its text; everywhere else the Google button fills the row. */
 .app.award-app .acct-auth .google-btn { width: auto; align-self: flex-start; }
+
+/* Input focus (web and app): only the existing 1px border turns #6660E5. No outline, no ring, no offset,
+   no shadow, no border-width change, so nothing shifts. Text fields, selects, textareas and .field wrappers.
+   Browsers match :focus-visible on text fields even for a mouse click, so the ring is removed for both states.
+   A field with an error keeps its error border while focused. */
+:is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="button"], [type="submit"], [type="reset"], [type="color"], [type="image"]), select, textarea):is(:focus, :focus-visible) {
+  outline: none !important;
+  outline-offset: 0 !important;
+  box-shadow: none !important;
+}
+:is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="button"], [type="submit"], [type="reset"], [type="color"], [type="image"]), select, textarea):is(:focus, :focus-visible):not([aria-invalid="true"]),
+.field:has(:is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="button"], [type="submit"], [type="reset"], [type="color"], [type="image"]), select, textarea):focus):not([data-issue], :has([aria-invalid="true"])) {
+  border-color: var(--c-action) !important;
+}

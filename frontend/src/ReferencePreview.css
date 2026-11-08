@@ -771,9 +771,6 @@
   outline: none;
   font-size: var(--text-sm);
 }
-.rp-field input:focus {
-  border-color: var(--c-9c8fc8);
-}
 .rp-field > div {
   display: flex;
   align-items: center;
@@ -1553,9 +1550,6 @@
 .rp-shell .rp-field input {
   border-color: var(--c-b9b7c5);
 }
-.rp-shell .rp-field input:focus {
-  border-color: var(--c-8171af);
-}
 .rp-shell .rp-zone-tabs button,
 .rp-shell .rp-furniture-tabs button,
 .rp-shell .rp-grade-settings button,
@@ -1695,8 +1689,3 @@
 }
 .rp-shell .rp-room { width:100%; max-width:270px; }
 .rp-shell .rp-mini-plan { max-width:180px; }
-/* Keyboard focus needs a visible ring, not only a faint border change. */
-.rp-field input:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}

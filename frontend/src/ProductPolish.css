@@ -63,7 +63,7 @@
 .app.award-mobile button:active:not(:disabled) { transform: none; filter: brightness(.97); }
 .app.award-mobile .row:active, .app.award-mobile .room-card:active { transform: none; }
 .app.award-mobile .field-warning { font-size: var(--fs-small); }
-.app :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.app :focus-visible:not(textarea, select, input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"])) { outline: 2px solid var(--accent); outline-offset: 3px; }
 @media (hover: hover) {
   .app.award-app .secondary:hover:not(:disabled), .app.award-app .item-tabs > button:hover:not(:disabled) { background: var(--c-f3f0f8); border-color: var(--c-9284a5); }
   .app.award-app .row:hover { background: var(--ui-hover); }

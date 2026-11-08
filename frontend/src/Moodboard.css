@@ -499,7 +499,6 @@
 .app.award-app > dialog.acct-login-dialog p.muted { font-size: var(--fs-small); color: var(--mb-muted); margin: 0 0 var(--space-6); }
 .app.award-app > dialog.acct-login-dialog .field { margin-bottom: var(--space-4); }
 .app.award-app > dialog.acct-login-dialog .field input { border-radius: 12px; border-color: var(--mb-ink); }
-.app.award-app > dialog.acct-login-dialog .field input:focus-visible { outline: 2px solid var(--c-accent, var(--c-action)); outline-offset: 2px; }
 @media (max-width: 700px) {
   .app.award-app > dialog.acct-login-dialog > form { grid-template-columns: 1fr; padding: 0 var(--space-5) var(--space-6); }
   .app.award-app > dialog.acct-login-dialog > form > :not(aside) { grid-column: 1; }
@@ -508,7 +507,6 @@
   .app.award-app .acct-login-visual p { font-size: var(--fs-h2); }
 }
 .app.award-app > dialog.acct-login-dialog .field { border-color: var(--mb-ink); border-radius: 12px; }
-.app.award-app > dialog.acct-login-dialog .field:focus-within { outline: 2px solid var(--c-accent, var(--c-action)); outline-offset: 2px; }
 .app.award-app.page-account .main > .page-heading,
 .app.award-app.page-more .main > .page-heading { display: none; }
 .app.award-app .acct-grade, .app.award-app .acct-grades { letter-spacing: 0; }

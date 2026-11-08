@@ -105,8 +105,7 @@
 .app.award-app.mode-web:is(.page-detail,.page-review,.page-protect) .workspace-main > .card:not(.plan-card):hover { border-radius:0; box-shadow:none; }
 .app.award-app.mode-web:is(.page-detail,.page-review,.page-protect,.page-register) .inspector .field select { padding-right:var(--space-8); }
 /* Field borders keep their width; feedback never moves the label or value. */
-.app.award-app.mode-web:is(.page-spaces,.page-detail,.page-review,.page-protect,.page-register) :is(button,a,input,select,textarea):focus-visible { outline:2px solid var(--space-ui-accent); outline-offset:3px; }
-.app.award-app.mode-web:is(.page-spaces,.page-detail,.page-review,.page-protect,.page-register) :is(input,select,textarea):focus-visible { outline-offset:-3px; }
+.app.award-app.mode-web:is(.page-spaces,.page-detail,.page-review,.page-protect,.page-register) :is(button,a):focus-visible { outline:2px solid var(--space-ui-accent); outline-offset:3px; }
 .app.award-app.mode-web:is(.page-spaces,.page-detail,.page-review,.page-protect,.page-register) :is(button,input,select,textarea):disabled { opacity:.55; cursor:not-allowed; box-shadow:none; transform:none; }
 .app.award-app.mode-web:is(.page-detail,.page-review,.page-protect,.page-register) [aria-invalid=true] { border-color:var(--c-danger); outline:2px solid var(--c-danger); outline-offset:-3px; }
 @media(max-width:1100px) {

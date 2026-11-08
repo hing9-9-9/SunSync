@@ -123,7 +123,7 @@
 }
 
 /* Keyboard focus: 2px action purple everywhere (the hero link keeps its approved fill style). */
-:is(.app.award-app, .app.award-mobile) :focus-visible:not(.ap-round-link, main, dialog) {
+:is(.app.award-app, .app.award-mobile) :focus-visible:not(.ap-round-link, main, dialog, textarea, select, input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"])) {
   outline: 2px solid var(--c-action) !important;
   outline-offset: 2px !important;
 }
@@ -367,15 +367,7 @@
 /* Editor header ends with the same hairline as the space detail header. */
 .app.award-app .editor-command-bar { border-bottom: 1px solid var(--c-bdbac5) !important; margin-bottom: 0 !important; }
 .app.award-app .editor-command-bar + .editor-step-label { margin: 0; }
-/* Focused fields: the 1px border turns purple; no separate outline ring around it. */
-.app.award-app.mode-web :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea):focus-visible {
-  outline: none !important;
-  border-color: var(--c-action) !important;
-  box-shadow: none !important;
-}
-/* In the app the field box is the bordered element; it alone turns purple. */
-.app.award-mobile .field :is(input, select, textarea):focus-visible { outline: none !important; box-shadow: none !important; }
-.app.award-mobile .field:focus-within { border-color: var(--c-action) !important; }
+/* Focused fields: see ControlSystem.css (the 1px border turns purple, nothing else changes). */
 
 /* Inspector actions (보호 영역 지정, 가구 삭제, 보호 영역 삭제): fill the row, border like the fields, 12px from the fields above. */
 :is(.app.award-app, .app.award-mobile) .inspector .furniture-actions { display: flex !important; flex-wrap: wrap; gap: var(--space-2); margin: 0 !important; width: auto; }
