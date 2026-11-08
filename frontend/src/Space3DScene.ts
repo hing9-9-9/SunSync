@@ -5,7 +5,7 @@ import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment
 import { filmGrid, isWidthWall, resolveWindow } from "./model.ts";
 import type { Face, Furniture, Region, Space, Wall } from "./model.ts";
 import { sunPosition } from "./sun3d.ts";
-import { dateOfDayOfYear, safeUtcOffsetHours } from "./floorSun.ts";
+import { createOffsetCache } from "./floorSun.ts";
 import { shelfFront } from "./shelfFront.ts";
 
 export type Level = "basic" | "sun" | "film";
@@ -394,9 +394,10 @@ export function createSpaceScene(host: HTMLElement, space: Space, events: Events
   const sunPath = new THREE.Line(new THREE.BufferGeometry(), pathMat);
   scene.add(sunPath);
   const RADIUS = 6.5;
+  const offsetFor = createOffsetCache();
   const sunDir = (day: number, hour: number) => {
-    // Local clock time in the site's zone, with that date's offset (daylight saving included).
-    const utcOffset = safeUtcOffsetHours(site.timezone, dateOfDayOfYear(new Date().getFullYear(), day));
+    // Local clock time in the site's zone, with that date's offset (daylight saving included), looked up once per day.
+    const utcOffset = offsetFor(site.timezone, new Date().getFullYear(), day);
     const { altitude, azimuth } = sunPosition(day, hour, site.latitude, site.longitude, utcOffset);
     const a = THREE.MathUtils.degToRad(altitude), z = THREE.MathUtils.degToRad(azimuth);
     return { dir: new THREE.Vector3(Math.cos(a) * Math.sin(z), Math.sin(a), -Math.cos(a) * Math.cos(z)), altitude, azimuth };

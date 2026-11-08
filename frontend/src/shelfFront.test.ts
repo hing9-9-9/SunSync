@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { shelfFront } from "./shelfFront.ts";
-import { safeUtcOffsetHours, dateOfDayOfYear } from "./floorSun.ts";
+import { safeUtcOffsetHours, dateOfDayOfYear, createOffsetCache } from "./floorSun.ts";
 
 // Unit vector of the window wall's outward direction in server ENU (x east, y north).
 const OUTWARD = { south: [0, -1], north: [0, 1], east: [1, 0], west: [-1, 0] } as const;
@@ -40,4 +40,14 @@ test("preview offset follows site.timezone for the date shown", () => {
 test("day of year maps to the right date for DST", () => {
   assert.equal(safeUtcOffsetHours("Australia/Sydney", dateOfDayOfYear(2026, 15)), 11);
   assert.equal(safeUtcOffsetHours("Australia/Sydney", dateOfDayOfYear(2026, 196)), 10);
+});
+
+test("the offset is looked up once per zone and day, not once per minute", () => {
+  let calls = 0;
+  const offsetFor = createOffsetCache((tz, date) => (calls++, safeUtcOffsetHours(tz, date)));
+  for (let m = 0; m < 24 * 60; m++) assert.equal(offsetFor("Australia/Sydney", 2026, 15), 11);
+  assert.equal(calls, 1);
+  assert.equal(offsetFor("Australia/Sydney", 2026, 196), 10); // another day is its own entry (daylight saving)
+  assert.equal(offsetFor("Asia/Seoul", 2026, 15), 9); // another zone too
+  assert.equal(calls, 3);
 });
