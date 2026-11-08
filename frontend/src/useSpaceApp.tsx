@@ -11,6 +11,8 @@ import type { FormEvent } from "react";
 import { editorExample, exampleState } from "./exampleSpace";
 import { markInvalidFields } from "./formIssues";
 import { saveErrorMessage } from "./spaceSync";
+import { EXPIRED_MESSAGE, LOGIN_FAILED_MESSAGE, currentPath, fetchSession, googleLoginUrl, logout, onUnauthorized } from "./auth";
+import type { Session } from "./auth";
 import Plan from "./Plan";
 import {
   blankSpace,
@@ -75,6 +77,8 @@ export const titles: Record<Page, string> = {
 };
 
 
+const LAST_EMAIL_KEY = "sunsync-ui-last-email";
+
 // Off until real building data is connected: the status screen shows the simplified simulation.
 // Turning it on shows FR-01 sun times with loading, error and retry states.
 const USE_FR01 = true;
@@ -105,11 +109,20 @@ export function useSpaceApp() {
         }
       : resolveLocation(
           readLocation(window.history.state, window.location.hash),
-          !!initial.account,
+          true, // login is decided by the server session; personal pages show the login screen themselves
           null,
           initial.spaces,
         ),
   );
+  // The server session decides who is signed in. The stored account is only what to show until it answers.
+  const [authStatus, setAuthStatus] = useState<"checking" | "in" | "out">(editorExample ? "in" : "checking");
+  const [authNotice, setAuthNotice] = useState(() => {
+    try {
+      return !editorExample && new URLSearchParams(location.search).get("login") === "failed" ? LOGIN_FAILED_MESSAGE : "";
+    } catch {
+      return "";
+    }
+  });
   const [isApp, setIsApp] = useState(
     () =>
       new URLSearchParams(location.search).get("mode") === "app" ||
@@ -123,7 +136,8 @@ export function useSpaceApp() {
   const [measurementJobs, setMeasurementJobs] = useState<HandoffSession[]>([]);
   const [mobileToken, setMobileToken] = useState<string | null>(null);
   const [measurementReady, setMeasurementReady] = useState(false);
-  const [account, setAccount] = useState<Account | null>(initial.account);
+  const [storedAccount, setAccount] = useState<Account | null>(initial.account);
+  const account = authStatus === "out" ? null : storedAccount;
   const [spaces, setSpaces] = useState<Space[]>(initial.spaces);
   const [page, setPageState] = useState<Page>(initialNavigation.page);
   const [activeId, setActiveId] = useState<string | null>(
@@ -204,7 +218,7 @@ export function useSpaceApp() {
   const locationAttempts = useRef(new Set<string>());
   const locationRequest = useRef(0);
   useEffect(() => {
-    if (page !== "spaces" || !account) return;
+    if (page !== "spaces" || authStatus !== "in") return;
     let stopped = false; let timer: ReturnType<typeof setTimeout>;
     const controller = new AbortController();
     async function refreshJobs() {
@@ -214,7 +228,7 @@ export function useSpaceApp() {
     }
     void refreshJobs();
     return () => { stopped = true; controller.abort(); clearTimeout(timer); };
-  }, [page, account]);
+  }, [page, authStatus]);
   const receiveMeasurement = useCallback((saved: Space) => {
     setDraft(saved);
     setActiveId(saved.id);
@@ -241,7 +255,7 @@ export function useSpaceApp() {
   }
   useEffect(() => {
     const token = new URLSearchParams(location.search).get("handoff");
-    if (!token) return;
+    if (!token || authStatus !== "in") return;
     let cancelled = false;
     connectHandoff(token)
       .then((data) => {
@@ -260,7 +274,7 @@ export function useSpaceApp() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [authStatus]);
   useEffect(() => {
     const media = matchMedia("(max-width: 760px)");
     const update = () => {
@@ -329,8 +343,6 @@ export function useSpaceApp() {
     locateBuilding(draft.id);
   }, [page, draft]);
 
-  const [loginName, setLoginName] = useState("SunSync 사용자");
-  const [loginEmail, setLoginEmail] = useState("sun@example.com");
   const modalRef = useRef<HTMLDialogElement>(null);
   const errorRef = useRef<HTMLParagraphElement>(null);
   const draftPage = useRef<Page>("register");
@@ -355,7 +367,7 @@ export function useSpaceApp() {
     "protect",
   ].includes(page);
   useEffect(() => {
-    if (page !== "detail" || !active?.serverRevision) return;
+    if (page !== "detail" || !active?.serverRevision || authStatus !== "in") return;
     let stopped = false; let timer: ReturnType<typeof setTimeout>;
     const id = active.id, seen = active.serverRevision;
     async function refreshDetail() {
@@ -370,7 +382,7 @@ export function useSpaceApp() {
     }
     void refreshDetail();
     return () => { stopped = true; clearTimeout(timer); };
-  }, [page, active?.id, active?.serverRevision]);
+  }, [page, active?.id, active?.serverRevision, authStatus]);
   const space = editing ? draft : active;
   // When sunlight reaches each protected area (simplified demo calculation). Blocking itself only
   // happens inside the time range the user sets.
@@ -381,7 +393,7 @@ export function useSpaceApp() {
   const predictionDate = active?.site ? new Intl.DateTimeFormat("en-CA", { timeZone: active.site.timezone }).format(predictionNow) : "";
   const windowReady = !!active?.windowDimensions && active.windowDimensions.wall != null && active.windowDimensions.offset != null && active.windowDimensions.sill != null;
   const predictionKey =
-    USE_FR01 && page === "detail" && !editorExample && active?.serverSceneId && active.serverRevision && active.site && active.site.northConfirmed && windowReady && active.regions.length
+    USE_FR01 && authStatus === "in" && page === "detail" && !editorExample && active?.serverSceneId && active.serverRevision && active.site && active.site.northConfirmed && windowReady && active.regions.length
       ? `${active.serverSceneId}:${active.serverRevision}:${predictionDate}`
       : null;
   const [prediction, setPrediction] = useState<{ key: string; result?: SunpathPrediction; error?: string } | null>(null);
@@ -490,7 +502,7 @@ export function useSpaceApp() {
     function restore() {
       const target = resolveLocation(
         readLocation(window.history.state, window.location.hash),
-        !!account,
+        true,
         draft,
         spaces,
       );
@@ -531,10 +543,10 @@ export function useSpaceApp() {
     }
     window.addEventListener("popstate", restore);
     return () => window.removeEventListener("popstate", restore);
-  }, [account, draft, spaces, page, guideIndex, activeId, leaveUnsaved]);
+  }, [draft, spaces, page, guideIndex, activeId, leaveUnsaved]);
 
   useEffect(() => {
-    if (editorExample) return;
+    if (editorExample || authStatus !== "in") return;
     const controller = new AbortController();
     listServerSpaces(controller.signal)
       .then((result) => {
@@ -552,9 +564,9 @@ export function useSpaceApp() {
         );
       });
     return () => controller.abort();
-  }, []);
+  }, [authStatus]);
   async function refreshServer() {
-    if (editorExample) return;
+    if (editorExample || authStatus !== "in") return;
     setServerState("loading");
     try {
       const result = await listServerSpaces();
@@ -592,7 +604,7 @@ export function useSpaceApp() {
   }
 
   useEffect(() => {
-    if (editorExample) return;
+    if (editorExample || authStatus !== "in") return;
     const id = new URLSearchParams(location.search).get("space");
     if (!id || new URLSearchParams(location.search).has("handoff")) return;
     let cancelled = false;
@@ -618,7 +630,7 @@ export function useSpaceApp() {
     return () => {
       cancelled = true;
     };
-  }, [isApp]);
+  }, [isApp, authStatus]);
   async function transferSpace(target: "app" | "web") {
     if (editorExample) {
       setToast("둘러보기 화면에서는 휴대폰 연결을 쓸 수 없습니다.");
@@ -671,13 +683,82 @@ export function useSpaceApp() {
       setSaving(false);
     }
   }
+  function applySession(session: Session) {
+    if (session.status === "out") {
+      setAccount(null);
+      setAuthStatus("out");
+      return;
+    }
+    // Server without auth routes (404) or offline: keep working as before with what is stored.
+    const user = session.status === "in" ? session.user : (initial.account ?? { name: "SunSync 사용자", email: "" });
+    if (session.status === "in") {
+      let last = initial.account?.email || "";
+      try { last ||= localStorage.getItem(LAST_EMAIL_KEY) ?? ""; } catch { /* storage blocked */ }
+      if (last && user.email && last.toLowerCase() !== user.email.toLowerCase()) {
+        // Another person: nothing cached for the previous one stays visible.
+        setSpaces([]);
+        setUnavailable([]);
+        setDraft(null);
+        setTempDrafts([]);
+        setActiveId(null);
+        setPageState((p) => (isEditingPage(p) || p === "detail" ? "spaces" : p));
+      }
+      try { if (user.email) localStorage.setItem(LAST_EMAIL_KEY, user.email); } catch { /* storage blocked */ }
+    }
+    setAccount(user);
+    setAuthNotice("");
+    setAuthStatus("in");
+  }
+  useEffect(() => {
+    if (editorExample) return;
+    const controller = new AbortController();
+    fetchSession(controller.signal).then(applySession, () => {});
+    return () => controller.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs once on load
+  }, []);
+  // Drop the failed-login marker from the address once it has been read; other params and the hash stay.
+  useEffect(() => {
+    const url = new URL(location.href);
+    if (!url.searchParams.has("login")) return;
+    url.searchParams.delete("login");
+    history.replaceState(history.state, "", url.pathname + url.search + url.hash);
+  }, []);
+  // Any request answered 401: back to the login screen, local spaces and drafts untouched.
+  useEffect(
+    () =>
+      onUnauthorized(() => {
+        if (editorExample) return;
+        setAccount(null);
+        setAuthStatus("out");
+        setAuthNotice(EXPIRED_MESSAGE);
+        setModal((m) => (m === "login" ? m : null));
+      }),
+    [],
+  );
+  // After a failed Google login the web lands on the public home page, so the login dialog shows the notice.
+  useEffect(() => {
+    if (authStatus === "out" && authNotice === LOGIN_FAILED_MESSAGE && !isApp && (page === "home" || page === "guide")) setModal("login");
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only when the session answer arrives
+  }, [authStatus]);
+  // Once the session answer arrives, the address (a deep link) is resolved again with the real spaces.
+  useEffect(() => {
+    if (authStatus !== "in" || editorExample) return;
+    const target = resolveLocation(readLocation(window.history.state, window.location.hash), true, draft, spaces);
+    if (target.page !== page) {
+      setPageState(target.page);
+      setActiveId(target.activeId);
+      setGuideIndex(target.guideIndex);
+      setDraft(target.draft);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only when the session answer arrives
+  }, [authStatus]);
   // Storage failures must be surfaced to avoid silently losing saved spaces.
   useEffect(() => {
     if (editorExample) return;
     try {
       localStorage.setItem(
         STORAGE_KEY,
-        JSON.stringify({ version: 1, account, spaces }),
+        JSON.stringify({ version: 1, account: storedAccount, spaces }),
       );
       // eslint-disable-next-line react/set-state-in-effect -- Reflect external storage availability in the UI.
       setStorageError(false);
@@ -685,7 +766,7 @@ export function useSpaceApp() {
       // eslint-disable-next-line react/set-state-in-effect -- Reflect external storage availability in the UI.
       setStorageError(true);
     }
-  }, [account, spaces]);
+  }, [storedAccount, spaces]);
   useEffect(() => {
     if (editorExample) return;
     try {
@@ -808,12 +889,29 @@ export function useSpaceApp() {
     setSelectedRegion(null);
     setPage(at);
   }
-  function requireAccount(action: () => void) {
-    if (account) action();
+  // Where Google sends the person back to: the page they wanted (hash route), not the landing.
+  const loginNext = useRef<string | null>(null);
+  const pathFor = (wanted: Page) =>
+    location.pathname + location.search + locationUrl({ page: wanted, guideIndex: null, activeId: null, draft: null });
+  function startLogin() {
+    location.assign(googleLoginUrl(loginNext.current ?? currentPath()));
+  }
+  function requireAccount(action: () => void, wanted?: Page) {
+    if (authStatus === "in") action();
     else {
       pendingWebAction.current = action;
+      loginNext.current = wanted ? pathFor(wanted) : null;
       setModal("login");
     }
+  }
+  async function signOut() {
+    await logout();
+    setAccount(null);
+    setAuthStatus("out");
+    setAuthNotice("");
+    setDraft(null);
+    setPage("home");
+    setModal(null);
   }
   function dismissModal() {
     pendingWebAction.current = null;
@@ -1354,7 +1452,6 @@ export function useSpaceApp() {
     measurementReady,
     setMeasurementReady,
     account,
-    setAccount,
     spaces,
     setSpaces,
     page,
@@ -1414,10 +1511,10 @@ export function useSpaceApp() {
     receiveMeasurement,
     joinMeasurement,
     locateBuilding,
-    loginName,
-    setLoginName,
-    loginEmail,
-    setLoginEmail,
+    authStatus,
+    authNotice,
+    startLogin,
+    signOut,
     modalRef,
     errorRef,
     draftPage,

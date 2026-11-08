@@ -65,3 +65,13 @@ test("lists collect pages and exclude local-only legacy spaces", async (t) => {
     [remote],
   );
 });
+
+test("401 notifies once, throws the expired message and is never an empty listing", async (t) => {
+  const { onUnauthorized } = await import("./auth.ts");
+  let notified = 0;
+  const off = onUnauthorized(() => notified++);
+  t.mock.method(globalThis, "fetch", async () => new Response("<html>login</html>", { status: 401 }));
+  await assert.rejects(listServerSpaces(), (e: unknown) => e instanceof SpaceApiError && e.status === 401 && e.message === "로그인이 만료됐어요. 다시 로그인해 주세요.");
+  off();
+  assert.equal(notified, 1);
+});

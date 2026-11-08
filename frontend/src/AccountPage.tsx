@@ -134,7 +134,7 @@ export function AccountOverview({
   );
 }
 
-export function AuthPanel({ hidden, brand, onLogin }: { hidden: boolean; brand: ReactNode; onLogin: () => void }) {
+export function AuthPanel({ hidden, brand, notice, onLogin }: { hidden: boolean; brand: ReactNode; notice?: string; onLogin: () => void }) {
   return (
     <main className={`auth acct-auth ${hidden ? "landing-auth-hidden" : ""}`}>
       <div className="acct-auth-copy">
@@ -144,6 +144,7 @@ export function AuthPanel({ hidden, brand, onLogin }: { hidden: boolean; brand: 
         </span>
         <h1>내 공간을 확인하세요.</h1>
         <p>Google 계정으로 로그인하고 저장한 공간을 확인하세요.</p>
+        {notice && <p className="auth-notice" role="status">{notice}</p>}
         <button type="button" className="google-button acct-google" onClick={onLogin}>
           <Scribble />
           <span className="google-g" aria-hidden="true"><GoogleMark size={18} /></span>
