@@ -535,7 +535,7 @@ export default function AwardPreview({
           </div>
           <div className="ap-photo-copy">
             <h2>
-              책장은 그늘로,
+              필요한 곳은 그늘로,
               <br />주변은 자연광 그대로.
             </h2>
             <button onClick={() => setPhotoProtected(!photoProtected)}

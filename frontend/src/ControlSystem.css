@@ -1,0 +1,120 @@
+/* Controls (2026-11-08): one button system and one input-focus rule for web (.award-app) and app (.award-mobile).
+   Loaded last. Buttons in login surfaces and confirm dialogs share height, pill radius, size, weight and
+   padding; only fill and border tell primary, secondary and destructive apart. Same four states everywhere:
+   default / hover / pressed / disabled. Keyboard focus is the shared 2px #6660E5 ring (tokens.css). */
+:root {
+  --btn-h: 48px; /* web */
+  --btn-pad: 24px;
+  --btn-fs: 15px;
+  --btn-fw: 500; /* the weight primary already used */
+  --btn-line: var(--c-block); /* the one neutral grey of a secondary button's 1px border */
+}
+.app.award-mobile { --btn-h: 50px; /* app: matches the 50px bottom actions */ }
+
+/* Login surfaces (.auth) and confirm / login dialogs. The furniture chooser and the editor sheet keep their own buttons. */
+:is(.app.award-app, .app.award-mobile, .app.mode-web) :is(.auth, dialog:not(.furniture-add-dialog, .mobile-editor-sheet, .acct-login-dialog)) :is(button.primary, button.secondary) {
+  box-sizing: border-box;
+  min-height: var(--btn-h) !important;
+  padding: 0 var(--btn-pad) !important;
+  border-radius: var(--radius-pill) !important;
+  font-family: inherit;
+  font-size: var(--btn-fs) !important;
+  font-weight: var(--btn-fw) !important;
+  line-height: 1.3;
+  letter-spacing: 0;
+  box-shadow: none !important;
+}
+/* Primary: accent fill, white text. */
+:is(.app.award-app, .app.award-mobile, .app.mode-web) :is(.auth, dialog:not(.furniture-add-dialog, .mobile-editor-sheet, .acct-login-dialog)) button.primary:not(.destructive) {
+  border: 1px solid var(--c-action) !important;
+  background: var(--c-action) !important;
+  color: var(--c-white) !important;
+}
+/* Secondary (취소 and similar): white, 1px neutral border, ink text. No inset ring on top of the border. */
+:is(.app.award-app, .app.award-mobile, .app.mode-web) :is(.auth, dialog:not(.furniture-add-dialog, .mobile-editor-sheet, .acct-login-dialog)) button.secondary:not(.destructive) {
+  border: 1px solid var(--btn-line) !important;
+  background: var(--c-white) !important;
+  color: var(--c-ink) !important;
+}
+/* Destructive (삭제, 로그아웃): grey fill, ink text, no border. */
+:is(.app.award-app, .app.award-mobile, .app.mode-web) :is(.auth, dialog:not(.furniture-add-dialog, .mobile-editor-sheet, .acct-login-dialog)) :is(button.primary, button.secondary).destructive {
+  border: 0 !important;
+  background: var(--c-block) !important;
+  color: var(--c-ink) !important;
+}
+
+/* Hover (web, option A): shape and border stay; 3% darker, light shadow, 1px lift, 200ms. The same on every page. */
+@media (hover: hover) {
+  .app.mode-web :is(.auth, dialog:not(.furniture-add-dialog, .mobile-editor-sheet, .acct-login-dialog)) :is(button.primary, button.secondary):not(:disabled):hover {
+    filter: var(--hover-dim) !important;
+    transform: translateY(var(--hover-lift)) !important;
+    box-shadow: var(--hover-shadow) !important;
+  }
+}
+/* Pressed: 5% darker, back in place, no shadow. Same on web and app. */
+:is(.app.award-app, .app.award-mobile, .app.mode-web) :is(.auth, dialog:not(.furniture-add-dialog, .mobile-editor-sheet, .acct-login-dialog)) :is(button.primary, button.secondary):not(:disabled):active {
+  filter: var(--press-dim) !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+/* Disabled: faded, no reaction. */
+:is(.app.award-app, .app.award-mobile, .app.mode-web) :is(.auth, dialog:not(.furniture-add-dialog, .mobile-editor-sheet, .acct-login-dialog)) :is(button.primary, button.secondary):disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  filter: none !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* Motion for every button, web and app, in one place (2026-11-08). Timing comes from the tokens in tokens.css:
+   hover 200ms in and out, press 90ms (lands at once, comes back slowly), colour fades 160ms, one curve.
+   No scale, no bounce: pressed means 5% darker and flat. Reduced motion removes the transition entirely.
+   The hover values themselves stay in the web blocks above and in WebInteractions.css. */
+.app :is(button.primary, button.secondary, button.chip, button.zone-action, button.icon-button, .item-tabs > button, .mobile-nav button, button.toast-action, button.furniture-delete, button.item-add, button.google-btn, .ap-round-link) {
+  transition:
+    filter var(--dur-hover) var(--ease-out),
+    transform var(--dur-hover) var(--ease-out),
+    box-shadow var(--dur-hover) var(--ease-out),
+    background-color var(--dur-fade) ease,
+    border-color var(--dur-fade) ease,
+    color var(--dur-fade) ease !important;
+}
+.app :is(button.primary, button.secondary, button.chip, button.zone-action, button.icon-button, .item-tabs > button, .mobile-nav button, button.toast-action, button.furniture-delete, button.item-add, button.google-btn, .ap-round-link):not(:disabled):active {
+  transition-duration: var(--dur-press), var(--dur-press), var(--dur-press), var(--dur-fade), var(--dur-fade), var(--dur-fade) !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .app :is(button.primary, button.secondary, button.chip, button.zone-action, button.icon-button, .item-tabs > button, .mobile-nav button, button.toast-action, button.furniture-delete, button.item-add, button.google-btn, .ap-round-link) { transition: none !important; }
+}
+
+/* The page's round CTA (home, guide, account): one hover and one press, like every other button.
+   The arrow keeps its own small move; the fill never changes colour. */
+@media (hover: hover) {
+  .app.award-app.mode-web .ap-round-link:not([aria-disabled="true"]):hover {
+    filter: var(--hover-dim) !important;
+    transform: translateY(var(--hover-lift)) !important;
+    box-shadow: var(--hover-shadow) !important;
+  }
+}
+.app.award-app.mode-web .ap-round-link:not([aria-disabled="true"]):active {
+  filter: var(--press-dim) !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* The page's login button hugs its text; everywhere else the Google button fills the row. */
+.app.award-app .acct-auth .google-btn { width: auto; align-self: flex-start; }
+/* The web login modal (dialog.acct-login-dialog) keeps its own look: see Moodboard.css and WebLoginStep.css. */
+
+/* Input focus (web and app): only the existing 1px border turns #6660E5. No outline, no ring, no offset,
+   no shadow, no border-width change, so nothing shifts. Text fields, selects, textareas and .field wrappers.
+   Browsers match :focus-visible on text fields even for a mouse click, so the ring is removed for both states.
+   A field with an error keeps its error border while focused. */
+:is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="button"], [type="submit"], [type="reset"], [type="color"], [type="image"]), select, textarea):is(:focus, :focus-visible) {
+  outline: none !important;
+  outline-offset: 0 !important;
+  box-shadow: none !important;
+}
+:is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="button"], [type="submit"], [type="reset"], [type="color"], [type="image"]), select, textarea):is(:focus, :focus-visible):not([aria-invalid="true"]),
+.field:has(:is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="button"], [type="submit"], [type="reset"], [type="color"], [type="image"]), select, textarea):focus):not([data-issue], :has([aria-invalid="true"])) {
+  border-color: var(--c-action) !important;
+}

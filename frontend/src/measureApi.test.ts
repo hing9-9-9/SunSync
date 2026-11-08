@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { BOARD, boardAlignment, filmBoardAlignment, serverMessage, startCaptureMarker, endCaptureMarker, measureAndRegister, setupCamera } from "./measureApi.ts";
+import { BOARD, boardAlignment, filmBoardAlignment, serverMessage, startCaptureMarker, checkCaptureMarker, endCaptureMarker, measureAndRegister, setupCamera } from "./measureApi.ts";
 import { blankSpace } from "./model.ts";
 
 const space = (wall: "south" | "north" | "east" | "west") => ({
@@ -108,4 +108,14 @@ test("setup and final measurement use the server-selected ID; mixed session phot
   recorded.length=0;
   await assert.rejects(measureAndRegister(room,camera,{...item,points:[{id:"P1",frames:[{...frame,marker_session_id:"old"}]}]}),/섞였어요/);
   assert.equal(recorded.some(r=>r.url.endsWith("/v1/measurements")),false);
+});
+
+test("a 401 with a non-JSON body becomes the expired message and notifies", async (t) => {
+  const { onUnauthorized } = await import("./auth.ts");
+  let notified = 0;
+  const off = onUnauthorized(() => notified++);
+  t.mock.method(globalThis, "fetch", async () => new Response("<html>Unauthorized</html>", { status: 401 }));
+  await assert.rejects(checkCaptureMarker({ scene_id: "scene-1", session_id: "s" } as never), (e: unknown) => (e as { status?: number }).status === 401 && (e as Error).message === "로그인이 만료됐어요. 다시 로그인해 주세요.");
+  off();
+  assert.equal(notified, 1);
 });

@@ -338,23 +338,6 @@
   font-weight: 500;
   letter-spacing: 0;
 }
-.google-button {
-  display: flex;
-  gap: var(--space-4);
-  align-items: center;
-  justify-content: center;
-  background: var(--c-white);
-  border: 1px solid var(--line);
-  min-height: 52px;
-  border-radius: 28px;
-  width: 100%;
-  font-size: var(--text-base);
-}
-.google-g {
-  font-size: var(--text-lg);
-  font-weight: 700;
-  color: var(--c-5868ba);
-}
 .capture-layout {
   max-width: 900px;
   display: grid;
@@ -2264,58 +2247,24 @@ dialog p {
   margin-top: var(--space-6);
 }
 
-/* Component feel: press feedback, and short enter transitions for occasional surfaces. */
-:root {
-  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
-  /* Critically damped springs (damping 1.0) sampled for CSS: no overshoot, starts from the current value. */
-  --spring-press: linear(0, 0.131, 0.358, 0.562, 0.715, 0.821, 0.89, 0.934, 0.96, 0.977, 0.986, 0.992, 1); /* response 0.30s */
-  --spring-ui: linear(0, 0.102, 0.293, 0.48, 0.634, 0.75, 0.833, 0.89, 0.929, 0.954, 0.971, 0.981, 0.988, 0.993, 1); /* response 0.35s */
-}
-.primary,
-.secondary,
-.chip,
-.zone-action,
-.icon-button,
-.item-tabs button,
-.mobile-nav button,
-.rp-sidebar-start,
-.toast-action {
-  /* Release springs back; the press itself (below) lands almost instantly. */
-  transition:
-    transform 280ms var(--spring-press),
-    background-color 160ms ease,
-    border-color 160ms ease,
-    color 160ms ease;
-}
-.primary:not(:disabled):active,
-.secondary:not(:disabled):active,
-.chip:not(:disabled):active,
-.zone-action:not(:disabled):active,
-.icon-button:not(:disabled):active,
-.item-tabs button:not(:disabled):active,
-.mobile-nav button:active,
-.rp-sidebar-start:active,
-.toast-action:active {
-  transform: scale(0.97);
-  transition-duration: 90ms, 160ms, 160ms, 160ms;
-  transition-timing-function: var(--ease-out), ease, ease, ease;
-}
+/* Component feel. Button press and release timing live in ControlSystem.css (one block for every button).
+   Dialogs and toasts arrive with a short fade and a 6px rise; the editor sheet rises from the bottom. */
 dialog[open] {
   opacity: 1;
   transform: none;
   transition:
-    opacity 180ms var(--ease-out),
-    transform 300ms var(--spring-ui);
+    opacity var(--dur-fade) var(--ease-out),
+    transform var(--dur-enter) var(--ease-out);
 }
 @starting-style {
   dialog[open] {
     opacity: 0;
-    transform: scale(0.96);
+    transform: translateY(6px);
   }
 }
 dialog[open]::backdrop {
   opacity: 1;
-  transition: opacity 200ms ease;
+  transition: opacity var(--dur-hover) ease;
 }
 @starting-style {
   dialog[open]::backdrop {
@@ -2324,8 +2273,8 @@ dialog[open]::backdrop {
 }
 .toast {
   transition:
-    opacity 180ms var(--ease-out),
-    transform 300ms var(--spring-ui);
+    opacity var(--dur-fade) var(--ease-out),
+    transform var(--dur-enter) var(--ease-out);
 }
 @starting-style {
   .toast {

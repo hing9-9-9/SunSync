@@ -872,7 +872,7 @@
   :where(.app:not(.mode-app)) .chip.active, :where(.app:not(.mode-app)) .item-tabs button.active, :where(.app:not(.mode-app)) .grade-picker .active {
     border-width: 1pt;
   }
-  :where(.app:not(.mode-app)) button:focus-visible, :where(.app:not(.mode-app)) input:focus-visible, :where(.app:not(.mode-app)) select:focus-visible, :where(.app:not(.mode-app)) svg g:focus-visible {
+  :where(.app:not(.mode-app)) button:focus-visible, :where(.app:not(.mode-app)) svg g:focus-visible {
     outline-width: 1pt;
   }
   :where(.app:not(.mode-app)) .file-button:focus-within {

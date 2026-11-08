@@ -17,6 +17,7 @@ import "./PageTypography.css";
 import "./CaptureDesign.css";
 import "./EditorPlan.css";
 import "./MobileConsistency.css";
+import "./ControlSystem.css";
 
 const mode = new URLSearchParams(location.search).get("mode");
 const mobile = mode === "app" || (mode !== "web" && matchMedia("(max-width: 760px)").matches);

@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense } from "react";
 import { WebLoginGoogleStep } from "./WebLoginStep";
 import NumberField from "./NumberField";
 import FurnitureTable from "./FurnitureTable";
@@ -45,7 +45,10 @@ function App() {
     measurementJobs,
     measurementReady,
     account,
-    setAccount,
+    authStatus,
+    authNotice,
+    startLogin,
+    signOut,
     spaces,
     page,
     draft,
@@ -87,13 +90,8 @@ function App() {
     receiveMeasurement,
     joinMeasurement,
     locateBuilding,
-    loginName,
-    setLoginName,
-    loginEmail,
-    setLoginEmail,
     modalRef,
     errorRef,
-    takePendingWebAction,
     active,
     editing,
     space,
@@ -152,19 +150,15 @@ function App() {
     predictionKey,
     sunpathResult,
   } = useSpaceApp();
-  const [loginStep, setLoginStep] = useState<"google" | "details">("google");
-  // Every time the login dialog opens it starts at the Google step (reset while rendering, so no stale frame).
-  const [loginOpen, setLoginOpen] = useState(false);
-  if ((modal === "login") !== loginOpen) {
-    setLoginOpen(modal === "login");
-    if (modal === "login") setLoginStep("google");
-  }
+  // Home, guide and the example need no login; everything else waits for the session answer.
+  const publicPage = page === "home" || page === "guide";
+  const checking = authStatus === "checking" && !publicPage;
   return (
     <>
       <div
         inert={saving || undefined}
         aria-busy={saving}
-        className={`app ap award-app ${isApp ? "mode-app" : "mode-web"} page-${page} ${page === "more" ? "more-page" : ""} ${!account ? "auth-page" : ""} ${actionBar || (isApp && page === "capture" && draft) ? "has-action-bar" : ""}`}
+        className={`app ap award-app ${isApp ? "mode-app" : "mode-web"} page-${page} ${page === "more" ? "more-page" : ""} ${!account || checking ? "auth-page" : ""} ${actionBar || (isApp && page === "capture" && draft) ? "has-action-bar" : ""}`}
       >
         {account && (
           <button
@@ -175,11 +169,13 @@ function App() {
             본문으로 건너뛰기
           </button>
         )}
-        {<AwardHeader account={account} page={page} editing={editing} onNavigate={p=>{if(p==="spaces"||p==="account")requireAccount(()=>navigate(p));else navigate(p)}} onLogin={()=>requireAccount(()=>navigate("spaces"))}/>}
-        {page === "home" && <AwardLanding onStart={()=>requireAccount(()=>navigate("spaces"))} onGuide={()=>navigate("guide")}/>}
-        {page === "guide" && (<AwardGuide index={guideIndex} onIndex={setGuideIndex} onStart={()=>requireAccount(()=>navigate("spaces"))}/>)}
-        {!account ? (
-          <AuthPanel hidden={page === "home" || page === "guide"} brand={<Icon name="sun" />} onLogin={() => setModal("login")} />
+        {<AwardHeader account={account} page={page} editing={editing} onNavigate={p=>{if(p==="spaces"||p==="account")requireAccount(()=>navigate(p),p);else navigate(p)}} onLogin={()=>requireAccount(()=>navigate("spaces"),"spaces")}/>}
+        {page === "home" && <AwardLanding onStart={()=>requireAccount(()=>navigate("spaces"),"spaces")} onGuide={()=>navigate("guide")}/>}
+        {page === "guide" && (<AwardGuide index={guideIndex} onIndex={setGuideIndex} onStart={()=>requireAccount(()=>navigate("spaces"),"spaces")}/>)}
+        {checking ? (
+          <main className="auth acct-auth" aria-busy="true" />
+        ) : !account ? (
+          <AuthPanel hidden={publicPage} brand={<Icon name="sun" />} notice={authNotice} onLogin={() => setModal("login")} />
         ) : (
           <>
             <main id="main" className="main" tabIndex={-1} onChangeCapture={() => setEditedDraftId(draft?.id ?? null)}>
@@ -1226,68 +1222,18 @@ function App() {
           }}
         >
           {modal === "login" && (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                setAccount({
-                  name: loginName.trim(),
-                  email: loginEmail.trim(),
-                });
-                setPage("home");
-                setModal(null);
-                takePendingWebAction()?.();
-              }}
-            >
+            <form onSubmit={(e) => e.preventDefault()}>
               <aside className="acct-login-visual" aria-hidden="true">
                 <div className="acct-auth-glow" />
                 <div className="acct-wordmark">SunSync</div>
                 <p>
                   햇빛은 들이고,
                   <br />
-                  <mark className="ap-mark">책은 지킨다.</mark>
+                  <mark className="ap-mark">공간은 지킨다.</mark>
                 </p>
                 <span className="ap-state-chip on">보호 중</span>
               </aside>
-              {loginStep === "google" ? (
-                <WebLoginGoogleStep onGoogle={() => setLoginStep("details")} onCancel={dismissModal} />
-              ) : (
-                <>
-              <h2>계정 정보</h2>
-              <label className="field">
-                <span>이름</span>
-                <input
-                  autoFocus
-                  required
-                  name="name"
-                  autoComplete="name"
-                  value={loginName}
-                  onChange={(e) => setLoginName(e.target.value)}
-                />
-              </label>
-              <label className="field">
-                <span>이메일</span>
-                <input
-                  required
-                  type="email"
-                  name="email"
-                  autoComplete="email"
-                  spellCheck={false}
-                  value={loginEmail}
-                  onChange={(e) => setLoginEmail(e.target.value)}
-                />
-              </label>
-              <button className="primary" type="submit">
-                계속
-              </button>
-              <button
-                className="secondary"
-                type="button"
-                onClick={dismissModal}
-              >
-                취소
-              </button>
-                </>
-              )}
+              <WebLoginGoogleStep notice={authNotice} onGoogle={startLogin} onCancel={dismissModal} />
             </form>
           )}
           {modal === "delete-space" && active && (
@@ -1353,12 +1299,7 @@ function App() {
               <h2>로그아웃하시겠어요?</h2>
               <button
                 className="primary destructive"
-                onClick={() => {
-                  setAccount(null);
-                  setDraft(null);
-                  setPage("home");
-                  setModal(null);
-                }}
+                onClick={() => void signOut()}
               >
                 로그아웃
               </button>

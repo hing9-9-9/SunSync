@@ -1,26 +1,19 @@
 /* Web only: shallow material for primary actions; flat feedback for secondary actions.
    State is conveyed with color and an inset edge. No geometry-changing scale or rotation. */
-.app.award-app.mode-web button:is(.primary,.secondary,.chip,.furniture-delete,.zone-action,.item-add),
-.app.award-app.mode-web .item-tabs > button {
- transition:filter var(--dur-hover) ease,transform var(--dur-hover) ease,box-shadow var(--dur-hover) ease;
-}
 .app.award-app.mode-web button.primary:not(:disabled):not(.destructive):not(.danger) {
  box-shadow:inset 0 1px 0 var(--c-ffffff-a15),0 1px 2px var(--c-27202d-a7);
 }
 /* Hover A (project rule): shape and border stay; 3% darker, a soft shadow and a 1px lift, 200ms.
    filter works through the !important fills in tokens.css, so secondary buttons answer too. */
 @media(hover:hover) {
- .app.award-app.mode-web :is(button.primary,button.secondary,button.chip,.item-tabs > button,button.furniture-delete,button.zone-action,button.item-add):not(:disabled):hover { filter:brightness(.97); transform:translateY(-1px); box-shadow:0 2px 6px var(--c-27202d-a9); }
+ .app.award-app.mode-web :is(button.primary,button.secondary,button.chip,.item-tabs > button,button.furniture-delete,button.zone-action,button.item-add):not(:disabled):hover { filter:var(--hover-dim); transform:translateY(var(--hover-lift)); box-shadow:var(--hover-shadow); }
  /* Editing screens are work surfaces: buttons darken and gain the shadow but do not lift. */
  .app.award-app.mode-web:is(.page-register,.page-capture,.page-review,.page-protect) :is(button.primary,button.secondary,button.chip,.item-tabs > button,button.furniture-delete,button.zone-action,button.item-add):not(:disabled):hover { filter:brightness(.96); transform:none; }
 }
-.app.award-app.mode-web button:is(.primary,.secondary):not(:disabled):active { transform:none; filter:brightness(.95); box-shadow:inset 0 1px 3px var(--c-27202d-a13); }
+.app.award-app.mode-web button:is(.primary,.secondary):not(:disabled):active { transform:none; filter:var(--press-dim); box-shadow:inset 0 1px 3px var(--c-27202d-a13); }
 .app.award-app.mode-web :is(button.chip,.item-tabs > button):active { transform:none; box-shadow:inset 0 1px 2px var(--c-27202d-a8); }
 .app.award-app.mode-web button:disabled { box-shadow:none; filter:none; }
-.app.award-app.mode-web button:focus-visible { outline:2px solid var(--c-6554ad); outline-offset:3px; }
-@media(prefers-reduced-motion:reduce) {
- .app.award-app.mode-web button { transition:none !important; }
-}
+.app.award-app.mode-web button:focus-visible { outline:2px solid var(--c-action); outline-offset:2px; }
 
 /* Existing accordion layout; scrolling opens reached steps and updates its sticky index. */
 .app.award-app.mode-web .ap-guide-step { scroll-margin-top:100px; }
