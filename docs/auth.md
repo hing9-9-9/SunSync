@@ -12,10 +12,10 @@ development and the tests work as before.
 | Step | What happens |
 |---|---|
 | 1 | The page sends the browser to `/api/auth/google/login?next=<page to come back to>` |
-| 2 | The server remembers the login (state, nonce, PKCE) for 10 minutes and sends the browser to Google |
+| 2 | The server remembers the login (state, nonce, PKCE) for 10 minutes, gives this browser the short-lived cookie `sunsync_login` and sends it to Google |
 | 3 | The user picks an account at Google |
 | 4 | Google sends the browser to `/api/auth/google/callback` with a one-time code |
-| 5 | The server gives the code to Google, gets the ID token back and checks it: issuer, audience (our client id), expiry, nonce and a verified e-mail |
+| 5 | The server checks that the callback carries the `sunsync_login` cookie of the login that started it, gives the code to Google, gets the ID token back and checks it: issuer, audience (our client id), expiry, nonce and a verified e-mail |
 | 6 | The server saves the user (Google id, e-mail, name), creates a session and sets the cookie `sunsync_session` |
 | 7 | The browser goes to `next`. If anything fails it goes to `/?login=failed` |
 
@@ -24,6 +24,14 @@ allows this); the claims above are. The cookie is `HttpOnly` and `SameSite=Lax`.
 `Secure` and called `__Host-sunsync_session` (the prefix makes browsers take it only from this exact
 host); over plain http, for local tests, it is `sunsync_session`. The database keeps only the hash of
 the cookie value, and the login answers are sent with `Cache-Control: no-store`.
+
+The `sunsync_login` cookie ties a login to the browser that started it, so a callback address made
+in another browser (with someone else's Google account) cannot log this browser in as that person.
+It is removed when the callback comes back, whether the login worked or not. A login that is
+started in one browser and finished in another therefore fails with `/?login=failed`.
+
+The phone logs in on its own: the phone browser that opens the QR link (handoff) or the installed app
+has its own cookie, so a person who is logged in on the computer still has to log in on the phone.
 
 ## Sessions
 

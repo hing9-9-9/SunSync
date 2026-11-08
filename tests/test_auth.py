@@ -472,3 +472,57 @@ def test_the_web_build_gets_only_the_public_address():
 
 def test_database_copies_are_private():
     assert "umask 077" in (DEPLOY / "backup.sh").read_text()
+
+
+def test_a_callback_from_another_browser_is_refused(client, database_engine, google):
+    state = start(client)
+    google["claims"] = good_claims(attempt(database_engine).nonce)
+    other_browser = TestClient(client.app, base_url=PUBLIC_URL)  # no login cookie
+    response = other_browser.get(
+        "/api/auth/google/callback",
+        params={"code": "one-time", "state": state},
+        follow_redirects=False,
+    )
+    assert response.headers["location"] == "/?login=failed"
+    assert other_browser.get("/api/auth/session").status_code == 401
+    with Session(database_engine) as db:
+        assert db.exec(select(AuthSession)).all() == []
+
+
+def test_a_callback_with_the_wrong_login_cookie_is_refused(client, database_engine, google):
+    state = start(client)
+    google["claims"] = good_claims(attempt(database_engine).nonce)
+    client.cookies.set(auth.LOGIN_COOKIE, "another-value", path=auth.LOGIN_COOKIE_PATH)
+    response = client.get(
+        "/api/auth/google/callback",
+        params={"code": "one-time", "state": state},
+        follow_redirects=False,
+    )
+    assert response.headers["location"] == "/?login=failed"
+    assert client.get("/api/auth/session").status_code == 401
+
+
+def test_the_login_cookie_is_private_and_stored_only_as_a_hash(client, database_engine):
+    response = client.get("/api/auth/google/login", follow_redirects=False)
+    cookie = response.headers["set-cookie"]
+    lowered = cookie.lower()
+    assert "httponly" in lowered and "secure" in lowered and "samesite=lax" in lowered
+    assert f"path={auth.LOGIN_COOKIE_PATH}" in lowered
+    value = cookie.split(";")[0].split("=", 1)[1]
+    assert attempt(database_engine).browser_hash == auth.hash_token(value)
+    assert value not in attempt(database_engine).model_dump_json()
+
+
+def test_the_login_cookie_is_removed_after_the_callback(client, database_engine, google):
+    response = log_in(client, database_engine, google)
+    removed = [
+        header
+        for header in response.headers.get_list("set-cookie")
+        if header.startswith(f"{auth.LOGIN_COOKIE}=")
+    ]
+    assert removed and "max-age=0" in removed[0].lower()
+
+
+def test_a_route_added_later_is_closed_without_a_login(client):
+    client.app.add_api_route("/api/added-later", lambda: {"ok": True})
+    assert client.get("/api/added-later").status_code == 401

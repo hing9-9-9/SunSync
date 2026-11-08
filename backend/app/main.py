@@ -11,7 +11,6 @@ from sqlmodel import Session
 
 from app.api import (
     adaptive_control,
-    auth,
     film,
     handoffs,
     health,
@@ -23,6 +22,7 @@ from app.api import (
     ui_spaces,
     vision_ai,
 )
+from app.api.auth import router as auth_router
 from app.auth import auth_settings, current_user
 from app.db import get_session, init_db
 
@@ -38,7 +38,12 @@ def create_app(database_engine: Engine | None = None) -> FastAPI:
         init_db(database_engine)
         yield
 
-    application = FastAPI(title="SunSync API", lifespan=lifespan)
+    # Every route added to the app needs a logged-in user when the login is switched on
+    # (SUNSYNC_AUTH=google), so a router added later is closed by default. `current_user`
+    # lets the health check and the login routes through.
+    application = FastAPI(
+        title="SunSync API", lifespan=lifespan, dependencies=[Depends(current_user)]
+    )
 
     @application.exception_handler(RequestValidationError)
     async def invalid_request(request: Request, exc: RequestValidationError) -> JSONResponse:
@@ -53,24 +58,18 @@ def create_app(database_engine: Engine | None = None) -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    # Health and the login routes stay open; every other route needs a logged-in user when the
-    # login is switched on (SUNSYNC_AUTH=google).
-    protected = [Depends(current_user)]
     application.include_router(health.router, prefix="/api")
-    application.include_router(auth.router, prefix="/api")
-    for router in (
-        scenes.router,
-        sunpath.router,
-        ui_spaces.router,
-        handoffs.router,
-        measurements.router,
-        shading.router,
-        film.router,
-        nowcast_ai.router,
-        vision_ai.router,
-        adaptive_control.router,
-    ):
-        application.include_router(router, prefix="/api", dependencies=protected)
+    application.include_router(auth_router, prefix="/api")
+    application.include_router(scenes.router, prefix="/api")
+    application.include_router(sunpath.router, prefix="/api")
+    application.include_router(ui_spaces.router, prefix="/api")
+    application.include_router(handoffs.router, prefix="/api")
+    application.include_router(measurements.router, prefix="/api")
+    application.include_router(shading.router, prefix="/api")
+    application.include_router(film.router, prefix="/api")
+    application.include_router(nowcast_ai.router, prefix="/api")
+    application.include_router(vision_ai.router, prefix="/api")
+    application.include_router(adaptive_control.router, prefix="/api")
 
     if database_engine is not None:
 
