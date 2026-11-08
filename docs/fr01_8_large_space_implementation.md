@@ -284,12 +284,7 @@ class PredictionWorkEstimate:
         return (
             self.timestamp_count
             * self.sample_count
-            * (
-                self.window_count
-                + self.occluder_count
-                + self.room_corner_count
-                + 2
-            )
+            * (self.window_count + self.occluder_count + self.room_corner_count + 2)
         )
 
     def context(self, max_checks: int) -> dict[str, int]: ...

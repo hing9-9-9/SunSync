@@ -79,6 +79,7 @@ SunpathErrorTargetType = Literal[
     "request",
 ]
 
+
 class SunpathErrorDetail(SunpathModel):
     code: SunpathErrorCode
     message: str
@@ -199,9 +200,7 @@ class SampleInsideOccluderError(ValueError):
         self.sample_index = sample_index
         self.region_id = region_id
         self.occluder_id = occluder_id
-        super().__init__(
-            f"sample {sample_index} of {region_id} is inside occluder {occluder_id}"
-        )
+        super().__init__(f"sample {sample_index} of {region_id} is inside occluder {occluder_id}")
 ```
 
 기존 메시지는 엔진 단위 테스트와 로그 호환성을 위해 유지하되, 서비스는 속성으로 분류한다.

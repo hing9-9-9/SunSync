@@ -123,9 +123,13 @@ def test_summary_omits_samples_and_matches_diagnostic_aggregates(client, scene_p
             samples = diagnostic_entry["samples"]
             assert diagnostic_entry["sample_count"] == len(samples)
             values = [sample["direct_irradiance_W_m2"] for sample in samples]
-            expected_max = None if not values or any(value is None for value in values) else max(values)
+            expected_max = (
+                None if not values or any(value is None for value in values) else max(values)
+            )
             assert diagnostic_entry["max_direct_irradiance_W_m2"] == expected_max
-            assert summary_entry == {key: value for key, value in diagnostic_entry.items() if key != "samples"}
+            assert summary_entry == {
+                key: value for key, value in diagnostic_entry.items() if key != "samples"
+            }
 
     summary_bytes = len(json.dumps(summary, separators=(",", ":")).encode())
     diagnostic_bytes = len(json.dumps(diagnostic, separators=(",", ":")).encode())
@@ -258,9 +262,7 @@ def test_prediction_rejects_auto_tile_resource_limit(
         assert detail["context"]["room_corner_count"] == 4
 
 
-def test_prediction_reports_overlap_with_user_facing_names(
-    client, scene_payload, monkeypatch
-):
+def test_prediction_reports_overlap_with_user_facing_names(client, scene_payload, monkeypatch):
     create_scene(client, scene_payload)
 
     def overlap(*_args, **_kwargs):

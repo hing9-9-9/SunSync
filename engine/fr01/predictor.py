@@ -44,9 +44,7 @@ class SampleInsideOccluderError(ValueError):
         self.sample_index = sample_index
         self.region_id = region_id
         self.occluder_id = occluder_id
-        super().__init__(
-            f"sample {sample_index} of {region_id} is inside occluder {occluder_id}"
-        )
+        super().__init__(f"sample {sample_index} of {region_id} is inside occluder {occluder_id}")
 
 
 def exposure_intervals(timeline: tuple[RegionTimeResult, ...]) -> tuple[ExposureInterval, ...]:

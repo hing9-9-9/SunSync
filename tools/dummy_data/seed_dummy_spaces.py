@@ -103,14 +103,30 @@ def check(base: str, space: dict, scene_id: str, revision: int, date: str, expec
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument("--base-url", default="http://127.0.0.1:8000")
-    parser.add_argument("--suffix", default="v1", help="appended to every space id (deleted ids cannot be reused)")
+    parser.add_argument(
+        "--suffix", default="v1", help="appended to every space id (deleted ids cannot be reused)"
+    )
     parser.add_argument("--only", help="comma separated scenario keys, e.g. S1,S3")
-    parser.add_argument("--check", action="store_true", help="run FR-01 for each scenario and compare with expectations")
-    parser.add_argument("--delete", action="store_true", help="delete the spaces instead of creating them")
-    parser.add_argument("--dry-run", action="store_true", help="validate the files and list what would be sent")
-    parser.add_argument("--allow-remote", action="store_true", help="required for any address that is not this machine")
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="run FR-01 for each scenario and compare with expectations",
+    )
+    parser.add_argument(
+        "--delete", action="store_true", help="delete the spaces instead of creating them"
+    )
+    parser.add_argument(
+        "--dry-run", action="store_true", help="validate the files and list what would be sent"
+    )
+    parser.add_argument(
+        "--allow-remote",
+        action="store_true",
+        help="required for any address that is not this machine",
+    )
     parser.add_argument(
         "--skip-heavy",
         action="store_true",
@@ -121,7 +137,9 @@ def main() -> int:
     base = args.base_url.rstrip("/")
     host = urllib.parse.urlparse(base).hostname or ""
     if host not in LOCAL_HOSTS and not args.allow_remote:
-        print(f"Refusing {base}: not a local address. Pass --allow-remote to write to a shared server.")
+        print(
+            f"Refusing {base}: not a local address. Pass --allow-remote to write to a shared server."
+        )
         return 2
     only = {k.strip() for k in args.only.split(",")} if args.only else None
     scenarios = [s for s in load(only) if not (args.skip_heavy and s["key"] == "S6a")]

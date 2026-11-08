@@ -116,8 +116,10 @@ class PredictionWorkEstimate:
 
     @property
     def intersection_checks(self) -> int:
-        return self.timestamp_count * self.sample_count * (
-            self.window_count + self.occluder_count + self.room_corner_count + 2
+        return (
+            self.timestamp_count
+            * self.sample_count
+            * (self.window_count + self.occluder_count + self.room_corner_count + 2)
         )
 
     def context(self, max_checks: int) -> dict[str, object]:
