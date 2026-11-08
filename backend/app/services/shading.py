@@ -40,11 +40,19 @@ def _film_windows(scene: Scene) -> list[FilmWindow]:
 
 def _caps(scene: Scene) -> dict[str, float]:
     if scene.policy is None:
-        raise SunpathValidationError("scene has no protection policy")
+        raise SunpathValidationError(
+            "INVALID_SCENE_GEOMETRY",
+            "공간 배치를 계산할 수 없습니다.",
+            target_type="scene",
+        )
     b = scene.policy.grades.B.max_direct_irradiance_W_m2
     c = scene.policy.grades.C.max_direct_irradiance_W_m2
     if b is None or c is None:
-        raise SunpathValidationError("grades B and C need max_direct_irradiance_W_m2")
+        raise SunpathValidationError(
+            "INVALID_SCENE_GEOMETRY",
+            "공간 배치를 계산할 수 없습니다.",
+            target_type="scene",
+        )
     return {"B": b, "C": c}
 
 

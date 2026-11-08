@@ -17,6 +17,8 @@ from fastapi.testclient import TestClient
 from sqlalchemy import Engine
 from sqlmodel import Session, create_engine
 
+from engine.fr01.predictor import SampleInsideOccluderError
+
 EXAMPLES = Path(__file__).resolve().parents[1] / "docs" / "examples"
 
 
@@ -190,10 +192,9 @@ def test_prediction_reports_not_found_revision_and_request_validation_errors(cli
         ).status_code
         == 422
     )
-    assert (
-        client.post(path, json=request_body(protected_region_ids=["missing_region"])).status_code
-        == 422
-    )
+    unknown = client.post(path, json=request_body(protected_region_ids=["missing_region"]))
+    assert unknown.status_code == 422
+    assert unknown.json()["detail"]["code"] == "INVALID_PREDICTION_REQUEST"
     assert (
         client.post(path, json=request_body(duration_minutes=1440, interval_seconds=1)).status_code
         == 422
@@ -201,11 +202,14 @@ def test_prediction_reports_not_found_revision_and_request_validation_errors(cli
 
 
 @pytest.mark.parametrize(
-    ("limit_name", "limit_value"),
-    [("MAX_SELECTED_SAMPLES", 1), ("MAX_INTERSECTION_CHECKS", 1)],
+    ("limit_name", "limit_value", "error_code"),
+    [
+        ("MAX_SELECTED_SAMPLES", 1, "SAMPLE_LIMIT_EXCEEDED"),
+        ("MAX_INTERSECTION_CHECKS", 1, "INTERSECTION_LIMIT_EXCEEDED"),
+    ],
 )
 def test_prediction_rejects_auto_tile_resource_limit(
-    client, scene_payload, monkeypatch, limit_name, limit_value
+    client, scene_payload, monkeypatch, limit_name, limit_value, error_code
 ):
     create_scene(client, scene_payload)
     monkeypatch.setattr(sunpath_service, limit_name, limit_value)
@@ -214,6 +218,43 @@ def test_prediction_rejects_auto_tile_resource_limit(
         json=request_body(),
     )
     assert response.status_code == 422
+    detail = response.json()["detail"]
+    assert detail["code"] == error_code
+    assert detail["target_type"] == "request"
+    if error_code == "SAMPLE_LIMIT_EXCEEDED":
+        assert detail["context"]["sample_count"] > detail["context"]["max_samples"]
+    else:
+        assert detail["context"]["estimated_checks"] > detail["context"]["max_checks"]
+        assert detail["context"]["timestamp_count"] > 0
+        assert detail["context"]["room_corner_count"] == 4
+
+
+def test_prediction_reports_overlap_with_user_facing_names(
+    client, scene_payload, monkeypatch
+):
+    create_scene(client, scene_payload)
+
+    def overlap(*_args, **_kwargs):
+        raise SampleInsideOccluderError(20, "region_A", "shelf_001")
+
+    monkeypatch.setattr(sunpath_service, "predict_region_exposure", overlap)
+    response = client.post(
+        f"/api/scenes/{scene_payload['scene_id']}/sunpath-predictions",
+        json=request_body(),
+    )
+    assert response.status_code == 422
+    detail = response.json()["detail"]
+    assert detail == {
+        "code": "FURNITURE_OVERLAP",
+        "message": "보호 영역과 가구가 겹쳐 있어 예측할 수 없습니다.",
+        "target_type": "protected_region",
+        "target_id": "region_A",
+        "target_name": "서가 남쪽 전면",
+        "related_target_type": "furniture",
+        "related_target_id": "shelf_001",
+        "related_target_name": "가상 서가",
+        "context": {"sample_index": 20},
+    }
 
 
 def test_prediction_rejects_invalid_stored_scene_geometry_without_mutation(
@@ -231,6 +272,7 @@ def test_prediction_rejects_invalid_stored_scene_geometry_without_mutation(
         session.commit()
     response = client.post("/api/scenes/invalid_scene/sunpath-predictions", json=request_body())
     assert response.status_code == 422
+    assert response.json()["detail"]["code"] == "INVALID_SCENE_GEOMETRY"
     with Session(database_engine) as session:
         record = session.get(SceneRecord, "invalid_scene")
         assert record is not None

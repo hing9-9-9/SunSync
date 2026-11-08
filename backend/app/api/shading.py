@@ -12,6 +12,7 @@ from app.db import get_session
 from app.models.scene import SceneRecord
 from app.schemas.scene import Scene
 from app.schemas.shading_plan import ShadingPlan, ShadingPlanRequest
+from app.schemas.sunpath import SunpathErrorDetail
 from app.services.shading import shading_plan_for_scene
 from app.services.sunpath import SunpathValidationError
 
@@ -46,8 +47,14 @@ def create_shading_plan(
     try:
         scene = Scene.model_validate_json(record.scene_json)
     except ValidationError as error:
+        detail = SunpathErrorDetail(
+            code="INVALID_SCENE_GEOMETRY",
+            message="저장된 공간 정보를 계산할 수 없습니다.",
+            target_type="scene",
+        )
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(error)
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=detail.model_dump(mode="json"),
         ) from error
     bind = session.get_bind()
     nowcast_engine = bind if isinstance(bind, Engine) else bind.engine
@@ -60,5 +67,6 @@ def create_shading_plan(
         )
     except SunpathValidationError as error:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(error)
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=error.detail.model_dump(mode="json"),
         ) from error

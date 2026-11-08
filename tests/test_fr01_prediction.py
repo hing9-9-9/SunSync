@@ -161,7 +161,9 @@ def test_predictor_true_from_start_never_exposed_and_rejects_interior_sample():
     assert not never.timeline[0].exposed
     assert never.timeline[0].samples[0].reason is ExposureReason.NO_WINDOW
     box = Cuboid("box", "room", (3, 2, 0), (1, 1, 2), 0)
-    with pytest.raises(ValueError, match="inside occluder box"):
+    from engine.fr01.predictor import SampleInsideOccluderError
+
+    with pytest.raises(SampleInsideOccluderError, match="inside occluder box") as caught:
         predict_region_exposure(
             room(),
             (window(),),
@@ -169,3 +171,6 @@ def test_predictor_true_from_start_never_exposed_and_rejects_interior_sample():
             region(((3, 2, 1),)),
             (position(0, 45, SUN_SOUTH),),
         )
+    assert caught.value.sample_index == 0
+    assert caught.value.region_id == "region"
+    assert caught.value.occluder_id == "box"

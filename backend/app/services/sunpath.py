@@ -22,6 +22,9 @@ from app.schemas.sunpath import (
     SampleResultResponse,
     SolarPositionResponse,
     SourceSnapshotResponse,
+    SunpathErrorCode,
+    SunpathErrorDetail,
+    SunpathErrorTargetType,
     SunpathPredictionRequest,
     SunpathPredictionResponse,
 )
@@ -34,7 +37,11 @@ from engine.fr01.models import (
     Vector3,
     Window,
 )
-from engine.fr01.predictor import direct_irradiance_W_m2, predict_region_exposure
+from engine.fr01.predictor import (
+    SampleInsideOccluderError,
+    direct_irradiance_W_m2,
+    predict_region_exposure,
+)
 from engine.fr01.solar import calculate_solar_positions, make_prediction_grid
 from engine.fr01.tiling import tile_centres
 
@@ -43,7 +50,33 @@ MAX_INTERSECTION_CHECKS = 5_000_000
 
 
 class SunpathValidationError(ValueError):
-    """A request or stored Scene cannot be evaluated by the FR-01 MVP."""
+    """A structured FR-01 domain error safe to expose through the API."""
+
+    def __init__(
+        self,
+        code: SunpathErrorCode,
+        message: str,
+        *,
+        target_type: SunpathErrorTargetType | None = None,
+        target_id: str | None = None,
+        target_name: str | None = None,
+        related_target_type: SunpathErrorTargetType | None = None,
+        related_target_id: str | None = None,
+        related_target_name: str | None = None,
+        context: dict[str, object] | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.detail = SunpathErrorDetail(
+            code=code,
+            message=message,
+            target_type=target_type,
+            target_id=target_id,
+            target_name=target_name,
+            related_target_type=related_target_type,
+            related_target_id=related_target_id,
+            related_target_name=related_target_name,
+            context=context or {},
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -124,16 +157,28 @@ def adapt_scene(scene: Scene) -> SceneGeometry:
             ),
         )
     except ValueError as error:
-        raise SunpathValidationError(f"scene geometry is not calculation-ready: {error}") from error
+        raise SunpathValidationError(
+            "INVALID_SCENE_GEOMETRY",
+            "공간 배치를 계산할 수 없습니다.",
+            target_type="scene",
+        ) from error
 
 
 def _start_time(value: str) -> datetime:
     try:
         result = datetime.fromisoformat(value)
     except ValueError as error:
-        raise SunpathValidationError("start_time must be an ISO 8601 timestamp") from error
+        raise SunpathValidationError(
+            "INVALID_PREDICTION_REQUEST",
+            "예측 요청값을 확인해 주세요.",
+            target_type="request",
+        ) from error
     if result.utcoffset() is None:
-        raise SunpathValidationError("start_time must include a timezone offset")
+        raise SunpathValidationError(
+            "INVALID_PREDICTION_REQUEST",
+            "예측 요청값을 확인해 주세요.",
+            target_type="request",
+        )
     return result
 
 
@@ -148,13 +193,20 @@ def _selected_regions(
         missing = requested - present
         if missing:
             raise SunpathValidationError(
-                f"protected_region_ids contains unknown ID: {min(missing)}"
+                "INVALID_PREDICTION_REQUEST",
+                "예측 요청값을 확인해 주세요.",
+                target_type="request",
+                context={"field": "protected_region_ids"},
             )
         result = tuple(
             region for region in geometry.protected_regions if region.region_id in requested
         )
     if not result:
-        raise SunpathValidationError("scene has no protected regions to predict")
+        raise SunpathValidationError(
+            "INVALID_PREDICTION_REQUEST",
+            "예측할 보호 영역이 없습니다.",
+            target_type="request",
+        )
     return result
 
 
@@ -321,10 +373,19 @@ def predict_scene(
         options = PredictionOptions(request.duration_minutes, request.interval_seconds)
         timestamps = make_prediction_grid(start, options)
     except ValueError as error:
-        raise SunpathValidationError(str(error)) from error
+        raise SunpathValidationError(
+            "INVALID_PREDICTION_REQUEST",
+            "예측 요청값을 확인해 주세요.",
+            target_type="request",
+        ) from error
     samples = sum(len(tile_centres(region)) for region in regions)
     if samples > MAX_SELECTED_SAMPLES:
-        raise SunpathValidationError("selected regions exceed the sample-point limit")
+        raise SunpathValidationError(
+            "SAMPLE_LIMIT_EXCEEDED",
+            "보호 영역의 계산 지점 수가 한도를 초과했습니다.",
+            target_type="request",
+            context={"sample_count": samples, "max_samples": MAX_SELECTED_SAMPLES},
+        )
     work = (
         len(timestamps)
         * samples
@@ -336,7 +397,20 @@ def predict_scene(
         )
     )
     if work > MAX_INTERSECTION_CHECKS:
-        raise SunpathValidationError("prediction exceeds the intersection-check limit")
+        raise SunpathValidationError(
+            "INTERSECTION_LIMIT_EXCEEDED",
+            "공간이 너무 복잡해 예측 계산 한도를 초과했습니다.",
+            target_type="request",
+            context={
+                "estimated_checks": work,
+                "max_checks": MAX_INTERSECTION_CHECKS,
+                "timestamp_count": len(timestamps),
+                "sample_count": samples,
+                "window_count": len(geometry.windows),
+                "occluder_count": len(geometry.occluders),
+                "room_corner_count": len(geometry.room.floor_vertices_m),
+            },
+        )
     try:
         solar_positions = calculate_solar_positions(geometry.site, timestamps)
         received_at = _utc(request_received_at or datetime.now(UTC))
@@ -436,8 +510,26 @@ def predict_scene(
             )
             for region in regions
         )
+    except SampleInsideOccluderError as error:
+        region_names = {item.region_id: item.name for item in scene.protected_regions}
+        occluder_names = {item.occluder_id: item.name for item in scene.occluders}
+        raise SunpathValidationError(
+            "FURNITURE_OVERLAP",
+            "보호 영역과 가구가 겹쳐 있어 예측할 수 없습니다.",
+            target_type="protected_region",
+            target_id=error.region_id,
+            target_name=region_names.get(error.region_id),
+            related_target_type="furniture",
+            related_target_id=error.occluder_id,
+            related_target_name=occluder_names.get(error.occluder_id),
+            context={"sample_index": error.sample_index},
+        ) from error
     except ValueError as error:
-        raise SunpathValidationError(str(error)) from error
+        raise SunpathValidationError(
+            "INVALID_SCENE_GEOMETRY",
+            "공간 배치를 계산할 수 없습니다.",
+            target_type="scene",
+        ) from error
     return SunpathPredictionResponse(
         result_version="0.3.0" if nowcast_engine is not None else "0.2.0",
         scene_id=scene.scene_id,

@@ -8,6 +8,14 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 DniSource = Literal["scene_weather", "open_meteo", "pvlib_clear_sky", "unknown"]
+SunpathErrorCode = Literal[
+    "FURNITURE_OVERLAP",
+    "INTERSECTION_LIMIT_EXCEEDED",
+    "SAMPLE_LIMIT_EXCEEDED",
+    "INVALID_SCENE_GEOMETRY",
+    "INVALID_PREDICTION_REQUEST",
+]
+SunpathErrorTargetType = Literal["furniture", "protected_region", "scene", "request"]
 FallbackReason = Literal[
     "scene_weather_missing",
     "scene_weather_stale",
@@ -25,6 +33,18 @@ NonnegativeIrradiance = Annotated[float, Field(ge=0)]
 
 class SunpathModel(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True, allow_inf_nan=False)
+
+
+class SunpathErrorDetail(SunpathModel):
+    code: SunpathErrorCode
+    message: str
+    target_type: SunpathErrorTargetType | None = None
+    target_id: str | None = None
+    target_name: str | None = None
+    related_target_type: SunpathErrorTargetType | None = None
+    related_target_id: str | None = None
+    related_target_name: str | None = None
+    context: dict[str, object] = Field(default_factory=dict)
 
 
 class SunpathPredictionRequest(SunpathModel):
