@@ -74,7 +74,10 @@ export class MeasurementClient {
           const previous = flattened(view.detections);
           return previous.length === incoming.length && Math.sqrt(incoming.reduce((sum, n, i) => sum + (n - previous[i]) ** 2, 0) / incoming.length) < 5;
         });
-        if (result.detections.length === 4 && !repeated) {
+        const rows = frame.board.ids_by_row as number[][] | undefined;
+        const expectedIds = (rows ?? [[0]]).flat();
+        const detectedIds = new Set(result.detections.map(d => d.marker_id));
+        if (result.detections.length === expectedIds.length && expectedIds.every(id => detectedIds.has(id)) && !repeated) {
           this.views.push({ capture_id: frame.capture_id, stream_id: frame.stream_id, lens_id: frame.lens_id,
             width: frame.width, height: frame.height, detections: result.detections });
           this.views = this.views.slice(-30);
@@ -93,7 +96,7 @@ export class MeasurementClient {
           }
         }
         return { status: "setup_required", acceptedViews: this.views.length,
-          message: "마커 네 개가 모두 보이도록 화면의 가운데와 가장자리, 좌우·위아래 기울인 각도로 천천히 비춰 주세요." };
+          message: "마커의 검정 테두리와 네 모서리가 모두 보이도록 화면의 가운데와 가장자리, 좌우·위아래 기울인 각도로 천천히 비춰 주세요." };
       }
       if (result.pose?.status !== "ok") return { status: "retake", message: "마커가 선명하게 보이도록 잠시 멈춰 다시 촬영해 주세요." };
       return { status: "accepted", capture: {
