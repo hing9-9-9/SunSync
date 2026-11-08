@@ -5,6 +5,8 @@ import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment
 import { filmGrid, isWidthWall, resolveWindow } from "./model.ts";
 import type { Face, Furniture, Region, Space, Wall } from "./model.ts";
 import { sunPosition } from "./sun3d.ts";
+import { dateOfDayOfYear, safeUtcOffsetHours } from "./floorSun.ts";
+import { shelfFront } from "./shelfFront.ts";
 
 export type Level = "basic" | "sun" | "film";
 export type Lit = { open: Record<string, number>; film: Record<string, number>; blocked: number; cells: number };
@@ -211,30 +213,43 @@ export function createSpaceScene(host: HTMLElement, space: Space, events: Events
     const line = new THREE.LineBasicMaterial({ color: INK, transparent: true, opacity: 0.42 });
     const mats = [mat];
     const parts: THREE.Mesh[] = [];
+    let target: THREE.Object3D = group;
     const part = (x0: number, x1: number, y0: number, y1: number, z0: number, z1: number, m: THREE.Material = mat, occludes = true) => {
       const mesh = box(new THREE.Vector3(x1 - x0, y1 - y0, z1 - z0), new THREE.Vector3((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2), m);
       edges(mesh, line);
       mesh.userData.fid = f.id;
-      group.add(mesh);
+      target.add(mesh);
       parts.push(mesh);
       if (occludes) occluders.push(mesh);
       return mesh;
     };
     const { width: w, depth: d, height: h } = f, t = 0.025;
     if (f.type === "bookcase") {
-      // Open front faces south (+z); books sit on each shelf.
-      part(0, w, 0, h, 0, t);
-      part(0, t, 0, h, 0, d);
-      part(w - t, w, 0, h, 0, d);
-      part(0, w, h - t, h, 0, d);
-      part(0, w, 0, 0.08, 0, d);
+      // Built with its open front toward +z, then turned so the front looks at the window (the
+      // protected face); the footprint w x d stays as drawn in the plan. Books sit on each shelf.
+      const front = shelfFront(win?.wall);
+      const sideways = front.dx !== 0;
+      const [lw, ld] = sideways ? [d, w] : [w, d];
+      const turn = new THREE.Group();
+      turn.position.set(w / 2, 0, d / 2);
+      turn.rotation.y = front.yaw;
+      const inner = new THREE.Group();
+      inner.position.set(-lw / 2, 0, -ld / 2);
+      turn.add(inner);
+      group.add(turn);
+      target = inner;
+      part(0, lw, 0, h, 0, t);
+      part(0, t, 0, h, 0, ld);
+      part(lw - t, lw, 0, h, 0, ld);
+      part(0, lw, h - t, h, 0, ld);
+      part(0, lw, 0, 0.08, 0, ld);
       const shelves = Math.max(3, Math.round(h / 0.38));
       const gap = (h - 0.08 - t) / shelves;
       const books: [number, number, number, number, number][] = [];
       for (let s = 0; s < shelves; s++) {
         const base = 0.08 + s * gap;
-        if (s > 0) part(t, w - t, base - t / 2, base + t / 2, t, d);
-        for (let x = t + 0.01; x < w - t - 0.08; ) {
+        if (s > 0) part(t, lw - t, base - t / 2, base + t / 2, t, ld);
+        for (let x = t + 0.01; x < lw - t - 0.08; ) {
           const bw = 0.025 + random() * 0.035, bh = gap * (0.55 + random() * 0.3);
           if (random() > 0.1) books.push([x, bw, base + t / 2, bh, 0.45 + random() * 0.25]);
           x += bw + 0.004;
@@ -243,13 +258,13 @@ export function createSpaceScene(host: HTMLElement, space: Space, events: Events
       const tones = ["#e9e8ec", "#dcdbe1", "#efede6", "#d2d0d8", "#e4e2ef", "#c9c7d1"].map(c => new THREE.Color(c));
       const bookMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ roughness: 0.9 }), books.length);
       books.forEach(([x, bw, y, bh, depthShare], i) => {
-        const bd = (d - t) * depthShare;
-        bookMesh.setMatrixAt(i, new THREE.Matrix4().compose(new THREE.Vector3(x + bw / 2, y + bh / 2, d - bd / 2 - 0.02), new THREE.Quaternion(), new THREE.Vector3(bw, bh, bd)));
+        const bd = (ld - t) * depthShare;
+        bookMesh.setMatrixAt(i, new THREE.Matrix4().compose(new THREE.Vector3(x + bw / 2, y + bh / 2, ld - bd / 2 - 0.02), new THREE.Quaternion(), new THREE.Vector3(bw, bh, bd)));
         bookMesh.setColorAt(i, tones[Math.floor(random() * tones.length)]);
       });
       bookMesh.castShadow = bookMesh.receiveShadow = true;
       bookMesh.raycast = () => {};
-      group.add(bookMesh);
+      inner.add(bookMesh);
     } else if (f.type === "desk" || f.type === "table") {
       const leg = f.type === "table" ? 0.06 : 0.045, inset = 0.05;
       part(0, w, h - 0.035, h, 0, d);
@@ -379,8 +394,9 @@ export function createSpaceScene(host: HTMLElement, space: Space, events: Events
   const sunPath = new THREE.Line(new THREE.BufferGeometry(), pathMat);
   scene.add(sunPath);
   const RADIUS = 6.5;
-  const utcOffset = 9; // shortcut: the sample site is Seoul; read the offset from site.timezone for other zones.
   const sunDir = (day: number, hour: number) => {
+    // Local clock time in the site's zone, with that date's offset (daylight saving included).
+    const utcOffset = safeUtcOffsetHours(site.timezone, dateOfDayOfYear(new Date().getFullYear(), day));
     const { altitude, azimuth } = sunPosition(day, hour, site.latitude, site.longitude, utcOffset);
     const a = THREE.MathUtils.degToRad(altitude), z = THREE.MathUtils.degToRad(azimuth);
     return { dir: new THREE.Vector3(Math.cos(a) * Math.sin(z), Math.sin(a), -Math.cos(a) * Math.cos(z)), altitude, azimuth };

@@ -14,6 +14,13 @@ export function utcOffsetHours(timeZone: string, date: Date): number {
   const m = text.match(/GMT([+-])(\d{2}):?(\d{2})?/);
   return m ? (m[1] === "-" ? -1 : 1) * (Number(m[2]) + Number(m[3] ?? 0) / 60) : 0;
 }
+/** Same offset, but 9 (Seoul) when the zone is missing or not an IANA name. */
+export function safeUtcOffsetHours(timeZone: string | null | undefined, date: Date, fallback = 9): number {
+  if (!timeZone) return fallback;
+  try { return utcOffsetHours(timeZone, date); } catch { return fallback; }
+}
+/** Noon UTC of a day of the year, enough to pick the zone's offset (DST) for that date. */
+export const dateOfDayOfYear = (year: number, day: number) => new Date(Date.UTC(year, 0, day, 12));
 const dayOfYearOf = (d: Date) => Math.round((Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) - Date.UTC(d.getFullYear(), 0, 0)) / 86400000);
 
 // Convex hull (monotone chain); shadows are hulls of a box's foot and its projected top.
