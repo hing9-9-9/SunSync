@@ -156,7 +156,7 @@ Everyone who has the password sees the same spaces until the spaces are separate
 
 - **Photos are not stored.** The measurement server receives each photo as base64 inside the request, uses it in memory and returns only the detected markers; no code writes it to disk. Requests are limited to 16 MB by the server and 20 MB by Caddy.
 - **Forecast worker.** The API works without it (it falls back to the clear-sky value), but the forecast comparison needs it. It runs once an hour, only for the building locations saved in spaces, and calls Open-Meteo, so the server needs outbound internet access.
-- **Basic auth** in the `Caddyfile` locks only the data (`/api` and `/measure`) until the Google login ships. The web app files stay public, so the landing page opens without a password and the phone can load the manifest and install the app. The browser asks for the password when the app first requests data; whether the app handles that prompt cleanly has to be checked on the server. If it does not, move `import locked` to the whole site block.
+- **Basic auth** in the `Caddyfile` locks only the data (`/api` and `/measure`) until the Google login ships. The web app files stay public, so the landing page opens without a password and the phone can load the manifest and install the app. The browser asks for the password when the app first requests data; whether the app handles that prompt cleanly has to be checked on the server. If it does not, move `import locked` to the whole site block. The Google login in [auth.md](auth.md) replaces it.
 - **Remove the server after the last demo (12/11)**: delete the instance and the public IP in the AWS console and download a last backup first. Set an AWS budget alert when you create the account.
 
 ## Not verified yet
