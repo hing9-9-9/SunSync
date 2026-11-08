@@ -697,7 +697,8 @@ export function useSpaceApp() {
     }
     // Server without auth routes (404) or offline: keep working as before with what is stored.
     const user = session.status === "in" ? session.user : (initial.account ?? { name: "SunSync 사용자", email: "" });
-    if (session.status === "in") {
+    // With the login off (local development) everyone is the same development user: no switch.
+    if (session.status === "in" && session.authEnabled) {
       let last = initial.account?.email || "";
       try { last ||= localStorage.getItem(LAST_EMAIL_KEY) ?? ""; } catch { /* storage blocked */ }
       if (last && user.email && last.toLowerCase() !== user.email.toLowerCase()) {
