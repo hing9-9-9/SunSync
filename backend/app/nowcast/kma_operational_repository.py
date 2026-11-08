@@ -199,7 +199,11 @@ class OperationalNowcastRepository:
             separators=(",", ":"),
         ).encode("utf-8")
         result_hash = hashlib.sha256(result_payload).hexdigest()
-        status = "degraded" if any(point.prediction_source == "unavailable" for point in points) else "ready"
+        status = (
+            "degraded"
+            if any(point.prediction_source == "unavailable" for point in points)
+            else "ready"
+        )
         expires_at = created_at + RUN_MAX_AGE
 
         with self.engine.begin() as connection:

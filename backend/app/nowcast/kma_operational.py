@@ -36,7 +36,9 @@ def floor_to_ten_minutes(value: datetime) -> datetime:
     return utc.replace(minute=(utc.minute // 10) * 10, second=0, microsecond=0)
 
 
-def _solar_geometry(site: Site, timestamps: tuple[datetime, ...]) -> dict[datetime, dict[str, float]]:
+def _solar_geometry(
+    site: Site, timestamps: tuple[datetime, ...]
+) -> dict[datetime, dict[str, float]]:
     location = Location(site.latitude_deg, site.longitude_deg, tz="UTC")
     index = pd.DatetimeIndex(timestamps)
     position = location.get_solarposition(index)

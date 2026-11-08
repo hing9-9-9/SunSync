@@ -124,9 +124,7 @@ def _points(engine: Any, run_id: str) -> list[dict[str, Any]]:
         return [
             dict(row)
             for row in connection.execute(
-                text(
-                    "SELECT * FROM ai_nowcast_point WHERE run_id=:run ORDER BY horizon_minutes"
-                ),
+                text("SELECT * FROM ai_nowcast_point WHERE run_id=:run ORDER BY horizon_minutes"),
                 {"run": run_id},
             ).mappings()
         ]
@@ -191,17 +189,14 @@ def test_stale_kma_falls_back_and_missing_open_meteo_is_unavailable(engine: Any)
     assert points[0]["fallback_reason"] == "stale_kma_observation"
 
     other_site = Site(35.0, 128.0, "Asia/Seoul")
-    unavailable_run = FrozenOperationalNowcaster(
-        engine, rollout_mode="active"
-    ).predict_and_persist(
+    unavailable_run = FrozenOperationalNowcaster(engine, rollout_mode="active").predict_and_persist(
         scene_id="other",
         site=other_site,
         prediction_origin=ORIGIN,
         created_at=ORIGIN,
     )
     assert all(
-        point["prediction_source"] == "unavailable"
-        for point in _points(engine, unavailable_run)
+        point["prediction_source"] == "unavailable" for point in _points(engine, unavailable_run)
     )
 
 

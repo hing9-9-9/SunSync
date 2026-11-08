@@ -81,7 +81,9 @@ class LoadedQuantileArtifact:
     document: dict[str, Any]
 
     def predict_raw_factors(self, features: np.ndarray) -> dict[str, np.ndarray]:
-        return {label: self.models[label].predict_raw_factors(features) for label in QUANTILE_LABELS}
+        return {
+            label: self.models[label].predict_raw_factors(features) for label in QUANTILE_LABELS
+        }
 
     def predict_factors(self, features: np.ndarray) -> dict[str, np.ndarray]:
         raw = self.predict_raw_factors(features)
@@ -132,7 +134,10 @@ def load_model_artifact(
         if not isinstance(values, list) or len(values) != len(FEATURE_NAMES):
             raise ModelArtifactError(f"weights.{label} must contain five values")
         weights = np.asarray(
-            [_finite_number(value, f"weights.{label}[{index}]") for index, value in enumerate(values)],
+            [
+                _finite_number(value, f"weights.{label}[{index}]")
+                for index, value in enumerate(values)
+            ],
             dtype=np.float64,
         )
         bounds = _validate_bounds(bounds_document.get(label), f"weight_bounds.{label}")

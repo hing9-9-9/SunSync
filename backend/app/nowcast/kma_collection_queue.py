@@ -92,9 +92,7 @@ def _chunk_ranges(start: datetime, end: datetime) -> list[tuple[datetime, dateti
     ):
         raise ValueError("range must align to 10-minute UTC boundaries")
     ranges: list[tuple[datetime, datetime]] = []
-    maximum_span = timedelta(
-        minutes=KMA_INTERVAL_MINUTES * (KMA_MAX_POINTS_PER_REQUEST - 1)
-    )
+    maximum_span = timedelta(minutes=KMA_INTERVAL_MINUTES * (KMA_MAX_POINTS_PER_REQUEST - 1))
     current = start
     while current <= end:
         chunk_end = min(end, current + maximum_span)
@@ -158,11 +156,7 @@ def prepare_queue(
     tasks: list[dict[str, Any]] = []
     for index, (chunk_start, chunk_end) in enumerate(ranges, start=1):
         for variable in VARIABLES:
-            relative_raw = (
-                Path("raw")
-                / "kma_gk2a"
-                / f"{stem}_{variable}_part{index:03d}.txt"
-            )
+            relative_raw = Path("raw") / "kma_gk2a" / f"{stem}_{variable}_part{index:03d}.txt"
             tasks.append(
                 {
                     "task_id": f"{variable}_{index:03d}",
@@ -269,9 +263,7 @@ def run_queue(
     return queue_summary(queue_path)
 
 
-def finalize_queue(
-    *, queue_path: Path, output_root: Path, site: Site
-) -> KmaArtifactPaths:
+def finalize_queue(*, queue_path: Path, output_root: Path, site: Site) -> KmaArtifactPaths:
     """Build normalized artifacts only after every durable task has succeeded."""
 
     document = _load_queue(queue_path)
@@ -299,10 +291,9 @@ def finalize_queue(
             if hashlib.sha256(payload).hexdigest() != task["payload_sha256"]:
                 raise KmaQueueError("kma_queue_raw_hash_mismatch")
             parsed = parse_kma_wide_payload(payload, variable)
-            if (
-                parsed.values[0][0] != _parse_utc(task["start_utc"])
-                or parsed.values[-1][0] != _parse_utc(task["end_utc"])
-            ):
+            if parsed.values[0][0] != _parse_utc(task["start_utc"]) or parsed.values[-1][
+                0
+            ] != _parse_utc(task["end_utc"]):
                 raise KmaQueueError("kma_queue_raw_range_mismatch")
             payloads[variable].append(payload)
             series_by_variable[variable].append(parsed)
@@ -311,17 +302,13 @@ def finalize_queue(
         chunks = series_by_variable[variable]
         first = chunks[0]
         if any(
-            (chunk.longitude_deg, chunk.latitude_deg)
-            != (first.longitude_deg, first.latitude_deg)
+            (chunk.longitude_deg, chunk.latitude_deg) != (first.longitude_deg, first.latitude_deg)
             for chunk in chunks[1:]
         ):
             raise KmaQueueError("kma_queue_grid_mismatch")
         values = tuple(value for chunk in chunks for value in chunk.values)
         expected = timedelta(minutes=KMA_INTERVAL_MINUTES)
-        if any(
-            current[0] - previous[0] != expected
-            for previous, current in pairwise(values)
-        ):
+        if any(current[0] - previous[0] != expected for previous, current in pairwise(values)):
             raise KmaQueueError("kma_queue_timestamp_gap")
         return KmaSeries(
             variable=variable,

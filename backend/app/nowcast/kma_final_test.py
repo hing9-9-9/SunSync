@@ -221,9 +221,7 @@ def validate_final_test_inputs(
     if tuple(raw_runs) != expected_runs:
         raise ValueError("Open-Meteo run sequence is incomplete or unordered")
 
-    valid_by_run, available_by_run, open_meteo_rows = _load_open_meteo_metadata(
-        open_meteo_csv
-    )
+    valid_by_run, available_by_run, open_meteo_rows = _load_open_meteo_metadata(open_meteo_csv)
     if tuple(sorted(valid_by_run)) != expected_runs:
         raise ValueError("normalized Open-Meteo run sequence does not match raw manifest")
     coverage = _validate_temporal_coverage(valid_by_run, available_by_run, start, end)
@@ -310,9 +308,7 @@ def evaluate_final_rows(
     cdf: dict[str, float] = {}
     for label, quantile in QUANTILES:
         error = reference - predictions[label]
-        pinball[label] = float(
-            np.mean(np.maximum(quantile * error, (quantile - 1.0) * error))
-        )
+        pinball[label] = float(np.mean(np.maximum(quantile * error, (quantile - 1.0) * error)))
         cdf[label] = float(np.mean(reference <= predictions[label]))
     covered = (reference >= predictions["p10"]) & (reference <= predictions["p90"])
     metrics = {
@@ -330,8 +326,6 @@ def evaluate_final_rows(
         "pinball_loss_W_m2": pinball,
         "empirical_cdf_at_quantile": cdf,
         "picp_p10_p90": float(np.mean(covered)),
-        "mean_interval_width_W_m2": float(
-            np.mean(predictions["p90"] - predictions["p10"])
-        ),
+        "mean_interval_width_W_m2": float(np.mean(predictions["p90"] - predictions["p10"])),
     }
     return records, metrics

@@ -62,11 +62,7 @@ def write_kma_collection(collection: KmaCollection, output_root: Path) -> KmaArt
     def raw_paths(variable: str, count: int, multiple: bool) -> tuple[Path, ...]:
         return tuple(
             raw_directory
-            / (
-                f"{stem}_{variable}_part{index:03d}.txt"
-                if multiple
-                else f"{stem}_{variable}.txt"
-            )
+            / (f"{stem}_{variable}_part{index:03d}.txt" if multiple else f"{stem}_{variable}.txt")
             for index in range(1, count + 1)
         )
 
@@ -108,11 +104,7 @@ def write_kma_collection(collection: KmaCollection, output_root: Path) -> KmaArt
     for timestamp in timestamps:
         dsr = dsr_values.get(timestamp)
         cloud_raw = cloud_values.get(timestamp)
-        cloud = (
-            cloud_raw
-            if cloud_raw is not None and 0.0 <= cloud_raw <= 1.0
-            else None
-        )
+        cloud = cloud_raw if cloud_raw is not None and 0.0 <= cloud_raw <= 1.0 else None
         cloud_out_of_range = cloud_raw is not None and cloud is None
         if cloud_out_of_range:
             quality = "ca_out_of_range"
@@ -157,12 +149,10 @@ def write_kma_collection(collection: KmaCollection, output_root: Path) -> KmaArt
         "row_count": len(timestamps),
         "valid_dsr_count": sum(value is not None for value in dsr_values.values()),
         "valid_cloud_count": sum(
-            value is not None and 0.0 <= value <= 1.0
-            for value in cloud_values.values()
+            value is not None and 0.0 <= value <= 1.0 for value in cloud_values.values()
         ),
         "out_of_range_cloud_count": sum(
-            value is not None and not 0.0 <= value <= 1.0
-            for value in cloud_values.values()
+            value is not None and not 0.0 <= value <= 1.0 for value in cloud_values.values()
         ),
         "dsr_unit": "W/m2",
         "unit_confirmed": True,
@@ -174,18 +164,14 @@ def write_kma_collection(collection: KmaCollection, output_root: Path) -> KmaArt
                     "path": path.relative_to(output_root).as_posix(),
                     "sha256": hashlib.sha256(payload).hexdigest(),
                 }
-                for path, payload in zip(
-                    paths.dsr_raw, collection.dsr_payloads, strict=True
-                )
+                for path, payload in zip(paths.dsr_raw, collection.dsr_payloads, strict=True)
             ],
             "CA": [
                 {
                     "path": path.relative_to(output_root).as_posix(),
                     "sha256": hashlib.sha256(payload).hexdigest(),
                 }
-                for path, payload in zip(
-                    paths.cloud_raw, collection.cloud_payloads, strict=True
-                )
+                for path, payload in zip(paths.cloud_raw, collection.cloud_payloads, strict=True)
             ],
         },
         "normalized_csv": paths.normalized_csv.relative_to(output_root).as_posix(),

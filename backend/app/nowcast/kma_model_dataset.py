@@ -274,8 +274,7 @@ def build_model_dataset(
 
     if horizon_minutes not in ALLOWED_HORIZON_MINUTES:
         raise ValueError(
-            f"horizon_minutes must be one of {ALLOWED_HORIZON_MINUTES}, "
-            f"got {horizon_minutes}"
+            f"horizon_minutes must be one of {ALLOWED_HORIZON_MINUTES}, got {horizon_minutes}"
         )
 
     kma_by_time = {point.timestamp: point for point in kma_points}

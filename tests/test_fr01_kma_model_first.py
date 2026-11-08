@@ -104,9 +104,7 @@ def test_builder_uses_requested_horizon_without_future_inputs(horizon_minutes: i
     )
     assert result.rows
     first = result.rows[0]
-    expected_valid = datetime(2026, 10, 19, 0, 0, tzinfo=UTC) + timedelta(
-        minutes=horizon_minutes
-    )
+    expected_valid = datetime(2026, 10, 19, 0, 0, tzinfo=UTC) + timedelta(minutes=horizon_minutes)
     assert first.horizon_minutes == horizon_minutes
     assert first.valid_time_utc == expected_valid.isoformat().replace("+00:00", "Z")
     assert first.target_dsr_timestamp_utc == first.valid_time_utc
@@ -291,5 +289,8 @@ def test_fixed_split_excludes_target_on_next_split_boundary(
         )
     )
     splits = split_development_rows(tuple(rows))
-    assert all(row.prediction_origin_utc != boundary_origin.isoformat().replace("+00:00", "Z") for row in splits.train)
+    assert all(
+        row.prediction_origin_utc != boundary_origin.isoformat().replace("+00:00", "Z")
+        for row in splits.train
+    )
     assert splits.boundaries["split_embargo_rule"] == "valid_time < next_split_start"

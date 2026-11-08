@@ -45,10 +45,7 @@ def payload(variable: str, values: tuple[str, ...] = ("505.7", "451.2", "451.4")
     header = "  |  ".join(("TMFC", "VAR", "LON", "LAT", *timestamps))
     data = "  |  ".join(("202611050300", variable, "126.9658", "37.5714", *values))
     width = max(len(header), len(data)) + 6
-    return (
-        f"{'=' * width}\n|  {header}  |\n{'=' * width}\n"
-        f"|  {data}  |\n{'=' * width}\n"
-    ).encode()
+    return (f"{'=' * width}\n|  {header}  |\n{'=' * width}\n|  {data}  |\n{'=' * width}\n").encode()
 
 
 def range_payload(variable: str, start: datetime, end: datetime) -> bytes:
@@ -62,10 +59,7 @@ def range_payload(variable: str, start: datetime, end: datetime) -> bytes:
     header = "  |  ".join(("TMFC", "VAR", "LON", "LAT", *timestamps))
     data = "  |  ".join((timestamps[0], variable, "126.9658", "37.5714", *values))
     width = max(len(header), len(data)) + 6
-    return (
-        f"{'=' * width}\n|  {header}  |\n{'=' * width}\n"
-        f"|  {data}  |\n{'=' * width}\n"
-    ).encode()
+    return (f"{'=' * width}\n|  {header}  |\n{'=' * width}\n|  {data}  |\n{'=' * width}\n").encode()
 
 
 def collection():
@@ -73,9 +67,7 @@ def collection():
     cloud_payload = payload("CA", ("0.8", "1.0", "0.9"))
     dsr = parse_kma_wide_payload(dsr_payload, "DSR")
     cloud = parse_kma_wide_payload(cloud_payload, "CA")
-    snapshot = build_kma_snapshot(
-        SITE, START, END, FETCHED, dsr_payload, cloud_payload, dsr, cloud
-    )
+    snapshot = build_kma_snapshot(SITE, START, END, FETCHED, dsr_payload, cloud_payload, dsr, cloud)
     from app.nowcast.kma_adapter import KmaCollection
 
     return KmaCollection(
@@ -138,7 +130,9 @@ def test_adapter_fetches_both_variables_without_exposing_key() -> None:
         query = parse_qs(urlparse(url).query)
         calls.append(query)
         variable = query["varn"][0]
-        return Response(payload(variable, ("0.8", "1.0", "0.9")) if variable == "CA" else payload(variable))
+        return Response(
+            payload(variable, ("0.8", "1.0", "0.9")) if variable == "CA" else payload(variable)
+        )
 
     result = KmaGk2aAdapter(SITE, "secret-key", opener=opener).fetch_range(
         START, END, fetched_at=FETCHED
@@ -189,7 +183,9 @@ def test_adapter_chunks_ranges_at_provider_twenty_four_point_limit() -> None:
     assert len(result.snapshot.points) == 25
     assert len(result.dsr_payloads) == len(result.cloud_payloads) == 2
     assert sorted(variable for variable, _start, _end in calls) == ["CA", "CA", "DSR", "DSR"]
-    assert all((chunk_end - chunk_start) <= timedelta(minutes=230) for _, chunk_start, chunk_end in calls)
+    assert all(
+        (chunk_end - chunk_start) <= timedelta(minutes=230) for _, chunk_start, chunk_end in calls
+    )
 
 
 def test_artifact_writer_preserves_raw_and_creates_readable_csv(tmp_path: Path) -> None:
@@ -215,9 +211,7 @@ def test_artifact_writer_preserves_invalid_cloud_raw_but_nulls_fraction(
     cloud_payload = payload("CA", ("0.8", "1.1", "0.9"))
     dsr = parse_kma_wide_payload(dsr_payload, "DSR")
     cloud = parse_kma_wide_payload(cloud_payload, "CA")
-    snapshot = build_kma_snapshot(
-        SITE, START, END, FETCHED, dsr_payload, cloud_payload, dsr, cloud
-    )
+    snapshot = build_kma_snapshot(SITE, START, END, FETCHED, dsr_payload, cloud_payload, dsr, cloud)
     from app.nowcast.kma_adapter import KmaCollection
 
     result = KmaCollection(

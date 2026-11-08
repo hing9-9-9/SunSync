@@ -193,9 +193,7 @@ def build_kma_snapshot(
     for timestamp in timestamps:
         dsr_value = dsr_values.get(timestamp)
         cloud_raw = cloud_values.get(timestamp)
-        cloud_fraction = (
-            cloud_raw if cloud_raw is not None and 0.0 <= cloud_raw <= 1.0 else None
-        )
+        cloud_fraction = cloud_raw if cloud_raw is not None and 0.0 <= cloud_raw <= 1.0 else None
         if dsr_value is None or cloud_fraction is None:
             degraded = True
         points.append(
@@ -204,9 +202,7 @@ def build_kma_snapshot(
                 latitude_deg=dsr.latitude_deg,
                 longitude_deg=dsr.longitude_deg,
                 ghi_W_m2=dsr_value,
-                cloud_cover_percent=cloud_fraction * 100.0
-                if cloud_fraction is not None
-                else None,
+                cloud_cover_percent=cloud_fraction * 100.0 if cloud_fraction is not None else None,
                 temporal_meaning="instant",
             )
         )
@@ -295,9 +291,7 @@ class KmaGk2aAdapter:
         if start > end:
             raise ValueError("start_time must not be after end_time")
         if any(
-            value.second
-            or value.microsecond
-            or value.minute % KMA_INTERVAL_MINUTES
+            value.second or value.microsecond or value.minute % KMA_INTERVAL_MINUTES
             for value in (start, end)
         ):
             raise ValueError("chunk boundaries must align to 10-minute UTC boundaries")
@@ -307,11 +301,7 @@ class KmaGk2aAdapter:
 
         payload = self._fetch_variable(start, end, normalized_variable)
         series = parse_kma_wide_payload(payload, normalized_variable)
-        if (
-            not series.values
-            or series.values[0][0] != start
-            or series.values[-1][0] != end
-        ):
+        if not series.values or series.values[0][0] != start or series.values[-1][0] != end:
             raise KmaGk2aError("kma_unexpected_range")
         return payload, series
 
@@ -320,9 +310,7 @@ class KmaGk2aAdapter:
     ) -> tuple[tuple[bytes, ...], KmaSeries]:
         ranges: list[tuple[datetime, datetime]] = []
         current = start
-        maximum_span = timedelta(
-            minutes=KMA_INTERVAL_MINUTES * (KMA_MAX_POINTS_PER_REQUEST - 1)
-        )
+        maximum_span = timedelta(minutes=KMA_INTERVAL_MINUTES * (KMA_MAX_POINTS_PER_REQUEST - 1))
         while current <= end:
             chunk_end = min(end, current + maximum_span)
             ranges.append((current, chunk_end))
@@ -338,9 +326,7 @@ class KmaGk2aAdapter:
 
         payloads: list[bytes] = []
         chunks: list[KmaSeries] = []
-        for (chunk_start, chunk_end), (payload, series) in zip(
-            ranges, fetched_chunks, strict=True
-        ):
+        for (chunk_start, chunk_end), (payload, series) in zip(ranges, fetched_chunks, strict=True):
             if (
                 not series.values
                 or series.values[0][0] != chunk_start
@@ -354,14 +340,16 @@ class KmaGk2aAdapter:
             raise KmaGk2aError("kma_empty_response")
         first = chunks[0]
         if any(
-            (chunk.longitude_deg, chunk.latitude_deg)
-            != (first.longitude_deg, first.latitude_deg)
+            (chunk.longitude_deg, chunk.latitude_deg) != (first.longitude_deg, first.latitude_deg)
             for chunk in chunks[1:]
         ):
             raise KmaGk2aError("kma_grid_mismatch")
         values = tuple(item for chunk in chunks for item in chunk.values)
         expected_step = timedelta(minutes=KMA_INTERVAL_MINUTES)
-        if any(current_time - previous != expected_step for previous, current_time in pairwise(t for t, _ in values)):
+        if any(
+            current_time - previous != expected_step
+            for previous, current_time in pairwise(t for t, _ in values)
+        ):
             raise KmaGk2aError("kma_unexpected_interval")
         return (
             tuple(payloads),
@@ -386,7 +374,10 @@ class KmaGk2aAdapter:
         fetched = _utc(fetched_at or datetime.now(UTC), "fetched_at")
         if start >= end:
             raise ValueError("start_time must be before end_time")
-        if any(value.second or value.microsecond or value.minute % KMA_INTERVAL_MINUTES for value in (start, end)):
+        if any(
+            value.second or value.microsecond or value.minute % KMA_INTERVAL_MINUTES
+            for value in (start, end)
+        ):
             raise ValueError("start_time and end_time must align to 10-minute UTC boundaries")
 
         with ThreadPoolExecutor(max_workers=2) as executor:

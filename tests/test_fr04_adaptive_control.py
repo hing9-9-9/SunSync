@@ -600,8 +600,7 @@ def test_cross_track_auto_fetch_nowcast_from_database(
 
     # Step 1: Persist the active worker output consumed by Track 3.
     site_key = (
-        f"{scene_payload['site']['latitude_deg']:.6f},"
-        f"{scene_payload['site']['longitude_deg']:.6f}"
+        f"{scene_payload['site']['latitude_deg']:.6f},{scene_payload['site']['longitude_deg']:.6f}"
     )
     current = datetime.now(UTC)
     with database_engine.begin() as connection:

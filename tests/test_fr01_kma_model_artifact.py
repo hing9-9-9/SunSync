@@ -91,6 +91,7 @@ def test_loader_rejects_unknown_horizon(tmp_path: Path) -> None:
     with pytest.raises(ModelArtifactError, match="unsupported horizon_minutes"):
         load_model_artifact(model_path)
 
+
 def test_loader_rejects_nonfinite_weight(tmp_path: Path) -> None:
     model_path = tmp_path / "model.json"
     document = _read_json(ARTIFACT_ROOT / "horizon_10" / "model.json")
