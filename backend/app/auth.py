@@ -27,6 +27,10 @@ from app.db import get_session
 from app.models.auth import AuthSession, AuthUser, LoginAttempt
 
 COOKIE_NAME = "sunsync_session"
+LOGIN_COOKIE = "sunsync_login"  # lives only while a login is on its way to Google and back
+LOGIN_COOKIE_PATH = "/api/auth/google"
+OPEN_PATH = "/api/health"
+OPEN_PREFIX = "/api/auth/"  # the login routes check the session themselves
 LOGIN_REQUIRED = "로그인이 필요합니다."
 LOCAL_USER = {"name": "개발용 사용자", "email": "dev@localhost"}
 
@@ -204,35 +208,49 @@ def check_claims(claims: dict, settings: AuthSettings, nonce: str, now: datetime
         raise LoginError("the account has no id or e-mail")
 
 
-def start_login(db: Session, settings: AuthSettings, next_path: str | None) -> str:
-    """Remember the login that is sent to Google and return the address to send the user to."""
+def start_login(db: Session, settings: AuthSettings, next_path: str | None) -> tuple[str, str]:
+    """Remember the login that is sent to Google.
+
+    Return the address to send the user to and the value of the login cookie that has to come
+    back with the callback: without it, a callback address made in another browser (with another
+    person's Google account) could log this browser in as that person.
+    """
 
     now = utcnow()
     for old in db.exec(select(LoginAttempt)).all():
         if now - datetime.fromisoformat(old.created_at) > LOGIN_ATTEMPT_LIFETIME:
             db.delete(old)
     state, nonce, verifier = new_token(), new_token(), secrets.token_urlsafe(48)
+    browser = new_token()
     db.add(
         LoginAttempt(
             state_hash=hash_token(state),
             nonce=nonce,
             code_verifier=verifier,
             next_path=safe_next(next_path),
+            browser_hash=hash_token(browser),
             created_at=now.isoformat(),
         )
     )
     db.commit()
-    return authorization_url(settings, state, nonce, verifier)
+    return authorization_url(settings, state, nonce, verifier), browser
 
 
-def finish_login(db: Session, settings: AuthSettings, code: str, state: str) -> tuple[str, str]:
-    """Check what came back from Google. Return the new session token and where to go next."""
+def finish_login(
+    db: Session, settings: AuthSettings, code: str, state: str, browser: str | None
+) -> tuple[str, str]:
+    """Check what came back from Google. Return the new session token and where to go next.
+
+    `browser` is the login cookie of the request: it must be the one given when the login started.
+    """
 
     attempt = db.get(LoginAttempt, hash_token(state))
     if attempt is None:
         raise LoginError("unknown login")
     db.delete(attempt)  # used once, even when the rest fails
     db.commit()
+    if not browser or not secrets.compare_digest(hash_token(browser), attempt.browser_hash):
+        raise LoginError("the login was not started in this browser")
     now = utcnow()
     if now - datetime.fromisoformat(attempt.created_at) > LOGIN_ATTEMPT_LIFETIME:
         raise LoginError("the login took too long")
@@ -325,10 +343,12 @@ def check_origin(request: Request, settings: AuthSettings) -> None:
 
 
 def current_user(request: Request, db: Annotated[Session, Depends(get_session)]) -> AuthUser | None:
-    """Dependency of every protected route: the logged-in user, or None when login is off."""
+    """Dependency of the whole app: the logged-in user, or None when login is off or the route
+    is the health check or a login route."""
 
     settings = auth_settings()
-    if not settings.enabled:
+    path = request.url.path
+    if not settings.enabled or path == OPEN_PATH or path.startswith(OPEN_PREFIX):
         return None
     user = user_for_token(db, settings, request.cookies.get(COOKIE_NAME))
     if user is None:

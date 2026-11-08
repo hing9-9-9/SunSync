@@ -28,4 +28,5 @@ class LoginAttempt(SQLModel, table=True):
     nonce: str
     code_verifier: str
     next_path: str
+    browser_hash: str  # hash of the cookie that ties the login to the browser that started it
     created_at: str
