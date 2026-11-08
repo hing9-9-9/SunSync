@@ -52,3 +52,19 @@ Android의 라이브러리 빌드: JDK 17 + Android SDK 35 + Gradle 8.11.1에서
 - [Apple AVCameraCalibrationData](https://developer.apple.com/documentation/avfoundation/avcameracalibrationdata)
 - [Apple lens distortion correction 설명](https://developer.apple.com/videos/play/wwdc2017/507/)
 - [OpenCV camera calibration](https://docs.opencv.org/4.x/d9/d0c/group__calib3d.html)
+
+
+## 촬영 세션의 필름 마커
+
+앱에서 공간 촬영을 시작할 때 `MeasurementClient.startFilmCapture(backendURL, sceneId, requestId)`를 호출한다. `requestId`는 UUID이며 응답 유실·재진입 때 재사용하도록 호스트가 보관한다. 응답의 `board`를 네이티브 촬영 어댑터 입력으로 전달한다. ID를 0으로 덮어쓰지 않는다.
+
+```ts
+const session = await client.startFilmCapture(backendURL, sceneId, requestId);
+// Android/iOS shutter adapter: use session.board in every NativePayload.
+const outcome = await client.capture({ ...nativePayload, board: session.board });
+// Keep session.board for the final measurement, and use its marker for ENU alignment.
+// On completion or explicit cancellation:
+await client.endFilmCapture();
+```
+
+클라이언트는 매 촬영 전 세션 상태를 확인하고 다른 보드/ID 및 만료된 세션을 거절한다. 완료된 사진에는 `marker_session_id`가 포함된다. 현재 `virtual_applied`는 가상 필름 상태 적용이며 MCU의 실제 표시 확인은 아니다. 호스트 앱 UI 연결과 실기기 시험은 별도다.

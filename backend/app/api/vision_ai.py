@@ -18,6 +18,7 @@ from app.schemas.vision_ai import (
     VisionFurnitureEstimateRequest,
     VisionFurnitureEstimateResponse,
 )
+from app.services.stored_scene import load_stored_scene
 from app.ui_scene import UISpaceRecord
 from engine.vision_ai.pipeline import VisionRegistrationPipeline
 
@@ -40,7 +41,7 @@ def estimate_furniture_3d(
     if record is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Scene not found.")
 
-    scene = Scene.model_validate_json(record.scene_json)
+    scene = load_stored_scene(record.scene_json)
 
     # Resolve target anchor marker transform
     target_marker = None
@@ -63,30 +64,7 @@ def estimate_furniture_3d(
         t_enu_marker = list(target_marker.T_ENU_marker)
     elif len(scene.windows) > 0:
         win = scene.windows[0]
-        u = win.u_axis
-        v = win.v_axis
-        n = win.inward_normal
-        u_center = win.width_m / 2.0
-        v_center = win.height_m / 2.0
-        tx, ty, tz = win.uv_to_enu(u_center, v_center)
-        t_enu_marker = [
-            u[0],
-            u[1],
-            u[2],
-            tx,
-            v[0],
-            v[1],
-            v[2],
-            ty,
-            n[0],
-            n[1],
-            n[2],
-            tz,
-            0.0,
-            0.0,
-            0.0,
-            1.0,
-        ]
+        t_enu_marker = win.marker_transform(win.width_m / 2.0, win.height_m / 2.0)
     elif request.T_ENU_camera is not None:
         t_enu_marker = [
             1.0,

@@ -221,6 +221,20 @@ class Window(Model):
             float(origin[2] + u_m * self.u_axis[2] + v_m * self.v_axis[2]),
         )
 
+    def marker_transform(self, u_m: float, v_m: float) -> list[float]:
+        """Row-major local-to-ENU transform; local basis vectors are columns."""
+        origin = self.uv_to_enu(u_m, v_m)
+        return [
+            value
+            for axis in range(3)
+            for value in (
+                self.u_axis[axis],
+                self.v_axis[axis],
+                self.inward_normal[axis],
+                origin[axis],
+            )
+        ] + [0.0, 0.0, 0.0, 1.0]
+
     @model_validator(mode="after")
     def valid_frame(self) -> Self:
         polygon(self.vertices_m, self.inward_normal, "window")
@@ -907,6 +921,13 @@ class Scene(Model):
                     f"{marker.marker_id}: side_length_m disagrees with window cell size",
                 )
                 matrix = marker.T_ENU_marker
+                require(
+                    close(matrix[0:12:4], window.u_axis)
+                    and close(matrix[1:12:4], window.v_axis)
+                    and close(matrix[2:12:4], window.inward_normal),
+                    f"{marker.marker_id}: window marker rotation columns must match "
+                    "u_axis, v_axis, inward_normal; call marker-pairing to refresh legacy markers",
+                )
                 origin = (matrix[3], matrix[7], matrix[11])
                 u_m, v_m = window.enu_to_uv(origin)
                 require(
