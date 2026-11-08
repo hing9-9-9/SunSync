@@ -62,7 +62,7 @@ def test_prediction_returns_scene_snapshot_timeline_and_sample_diagnostics(clien
     original = create_scene(client, scene_payload)
     response = client.post(
         f"/api/scenes/{scene_payload['scene_id']}/sunpath-predictions",
-        json=request_body(expected_scene_revision=2),
+        json=request_body(expected_scene_revision=2, detail_level="diagnostic"),
     )
     assert response.status_code == 200, response.text
     result = response.json()
@@ -78,7 +78,7 @@ def test_prediction_returns_scene_snapshot_timeline_and_sample_diagnostics(clien
         == len(result["irradiance"])
         == 3
     )
-    assert result["result_version"] == "0.3.0"
+    assert result["result_version"] == "0.4.0"
     assert all(
         irradiance["timestamp"] == timestamp
         and irradiance["ml_applied"] is False
@@ -102,6 +102,34 @@ def test_prediction_returns_scene_snapshot_timeline_and_sample_diagnostics(clien
     for timestamp in result["timestamps"]:
         assert datetime.fromisoformat(timestamp).utcoffset().total_seconds() == 0
     assert client.get(f"/api/scenes/{scene_payload['scene_id']}").json() == original
+
+
+def test_summary_omits_samples_and_matches_diagnostic_aggregates(client, scene_payload):
+    create_scene(client, scene_payload)
+    path = f"/api/scenes/{scene_payload['scene_id']}/sunpath-predictions"
+    summary_response = client.post(path, json=request_body(detail_level="summary"))
+    diagnostic_response = client.post(path, json=request_body(detail_level="diagnostic"))
+    assert summary_response.status_code == diagnostic_response.status_code == 200
+    summary, diagnostic = summary_response.json(), diagnostic_response.json()
+    assert summary["result_version"] == diagnostic["result_version"] == "0.4.0"
+
+    for summary_region, diagnostic_region in zip(
+        summary["regions"], diagnostic["regions"], strict=True
+    ):
+        for summary_entry, diagnostic_entry in zip(
+            summary_region["timeline"], diagnostic_region["timeline"], strict=True
+        ):
+            assert "samples" not in summary_entry
+            samples = diagnostic_entry["samples"]
+            assert diagnostic_entry["sample_count"] == len(samples)
+            values = [sample["direct_irradiance_W_m2"] for sample in samples]
+            expected_max = None if not values or any(value is None for value in values) else max(values)
+            assert diagnostic_entry["max_direct_irradiance_W_m2"] == expected_max
+            assert summary_entry == {key: value for key, value in diagnostic_entry.items() if key != "samples"}
+
+    summary_bytes = len(json.dumps(summary, separators=(",", ":")).encode())
+    diagnostic_bytes = len(json.dumps(diagnostic, separators=(",", ":")).encode())
+    assert summary_bytes < diagnostic_bytes * 0.2
 
 
 def test_prediction_reads_no_provider_during_request_and_uses_durable_fallback(
@@ -151,6 +179,7 @@ def test_prediction_evaluates_every_sample_at_every_requested_timestamp(client, 
             interval_seconds=600,
             protected_region_ids=["region_A"],
             expected_scene_revision=2,
+            detail_level="diagnostic",
         ),
     )
     assert response.status_code == 200, response.text

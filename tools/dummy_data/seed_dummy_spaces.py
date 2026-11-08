@@ -111,7 +111,11 @@ def main() -> int:
     parser.add_argument("--delete", action="store_true", help="delete the spaces instead of creating them")
     parser.add_argument("--dry-run", action="store_true", help="validate the files and list what would be sent")
     parser.add_argument("--allow-remote", action="store_true", help="required for any address that is not this machine")
-    parser.add_argument("--skip-heavy", action="store_true", help="skip S6a (about 30 MB of FR-01 output)")
+    parser.add_argument(
+        "--skip-heavy",
+        action="store_true",
+        help="skip the compute-heavy S6a large-space scenario",
+    )
     args = parser.parse_args()
 
     base = args.base_url.rstrip("/")

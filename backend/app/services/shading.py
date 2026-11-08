@@ -68,7 +68,7 @@ def _exposed_tiles(prediction: SunpathPredictionResponse) -> list[ExposedTile]:
         )
         for region in prediction.regions
         for entry in region.timeline
-        for sample in entry.samples
+        for sample in entry.samples or []
         if sample.status == "exposed"
         and sample.reason == "clear_path"
         and sample.candidate_path is not None
@@ -89,6 +89,7 @@ def shading_plan_for_scene(
             start_time=request.start_time,
             duration_minutes=request.duration_minutes,
             interval_seconds=request.interval_seconds,
+            detail_level="diagnostic",
         ),
         request_received_at=request_received_at,
         nowcast_engine=nowcast_engine,

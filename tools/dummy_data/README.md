@@ -12,7 +12,7 @@ python seed_dummy_spaces.py --dry-run
 # 로컬 서버에 넣고, FR-01 결과가 기대와 같은지 비교
 python seed_dummy_spaces.py --base-url http://127.0.0.1:8000 --suffix v1 --check
 
-# 일부만 / 큰 응답(S6a, 약 30 MB) 제외
+# 일부만 / 계산 시간이 긴 S6a 제외
 python seed_dummy_spaces.py --suffix v1 --only S1,S3 --check
 python seed_dummy_spaces.py --suffix v1 --skip-heavy --check
 
@@ -37,7 +37,7 @@ python seed_dummy_spaces.py --base-url https://서버주소 --allow-remote --suf
 | S2 | 북쪽 창, 북쪽 후면 보호 | 6/21 있음, 12/21 없음 |
 | S3, S4 | 동쪽, 서쪽 창 (오전, 오후) | 12/21 있음 |
 | S5 | 작은 방, 마커보다 작은 창 | 있음 |
-| S6a | 규모 시험(서가 4개, 큰 창) | 있음 (응답 약 30 MB) |
+| S6a | 규모 시험(서가 4개, 큰 창) | 있음 (summary 약 74 KB, diagnostic은 수십 MB) |
 | S6b | 한도 시험(서가 9개) | FR-01 422 |
 | S7a, S7b | 시드니(남반구) 남쪽, 북쪽 창 | 없음, 있음 |
 | S8a | 북쪽 미확인, 층 "지하 1층" | 서버는 계산함(막는 곳은 화면) |

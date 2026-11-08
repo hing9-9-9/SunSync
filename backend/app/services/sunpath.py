@@ -106,6 +106,32 @@ class DniValue:
     provenance: dict[str, object] | None = None
 
 
+@dataclass(frozen=True, slots=True)
+class PredictionWorkEstimate:
+    timestamp_count: int
+    sample_count: int
+    window_count: int
+    occluder_count: int
+    room_corner_count: int
+
+    @property
+    def intersection_checks(self) -> int:
+        return self.timestamp_count * self.sample_count * (
+            self.window_count + self.occluder_count + self.room_corner_count + 2
+        )
+
+    def context(self, max_checks: int) -> dict[str, object]:
+        return {
+            "estimated_checks": self.intersection_checks,
+            "max_checks": max_checks,
+            "timestamp_count": self.timestamp_count,
+            "sample_count": self.sample_count,
+            "window_count": self.window_count,
+            "occluder_count": self.occluder_count,
+            "room_corner_count": self.room_corner_count,
+        }
+
+
 def _vector(value: tuple[float, float, float]) -> Vector3:
     return cast(Vector3, value)
 
@@ -248,6 +274,48 @@ def _sample_response(
     )
 
 
+def _region_time_response(
+    entry: object,
+    region: ProtectedRegion,
+    sun_direction_enu: Vector3,
+    dni_W_m2: float | None,
+    include_samples: bool,
+) -> RegionTimeResponse:
+    from engine.fr01.models import RegionTimeResult
+
+    assert isinstance(entry, RegionTimeResult)
+    irradiance_values = [
+        direct_irradiance_W_m2(
+            sample,
+            region.receiving_normal,
+            sun_direction_enu,
+            dni_W_m2,
+        )
+        for sample in entry.samples
+    ]
+    maximum = (
+        None
+        if not irradiance_values or any(value is None for value in irradiance_values)
+        else max(cast(list[float], irradiance_values))
+    )
+    sample_responses = (
+        [
+            _sample_response(sample, irradiance)
+            for sample, irradiance in zip(entry.samples, irradiance_values, strict=True)
+        ]
+        if include_samples
+        else None
+    )
+    return RegionTimeResponse(
+        timestamp=entry.timestamp,
+        status="exposed" if entry.exposed else "not_exposed",
+        sample_count=len(entry.samples),
+        exposed_sample_count=sum(sample.exposed for sample in entry.samples),
+        max_direct_irradiance_W_m2=maximum,
+        samples=sample_responses,
+    )
+
+
 def _utc(value: datetime | str) -> datetime:
     if isinstance(value, str):
         try:
@@ -386,30 +454,19 @@ def predict_scene(
             target_type="request",
             context={"sample_count": samples, "max_samples": MAX_SELECTED_SAMPLES},
         )
-    work = (
-        len(timestamps)
-        * samples
-        * (
-            len(geometry.windows)
-            + len(geometry.occluders)
-            + len(geometry.room.floor_vertices_m)
-            + 2
-        )
+    work = PredictionWorkEstimate(
+        timestamp_count=len(timestamps),
+        sample_count=samples,
+        window_count=len(geometry.windows),
+        occluder_count=len(geometry.occluders),
+        room_corner_count=len(geometry.room.floor_vertices_m),
     )
-    if work > MAX_INTERSECTION_CHECKS:
+    if work.intersection_checks > MAX_INTERSECTION_CHECKS:
         raise SunpathValidationError(
             "INTERSECTION_LIMIT_EXCEEDED",
             "공간이 너무 복잡해 예측 계산 한도를 초과했습니다.",
             target_type="request",
-            context={
-                "estimated_checks": work,
-                "max_checks": MAX_INTERSECTION_CHECKS,
-                "timestamp_count": len(timestamps),
-                "sample_count": samples,
-                "window_count": len(geometry.windows),
-                "occluder_count": len(geometry.occluders),
-                "room_corner_count": len(geometry.room.floor_vertices_m),
-            },
+            context=work.context(MAX_INTERSECTION_CHECKS),
         )
     try:
         solar_positions = calculate_solar_positions(geometry.site, timestamps)
@@ -531,7 +588,7 @@ def predict_scene(
             target_type="scene",
         ) from error
     return SunpathPredictionResponse(
-        result_version="0.3.0" if nowcast_engine is not None else "0.2.0",
+        result_version="0.4.0",
         scene_id=scene.scene_id,
         scene_revision=scene.revision,
         start_time=timestamps[0],
@@ -610,22 +667,12 @@ def predict_scene(
                     for interval in prediction.exposure_intervals
                 ],
                 timeline=[
-                    RegionTimeResponse(
-                        timestamp=entry.timestamp,
-                        status="exposed" if entry.exposed else "not_exposed",
-                        exposed_sample_count=sum(sample.exposed for sample in entry.samples),
-                        samples=[
-                            _sample_response(
-                                sample,
-                                direct_irradiance_W_m2(
-                                    sample,
-                                    region.receiving_normal,
-                                    solar_positions[index].sun_direction_enu,
-                                    dni_values[index].value,
-                                ),
-                            )
-                            for sample in entry.samples
-                        ],
+                    _region_time_response(
+                        entry,
+                        region,
+                        solar_positions[index].sun_direction_enu,
+                        dni_values[index].value,
+                        request.detail_level == "diagnostic",
                     )
                     for index, entry in enumerate(prediction.timeline)
                 ],

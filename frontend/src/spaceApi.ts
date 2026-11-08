@@ -213,7 +213,9 @@ export const listMeasurements = (signal?: AbortSignal) => request<HandoffSession
 
 type SunpathTimeline = {
   timestamp: string; status: "exposed" | "not_exposed";
-  exposed_sample_count?: number;
+  sample_count: number;
+  exposed_sample_count: number;
+  max_direct_irradiance_W_m2: number | null;
   samples?: { direct_irradiance_W_m2: number | null }[];
 };
 export type SunpathPrediction = {
@@ -234,6 +236,7 @@ export function predictSunpath(sceneId: string, revision: number, startTime: str
         start_time: startTime,
         duration_minutes: 1440,
         interval_seconds: 1800,
+        detail_level: "summary",
         expected_scene_revision: revision,
       }),
     },
