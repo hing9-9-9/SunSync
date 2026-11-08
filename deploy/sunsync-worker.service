@@ -10,5 +10,6 @@ EnvironmentFile=/etc/sunsync/sunsync.env
 Environment=PYTHONPATH=/opt/sunsync/backend:/opt/sunsync PYTHONDONTWRITEBYTECODE=1
 ExecStart=/opt/sunsync/.venv/bin/python -m app.nowcast.open_meteo_worker
 NoNewPrivileges=true
+UMask=0077
 PrivateTmp=true
 ProtectSystem=full

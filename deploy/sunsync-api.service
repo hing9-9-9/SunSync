@@ -10,6 +10,7 @@ Environment=PYTHONPATH=/opt/sunsync/backend:/opt/sunsync PYTHONDONTWRITEBYTECODE
 ExecStart=/opt/sunsync/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
 Restart=on-failure
 NoNewPrivileges=true
+UMask=0077
 PrivateTmp=true
 ProtectSystem=full
 
