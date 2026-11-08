@@ -1,0 +1,1222 @@
+{
+ "_note": "UISpace payloads for POST /api/ui/spaces. The loader appends -<suffix> to space.id and replaces space.building.",
+ "scenarios": [
+  {
+   "key": "S1",
+   "description": "남쪽 창 열람실: 등급 A~C와 보호 없는 수납장(D 칩), 상단 보호 포함",
+   "space": {
+    "id": "dummy-s1-south",
+    "building": "더미 도서관",
+    "floor": "2층",
+    "name": "S1 남쪽 창 열람실",
+    "width": 8,
+    "depth": 6,
+    "height": 3,
+    "zone": "구역 1",
+    "zones": [
+     "구역 1"
+    ],
+    "source": "manual",
+    "site": {
+     "latitude": 37.5665,
+     "longitude": 126.978,
+     "timezone": "Asia/Seoul",
+     "northConfirmed": true
+    },
+    "furniture": [
+     {
+      "id": "s1a",
+      "name": "귀중본 서가",
+      "type": "bookcase",
+      "zone": "구역 1",
+      "x": 3.0,
+      "y": 4.0,
+      "width": 2.0,
+      "depth": 0.5,
+      "height": 2.0
+     },
+     {
+      "id": "s1b",
+      "name": "일반 서가",
+      "type": "bookcase",
+      "zone": "구역 1",
+      "x": 0.5,
+      "y": 1.0,
+      "width": 1.6,
+      "depth": 0.4,
+      "height": 1.8
+     },
+     {
+      "id": "s1t",
+      "name": "열람 테이블",
+      "type": "table",
+      "zone": "구역 1",
+      "x": 5.8,
+      "y": 2.5,
+      "width": 1.6,
+      "depth": 0.8,
+      "height": 0.75
+     },
+     {
+      "id": "s1c",
+      "name": "수납장(보호 없음)",
+      "type": "cabinet",
+      "zone": "구역 1",
+      "x": 0.3,
+      "y": 5.2,
+      "width": 1.2,
+      "depth": 0.5,
+      "height": 1.0
+     },
+     {
+      "id": "s1d",
+      "name": "진열장",
+      "type": "display",
+      "zone": "구역 1",
+      "x": 6.5,
+      "y": 3.6,
+      "width": 1.0,
+      "depth": 0.5,
+      "height": 1.5
+     }
+    ],
+    "regions": [
+     {
+      "id": "r1a",
+      "name": "귀중본 서가면",
+      "zone": "구역 1",
+      "furnitureId": "s1a",
+      "x": 3.0,
+      "y": 4.0,
+      "width": 2.0,
+      "depth": 0.5,
+      "face": "남쪽 전면",
+      "bottom": 0.2,
+      "top": 1.8,
+      "grade": "A"
+     },
+     {
+      "id": "r1b",
+      "name": "일반 서가면",
+      "zone": "구역 1",
+      "furnitureId": "s1b",
+      "x": 0.5,
+      "y": 1.0,
+      "width": 1.6,
+      "depth": 0.4,
+      "face": "남쪽 전면",
+      "bottom": 0.2,
+      "top": 1.6,
+      "grade": "B"
+     },
+     {
+      "id": "r1t",
+      "name": "테이블 상판",
+      "zone": "구역 1",
+      "furnitureId": "s1t",
+      "x": 5.8,
+      "y": 2.5,
+      "width": 1.6,
+      "depth": 0.8,
+      "face": "상단",
+      "bottom": 0.0,
+      "top": 0.75,
+      "grade": "C"
+     },
+     {
+      "id": "r1d",
+      "name": "진열장 면",
+      "zone": "구역 1",
+      "furnitureId": "s1d",
+      "x": 6.5,
+      "y": 3.6,
+      "width": 1.0,
+      "depth": 0.5,
+      "face": "남쪽 전면",
+      "bottom": 0.3,
+      "top": 1.4,
+      "grade": "B"
+     }
+    ],
+    "windowDimensions": {
+     "width": 3,
+     "height": 1.6,
+     "wall": "south",
+     "offset": 2.5,
+     "sill": 0.8
+    },
+    "revision": 1
+   },
+   "checks": [
+    {
+     "date": "2026-12-21",
+     "expect": "exposure"
+    },
+    {
+     "date": "2026-06-21",
+     "expect": "none"
+    }
+   ]
+  },
+  {
+   "key": "S2",
+   "description": "북쪽 창: 북쪽 후면 보호, 햇빛이 거의 없는 방향",
+   "space": {
+    "id": "dummy-s2-north",
+    "building": "더미 도서관",
+    "floor": "2층",
+    "name": "S2 북쪽 창",
+    "width": 8,
+    "depth": 6,
+    "height": 3,
+    "zone": "구역 1",
+    "zones": [
+     "구역 1"
+    ],
+    "source": "manual",
+    "site": {
+     "latitude": 37.5665,
+     "longitude": 126.978,
+     "timezone": "Asia/Seoul",
+     "northConfirmed": true
+    },
+    "furniture": [
+     {
+      "id": "s2a",
+      "name": "북창 앞 서가",
+      "type": "bookcase",
+      "zone": "구역 1",
+      "x": 3.0,
+      "y": 1.2,
+      "width": 2.0,
+      "depth": 0.5,
+      "height": 2.0
+     }
+    ],
+    "regions": [
+     {
+      "id": "r2a",
+      "name": "서가 뒷면",
+      "zone": "구역 1",
+      "furnitureId": "s2a",
+      "x": 3.0,
+      "y": 1.2,
+      "width": 2.0,
+      "depth": 0.5,
+      "face": "북쪽 후면",
+      "bottom": 0.2,
+      "top": 1.8,
+      "grade": "A"
+     }
+    ],
+    "windowDimensions": {
+     "width": 3,
+     "height": 1.6,
+     "wall": "north",
+     "offset": 2.5,
+     "sill": 0.8
+    },
+    "revision": 1
+   },
+   "checks": [
+    {
+     "date": "2026-06-21",
+     "expect": "exposure"
+    },
+    {
+     "date": "2026-12-21",
+     "expect": "none"
+    }
+   ]
+  },
+  {
+   "key": "S3",
+   "description": "동쪽 창: 오전 햇빛, 동쪽 측면 보호",
+   "space": {
+    "id": "dummy-s3-east",
+    "building": "더미 도서관",
+    "floor": "2층",
+    "name": "S3 동쪽 창",
+    "width": 8,
+    "depth": 6,
+    "height": 3,
+    "zone": "구역 1",
+    "zones": [
+     "구역 1"
+    ],
+    "source": "manual",
+    "site": {
+     "latitude": 37.5665,
+     "longitude": 126.978,
+     "timezone": "Asia/Seoul",
+     "northConfirmed": true
+    },
+    "furniture": [
+     {
+      "id": "s3a",
+      "name": "동창 앞 서가",
+      "type": "bookcase",
+      "zone": "구역 1",
+      "x": 6.0,
+      "y": 2.0,
+      "width": 0.5,
+      "depth": 2.0,
+      "height": 1.9
+     }
+    ],
+    "regions": [
+     {
+      "id": "r3a",
+      "name": "서가 동쪽면",
+      "zone": "구역 1",
+      "furnitureId": "s3a",
+      "x": 6.0,
+      "y": 2.0,
+      "width": 0.5,
+      "depth": 2.0,
+      "face": "동쪽 측면",
+      "bottom": 0.2,
+      "top": 1.7,
+      "grade": "A"
+     }
+    ],
+    "windowDimensions": {
+     "width": 2.0,
+     "height": 1.4,
+     "wall": "east",
+     "offset": 2.0,
+     "sill": 0.9
+    },
+    "revision": 1
+   },
+   "checks": [
+    {
+     "date": "2026-12-21",
+     "expect": "exposure"
+    }
+   ]
+  },
+  {
+   "key": "S4",
+   "description": "서쪽 창: 오후 햇빛, 서쪽 측면 보호 (S3의 거울)",
+   "space": {
+    "id": "dummy-s4-west",
+    "building": "더미 도서관",
+    "floor": "2층",
+    "name": "S4 서쪽 창",
+    "width": 8,
+    "depth": 6,
+    "height": 3,
+    "zone": "구역 1",
+    "zones": [
+     "구역 1"
+    ],
+    "source": "manual",
+    "site": {
+     "latitude": 37.5665,
+     "longitude": 126.978,
+     "timezone": "Asia/Seoul",
+     "northConfirmed": true
+    },
+    "furniture": [
+     {
+      "id": "s4a",
+      "name": "서창 앞 서가",
+      "type": "bookcase",
+      "zone": "구역 1",
+      "x": 1.5,
+      "y": 2.0,
+      "width": 0.5,
+      "depth": 2.0,
+      "height": 1.9
+     }
+    ],
+    "regions": [
+     {
+      "id": "r4a",
+      "name": "서가 서쪽면",
+      "zone": "구역 1",
+      "furnitureId": "s4a",
+      "x": 1.5,
+      "y": 2.0,
+      "width": 0.5,
+      "depth": 2.0,
+      "face": "서쪽 측면",
+      "bottom": 0.2,
+      "top": 1.7,
+      "grade": "A"
+     }
+    ],
+    "windowDimensions": {
+     "width": 2.0,
+     "height": 1.4,
+     "wall": "west",
+     "offset": 2.0,
+     "sill": 0.9
+    },
+    "revision": 1
+   },
+   "checks": [
+    {
+     "date": "2026-12-21",
+     "expect": "exposure"
+    }
+   ]
+  },
+  {
+   "key": "S5",
+   "description": "작은 방과 작은 창(0.5 m, 마커보다 작음), 상단 보호",
+   "space": {
+    "id": "dummy-s5-small",
+    "building": "더미 도서관",
+    "floor": "2층",
+    "name": "S5 작은 방·작은 창",
+    "width": 3,
+    "depth": 3,
+    "height": 2.5,
+    "zone": "구역 1",
+    "zones": [
+     "구역 1"
+    ],
+    "source": "manual",
+    "site": {
+     "latitude": 37.5665,
+     "longitude": 126.978,
+     "timezone": "Asia/Seoul",
+     "northConfirmed": true
+    },
+    "furniture": [
+     {
+      "id": "s5a",
+      "name": "작은 책상",
+      "type": "desk",
+      "zone": "구역 1",
+      "x": 1.0,
+      "y": 0.6,
+      "width": 1.0,
+      "depth": 0.4,
+      "height": 0.75
+     }
+    ],
+    "regions": [
+     {
+      "id": "r5a",
+      "name": "책상 상판",
+      "zone": "구역 1",
+      "furnitureId": "s5a",
+      "x": 1.0,
+      "y": 0.6,
+      "width": 1.0,
+      "depth": 0.4,
+      "face": "상단",
+      "bottom": 0.0,
+      "top": 0.75,
+      "grade": "B"
+     }
+    ],
+    "windowDimensions": {
+     "width": 0.5,
+     "height": 0.5,
+     "wall": "south",
+     "offset": 1.25,
+     "sill": 1.5
+    },
+    "revision": 1
+   },
+   "checks": [
+    {
+     "date": "2026-12-21",
+     "expect": "exposure"
+    }
+   ]
+  },
+  {
+   "key": "S6a",
+   "description": "규모 시험: 큰 방, 큰 창, 서가 4개 (응답 약 30 MB)",
+   "space": {
+    "id": "dummy-s6a-stress-ok",
+    "building": "더미 도서관",
+    "floor": "2층",
+    "name": "S6a 다수 서가(통과)",
+    "width": 12,
+    "depth": 8,
+    "height": 3.5,
+    "zone": "구역 1",
+    "zones": [
+     "구역 1"
+    ],
+    "source": "manual",
+    "site": {
+     "latitude": 37.5665,
+     "longitude": 126.978,
+     "timezone": "Asia/Seoul",
+     "northConfirmed": true
+    },
+    "furniture": [
+     {
+      "id": "s6f0",
+      "name": "s6f0",
+      "type": "bookcase",
+      "zone": "구역 1",
+      "x": 0.6,
+      "y": 4.5,
+      "width": 1.0,
+      "depth": 0.5,
+      "height": 1.9
+     },
+     {
+      "id": "s6f1",
+      "name": "s6f1",
+      "type": "bookcase",
+      "zone": "구역 1",
+      "x": 1.9,
+      "y": 4.5,
+      "width": 1.0,
+      "depth": 0.5,
+      "height": 1.9
+     },
+     {
+      "id": "s6f2",
+      "name": "s6f2",
+      "type": "bookcase",
+      "zone": "구역 1",
+      "x": 3.2,
+      "y": 4.5,
+      "width": 1.0,
+      "depth": 0.5,
+      "height": 1.9
+     },
+     {
+      "id": "s6f3",
+      "name": "s6f3",
+      "type": "bookcase",
+      "zone": "구역 1",
+      "x": 4.5,
+      "y": 4.5,
+      "width": 1.0,
+      "depth": 0.5,
+      "height": 1.9
+     }
+    ],
+    "regions": [
+     {
+      "id": "r60",
+      "name": "서가면 0",
+      "zone": "구역 1",
+      "furnitureId": "s6f0",
+      "x": 0.6,
+      "y": 4.5,
+      "width": 1.0,
+      "depth": 0.5,
+      "face": "남쪽 전면",
+      "bottom": 0.1,
+      "top": 1.9,
+      "grade": "A"
+     },
+     {
+      "id": "r61",
+      "name": "서가면 1",
+      "zone": "구역 1",
+      "furnitureId": "s6f1",
+      "x": 1.9,
+      "y": 4.5,
+      "width": 1.0,
+      "depth": 0.5,
+      "face": "남쪽 전면",
+      "bottom": 0.1,
+      "top": 1.9,
+      "grade": "A"
+     },
+     {
+      "id": "r62",
+      "name": "서가면 2",
+      "zone": "구역 1",
+      "furnitureId": "s6f2",
+      "x": 3.2,
+      "y": 4.5,
+      "width": 1.0,
+      "depth": 0.5,
+      "face": "남쪽 전면",
+      "bottom": 0.1,
+      "top": 1.9,
+      "grade": "A"
+     },
+     {
+      "id": "r63",
+      "name": "서가면 3",
+      "zone": "구역 1",
+      "furnitureId": "s6f3",
+      "x": 4.5,
+      "y": 4.5,
+      "width": 1.0,
+      "depth": 0.5,
+      "face": "남쪽 전면",
+      "bottom": 0.1,
+      "top": 1.9,
+      "grade": "A"
+     }
+    ],
+    "windowDimensions": {
+     "width": 6,
+     "height": 2.0,
+     "wall": "south",
+     "offset": 3.0,
+     "sill": 0.7
+    },
+    "revision": 1
+   },
+   "checks": [
+    {
+     "date": "2026-12-21",
+     "expect": "exposure"
+    }
+   ]
+  },
+  {
+   "key": "S6b",
+   "description": "한도 시험: 서가 9개 (FR-01 422 예상)",
+   "space": {
+    "id": "dummy-s6b-stress-limit",
+    "building": "더미 도서관",
+    "floor": "2층",
+    "name": "S6b 다수 서가(한도 초과)",
+    "width": 12,
+    "depth": 8,
+    "height": 3.5,
+    "zone": "구역 1",
+    "zones": [
+     "구역 1"
+    ],
+    "source": "manual",
+    "site": {
+     "latitude": 37.5665,
+     "longitude": 126.978,
+     "timezone": "Asia/Seoul",
+     "northConfirmed": true
+    },
+    "furniture": [
+     {
+      "id": "s6f0",
+      "name": "s6f0",
+      "type": "bookcase",
+      "zone": "구역 1",
+      "x": 0.6,
+      "y": 4.5,
+      "width": 1.0,
+      "depth": 0.5,
+      "height": 1.9
+     },
+     {
+      "id": "s6f1",
+      "name": "s6f1",
+      "type": "bookcase",
+      "zone": "구역 1",
+      "x": 1.9,
+      "y": 4.5,
+      "width": 1.0,
+      "depth": 0.5,
+      "height": 1.9
+     },
+     {
+      "id": "s6f2",
+      "name": "s6f2",
+      "type": "bookcase",
+      "zone": "구역 1",
+      "x": 3.2,
+      "y": 4.5,
+      "width": 1.0,
+      "depth": 0.5,
+      "height": 1.9
+     },
+     {
+      "id": "s6f3",
+      "name": "s6f3",
+      "type": "bookcase",
+      "zone": "구역 1",
+      "x": 4.5,
+      "y": 4.5,
+      "width": 1.0,
+      "depth": 0.5,
+      "height": 1.9
+     },
+     {
+      "id": "s6f4",
+      "name": "s6f4",
+      "type": "bookcase",
+      "zone": "구역 1",
+      "x": 5.8,
+      "y": 4.5,
+      "width": 1.0,
+      "depth": 0.5,
+      "height": 1.9
+     },
+     {
+      "id": "s6f5",
+      "name": "s6f5",
+      "type": "bookcase",
+      "zone": "구역 1",
+      "x": 7.1,
+      "y": 4.5,
+      "width": 1.0,
+      "depth": 0.5,
+      "height": 1.9
+     },
+     {
+      "id": "s6f6",
+      "name": "s6f6",
+      "type": "bookcase",
+      "zone": "구역 1",
+      "x": 8.4,
+      "y": 4.5,
+      "width": 1.0,
+      "depth": 0.5,
+      "height": 1.9
+     },
+     {
+      "id": "s6f7",
+      "name": "s6f7",
+      "type": "bookcase",
+      "zone": "구역 1",
+      "x": 9.7,
+      "y": 4.5,
+      "width": 1.0,
+      "depth": 0.5,
+      "height": 1.9
+     },
+     {
+      "id": "s6f8",
+      "name": "s6f8",
+      "type": "bookcase",
+      "zone": "구역 1",
+      "x": 11.0,
+      "y": 4.5,
+      "width": 1.0,
+      "depth": 0.5,
+      "height": 1.9
+     }
+    ],
+    "regions": [
+     {
+      "id": "r60",
+      "name": "서가면 0",
+      "zone": "구역 1",
+      "furnitureId": "s6f0",
+      "x": 0.6,
+      "y": 4.5,
+      "width": 1.0,
+      "depth": 0.5,
+      "face": "남쪽 전면",
+      "bottom": 0.1,
+      "top": 1.9,
+      "grade": "A"
+     },
+     {
+      "id": "r61",
+      "name": "서가면 1",
+      "zone": "구역 1",
+      "furnitureId": "s6f1",
+      "x": 1.9,
+      "y": 4.5,
+      "width": 1.0,
+      "depth": 0.5,
+      "face": "남쪽 전면",
+      "bottom": 0.1,
+      "top": 1.9,
+      "grade": "A"
+     },
+     {
+      "id": "r62",
+      "name": "서가면 2",
+      "zone": "구역 1",
+      "furnitureId": "s6f2",
+      "x": 3.2,
+      "y": 4.5,
+      "width": 1.0,
+      "depth": 0.5,
+      "face": "남쪽 전면",
+      "bottom": 0.1,
+      "top": 1.9,
+      "grade": "A"
+     },
+     {
+      "id": "r63",
+      "name": "서가면 3",
+      "zone": "구역 1",
+      "furnitureId": "s6f3",
+      "x": 4.5,
+      "y": 4.5,
+      "width": 1.0,
+      "depth": 0.5,
+      "face": "남쪽 전면",
+      "bottom": 0.1,
+      "top": 1.9,
+      "grade": "A"
+     },
+     {
+      "id": "r64",
+      "name": "서가면 4",
+      "zone": "구역 1",
+      "furnitureId": "s6f4",
+      "x": 5.8,
+      "y": 4.5,
+      "width": 1.0,
+      "depth": 0.5,
+      "face": "남쪽 전면",
+      "bottom": 0.1,
+      "top": 1.9,
+      "grade": "A"
+     },
+     {
+      "id": "r65",
+      "name": "서가면 5",
+      "zone": "구역 1",
+      "furnitureId": "s6f5",
+      "x": 7.1,
+      "y": 4.5,
+      "width": 1.0,
+      "depth": 0.5,
+      "face": "남쪽 전면",
+      "bottom": 0.1,
+      "top": 1.9,
+      "grade": "A"
+     },
+     {
+      "id": "r66",
+      "name": "서가면 6",
+      "zone": "구역 1",
+      "furnitureId": "s6f6",
+      "x": 8.4,
+      "y": 4.5,
+      "width": 1.0,
+      "depth": 0.5,
+      "face": "남쪽 전면",
+      "bottom": 0.1,
+      "top": 1.9,
+      "grade": "A"
+     },
+     {
+      "id": "r67",
+      "name": "서가면 7",
+      "zone": "구역 1",
+      "furnitureId": "s6f7",
+      "x": 9.7,
+      "y": 4.5,
+      "width": 1.0,
+      "depth": 0.5,
+      "face": "남쪽 전면",
+      "bottom": 0.1,
+      "top": 1.9,
+      "grade": "A"
+     },
+     {
+      "id": "r68",
+      "name": "서가면 8",
+      "zone": "구역 1",
+      "furnitureId": "s6f8",
+      "x": 11.0,
+      "y": 4.5,
+      "width": 1.0,
+      "depth": 0.5,
+      "face": "남쪽 전면",
+      "bottom": 0.1,
+      "top": 1.9,
+      "grade": "A"
+     }
+    ],
+    "windowDimensions": {
+     "width": 6,
+     "height": 2.0,
+     "wall": "south",
+     "offset": 3.0,
+     "sill": 0.7
+    },
+    "revision": 1
+   },
+   "checks": [
+    {
+     "date": "2026-12-21",
+     "expect": "error_422"
+    }
+   ]
+  },
+  {
+   "key": "S7a",
+   "description": "시드니(남반구) 남쪽 창: 햇빛 없음",
+   "space": {
+    "id": "dummy-s7a-sydney-south",
+    "building": "더미 도서관",
+    "floor": "2층",
+    "name": "S7a 시드니·남쪽 창",
+    "width": 8,
+    "depth": 6,
+    "height": 3,
+    "zone": "구역 1",
+    "zones": [
+     "구역 1"
+    ],
+    "source": "manual",
+    "site": {
+     "latitude": -33.8688,
+     "longitude": 151.2093,
+     "timezone": "Australia/Sydney",
+     "northConfirmed": true
+    },
+    "furniture": [
+     {
+      "id": "s7a",
+      "name": "s7a",
+      "type": "bookcase",
+      "zone": "구역 1",
+      "x": 3.0,
+      "y": 4.0,
+      "width": 2.0,
+      "depth": 0.5,
+      "height": 2.0
+     }
+    ],
+    "regions": [
+     {
+      "id": "r7a",
+      "name": "서가면",
+      "zone": "구역 1",
+      "furnitureId": "s7a",
+      "x": 3.0,
+      "y": 4.0,
+      "width": 2.0,
+      "depth": 0.5,
+      "face": "남쪽 전면",
+      "bottom": 0.2,
+      "top": 1.8,
+      "grade": "A"
+     }
+    ],
+    "windowDimensions": {
+     "width": 3,
+     "height": 1.6,
+     "wall": "south",
+     "offset": 2.5,
+     "sill": 0.8
+    },
+    "revision": 1
+   },
+   "checks": [
+    {
+     "date": "2026-12-21",
+     "expect": "none"
+    }
+   ]
+  },
+  {
+   "key": "S7b",
+   "description": "시드니(남반구) 북쪽 창: 서가를 벽에 붙임",
+   "space": {
+    "id": "dummy-s7b-sydney-north",
+    "building": "더미 도서관",
+    "floor": "2층",
+    "name": "S7b 시드니·북쪽 창",
+    "width": 8,
+    "depth": 6,
+    "height": 3,
+    "zone": "구역 1",
+    "zones": [
+     "구역 1"
+    ],
+    "source": "manual",
+    "site": {
+     "latitude": -33.8688,
+     "longitude": 151.2093,
+     "timezone": "Australia/Sydney",
+     "northConfirmed": true
+    },
+    "furniture": [
+     {
+      "id": "s7b",
+      "name": "s7b",
+      "type": "bookcase",
+      "zone": "구역 1",
+      "x": 3.0,
+      "y": 0.15,
+      "width": 2.0,
+      "depth": 0.5,
+      "height": 2.0
+     }
+    ],
+    "regions": [
+     {
+      "id": "r7b",
+      "name": "서가면",
+      "zone": "구역 1",
+      "furnitureId": "s7b",
+      "x": 3.0,
+      "y": 0.15,
+      "width": 2.0,
+      "depth": 0.5,
+      "face": "북쪽 후면",
+      "bottom": 0.2,
+      "top": 1.8,
+      "grade": "A"
+     }
+    ],
+    "windowDimensions": {
+     "width": 3,
+     "height": 1.6,
+     "wall": "north",
+     "offset": 2.5,
+     "sill": 0.8
+    },
+    "revision": 1
+   },
+   "checks": [
+    {
+     "date": "2026-12-21",
+     "expect": "exposure"
+    }
+   ]
+  },
+  {
+   "key": "S8a",
+   "description": "북쪽 미확인, 층 '지하 1층' (화면이 예측을 막는지 확인)",
+   "space": {
+    "id": "dummy-s8a-north-unconfirmed",
+    "building": "더미 도서관",
+    "floor": "지하 1층",
+    "name": "S8a 북쪽 미확인·지하 1층",
+    "width": 6,
+    "depth": 5,
+    "height": 3,
+    "zone": "구역 1",
+    "zones": [
+     "구역 1"
+    ],
+    "source": "manual",
+    "site": {
+     "latitude": 37.5665,
+     "longitude": 126.978,
+     "timezone": "Asia/Seoul",
+     "northConfirmed": false
+    },
+    "furniture": [
+     {
+      "id": "s8a",
+      "name": "s8a",
+      "type": "bookcase",
+      "zone": "구역 1",
+      "x": 2.0,
+      "y": 3.0,
+      "width": 2.0,
+      "depth": 0.5,
+      "height": 2.0
+     }
+    ],
+    "regions": [
+     {
+      "id": "r8a",
+      "name": "서가면",
+      "zone": "구역 1",
+      "furnitureId": "s8a",
+      "x": 2.0,
+      "y": 3.0,
+      "width": 2.0,
+      "depth": 0.5,
+      "face": "남쪽 전면",
+      "bottom": 0.2,
+      "top": 1.8,
+      "grade": "B"
+     }
+    ],
+    "windowDimensions": {
+     "width": 3,
+     "height": 1.6,
+     "wall": "south",
+     "offset": 1.5,
+     "sill": 0.8
+    },
+    "revision": 1
+   },
+   "checks": [
+    {
+     "date": "2026-12-21",
+     "expect": "exposure"
+    }
+   ]
+  },
+  {
+   "key": "S8b",
+   "description": "구역 2개, 창 없음",
+   "space": {
+    "id": "dummy-s8b-two-zones",
+    "building": "더미 도서관",
+    "floor": "2층",
+    "name": "S8b 구역 2개·창 없음",
+    "width": 6,
+    "depth": 5,
+    "height": 3,
+    "zone": "구역 1",
+    "zones": [
+     "구역 1",
+     "구역 2"
+    ],
+    "source": "manual",
+    "site": {
+     "latitude": 37.5665,
+     "longitude": 126.978,
+     "timezone": "Asia/Seoul",
+     "northConfirmed": true
+    },
+    "furniture": [
+     {
+      "id": "s8f1",
+      "name": "구역1 서가",
+      "type": "bookcase",
+      "zone": "구역 1",
+      "x": 0.5,
+      "y": 0.5,
+      "width": 2.0,
+      "depth": 0.5,
+      "height": 1.8
+     },
+     {
+      "id": "s8f2",
+      "name": "구역2 책상",
+      "type": "desk",
+      "zone": "구역 2",
+      "x": 3.5,
+      "y": 3.0,
+      "width": 1.4,
+      "depth": 0.7,
+      "height": 0.75
+     }
+    ],
+    "regions": [
+     {
+      "id": "r8b",
+      "name": "구역1 서가면",
+      "zone": "구역 1",
+      "furnitureId": "s8f1",
+      "x": 0.5,
+      "y": 0.5,
+      "width": 2.0,
+      "depth": 0.5,
+      "face": "남쪽 전면",
+      "bottom": 0.2,
+      "top": 1.6,
+      "grade": "C"
+     },
+     {
+      "id": "r8c",
+      "name": "구역2 상판",
+      "zone": "구역 2",
+      "furnitureId": "s8f2",
+      "x": 3.5,
+      "y": 3.0,
+      "width": 1.4,
+      "depth": 0.7,
+      "face": "상단",
+      "bottom": 0.0,
+      "top": 0.75,
+      "grade": "B"
+     }
+    ],
+    "revision": 1
+   },
+   "checks": [
+    {
+     "date": "2026-12-21",
+     "expect": "none"
+    }
+   ]
+  },
+  {
+   "key": "S9",
+   "description": "겹치는 가구: 저장은 되지만 예측이 422 (오류 경로)",
+   "space": {
+    "id": "dummy-s9-overlap",
+    "building": "더미 도서관",
+    "floor": "2층",
+    "name": "S9 겹치는 가구(오류 경로)",
+    "width": 8,
+    "depth": 6,
+    "height": 3,
+    "zone": "구역 1",
+    "zones": [
+     "구역 1"
+    ],
+    "source": "manual",
+    "site": {
+     "latitude": 37.5665,
+     "longitude": 126.978,
+     "timezone": "Asia/Seoul",
+     "northConfirmed": true
+    },
+    "furniture": [
+     {
+      "id": "s9t",
+      "name": "열람 테이블",
+      "type": "table",
+      "zone": "구역 1",
+      "x": 5.8,
+      "y": 2.5,
+      "width": 1.6,
+      "depth": 0.8,
+      "height": 0.75
+     },
+     {
+      "id": "s9d",
+      "name": "진열장",
+      "type": "display",
+      "zone": "구역 1",
+      "x": 6.8,
+      "y": 3.0,
+      "width": 1.0,
+      "depth": 0.5,
+      "height": 1.5
+     }
+    ],
+    "regions": [
+     {
+      "id": "r9d",
+      "name": "진열장 면",
+      "zone": "구역 1",
+      "furnitureId": "s9d",
+      "x": 6.8,
+      "y": 3.0,
+      "width": 1.0,
+      "depth": 0.5,
+      "face": "남쪽 전면",
+      "bottom": 0.3,
+      "top": 1.4,
+      "grade": "B"
+     },
+     {
+      "id": "r9t",
+      "name": "테이블 상판",
+      "zone": "구역 1",
+      "furnitureId": "s9t",
+      "x": 5.8,
+      "y": 2.5,
+      "width": 1.6,
+      "depth": 0.8,
+      "face": "상단",
+      "bottom": 0.0,
+      "top": 0.75,
+      "grade": "C"
+     }
+    ],
+    "windowDimensions": {
+     "width": 3,
+     "height": 1.6,
+     "wall": "south",
+     "offset": 2.5,
+     "sill": 0.8
+    },
+    "revision": 1
+   },
+   "checks": [
+    {
+     "date": "2026-12-21",
+     "expect": "error_422"
+    }
+   ]
+  }
+ ]
+}
