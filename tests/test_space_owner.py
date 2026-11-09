@@ -189,3 +189,53 @@ def test_assign_owner_command_gives_unowned_spaces_to_one_account(client, engine
     assert spaces_of(client, BOB) == ["bobs"]  # an owned space is not taken over
     with Session(engine) as db, pytest.raises(SystemExit):
         assign_unowned(db, "nobody@example.com", apply=True)
+
+
+def test_each_user_gets_only_the_space_ids_they_deleted(client, payload):  # noqa: F811
+    client.post("/api/ui/spaces", json=payload, headers=ALICE)
+    client.post("/api/ui/spaces", json={**payload, "id": "bobs-space"}, headers=BOB)
+    assert client.delete("/api/ui/spaces/test-space", headers=ALICE).status_code == 204
+    assert client.delete("/api/ui/spaces/bobs-space", headers=BOB).status_code == 204
+    alice = client.get("/api/ui/spaces", headers=ALICE).json()
+    bob = client.get("/api/ui/spaces", headers=BOB).json()
+    assert alice["deleted"] == ["test-space"]
+    assert bob["deleted"] == ["bobs-space"]
+    # login off (local development): nothing is filtered
+    assert set(client.get("/api/ui/spaces").json()["deleted"]) == {"test-space", "bobs-space"}
+
+
+def test_a_deleted_id_stays_closed_to_everyone(client, payload):  # noqa: F811
+    client.post("/api/ui/spaces", json=payload, headers=ALICE)
+    client.delete("/api/ui/spaces/test-space", headers=ALICE)
+    assert client.post("/api/ui/spaces", json=payload, headers=BOB).status_code == 409
+    assert client.post("/api/ui/spaces", json=payload, headers=ALICE).status_code == 409
+
+
+def test_the_migration_adds_the_owner_column_to_deleted_ids(tmp_path):
+    from app.db import init_db
+
+    engine = create_engine(f"sqlite:///{tmp_path / 'old_deleted.db'}")
+    with engine.begin() as connection:
+        connection.exec_driver_sql(
+            "CREATE TABLE ui_deleted_spaces (space_id TEXT PRIMARY KEY, deleted_at TEXT)"
+        )
+        connection.exec_driver_sql("INSERT INTO ui_deleted_spaces VALUES ('gone', 'x')")
+        connection.exec_driver_sql("PRAGMA user_version = 5")
+    init_db(engine)
+    with engine.connect() as connection:
+        rows = connection.exec_driver_sql("SELECT space_id, owner_id FROM ui_deleted_spaces").all()
+    assert rows == [("gone", None)]
+
+
+def test_deleted_ids_without_an_owner_follow_the_assign_owner_command(client, engine, payload):  # noqa: F811
+    from app.assign_owner import assign_unowned
+
+    client.post("/api/ui/spaces", json=payload)  # login off: no owner
+    client.delete("/api/ui/spaces/test-space")
+    assert client.get("/api/ui/spaces", headers=ALICE).json()["deleted"] == []
+    with Session(engine) as db:
+        db.add(user("alice"))
+        db.commit()
+        assign_unowned(db, "alice@example.com", apply=True)
+    assert client.get("/api/ui/spaces", headers=ALICE).json()["deleted"] == ["test-space"]
+    assert client.get("/api/ui/spaces", headers=BOB).json()["deleted"] == []

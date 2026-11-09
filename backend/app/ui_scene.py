@@ -187,6 +187,8 @@ class DeletedSpaceRecord(SQLModel, table=True):
     __tablename__ = "ui_deleted_spaces"
     space_id: str = SQLField(primary_key=True)
     deleted_at: str
+    # Account that deleted it (auth_users.id); empty for ids deleted before accounts existed.
+    owner_id: str | None = SQLField(default=None, index=True)
 
 
 def canonical_id(kind: str, identifier: str) -> str:

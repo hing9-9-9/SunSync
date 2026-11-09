@@ -16,6 +16,7 @@ from sqlmodel import Session, col, func, select
 from app.db import engine, init_db
 from app.models.auth import AuthUser
 from app.models.scene import SceneRecord
+from app.ui_scene import DeletedSpaceRecord
 
 
 def assign_unowned(session: Session, email: str, apply: bool) -> int:
@@ -24,8 +25,15 @@ def assign_unowned(session: Session, email: str, apply: bool) -> int:
         raise SystemExit(f"No account with this e-mail has logged in yet: {email}")
     unowned = col(SceneRecord.owner_id).is_(None)
     count = session.exec(select(func.count()).select_from(SceneRecord).where(unowned)).one()
-    if apply and count:
-        session.execute(update(SceneRecord).where(unowned).values(owner_id=user.id))
+    if apply:
+        if count:
+            session.execute(update(SceneRecord).where(unowned).values(owner_id=user.id))
+        # ids deleted before accounts existed go along, so that person's devices drop their copies
+        session.execute(
+            update(DeletedSpaceRecord)
+            .where(col(DeletedSpaceRecord.owner_id).is_(None))
+            .values(owner_id=user.id)
+        )
         session.commit()
     return count
 

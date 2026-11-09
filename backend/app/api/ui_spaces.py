@@ -83,7 +83,10 @@ def list_spaces(
             )
         else:
             spaces.append(UISpace.model_validate_json(record.payload_json).model_dump())
-    deleted = [row.space_id for row in session.exec(select(DeletedSpaceRecord)).all()]
+    tombstones = select(DeletedSpaceRecord)
+    if user is not None:  # only the ids this account deleted
+        tombstones = tombstones.where(col(DeletedSpaceRecord.owner_id) == user.id)
+    deleted = [row.space_id for row in session.exec(tombstones).all()]
     return {
         "spaces": spaces,
         "unavailable": unavailable,
@@ -189,7 +192,7 @@ def replace_space(space_id: str, space: UISpace, session: DB) -> UISpace:
 
 
 @router.delete("/{space_id}", status_code=204)
-def delete_space(space_id: str, session: DB) -> None:
+def delete_space(space_id: str, session: DB, user: CurrentUser) -> None:
     """Removes the space and its Scene; repeating it is harmless."""
     record = session.get(UISpaceRecord, space_id)
     scene = session.get(SceneRecord, canonical_id("scene", space_id))
@@ -197,5 +200,11 @@ def delete_space(space_id: str, session: DB) -> None:
         if row is not None:
             session.delete(row)
     if session.get(DeletedSpaceRecord, space_id) is None:
-        session.add(DeletedSpaceRecord(space_id=space_id, deleted_at=datetime.now(UTC).isoformat()))
+        session.add(
+            DeletedSpaceRecord(
+                space_id=space_id,
+                deleted_at=datetime.now(UTC).isoformat(),
+                owner_id=owner_of(user),
+            )
+        )
     session.commit()
