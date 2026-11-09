@@ -21,11 +21,8 @@ export function compactDay(sunpath: SunpathPrediction, plans: ShadingPlan[], fli
     times: (sunpath.solar_positions ?? []).map(p => Date.parse(p.timestamp)),
     sun: (sunpath.solar_positions ?? []).map(p => p.sun_direction_enu),
     exposure: sunpath.regions.map(r => ({
-      share: r.timeline.map(t => (t.samples?.length ? (t.exposed_sample_count ?? 0) / t.samples.length : 0)),
-      maxW: r.timeline.map(t => {
-        const values = (t.samples ?? []).map(s => s.direct_irradiance_W_m2);
-        return values.some(v => v === null) ? null : Math.max(0, ...(values as number[]));
-      }),
+      share: r.timeline.map(t => t.sample_count ? t.exposed_sample_count / t.sample_count : 0),
+      maxW: r.timeline.map(t => t.max_direct_irradiance_W_m2),
     })),
     rows: win?.film_rows ?? 0,
     cols: win?.film_cols ?? 0,

@@ -48,6 +48,39 @@ function invalidFieldsMessage(detail: unknown) {
     ? `입력값을 확인해 주세요: ${fields.join(", ")}`
     : "입력값 중 허용 범위를 벗어난 항목이 있습니다. 숫자와 필수 항목을 확인해 주세요.";
 }
+
+type SunpathErrorDetail = {
+  code: string;
+  message: string;
+  target_name?: string | null;
+  related_target_name?: string | null;
+};
+
+function sunpathErrorMessage(detail: unknown): string | null {
+  if (
+    !detail ||
+    typeof detail !== "object" ||
+    typeof (detail as Partial<SunpathErrorDetail>).code !== "string" ||
+    typeof (detail as Partial<SunpathErrorDetail>).message !== "string"
+  ) return null;
+  const error = detail as SunpathErrorDetail;
+  switch (error.code) {
+    case "FURNITURE_OVERLAP":
+      return error.target_name && error.related_target_name
+        ? `“${error.related_target_name}”과 “${error.target_name}”이 겹쳐 있어 예측할 수 없습니다. 가구 또는 보호 영역의 위치를 확인해 주세요.`
+        : "가구와 보호 영역이 겹쳐 있어 예측할 수 없습니다. 위치를 확인해 주세요.";
+    case "INTERSECTION_LIMIT_EXCEEDED":
+      return "공간이 너무 복잡해 예측 범위를 초과했습니다. 예측 시간 간격을 늘리거나 보호 영역 또는 가구 수를 줄여 주세요.";
+    case "SAMPLE_LIMIT_EXCEEDED":
+      return "보호 영역이 너무 넓어 계산 지점 수를 초과했습니다. 보호 영역의 크기나 개수를 줄여 주세요.";
+    case "INVALID_SCENE_GEOMETRY":
+      return "공간 배치를 계산할 수 없습니다. 창문, 가구, 보호 영역의 위치를 확인해 주세요.";
+    case "INVALID_PREDICTION_REQUEST":
+      return "예측 요청값을 확인해 주세요.";
+    default:
+      return /[가-힣]/.test(error.message) ? error.message : null;
+  }
+}
 /** Text safe to show people: our own Korean messages, never raw runtime errors. */
 export function userMessage(error: unknown, fallback: string) {
   if (error instanceof SpaceApiError) return error.message;
@@ -82,8 +115,9 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
     // Server text is shown only when it is already written for people (Korean);
     // framework messages stay in the console.
     if (detail) console.warn("SunSync API", response.status, detail);
+    const domainErrorMessage = response.status === 422 ? sunpathErrorMessage(detail) : null;
     const message =
-      typeof detail === "string" && /[가-힣]/.test(detail)
+      domainErrorMessage ?? (typeof detail === "string" && /[가-힣]/.test(detail)
         ? detail
         : response.status === 409
           ? "다른 곳에서 수정된 공간입니다. 최신 내용을 불러온 뒤 다시 수정해 주세요."
@@ -93,7 +127,7 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
               ? invalidFieldsMessage(detail)
               : response.status >= 500
                 ? "서버에 일시적인 문제가 있습니다. 잠시 후 다시 시도해 주세요."
-                : "공간 정보를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.";
+                : "공간 정보를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.");
     throw new SpaceApiError(response.status, message);
   }
   return data as T;
@@ -179,7 +213,9 @@ export const listMeasurements = (signal?: AbortSignal) => request<HandoffSession
 
 type SunpathTimeline = {
   timestamp: string; status: "exposed" | "not_exposed";
-  exposed_sample_count?: number;
+  sample_count: number;
+  exposed_sample_count: number;
+  max_direct_irradiance_W_m2: number | null;
   samples?: { direct_irradiance_W_m2: number | null }[];
 };
 export type SunpathPrediction = {
@@ -200,6 +236,7 @@ export function predictSunpath(sceneId: string, revision: number, startTime: str
         start_time: startTime,
         duration_minutes: 1440,
         interval_seconds: 1800,
+        detail_level: "summary",
         expected_scene_revision: revision,
       }),
     },

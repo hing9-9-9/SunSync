@@ -10,7 +10,7 @@ const sunpath: SunpathPrediction = {
   start_time: t(0),
   solar_positions: [{ timestamp: t(0), sun_direction_enu: [0, -1, 0] }, { timestamp: t(1), sun_direction_enu: [0, -1, 1] }],
   regions: [
-    { region_id: "ra", timeline: [{ timestamp: t(0), status: "exposed", exposed_sample_count: 1, samples: [{ direct_irradiance_W_m2: 40 }, { direct_irradiance_W_m2: 0 }] }, { timestamp: t(1), status: "not_exposed", exposed_sample_count: 0, samples: [{ direct_irradiance_W_m2: null }, { direct_irradiance_W_m2: 0 }] }] },
+    { region_id: "ra", timeline: [{ timestamp: t(0), status: "exposed", sample_count: 2, exposed_sample_count: 1, max_direct_irradiance_W_m2: 40 }, { timestamp: t(1), status: "not_exposed", sample_count: 2, exposed_sample_count: 0, max_direct_irradiance_W_m2: null }] },
     { region_id: "rb", timeline: [] },
   ],
 };

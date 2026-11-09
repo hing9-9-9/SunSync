@@ -22,6 +22,9 @@ from app.schemas.sunpath import (
     SampleResultResponse,
     SolarPositionResponse,
     SourceSnapshotResponse,
+    SunpathErrorCode,
+    SunpathErrorDetail,
+    SunpathErrorTargetType,
     SunpathPredictionRequest,
     SunpathPredictionResponse,
 )
@@ -34,7 +37,11 @@ from engine.fr01.models import (
     Vector3,
     Window,
 )
-from engine.fr01.predictor import direct_irradiance_W_m2, predict_region_exposure
+from engine.fr01.predictor import (
+    SampleInsideOccluderError,
+    direct_irradiance_W_m2,
+    predict_region_exposure,
+)
 from engine.fr01.solar import calculate_solar_positions, make_prediction_grid
 from engine.fr01.tiling import tile_centres
 
@@ -43,7 +50,33 @@ MAX_INTERSECTION_CHECKS = 5_000_000
 
 
 class SunpathValidationError(ValueError):
-    """A request or stored Scene cannot be evaluated by the FR-01 MVP."""
+    """A structured FR-01 domain error safe to expose through the API."""
+
+    def __init__(
+        self,
+        code: SunpathErrorCode,
+        message: str,
+        *,
+        target_type: SunpathErrorTargetType | None = None,
+        target_id: str | None = None,
+        target_name: str | None = None,
+        related_target_type: SunpathErrorTargetType | None = None,
+        related_target_id: str | None = None,
+        related_target_name: str | None = None,
+        context: dict[str, object] | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.detail = SunpathErrorDetail(
+            code=code,
+            message=message,
+            target_type=target_type,
+            target_id=target_id,
+            target_name=target_name,
+            related_target_type=related_target_type,
+            related_target_id=related_target_id,
+            related_target_name=related_target_name,
+            context=context or {},
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -71,6 +104,34 @@ class DniValue:
     interval_end: datetime | None = None
     clear_sky_dni: float | None = None
     provenance: dict[str, object] | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class PredictionWorkEstimate:
+    timestamp_count: int
+    sample_count: int
+    window_count: int
+    occluder_count: int
+    room_corner_count: int
+
+    @property
+    def intersection_checks(self) -> int:
+        return (
+            self.timestamp_count
+            * self.sample_count
+            * (self.window_count + self.occluder_count + self.room_corner_count + 2)
+        )
+
+    def context(self, max_checks: int) -> dict[str, object]:
+        return {
+            "estimated_checks": self.intersection_checks,
+            "max_checks": max_checks,
+            "timestamp_count": self.timestamp_count,
+            "sample_count": self.sample_count,
+            "window_count": self.window_count,
+            "occluder_count": self.occluder_count,
+            "room_corner_count": self.room_corner_count,
+        }
 
 
 def _vector(value: tuple[float, float, float]) -> Vector3:
@@ -124,16 +185,28 @@ def adapt_scene(scene: Scene) -> SceneGeometry:
             ),
         )
     except ValueError as error:
-        raise SunpathValidationError(f"scene geometry is not calculation-ready: {error}") from error
+        raise SunpathValidationError(
+            "INVALID_SCENE_GEOMETRY",
+            "공간 배치를 계산할 수 없습니다.",
+            target_type="scene",
+        ) from error
 
 
 def _start_time(value: str) -> datetime:
     try:
         result = datetime.fromisoformat(value)
     except ValueError as error:
-        raise SunpathValidationError("start_time must be an ISO 8601 timestamp") from error
+        raise SunpathValidationError(
+            "INVALID_PREDICTION_REQUEST",
+            "예측 요청값을 확인해 주세요.",
+            target_type="request",
+        ) from error
     if result.utcoffset() is None:
-        raise SunpathValidationError("start_time must include a timezone offset")
+        raise SunpathValidationError(
+            "INVALID_PREDICTION_REQUEST",
+            "예측 요청값을 확인해 주세요.",
+            target_type="request",
+        )
     return result
 
 
@@ -148,13 +221,20 @@ def _selected_regions(
         missing = requested - present
         if missing:
             raise SunpathValidationError(
-                f"protected_region_ids contains unknown ID: {min(missing)}"
+                "INVALID_PREDICTION_REQUEST",
+                "예측 요청값을 확인해 주세요.",
+                target_type="request",
+                context={"field": "protected_region_ids"},
             )
         result = tuple(
             region for region in geometry.protected_regions if region.region_id in requested
         )
     if not result:
-        raise SunpathValidationError("scene has no protected regions to predict")
+        raise SunpathValidationError(
+            "INVALID_PREDICTION_REQUEST",
+            "예측할 보호 영역이 없습니다.",
+            target_type="request",
+        )
     return result
 
 
@@ -193,6 +273,48 @@ def _sample_response(
             else None
         ),
         direct_irradiance_W_m2=direct_irradiance_W_m2,
+    )
+
+
+def _region_time_response(
+    entry: object,
+    region: ProtectedRegion,
+    sun_direction_enu: Vector3,
+    dni_W_m2: float | None,
+    include_samples: bool,
+) -> RegionTimeResponse:
+    from engine.fr01.models import RegionTimeResult
+
+    assert isinstance(entry, RegionTimeResult)
+    irradiance_values = [
+        direct_irradiance_W_m2(
+            sample,
+            region.receiving_normal,
+            sun_direction_enu,
+            dni_W_m2,
+        )
+        for sample in entry.samples
+    ]
+    maximum = (
+        None
+        if not irradiance_values or any(value is None for value in irradiance_values)
+        else max(cast(list[float], irradiance_values))
+    )
+    sample_responses = (
+        [
+            _sample_response(sample, irradiance)
+            for sample, irradiance in zip(entry.samples, irradiance_values, strict=True)
+        ]
+        if include_samples
+        else None
+    )
+    return RegionTimeResponse(
+        timestamp=entry.timestamp,
+        status="exposed" if entry.exposed else "not_exposed",
+        sample_count=len(entry.samples),
+        exposed_sample_count=sum(sample.exposed for sample in entry.samples),
+        max_direct_irradiance_W_m2=maximum,
+        samples=sample_responses,
     )
 
 
@@ -321,22 +443,33 @@ def predict_scene(
         options = PredictionOptions(request.duration_minutes, request.interval_seconds)
         timestamps = make_prediction_grid(start, options)
     except ValueError as error:
-        raise SunpathValidationError(str(error)) from error
+        raise SunpathValidationError(
+            "INVALID_PREDICTION_REQUEST",
+            "예측 요청값을 확인해 주세요.",
+            target_type="request",
+        ) from error
     samples = sum(len(tile_centres(region)) for region in regions)
     if samples > MAX_SELECTED_SAMPLES:
-        raise SunpathValidationError("selected regions exceed the sample-point limit")
-    work = (
-        len(timestamps)
-        * samples
-        * (
-            len(geometry.windows)
-            + len(geometry.occluders)
-            + len(geometry.room.floor_vertices_m)
-            + 2
+        raise SunpathValidationError(
+            "SAMPLE_LIMIT_EXCEEDED",
+            "보호 영역의 계산 지점 수가 한도를 초과했습니다.",
+            target_type="request",
+            context={"sample_count": samples, "max_samples": MAX_SELECTED_SAMPLES},
         )
+    work = PredictionWorkEstimate(
+        timestamp_count=len(timestamps),
+        sample_count=samples,
+        window_count=len(geometry.windows),
+        occluder_count=len(geometry.occluders),
+        room_corner_count=len(geometry.room.floor_vertices_m),
     )
-    if work > MAX_INTERSECTION_CHECKS:
-        raise SunpathValidationError("prediction exceeds the intersection-check limit")
+    if work.intersection_checks > MAX_INTERSECTION_CHECKS:
+        raise SunpathValidationError(
+            "INTERSECTION_LIMIT_EXCEEDED",
+            "공간이 너무 복잡해 예측 계산 한도를 초과했습니다.",
+            target_type="request",
+            context=work.context(MAX_INTERSECTION_CHECKS),
+        )
     try:
         solar_positions = calculate_solar_positions(geometry.site, timestamps)
         received_at = _utc(request_received_at or datetime.now(UTC))
@@ -436,10 +569,28 @@ def predict_scene(
             )
             for region in regions
         )
+    except SampleInsideOccluderError as error:
+        region_names = {item.region_id: item.name for item in scene.protected_regions}
+        occluder_names = {item.occluder_id: item.name for item in scene.occluders}
+        raise SunpathValidationError(
+            "FURNITURE_OVERLAP",
+            "보호 영역과 가구가 겹쳐 있어 예측할 수 없습니다.",
+            target_type="protected_region",
+            target_id=error.region_id,
+            target_name=region_names.get(error.region_id),
+            related_target_type="furniture",
+            related_target_id=error.occluder_id,
+            related_target_name=occluder_names.get(error.occluder_id),
+            context={"sample_index": error.sample_index},
+        ) from error
     except ValueError as error:
-        raise SunpathValidationError(str(error)) from error
+        raise SunpathValidationError(
+            "INVALID_SCENE_GEOMETRY",
+            "공간 배치를 계산할 수 없습니다.",
+            target_type="scene",
+        ) from error
     return SunpathPredictionResponse(
-        result_version="0.3.0" if nowcast_engine is not None else "0.2.0",
+        result_version="0.4.0",
         scene_id=scene.scene_id,
         scene_revision=scene.revision,
         start_time=timestamps[0],
@@ -518,22 +669,12 @@ def predict_scene(
                     for interval in prediction.exposure_intervals
                 ],
                 timeline=[
-                    RegionTimeResponse(
-                        timestamp=entry.timestamp,
-                        status="exposed" if entry.exposed else "not_exposed",
-                        exposed_sample_count=sum(sample.exposed for sample in entry.samples),
-                        samples=[
-                            _sample_response(
-                                sample,
-                                direct_irradiance_W_m2(
-                                    sample,
-                                    region.receiving_normal,
-                                    solar_positions[index].sun_direction_enu,
-                                    dni_values[index].value,
-                                ),
-                            )
-                            for sample in entry.samples
-                        ],
+                    _region_time_response(
+                        entry,
+                        region,
+                        solar_positions[index].sun_direction_enu,
+                        dni_values[index].value,
+                        request.detail_level == "diagnostic",
                     )
                     for index, entry in enumerate(prediction.timeline)
                 ],

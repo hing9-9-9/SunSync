@@ -10,6 +10,9 @@ const start = "2026-10-24T00:00:00+09:00";
 const at = (minute: number, exposed: boolean) => ({
   timestamp: new Date(Date.parse(start) + minute * 60000).toISOString(),
   status: exposed ? ("exposed" as const) : ("not_exposed" as const),
+  sample_count: 1,
+  exposed_sample_count: exposed ? 1 : 0,
+  max_direct_irradiance_W_m2: exposed ? 100 : 0,
 });
 
 test("prediction day is local midnight with the zone offset", () => {
@@ -55,6 +58,7 @@ test("prediction request pins the saved revision", async (t) => {
   assert.match(url, /\/api\/scenes\/scene-1\/sunpath-predictions$/);
   assert.equal(body.expected_scene_revision, 4);
   assert.equal(body.duration_minutes, 1440);
+  assert.equal(body.detail_level, "summary");
 });
 
 test("a prediction from before a space edit is rejected", () => {

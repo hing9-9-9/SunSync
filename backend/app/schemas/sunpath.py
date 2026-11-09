@@ -8,6 +8,14 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 DniSource = Literal["scene_weather", "open_meteo", "pvlib_clear_sky", "unknown"]
+SunpathErrorCode = Literal[
+    "FURNITURE_OVERLAP",
+    "INTERSECTION_LIMIT_EXCEEDED",
+    "SAMPLE_LIMIT_EXCEEDED",
+    "INVALID_SCENE_GEOMETRY",
+    "INVALID_PREDICTION_REQUEST",
+]
+SunpathErrorTargetType = Literal["furniture", "protected_region", "scene", "request"]
 FallbackReason = Literal[
     "scene_weather_missing",
     "scene_weather_stale",
@@ -27,10 +35,23 @@ class SunpathModel(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True, allow_inf_nan=False)
 
 
+class SunpathErrorDetail(SunpathModel):
+    code: SunpathErrorCode
+    message: str
+    target_type: SunpathErrorTargetType | None = None
+    target_id: str | None = None
+    target_name: str | None = None
+    related_target_type: SunpathErrorTargetType | None = None
+    related_target_id: str | None = None
+    related_target_name: str | None = None
+    context: dict[str, object] = Field(default_factory=dict)
+
+
 class SunpathPredictionRequest(SunpathModel):
     start_time: str
     duration_minutes: Annotated[int, Field(ge=1, le=1440)] = 120
     interval_seconds: Annotated[int, Field(ge=1, le=3600)] = 300
+    detail_level: Literal["summary", "diagnostic"] = "summary"
     protected_region_ids: list[str] | None = None
     expected_scene_revision: Annotated[int, Field(ge=1, le=2**63 - 1)] | None = None
 
@@ -87,8 +108,13 @@ class SampleResultResponse(SunpathModel):
 class RegionTimeResponse(SunpathModel):
     timestamp: datetime
     status: Literal["exposed", "not_exposed"]
+    sample_count: Annotated[int, Field(ge=0)]
     exposed_sample_count: int
-    samples: list[SampleResultResponse]
+    max_direct_irradiance_W_m2: NonnegativeIrradiance | None
+    samples: list[SampleResultResponse] | None = Field(
+        default=None,
+        exclude_if=lambda value: value is None,
+    )
 
 
 class ExposureIntervalResponse(SunpathModel):
@@ -113,7 +139,7 @@ class SolarPositionResponse(SunpathModel):
 
 
 class SunpathPredictionResponse(SunpathModel):
-    result_version: Literal["0.2.0", "0.3.0"] = "0.2.0"
+    result_version: Literal["0.4.0"] = "0.4.0"
     scene_id: str
     scene_revision: int
     coordinate_frame: Literal["ENU"] = "ENU"

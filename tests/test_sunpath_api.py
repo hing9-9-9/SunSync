@@ -17,6 +17,8 @@ from fastapi.testclient import TestClient
 from sqlalchemy import Engine
 from sqlmodel import Session, create_engine
 
+from engine.fr01.predictor import SampleInsideOccluderError
+
 EXAMPLES = Path(__file__).resolve().parents[1] / "docs" / "examples"
 
 
@@ -60,7 +62,7 @@ def test_prediction_returns_scene_snapshot_timeline_and_sample_diagnostics(clien
     original = create_scene(client, scene_payload)
     response = client.post(
         f"/api/scenes/{scene_payload['scene_id']}/sunpath-predictions",
-        json=request_body(expected_scene_revision=2),
+        json=request_body(expected_scene_revision=2, detail_level="diagnostic"),
     )
     assert response.status_code == 200, response.text
     result = response.json()
@@ -76,7 +78,7 @@ def test_prediction_returns_scene_snapshot_timeline_and_sample_diagnostics(clien
         == len(result["irradiance"])
         == 3
     )
-    assert result["result_version"] == "0.3.0"
+    assert result["result_version"] == "0.4.0"
     assert all(
         irradiance["timestamp"] == timestamp
         and irradiance["ml_applied"] is False
@@ -100,6 +102,38 @@ def test_prediction_returns_scene_snapshot_timeline_and_sample_diagnostics(clien
     for timestamp in result["timestamps"]:
         assert datetime.fromisoformat(timestamp).utcoffset().total_seconds() == 0
     assert client.get(f"/api/scenes/{scene_payload['scene_id']}").json() == original
+
+
+def test_summary_omits_samples_and_matches_diagnostic_aggregates(client, scene_payload):
+    create_scene(client, scene_payload)
+    path = f"/api/scenes/{scene_payload['scene_id']}/sunpath-predictions"
+    summary_response = client.post(path, json=request_body(detail_level="summary"))
+    diagnostic_response = client.post(path, json=request_body(detail_level="diagnostic"))
+    assert summary_response.status_code == diagnostic_response.status_code == 200
+    summary, diagnostic = summary_response.json(), diagnostic_response.json()
+    assert summary["result_version"] == diagnostic["result_version"] == "0.4.0"
+
+    for summary_region, diagnostic_region in zip(
+        summary["regions"], diagnostic["regions"], strict=True
+    ):
+        for summary_entry, diagnostic_entry in zip(
+            summary_region["timeline"], diagnostic_region["timeline"], strict=True
+        ):
+            assert "samples" not in summary_entry
+            samples = diagnostic_entry["samples"]
+            assert diagnostic_entry["sample_count"] == len(samples)
+            values = [sample["direct_irradiance_W_m2"] for sample in samples]
+            expected_max = (
+                None if not values or any(value is None for value in values) else max(values)
+            )
+            assert diagnostic_entry["max_direct_irradiance_W_m2"] == expected_max
+            assert summary_entry == {
+                key: value for key, value in diagnostic_entry.items() if key != "samples"
+            }
+
+    summary_bytes = len(json.dumps(summary, separators=(",", ":")).encode())
+    diagnostic_bytes = len(json.dumps(diagnostic, separators=(",", ":")).encode())
+    assert summary_bytes < diagnostic_bytes * 0.2
 
 
 def test_prediction_reads_no_provider_during_request_and_uses_durable_fallback(
@@ -149,6 +183,7 @@ def test_prediction_evaluates_every_sample_at_every_requested_timestamp(client, 
             interval_seconds=600,
             protected_region_ids=["region_A"],
             expected_scene_revision=2,
+            detail_level="diagnostic",
         ),
     )
     assert response.status_code == 200, response.text
@@ -190,10 +225,9 @@ def test_prediction_reports_not_found_revision_and_request_validation_errors(cli
         ).status_code
         == 422
     )
-    assert (
-        client.post(path, json=request_body(protected_region_ids=["missing_region"])).status_code
-        == 422
-    )
+    unknown = client.post(path, json=request_body(protected_region_ids=["missing_region"]))
+    assert unknown.status_code == 422
+    assert unknown.json()["detail"]["code"] == "INVALID_PREDICTION_REQUEST"
     assert (
         client.post(path, json=request_body(duration_minutes=1440, interval_seconds=1)).status_code
         == 422
@@ -201,11 +235,14 @@ def test_prediction_reports_not_found_revision_and_request_validation_errors(cli
 
 
 @pytest.mark.parametrize(
-    ("limit_name", "limit_value"),
-    [("MAX_SELECTED_SAMPLES", 1), ("MAX_INTERSECTION_CHECKS", 1)],
+    ("limit_name", "limit_value", "error_code"),
+    [
+        ("MAX_SELECTED_SAMPLES", 1, "SAMPLE_LIMIT_EXCEEDED"),
+        ("MAX_INTERSECTION_CHECKS", 1, "INTERSECTION_LIMIT_EXCEEDED"),
+    ],
 )
 def test_prediction_rejects_auto_tile_resource_limit(
-    client, scene_payload, monkeypatch, limit_name, limit_value
+    client, scene_payload, monkeypatch, limit_name, limit_value, error_code
 ):
     create_scene(client, scene_payload)
     monkeypatch.setattr(sunpath_service, limit_name, limit_value)
@@ -214,6 +251,41 @@ def test_prediction_rejects_auto_tile_resource_limit(
         json=request_body(),
     )
     assert response.status_code == 422
+    detail = response.json()["detail"]
+    assert detail["code"] == error_code
+    assert detail["target_type"] == "request"
+    if error_code == "SAMPLE_LIMIT_EXCEEDED":
+        assert detail["context"]["sample_count"] > detail["context"]["max_samples"]
+    else:
+        assert detail["context"]["estimated_checks"] > detail["context"]["max_checks"]
+        assert detail["context"]["timestamp_count"] > 0
+        assert detail["context"]["room_corner_count"] == 4
+
+
+def test_prediction_reports_overlap_with_user_facing_names(client, scene_payload, monkeypatch):
+    create_scene(client, scene_payload)
+
+    def overlap(*_args, **_kwargs):
+        raise SampleInsideOccluderError(20, "region_A", "shelf_001")
+
+    monkeypatch.setattr(sunpath_service, "predict_region_exposure", overlap)
+    response = client.post(
+        f"/api/scenes/{scene_payload['scene_id']}/sunpath-predictions",
+        json=request_body(),
+    )
+    assert response.status_code == 422
+    detail = response.json()["detail"]
+    assert detail == {
+        "code": "FURNITURE_OVERLAP",
+        "message": "보호 영역과 가구가 겹쳐 있어 예측할 수 없습니다.",
+        "target_type": "protected_region",
+        "target_id": "region_A",
+        "target_name": "서가 남쪽 전면",
+        "related_target_type": "furniture",
+        "related_target_id": "shelf_001",
+        "related_target_name": "가상 서가",
+        "context": {"sample_index": 20},
+    }
 
 
 def test_prediction_rejects_invalid_stored_scene_geometry_without_mutation(
@@ -231,6 +303,7 @@ def test_prediction_rejects_invalid_stored_scene_geometry_without_mutation(
         session.commit()
     response = client.post("/api/scenes/invalid_scene/sunpath-predictions", json=request_body())
     assert response.status_code == 422
+    assert response.json()["detail"]["code"] == "INVALID_SCENE_GEOMETRY"
     with Session(database_engine) as session:
         record = session.get(SceneRecord, "invalid_scene")
         assert record is not None

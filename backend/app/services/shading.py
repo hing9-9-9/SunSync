@@ -40,11 +40,19 @@ def _film_windows(scene: Scene) -> list[FilmWindow]:
 
 def _caps(scene: Scene) -> dict[str, float]:
     if scene.policy is None:
-        raise SunpathValidationError("scene has no protection policy")
+        raise SunpathValidationError(
+            "INVALID_SCENE_GEOMETRY",
+            "공간 배치를 계산할 수 없습니다.",
+            target_type="scene",
+        )
     b = scene.policy.grades.B.max_direct_irradiance_W_m2
     c = scene.policy.grades.C.max_direct_irradiance_W_m2
     if b is None or c is None:
-        raise SunpathValidationError("grades B and C need max_direct_irradiance_W_m2")
+        raise SunpathValidationError(
+            "INVALID_SCENE_GEOMETRY",
+            "공간 배치를 계산할 수 없습니다.",
+            target_type="scene",
+        )
     return {"B": b, "C": c}
 
 
@@ -60,7 +68,7 @@ def _exposed_tiles(prediction: SunpathPredictionResponse) -> list[ExposedTile]:
         )
         for region in prediction.regions
         for entry in region.timeline
-        for sample in entry.samples
+        for sample in entry.samples or []
         if sample.status == "exposed"
         and sample.reason == "clear_path"
         and sample.candidate_path is not None
@@ -81,6 +89,7 @@ def shading_plan_for_scene(
             start_time=request.start_time,
             duration_minutes=request.duration_minutes,
             interval_seconds=request.interval_seconds,
+            detail_level="diagnostic",
         ),
         request_received_at=request_received_at,
         nowcast_engine=nowcast_engine,

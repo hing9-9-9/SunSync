@@ -37,6 +37,16 @@ from .solar import calculate_solar_positions, make_prediction_grid
 from .tiling import tile_centres
 
 
+class SampleInsideOccluderError(ValueError):
+    """A protected-region sample starts inside opaque scene geometry."""
+
+    def __init__(self, sample_index: int, region_id: str, occluder_id: str) -> None:
+        self.sample_index = sample_index
+        self.region_id = region_id
+        self.occluder_id = occluder_id
+        super().__init__(f"sample {sample_index} of {region_id} is inside occluder {occluder_id}")
+
+
 def exposure_intervals(timeline: tuple[RegionTimeResult, ...]) -> tuple[ExposureInterval, ...]:
     """Merge adjacent exposed grid entries without interpolating their boundaries."""
     result: list[ExposureInterval] = []
@@ -136,8 +146,10 @@ def evaluate_sample(
         None,
     )
     if inside is not None:
-        raise ValueError(
-            f"sample {sample_index} of {region.region_id} is inside occluder {inside.occluder_id}"
+        raise SampleInsideOccluderError(
+            sample_index,
+            region.region_id,
+            inside.occluder_id,
         )
     candidate_hits, window_ambiguous = _candidate_windows(point, direction, windows)
     if not candidate_hits:

@@ -11,7 +11,11 @@ from sqlmodel import Session
 from app.db import get_session
 from app.models.scene import SceneRecord
 from app.schemas.scene import Scene
-from app.schemas.sunpath import SunpathPredictionRequest, SunpathPredictionResponse
+from app.schemas.sunpath import (
+    SunpathErrorDetail,
+    SunpathPredictionRequest,
+    SunpathPredictionResponse,
+)
 from app.services.sunpath import SunpathValidationError, predict_scene
 
 router = APIRouter(tags=["sunpath"])
@@ -44,6 +48,17 @@ def create_sunpath_prediction(
         )
     try:
         scene = Scene.model_validate_json(record.scene_json)
+    except ValidationError as error:
+        detail = SunpathErrorDetail(
+            code="INVALID_SCENE_GEOMETRY",
+            message="저장된 공간 정보를 계산할 수 없습니다.",
+            target_type="scene",
+        )
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=detail.model_dump(mode="json"),
+        ) from error
+    try:
         bind = session.get_bind()
         nowcast_engine = bind if isinstance(bind, Engine) else bind.engine
         return predict_scene(
@@ -52,7 +67,8 @@ def create_sunpath_prediction(
             request_received_at=request_received_at,
             nowcast_engine=nowcast_engine,
         )
-    except (SunpathValidationError, ValidationError) as error:
+    except SunpathValidationError as error:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(error)
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=error.detail.model_dump(mode="json"),
         ) from error
