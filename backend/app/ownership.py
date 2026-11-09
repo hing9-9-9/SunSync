@@ -57,7 +57,7 @@ def _token_space_id(session: Session, kind: str, token: str) -> str | None:
     from app.api.handoffs import Handoff
     from app.api.measurements import MeasurementJob
 
-    row = session.get(Handoff if kind == "handoffs" else MeasurementJob, token)
+    row = session.get(Handoff, token) if kind == "handoffs" else session.get(MeasurementJob, token)
     return row.space_id if row is not None else None
 
 
