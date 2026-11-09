@@ -6,7 +6,7 @@ import "./ReferencePreview.css";
 import "./WorkspaceDesign.css";
 import { DeviceHandoff } from "./DeviceHandoff";
 import { CaptureHelp } from "./CaptureHelp";
-import { FilmGrid, ShadingTimeControl } from "./ShadingPlan";
+import { FilmGrid, ShadingTimeControl, VirtualFilmControl } from "./ShadingPlan";
 import SpatialCapture from "./SpatialCapture";
 import {
   defaultShadingTime,
@@ -65,6 +65,7 @@ function App() {
     error,
     setEditedDraftId,
     draftWarning,
+    savedOverlapWarning,
     setPage,
     toast,
     pendingDelete,
@@ -264,6 +265,14 @@ function App() {
                 <p ref={errorRef} tabIndex={-1} className="error" role="alert">
                   {error}
                 </p>
+              )}
+              {page === "detail" && active && savedOverlapWarning && (
+                <div className="notice" role="status">
+                  <span>{savedOverlapWarning}</span>
+                  <button type="button" className="text-button" onClick={() => editSpace(active)}>
+                    가구 위치 수정
+                  </button>
+                </div>
               )}
               {(page === "spaces") && (
                 <div className="list-content">
@@ -1132,6 +1141,7 @@ function App() {
                         }
                         saving={saving}
                       />
+                      <VirtualFilmControl space={active} prediction={filmPrediction} hour={hour} />
                     </Card>
                     <Card className="detail-manage">
                       <h3>공간 관리</h3>

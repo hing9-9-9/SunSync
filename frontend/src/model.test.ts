@@ -281,3 +281,73 @@ test("grade counts match the furniture list: no region counts as D, a piece coun
   });
   assert.deepEqual(counts, { A: 1, B: 1, C: 0, D: 2 });
 });
+
+test("overlapping 3D furniture in the same zone is rejected with both names, touching edges allowed", async () => {
+  const {
+    validateFurnitureOverlap,
+    findOpenFurnitureSpot,
+  } = await import("./model.ts");
+  const space = {
+    ...fixture(),
+    width: 8,
+    depth: 6,
+    height: 3,
+    regions: [],
+    furniture: [
+      {
+        id: "f-table",
+        name: "테이블",
+        zone: "구역 01",
+        type: "desk" as const,
+        x: 5.8,
+        y: 2.5,
+        width: 1.6,
+        depth: 0.8,
+        height: 0.75,
+      },
+      {
+        id: "f-case",
+        name: "진열장",
+        zone: "구역 01",
+        type: "display" as const,
+        x: 6.8,
+        y: 3.0,
+        width: 1.0,
+        depth: 0.5,
+        height: 1.5,
+      },
+    ],
+  };
+  const msg = validateSpace(space);
+  assert.ok(msg);
+  assert.match(msg, /테이블/);
+  assert.match(msg, /진열장/);
+  assert.match(msg, /겹칩니다/);
+
+  //Already-saved space with overlapping furniture is preserved by readState and surfaces overlap warning
+  const storage = { getItem: () => JSON.stringify({ version: 1, account: null, spaces: [space] }) };
+  const [restored] = readState(storage).spaces;
+  assert.equal(restored.id, space.id);
+  assert.match(validateFurnitureOverlap(restored) ?? "", /테이블.*진열장/);
+
+  // Touching boundary (x = 5.8 + 1.6 = 7.4 -> wait, inside 8m room, x = 4.8 + 1.0 = 5.8) is allowed
+  space.furniture[1].x = 4.8;
+  assert.equal(validateSpace(space), null);
+
+  // findOpenFurnitureSpot picks a non-overlapping position when (0, 0) is occupied
+  space.furniture[0].x = 0;
+  space.furniture[0].y = 0;
+  const spot = findOpenFurnitureSpot(space, 1.0, 0.8, 1.2);
+  space.furniture.push({
+    id: "f-new",
+    name: "새 가구",
+    zone: "구역 01",
+    type: "cabinet",
+    x: spot.x,
+    y: spot.y,
+    width: 1.0,
+    depth: 0.8,
+    height: 1.2,
+  });
+  assert.equal(validateSpace(space), null);
+});

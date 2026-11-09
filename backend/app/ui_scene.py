@@ -244,7 +244,48 @@ def region_surface(space: UISpace, region: UIRegion) -> tuple[list[list[float]],
     ]
 
 
+FURNITURE_OVERLAP_EPS = 1e-6
+
+
+def furniture_overlaps_3d(a: UIFurniture, b: UIFurniture) -> bool:
+    """Return True when two floor-standing UI furniture cuboids in the same zone share a positive
+    3D interior volume (> 1e-6 m along X, Y, and Z). Touching boundaries are allowed."""
+    if a.zone != b.zone:
+        return False
+    overlap_x = min(a.x + a.width, b.x + b.width) - max(a.x, b.x)
+    overlap_y = min(a.y + a.depth, b.y + b.depth) - max(a.y, b.y)
+    overlap_z = min(a.height, b.height)
+    return (
+        overlap_x > FURNITURE_OVERLAP_EPS
+        and overlap_y > FURNITURE_OVERLAP_EPS
+        and overlap_z > FURNITURE_OVERLAP_EPS
+    )
+
+
+def find_furniture_overlap(space: UISpace) -> tuple[UIFurniture, UIFurniture] | None:
+    """Return the first pair of 3D-overlapping furniture items in the space, or None."""
+    for i, first in enumerate(space.furniture):
+        for second in space.furniture[i + 1 :]:
+            if furniture_overlaps_3d(first, second):
+                return (first, second)
+    return None
+
+
+def furniture_overlap_message(space: UISpace) -> str | None:
+    """Return a Korean validation message naming the two overlapping furniture items, or None."""
+    pair = find_furniture_overlap(space)
+    if pair is None:
+        return None
+    first, second = pair
+    return (
+        f"'{first.name}'과 '{second.name}' 가구가 서로 겹칩니다. 가구 위치나 크기를 조정해 주세요."
+    )
+
+
 def to_scene(space: UISpace, revision: int, created_at: str | None = None) -> Scene:
+    overlap = furniture_overlap_message(space)
+    if overlap is not None:
+        raise ValueError(overlap)
     timestamp = created_at or datetime.now(UTC).isoformat()
     scene_id = canonical_id("scene", space.id)
     room_id = canonical_id("room", space.id)

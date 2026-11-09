@@ -53,14 +53,14 @@ flowchart TD
 | 공간 구성 | 웹·앱 | `processing` | 촬영 사진으로 가구 치수를 계산하고 공간에 등록. 완료되면 도면 확인으로 이동 | FR-03, FR-06.3 | `POST /measure/v1/measurements`, `POST /measure/v1/fr06`, `GET`·`PUT /api/scenes/{id}`, `POST /api/scenes/{id}/registrations`, `POST /api/ui/measurements/{token}/complete` |
 | 도면 확인 | 웹 (로그인 필요) · 앱 | `review` | 가구별 종류·치수·위치 수정, 2D 도면에서 끌어 옮기기, 가구 추가·삭제, 다시 측정 | FR-06.1, FR-06.3 | `PUT /api/ui/spaces/{id}` |
 | 도면과 보호 영역 | 웹 (로그인 필요) | `protect` | 가구 면 또는 독립 영역으로 보호 영역 설정, 높이, A~D 등급, 차단 시간. 앱은 조회만 한다 | FR-06.6, FR-02 | `PUT /api/ui/spaces/{id}`, `POST /api/scenes/{id}/sunpath-predictions`, `POST /api/scenes/{id}/shading-plans` |
-| 공간 현황 | 웹 (로그인 필요) · 앱 | `detail` | 구역 선택, 시간 슬라이더, 햇빛 영역, 필름 칸 격자, 차단 시간 설정. 웹은 2D/3D 전환(앱은 2D) | FR-01, FR-02, #102, #116 | `GET /api/ui/spaces/{id}`, `POST /api/scenes/{id}/sunpath-predictions`, `POST /api/scenes/{id}/shading-plans`, `GET /api/scenes/{id}/nowcast-comparison` |
+| 공간 현황 | 웹 (로그인 필요) · 앱 | `detail` | 구역 선택, 시간 슬라이더, 햇빛 영역, 필름 칸 격자, 차단 시간 설정, 가상 필름 제어·적용 로그 조회, KMA·Open-Meteo 일사량 예측 상세 비교. 웹은 2D/3D 전환(앱은 2D) | FR-01, FR-02, FR-05, #60, #61, #62, #85, #102, #115, #116 | `GET /api/ui/spaces/{id}`, `POST /api/scenes/{id}/sunpath-predictions`, `POST /api/scenes/{id}/shading-plans`, `GET /api/scenes/{id}/nowcast-comparison`, `GET /api/scenes/{id}/ai-nowcast/latest`, `POST /api/scenes/{id}/film-schedule-apply`, `GET /api/scenes/{id}/film-state`, `GET /api/scenes/{id}/film-logs` |
 | 사용 가이드 | 웹 (공개) · 앱 | `guide` | 목록 → 단계별 설명(6단계). 가이드에서 측정·편집을 실행하지 않는다 | UI-2 (#48) | 없음 |
 | 더보기 | 앱 | `more` | 공간·구역·보호 정보 바로가기, 내 계정, 도움말. 개발용 웹앱 테스트(카메라 준비) | FR-06 | 없음 |
 | 내 계정 | 웹 (로그인 필요) · 앱 | `account` | 연결 계정 확인, 로그아웃 | #121, #105 | `GET /api/auth/session`, `POST /api/auth/logout` |
 | 로그인 | 웹·앱 | (페이지 키 없음) | 소개·가이드·예제를 뺀 화면에서 로그인하지 않았으면 표시. 로그인 후 원래 주소로 돌아간다 | #121, #105 | `GET /api/auth/google/login?next=`, `GET /api/auth/session` |
 
 - 로그인 화면은 별도 페이지 키가 아니라 `home` 위에 겹쳐 보이는 단계다.
-- 필름 실제 제어(`/api/scenes/{id}/film-*`)와 AI 보조 경로는 백엔드에 있지만 이 UI에서는 호출하지 않는다.
+- 공간 현황(`detail`)에서는 가상 필름 제어(`/api/scenes/{id}/film-*`)와 일사량 예측 불확실성(q10~q90)·KMA 비교 차트 상세 보기를 제공한다.
 
 ## 인증과 세션
 
@@ -131,9 +131,10 @@ Figma의 전용 문자/숫자 키패드는 제거했다. 실제 input/select, �
 | 카메라 준비                                          | 더보기 › 웹앱 테스트(웹앱 테스트 전용, 개발 빌드 `?tools=camera`) |
 | 형태별 촬영 지점(P1~Pn)                              | 웹앱 테스트 단계에서만 제공                             |
 | Mac 사진 업로드                                      | 제거됨(11/05). 촬영은 휴대폰 웹에서만                   |
-| 예측: 햇빛 영역·닿는 시간·필름 칸                    | FR-01·FR-02 서버 계산을 연결. 날씨는 저장된 Open-Meteo 값, 없으면 맑은 날 가정 |
-| 차단 시간 설정                                       | 사용자가 정한 시간을 공간과 함께 저장. 필름 제어는 미연결 |
-| 실제 필름 제어                                       | 미연결                                                  |
+| 예측: 햇빛 영역·닿는 시간·필름 칸                    | FR-01·FR-02 서버 계산을 연결. 날씨는 저장된 Open-Meteo·KMA AI 예측 값, 없으면 맑은 날 가정 |
+| 차단 시간 설정                                       | 사용자가 정한 시간을 공간과 함께 저장                   |
+| 가상 필름 제어 및 로그                               | FR-05 가상 필름 스케줄 적용(`film-schedule-apply`), 현재 칸 상태(`film-state`), 적용·목표 미달 로그(`film-logs`) 조회 연결 |
+| 가구 겹침 검사 (#115)                                | 같은 구역에서 3D 부피가 겹치는 가구 저장 거절(맞닿음 허용). 이미 저장된 겹침 공간은 열람 시 안내 표시 |
 | PC/휴대폰 사이 데이터 공유                           | 같은 서버의 저장 공간 조회(계정별 분리는 아직 없음)     |
 
 측정한 가로·세로·높이는 수정 가능한 값으로 도면에 들어간다. 측정이 실패하면 원인 안내 후 재촬영하거나 직접 입력한다.

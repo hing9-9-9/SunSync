@@ -35,6 +35,13 @@ const fieldLabels: Record<string, string> = {
   regions: "보호 영역",
 };
 function invalidFieldsMessage(detail: unknown) {
+  if (Array.isArray(detail)) {
+    for (const item of detail as { msg?: unknown }[]) {
+      if (typeof item?.msg === "string" && /[가-힣]/.test(item.msg)) {
+        return item.msg.replace(/^Value error,\s*/i, "");
+      }
+    }
+  }
   const fields = Array.isArray(detail)
     ? [
         ...new Set(
@@ -251,6 +258,109 @@ export function predictShadingPlan(sceneId: string, revision: number, startTime:
       start_time: startTime, duration_minutes: 1440, interval_seconds: 1800,
       expected_scene_revision: revision,
     }) },
+  );
+}
+
+export type AppliedCellState = "transparent" | "opaque" | "dimmed";
+export type FilmLogStatus = "applied" | "target_unmet" | "unknown_intensity";
+
+export type WindowFilmStateResponse = {
+  scene_id: string;
+  window_id: string;
+  film_type: "PDLC" | "SPD";
+  film_rows: number;
+  film_cols: number;
+  cells: number[][];
+  states: AppliedCellState[][];
+  marker_mode_active: boolean;
+  marker_code_id: number | null;
+  active_plan_id: string | null;
+  evaluated_at: string;
+  updated_at: string;
+};
+
+export type SceneFilmStateResponse = {
+  scene_id: string;
+  evaluated_at: string;
+  windows: WindowFilmStateResponse[];
+};
+
+export type FilmApplicationLogEntry = {
+  log_id?: number | null;
+  scene_id: string;
+  window_id: string;
+  timestamp: string;
+  row: number;
+  col: number;
+  previous_opacity: number;
+  new_opacity: number;
+  previous_state: AppliedCellState;
+  new_state: AppliedCellState;
+  plan_id?: string | null;
+  status: FilmLogStatus;
+  note: string;
+  reasons: { region_id: string; grade: "A" | "B" | "C" | "D" }[];
+  created_at: string;
+};
+
+export type FilmApplicationLogListResponse = {
+  scene_id: string;
+  total: number;
+  logs: FilmApplicationLogEntry[];
+};
+
+export type ScheduleApplyResponse = {
+  scene_id: string;
+  plan_id: string;
+  applied_records_count: number;
+  target_unmet_count: number;
+  evaluated_at: string;
+  windows: WindowFilmStateResponse[];
+};
+
+/** FR-05: apply a computed ShadingPlan to the virtual film device and record transition logs. */
+export function applyFilmSchedule(
+  sceneId: string,
+  plan: import("./shading.ts").ShadingPlan,
+  at?: string,
+  planId?: string,
+) {
+  return request<ScheduleApplyResponse>(
+    `/api/scenes/${encodeURIComponent(sceneId)}/film-schedule-apply`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        plan,
+        ...(at ? { at } : {}),
+        ...(planId ? { plan_id: planId } : {}),
+      }),
+    },
+  );
+}
+
+/** FR-05: evaluate the virtual film device state at the current or simulated clock timestamp. */
+export function fetchFilmState(sceneId: string, at?: string, windowId?: string) {
+  const params = new URLSearchParams();
+  if (at) params.set("at", at);
+  if (windowId) params.set("window_id", windowId);
+  const query = params.toString();
+  return request<SceneFilmStateResponse>(
+    `/api/scenes/${encodeURIComponent(sceneId)}/film-state${query ? `?${query}` : ""}`,
+  );
+}
+
+/** FR-05: retrieve chronological virtual film command application logs. */
+export function fetchFilmLogs(
+  sceneId: string,
+  options?: { windowId?: string; status?: FilmLogStatus; limit?: number },
+) {
+  const params = new URLSearchParams();
+  if (options?.windowId) params.set("window_id", options.windowId);
+  if (options?.status) params.set("status", options.status);
+  if (options?.limit) params.set("limit", String(options.limit));
+  const query = params.toString();
+  return request<FilmApplicationLogListResponse>(
+    `/api/scenes/${encodeURIComponent(sceneId)}/film-logs${query ? `?${query}` : ""}`,
   );
 }
 

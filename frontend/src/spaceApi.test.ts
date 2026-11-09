@@ -115,3 +115,89 @@ test("FR-01 calculation limits explain what can be reduced", async (t) => {
       && error.message.includes("가구 수"),
   );
 });
+
+test("FR-05 virtual film schedule apply, state and logs call scene film endpoints", async (t) => {
+  const {
+    applyFilmSchedule,
+    fetchFilmState,
+    fetchFilmLogs,
+  } = await import("./spaceApi.ts");
+  const calls: string[] = [];
+  t.mock.method(globalThis, "fetch", async (url: string) => {
+    calls.push(url);
+    if (url.includes("/film-schedule-apply")) {
+      return new Response(
+        JSON.stringify({
+          scene_id: "scene-1",
+          scene_revision: 1,
+          applied_at: "2026-11-09T03:00:00Z",
+          windows: [
+            {
+              scene_id: "scene-1",
+              window_id: "ui_window",
+              scene_revision: 1,
+              mode: "schedule",
+              updated_at: "2026-11-09T03:00:00Z",
+              cells: [],
+            },
+          ],
+          applied_logs: [],
+          target_unmet_count: 0,
+        }),
+        { status: 200 },
+      );
+    }
+    if (url.includes("/film-state")) {
+      return new Response(
+        JSON.stringify({
+          scene_id: "scene-1",
+          scene_revision: 1,
+          windows: [],
+        }),
+        { status: 200 },
+      );
+    }
+    return new Response(
+      JSON.stringify({
+        scene_id: "scene-1",
+        total: 1,
+        entries: [
+          {
+            log_id: 1,
+            scene_id: "scene-1",
+            scene_revision: 1,
+            window_id: "ui_window",
+            timestamp: "2026-11-09T03:00:00Z",
+            row: 0,
+            col: 0,
+            state: "opaque",
+            opacity: 1,
+            reason: "grade_b",
+            status: "applied",
+            note: "적용됨",
+          },
+        ],
+      }),
+      { status: 200 },
+    );
+  });
+
+  const applied = await applyFilmSchedule(
+    "scene-1",
+    {
+      plan_version: "0.1.0",
+      scene_id: "scene-1",
+      scene_revision: 1,
+      start_time: "2026-11-09T00:00:00+09:00",
+      end_time: "2026-11-10T00:00:00+09:00",
+      windows: [],
+    },
+    "2026-11-09T12:00:00+09:00",
+  );
+  assert.equal(applied.scene_id, "scene-1");
+  const state = await fetchFilmState("scene-1");
+  assert.equal(state.scene_id, "scene-1");
+  const logs = await fetchFilmLogs("scene-1", { limit: 10 });
+  assert.equal(logs.entries.length, 1);
+  assert.equal(calls.length, 3);
+});

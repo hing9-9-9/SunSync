@@ -13,19 +13,31 @@ from app.db import get_session
 from app.models.scene import SceneRecord
 from app.ownership import CurrentUser, owner_of
 from app.schemas.scene import Scene
-from app.ui_scene import DeletedSpaceRecord, UISpace, UISpaceRecord, canonical_id, to_scene
+from app.ui_scene import (
+    DeletedSpaceRecord,
+    UISpace,
+    UISpaceRecord,
+    canonical_id,
+    furniture_overlap_message,
+    to_scene,
+)
 
 router = APIRouter(prefix="/ui/spaces", tags=["ui-spaces"])
 DB = Annotated[Session, Depends(get_session)]
 
 
 def checked_scene(space: UISpace, revision: int, created_at: str | None = None) -> Scene:
+    overlap = furniture_overlap_message(space)
+    if overlap is not None:
+        raise HTTPException(422, detail=overlap)
     try:
         return to_scene(space, revision, created_at)
     except ValidationError as error:
         raise HTTPException(
             422, detail=[{key: e[key] for key in ("loc", "msg", "type")} for e in error.errors()]
         ) from error
+    except ValueError as error:
+        raise HTTPException(422, detail=str(error)) from error
 
 
 def keep_paired_markers(scene: Scene, previous: Scene) -> Scene:
