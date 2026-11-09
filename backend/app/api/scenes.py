@@ -10,6 +10,7 @@ from sqlmodel import Session, col, select
 
 from app.db import get_session
 from app.models.scene import SceneRecord
+from app.ownership import CurrentUser, owner_of
 from app.scene_cli import schema_document
 from app.schemas.registration import RegisterFurnitureRequest
 from app.schemas.scene import Scene
@@ -33,12 +34,13 @@ def validate_scene(scene: Scene) -> Scene:
 
 
 @router.post("/scenes", response_model=Scene, status_code=status.HTTP_201_CREATED)
-def create_scene(scene: Scene, session: SessionDependency) -> Scene:
+def create_scene(scene: Scene, session: SessionDependency, user: CurrentUser) -> Scene:
     """Import a complete scene, preserving any positive initial revision."""
     record = SceneRecord(
         scene_id=scene.scene_id,
         revision=scene.revision,
         scene_json=scene.model_dump_json(),
+        owner_id=owner_of(user),
     )
     session.add(record)
     try:
@@ -55,13 +57,15 @@ def create_scene(scene: Scene, session: SessionDependency) -> Scene:
 @router.get("/scenes", response_model=list[Scene])
 def list_scenes(
     session: SessionDependency,
+    user: CurrentUser,
     offset: Annotated[int, Query(ge=0, le=2**63 - 1)] = 0,
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
 ) -> list[Scene]:
     """List full scenes in stable scene_id order with bounded pagination."""
-    records = session.exec(
-        select(SceneRecord).order_by(col(SceneRecord.scene_id)).offset(offset).limit(limit)
-    ).all()
+    query = select(SceneRecord).order_by(col(SceneRecord.scene_id))
+    if user is not None:  # only the scenes of this account
+        query = query.where(col(SceneRecord.owner_id) == user.id)
+    records = session.exec(query.offset(offset).limit(limit)).all()
     return [load_stored_scene(record.scene_json) for record in records]
 
 

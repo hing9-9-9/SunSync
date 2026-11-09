@@ -72,11 +72,25 @@ on (`sudo journalctl -u sunsync-api | grep 'Google login'`).
 
 ## Who can use it
 
-**Logging in is only the entrance.** Until the spaces are separated by account (issue #106), every
-logged-in user sees, changes and deletes all spaces. The only limit on who can log in is the Google
-consent screen: while it is in **Testing**, only the listed test users can. The server has no list of
-allowed e-mail addresses (decided to leave it for later), so if the consent screen is ever published,
-every Google account can enter. Keep the app in Testing and keep the test users list short.
+**Spaces belong to the account that created them.** A logged-in user sees, opens, changes and
+deletes only their own spaces; another user's space answers 404, as if it did not exist. The same
+account on the PC and on the phone sees the same spaces. One check in `backend/app/ownership.py`
+looks at the `scene_id`, `space_id` or hand-off/measurement token of every request. The owner is
+stored in `scenes.owner_id`.
+
+Spaces made before the accounts existed have no owner and appear in no list. To give them to one
+account (that person must have logged in once), on the server:
+
+```bash
+cd /opt/sunsync/backend && sudo -u sunsync env SUNSYNC_DATABASE_URL=sqlite:////var/lib/sunsync/sunsync.db \
+  /opt/sunsync/.venv/bin/python -m app.assign_owner --email someone@example.com          # report only
+# add --apply to write the change
+```
+
+**Who can log in.** The only limit is the Google consent screen: while it is in **Testing**, only
+the listed test users can. The server has no list of allowed e-mail addresses (decided to leave it
+for later), so if the consent screen is ever published, every Google account can enter (each would
+only see their own spaces). Keep the app in Testing and keep the test users list short.
 
 ## Google console (once)
 

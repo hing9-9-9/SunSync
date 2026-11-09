@@ -26,6 +26,7 @@ from app.api import (
 from app.api.auth import router as auth_router
 from app.auth import auth_settings, current_user
 from app.db import get_session, init_db
+from app.ownership import check_ownership
 
 
 def create_app(database_engine: Engine | None = None) -> FastAPI:
@@ -43,7 +44,9 @@ def create_app(database_engine: Engine | None = None) -> FastAPI:
     # (SUNSYNC_AUTH=google), so a router added later is closed by default. `current_user`
     # lets the health check and the login routes through.
     application = FastAPI(
-        title="SunSync API", lifespan=lifespan, dependencies=[Depends(current_user)]
+        title="SunSync API",
+        lifespan=lifespan,
+        dependencies=[Depends(current_user), Depends(check_ownership)],
     )
 
     @application.exception_handler(RequestValidationError)

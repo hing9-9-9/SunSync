@@ -9,6 +9,7 @@ from sqlmodel import Field as DBField
 from sqlmodel import SQLModel, select
 
 from app.api.ui_spaces import DB, get_space, replace_space
+from app.ownership import CurrentUser, require_space
 from app.ui_scene import UISpace
 
 
@@ -41,7 +42,8 @@ def current(token: str, session: DB) -> Handoff:
 
 
 @router.post("", status_code=201)
-def start(data: Start, session: DB):
+def start(data: Start, session: DB, user: CurrentUser):
+    require_space(session, data.space_id, user)
     get_space(data.space_id, session)
     code = secrets.token_hex(4).upper()
     while session.exec(select(Handoff).where(Handoff.code == code)).first():
@@ -59,10 +61,14 @@ def start(data: Start, session: DB):
 
 
 @router.post("/claim")
-def claim(data: Claim, session: DB):
+def claim(data: Claim, session: DB, user: CurrentUser):
     row = session.exec(select(Handoff).where(Handoff.code == data.code.upper())).first()
     if row is None:
         raise HTTPException(404, "연결 코드를 확인해 주세요.")
+    try:
+        require_space(session, row.space_id, user)  # a code of another account looks unknown
+    except HTTPException:
+        raise HTTPException(404, "연결 코드를 확인해 주세요.") from None
     row = current(row.token, session)
     if row.status == "completed":
         raise HTTPException(409, "이미 완료된 연결입니다.")

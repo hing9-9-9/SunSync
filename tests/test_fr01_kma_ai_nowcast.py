@@ -62,7 +62,7 @@ def test_migrations_add_quantile_columns(tmp_path: Path) -> None:
     with engine.connect() as conn:
         ver = conn.exec_driver_sql("PRAGMA user_version").scalar_one()
         assert ver == LATEST_VERSION
-    assert ver == 4
+    assert ver == 6
 
     columns = {col["name"]: col for col in inspect(engine).get_columns("nowcast_point")}
     assert "dni_p10_W_m2" in columns
