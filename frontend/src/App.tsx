@@ -1141,7 +1141,12 @@ function App() {
                         }
                         saving={saving}
                       />
-                      <VirtualFilmControl space={active} prediction={filmPrediction} hour={hour} />
+                      <VirtualFilmControl
+                        space={active}
+                        prediction={filmPrediction}
+                        hour={hour}
+                        setting={detailShading}
+                      />
                     </Card>
                     <Card className="detail-manage">
                       <h3>공간 관리</h3>

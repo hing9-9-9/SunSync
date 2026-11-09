@@ -643,3 +643,58 @@ def test_already_saved_overlapping_space_remains_readable_and_can_be_repaired(
     }
     updated = client.put(f"/api/ui/spaces/{saved['id']}", json=repaired)
     assert updated.status_code == 200, updated.text
+
+
+def test_handoff_and_measurement_complete_reject_overlapping_furniture(client, payload):
+    created = client.post("/api/ui/spaces", json=payload)
+    assert created.status_code == 201
+    saved = created.json()
+
+    # 1. Handoff complete with overlapping furniture
+    handoff = client.post("/api/ui/handoffs", json={"space_id": saved["id"]}).json()
+    client.post(f"/api/ui/handoffs/{handoff['token']}/connect")
+    overlapping = {
+        **saved,
+        "furniture": [
+            {
+                "id": "f1",
+                "name": "책상 A",
+                "zone": "구역 1",
+                "type": "desk",
+                "x": 1.0,
+                "y": 1.0,
+                "width": 2.0,
+                "depth": 1.0,
+                "height": 0.8,
+            },
+            {
+                "id": "f2",
+                "name": "책상 B",
+                "zone": "구역 1",
+                "type": "desk",
+                "x": 1.5,
+                "y": 1.2,
+                "width": 1.5,
+                "depth": 1.0,
+                "height": 0.8,
+            },
+        ],
+    }
+    rejected_handoff = client.post(
+        f"/api/ui/handoffs/{handoff['token']}/complete", json=overlapping
+    )
+    assert rejected_handoff.status_code == 422
+    detail_h = str(rejected_handoff.json()["detail"])
+    assert "책상 A" in detail_h and "책상 B" in detail_h and "겹칩니다" in detail_h
+    # Handoff session remains connected (not completed)
+    assert client.get(f"/api/ui/handoffs/{handoff['token']}").json()["status"] == "connected"
+
+    # 2. Measurement job complete with overlapping furniture
+    job = client.post("/api/ui/measurements", json={"space_id": saved["id"]}).json()
+    client.post(f"/api/ui/measurements/{job['token']}/connect")
+    rejected_job = client.post(f"/api/ui/measurements/{job['token']}/complete", json=overlapping)
+    assert rejected_job.status_code == 422
+    detail_m = str(rejected_job.json()["detail"])
+    assert "책상 A" in detail_m and "책상 B" in detail_m and "겹칩니다" in detail_m
+    # Measurement job remains connected (not completed)
+    assert client.get(f"/api/ui/measurements/{job['token']}").json()["status"] == "connected"

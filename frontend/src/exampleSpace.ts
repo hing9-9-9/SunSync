@@ -1,7 +1,9 @@
-import { blankSpace, sampleFurniture, regionForFurniture } from "./model";
-import type { SavedState } from "./model";
+import { blankSpace, sampleFurniture, regionForFurniture } from "./model.ts";
+import type { SavedState } from "./model.ts";
 
-export const editorExample = new URLSearchParams(location.search).get("example") === "editor";
+export const editorExample =
+  typeof location !== "undefined" &&
+  new URLSearchParams(location.search).get("example") === "editor";
 export function exampleState(): SavedState {
   const furniture = sampleFurniture();
   const space = {

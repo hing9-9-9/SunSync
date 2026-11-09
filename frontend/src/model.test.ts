@@ -351,3 +351,13 @@ test("overlapping 3D furniture in the same zone is rejected with both names, tou
   });
   assert.equal(validateSpace(space), null);
 });
+
+test("editor example space passes validateSpace without overlap", async () => {
+  const { exampleState } = await import("./exampleSpace.ts");
+  const { spaces } = exampleState();
+  assert.equal(spaces.length, 1);
+  const sample = spaces[0];
+  assert.equal(validateSpace(sample), null);
+  const { validateFurnitureOverlap } = await import("./model.ts");
+  assert.equal(validateFurnitureOverlap(sample), null);
+});

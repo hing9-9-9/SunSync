@@ -172,10 +172,12 @@ export function VirtualFilmControl({
   space,
   prediction,
   hour,
+  setting,
 }: {
   space: Space;
   prediction?: ShadingResult;
   hour: number;
+  setting?: ShadingTime;
 }) {
   const sceneId = space.serverSceneId;
   const win = resolveWindow(space);
@@ -244,7 +246,10 @@ export function VirtualFilmControl({
         <span className="muted small">{formatMinute(Math.round(hour * 60))} 기준</span>
       </div>
       <p className="muted small">
-        계산된 차광 일정을 가상 필름 장치에 적용하고 시각별 칸 상태와 전환 기록을 확인합니다.
+        계산된 차광 일정(FR-02)을 가상 필름 장치에 적용하고 시각별 칸 상태와 전환 기록을 확인합니다.
+        {setting && (setting.enabled
+          ? ` (사용자 차단 시간 ${setting.start}~${setting.end} 설정과 별개로 서버에서 계산된 일사 차광 계획 원본 전체가 장치에 전송됩니다.)`
+          : " (사용자 차단 시간이 꺼져 있어 상단 도면은 열림 상태로 표시되나, 가상 필름 장치에는 서버에서 계산된 일사 차광 계획 원본이 전송됩니다.)")}
       </p>
       <div className="actions">
         <button

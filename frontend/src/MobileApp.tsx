@@ -1408,7 +1408,12 @@ function MobileApp() {
                       saving={saving}
                     />
                     {sunSource?.note}
-                    <VirtualFilmControl space={active} prediction={filmPrediction} hour={hour} />
+                    <VirtualFilmControl
+                      space={active}
+                      prediction={filmPrediction}
+                      hour={hour}
+                      setting={detailShading}
+                    />
                     </Card>
                     <Card className="detail-management-card">
                       <h3>공간 관리</h3>

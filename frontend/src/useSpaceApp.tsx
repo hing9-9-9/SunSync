@@ -980,10 +980,15 @@ export function useSpaceApp() {
       setError(message);
       return;
     }
+    const next = { ...active, shadingSchedule: shadingEdit, revision: active.revision + 1 };
+    const spaceMessage = validateSpace(next);
+    if (spaceMessage) {
+      setError(spaceMessage);
+      return;
+    }
     setSaving(true);
     setError("");
     try {
-      const next = { ...active, shadingSchedule: shadingEdit, revision: active.revision + 1 };
       const saved = editorExample ? next : await saveServerSpace(next);
       setSpaces((current) => upsertSpace(current, saved));
       setShadingEdit(null);
