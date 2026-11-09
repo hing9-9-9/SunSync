@@ -147,7 +147,7 @@ Steps (use a private window on a PC and a phone):
 5. On the phone, open the address directly: the app layout appears and the camera asks for permission.
 6. The camera setup and the board capture need the printed 4-marker board (see "Before a demo").
 
-Everyone who has the password sees the same spaces until the spaces are separated by account, so do not enter personal data.
+With the Google login on, each account sees only its own spaces. Before the login is on, everyone who has the password sees the same spaces, so do not enter personal data.
 
 ## Backup and logs
 

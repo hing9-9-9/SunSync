@@ -8,7 +8,9 @@ from pydantic import BaseModel
 from sqlmodel import Field, SQLModel, col, select
 
 from app.api.ui_spaces import DB, get_space, replace_space
-from app.ui_scene import UISpace
+from app.models.scene import SceneRecord
+from app.ownership import CurrentUser, may_access, require_space
+from app.ui_scene import UISpace, UISpaceRecord
 
 
 class MeasurementJob(SQLModel, table=True):
@@ -33,15 +35,23 @@ def get_job(token: str, session: DB):
     return row
 
 
+def _owned(session: DB, space_id: str, user: CurrentUser) -> bool:
+    record = session.get(UISpaceRecord, space_id)
+    scene = session.get(SceneRecord, record.scene_id) if record is not None else None
+    return scene is not None and may_access(user, scene.owner_id)
+
+
 @router.get("")
-def list_jobs(session: DB):
-    return session.exec(
+def list_jobs(session: DB, user: CurrentUser):
+    jobs = session.exec(
         select(MeasurementJob).order_by(col(MeasurementJob.created_at).desc())
     ).all()
+    return [job for job in jobs if _owned(session, job.space_id, user)]
 
 
 @router.post("", status_code=201)
-def start(data: Start, session: DB):
+def start(data: Start, session: DB, user: CurrentUser):
+    require_space(session, data.space_id, user)
     get_space(data.space_id, session)
     existing = session.exec(
         select(MeasurementJob).where(

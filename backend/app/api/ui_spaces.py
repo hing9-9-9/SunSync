@@ -11,6 +11,7 @@ from sqlmodel import Session, col, select
 
 from app.db import get_session
 from app.models.scene import SceneRecord
+from app.ownership import CurrentUser, owner_of
 from app.schemas.scene import Scene
 from app.ui_scene import DeletedSpaceRecord, UISpace, UISpaceRecord, canonical_id, to_scene
 
@@ -59,12 +60,14 @@ def keep_paired_markers(scene: Scene, previous: Scene) -> Scene:
 @router.get("")
 def list_spaces(
     session: DB,
+    user: CurrentUser,
     offset: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=100)] = 100,
 ) -> dict[str, Any]:
-    scenes = session.exec(
-        select(SceneRecord).order_by(col(SceneRecord.scene_id)).offset(offset).limit(limit)
-    ).all()
+    query = select(SceneRecord).order_by(col(SceneRecord.scene_id))
+    if user is not None:  # only the spaces of this account; spaces without an owner are hidden
+        query = query.where(col(SceneRecord.owner_id) == user.id)
+    scenes = session.exec(query.offset(offset).limit(limit)).all()
     spaces, unavailable = [], []
     for scene in scenes:
         record = session.exec(
@@ -103,7 +106,7 @@ def get_space(space_id: str, session: DB) -> UISpace:
 
 
 @router.post("", response_model=UISpace, status_code=201)
-def create_space(space: UISpace, session: DB) -> UISpace:
+def create_space(space: UISpace, session: DB, user: CurrentUser) -> UISpace:
     if space.serverRevision is not None:
         raise HTTPException(409, "이미 서버에 저장한 공간입니다. 최신 버전으로 수정해 주세요.")
     if session.get(DeletedSpaceRecord, space.id) is not None:
@@ -117,7 +120,12 @@ def create_space(space: UISpace, session: DB) -> UISpace:
         }
     )
     session.add(
-        SceneRecord(scene_id=scene.scene_id, revision=1, scene_json=scene.model_dump_json())
+        SceneRecord(
+            scene_id=scene.scene_id,
+            revision=1,
+            scene_json=scene.model_dump_json(),
+            owner_id=owner_of(user),
+        )
     )
     session.add(
         UISpaceRecord(

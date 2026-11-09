@@ -6,7 +6,7 @@ schema and record their progress in SQLite's built-in ``user_version``.
 
 from sqlalchemy import Engine
 
-LATEST_VERSION = 4
+LATEST_VERSION = 5
 
 
 def _upgrade_1(connection) -> None:  # type: ignore[no-untyped-def]
@@ -183,6 +183,18 @@ def _upgrade_4(connection) -> None:  # type: ignore[no-untyped-def]
 
 
 MIGRATIONS[4] = _upgrade_4
+
+
+def _upgrade_5(connection) -> None:  # type: ignore[no-untyped-def]
+    """Add the owner of a space; existing spaces stay without an owner."""
+
+    columns = [row[1] for row in connection.exec_driver_sql("PRAGMA table_info(scenes)")]
+    if "owner_id" not in columns:  # a fresh database already got it from the model
+        connection.exec_driver_sql("ALTER TABLE scenes ADD COLUMN owner_id TEXT")
+    connection.exec_driver_sql("CREATE INDEX IF NOT EXISTS ix_scenes_owner_id ON scenes(owner_id)")
+
+
+MIGRATIONS[5] = _upgrade_5
 
 
 def upgrade_database(engine: Engine) -> None:

@@ -17,3 +17,5 @@ class SceneRecord(SQLModel, table=True):
     scene_id: str = Field(primary_key=True)
     revision: int
     scene_json: str = Field(sa_column=Column(Text, nullable=False))
+    # Account that owns the space (auth_users.id); empty for spaces made before accounts existed.
+    owner_id: str | None = Field(default=None, index=True)
