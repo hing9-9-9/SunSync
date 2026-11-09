@@ -62,10 +62,10 @@ The steps assume Ubuntu 24.04 (Python 3.12). The project needs Python 3.11 or ne
    ```bash
    sudo cp /opt/sunsync/deploy/*.service /opt/sunsync/deploy/*.timer /etc/systemd/system/
    sudo systemctl daemon-reload
-   sudo systemctl enable sunsync-api sunsync-measure sunsync-worker.timer sunsync-backup.timer
+   sudo systemctl enable sunsync-api sunsync-measure sunsync-worker.timer sunsync-kma-worker.timer sunsync-ai-nowcast-worker.timer sunsync-backup.timer
    sudo /opt/sunsync/deploy/update.sh      # installs, builds the web app and starts the services
    # before the pull request is merged: sudo env SUNSYNC_BRANCH=feat/deploy-aws /opt/sunsync/deploy/update.sh
-   sudo systemctl start sunsync-worker.timer sunsync-backup.timer
+   sudo systemctl start sunsync-worker.timer sunsync-kma-worker.timer sunsync-ai-nowcast-worker.timer sunsync-backup.timer
    ```
 
 6. **Address and https.** Create a free name at https://www.duckdns.org and point it to the server's public IP. Open ports 80 and 443 (and 22 only for your own IP) in the AWS security group; Caddy needs 80 and 443 to get the certificate. Then:
@@ -120,7 +120,7 @@ sudo systemctl enable --now sunsync-autoupdate.timer
 | Data is locked | `curl -i https://YOUR_NAME.duckdns.org/api/health` returns 401 |
 | API answers | `curl -u USER:PASSWORD https://YOUR_NAME.duckdns.org/api/health` |
 | Measurement server answers | `curl -u USER:PASSWORD https://YOUR_NAME.duckdns.org/measure/health` |
-| Forecast worker works | `sudo systemctl start sunsync-worker.service && journalctl -u sunsync-worker -n 5` |
+| Forecast workers work | Run `sunsync-worker.service`, `sunsync-kma-worker.service`, then `sunsync-ai-nowcast-worker.service`; inspect each journal |
 | Backup works | `sudo systemctl start sunsync-backup.service && ls /var/lib/sunsync/backups` |
 | Survives a reboot | `sudo reboot`, then open the address again |
 | Phone, direct | Open the address on a phone and use the app from creating a space to the measurement result |

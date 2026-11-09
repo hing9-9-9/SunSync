@@ -1,5 +1,13 @@
 # FR-01.4 Open-Meteo 기반 미래 직접일사량 예측
 
+> **문서 역할:** 기존 Open-Meteo worker가 Scene별 hourly DNI를 저장하고 FR-01 타일
+> 계산에 제공하는 운영 설계다. KMA AI 모델의 학습용 archived run 복원과는 목적이 다르다.
+>
+> - 운영 worker: Best Match 예보 snapshot을 미리 저장하고 API가 이를 조회한다.
+> - KMA AI 개발: ECMWF IFS 0.25° single run을 복원하고 `issued_at + 7시간` 이후에만
+>   이용 가능하다고 간주한다.
+> - 동결 AI 모델을 운영 DNI 선택 흐름에 연결하는 작업은 final test와 팀 검토 후 진행한다.
+
 ## 목적과 범위
 
 SunSync의 FR-01은 미래의 어느 시각에 햇빛이 보호 대상에 닿는지, 그리고 닿는다면 얼마나 강한지를 예측한다. 이 기능은 두 부분이 함께 동작해야 한다.

@@ -11,6 +11,7 @@ from urllib.request import urlopen
 from engine.fr01.models import Site
 
 OPEN_METEO_URL = "https://api.open-meteo.com/v1/forecast"
+OPEN_METEO_MODEL = "ecmwf_ifs025"
 
 
 class OpenMeteoSnapshotError(ValueError):
@@ -68,6 +69,7 @@ class OpenMeteoDniAdapter:
                 "latitude": self.site.latitude_deg,
                 "longitude": self.site.longitude_deg,
                 "hourly": "direct_normal_irradiance,cloud_cover",
+                "models": OPEN_METEO_MODEL,
                 "timeformat": "unixtime",
             }
         )
@@ -174,7 +176,7 @@ class OpenMeteoDniAdapter:
             product="hourly_direct_normal_irradiance",
             payload=payload,
             points=tuple(points),
-            model=document.get("model") if isinstance(document.get("model"), str) else "unknown",
+            model=OPEN_METEO_MODEL,
             provenance={
                 "spatial_provenance": "provider_grid"
                 if has_grid_metadata
@@ -184,10 +186,8 @@ class OpenMeteoDniAdapter:
                 "grid_latitude_deg": float(grid_latitude),
                 "grid_longitude_deg": float(grid_longitude),
                 "grid_elevation_m": float(grid_elevation) if grid_elevation is not None else None,
-                "model_selection": "best_match",
-                "resolved_model": document.get("model")
-                if isinstance(document.get("model"), str)
-                else "unknown",
+                "model_selection": "explicit",
+                "resolved_model": OPEN_METEO_MODEL,
             },
         )
 

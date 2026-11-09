@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { NowcastComparisonResponse, SunpathPrediction } from "./spaceApi.ts";
-import { buildDemoNowcastComparison, fetchNowcastComparison } from "./spaceApi.ts";
+import { fetchNowcastComparison } from "./spaceApi.ts";
 import type { Space } from "./model.ts";
 import NowcastComparisonChart from "./NowcastComparisonChart.tsx";
 
@@ -36,7 +36,7 @@ export default function PredictionSummary({
       return;
     }
 
-    fetchNowcastComparison(space.serverSceneId, startTime)
+    fetchNowcastComparison(space.serverSceneId)
       .then((resp) => {
         if (!cancelled) setServerComparison(resp);
       })
@@ -49,7 +49,7 @@ export default function PredictionSummary({
     };
   }, [space.serverSceneId, startTime]);
 
-  const comparison = serverComparison ?? buildDemoNowcastComparison(startTime);
+  const comparison = serverComparison;
 
   return (
     <div className="sun-reference muted small">
@@ -66,10 +66,7 @@ export default function PredictionSummary({
       </button>
 
       {comparison && (
-        <NowcastComparisonChart
-          data={comparison}
-          timezone={space.site?.timezone ?? "Asia/Seoul"}
-        />
+        <NowcastComparisonChart data={comparison} />
       )}
 
       {result && (

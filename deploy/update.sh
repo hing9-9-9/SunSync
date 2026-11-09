@@ -24,6 +24,7 @@ mkdir -p "$WEB"
 rsync -a --delete frontend/dist/ "$WEB"/
 
 systemctl restart sunsync-api sunsync-measure
+systemctl restart sunsync-worker.timer sunsync-kma-worker.timer sunsync-ai-nowcast-worker.timer
 # auto-update.sh compares main with this commit to see whether anything is new.
 git rev-parse HEAD > "$STATE/deployed-commit"
 echo "Deployed $(git rev-parse --short HEAD)"

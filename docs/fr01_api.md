@@ -4,6 +4,24 @@
 
 Open-Meteo snapshot 수집은 별도 worker의 책임이며, 선택·시간 구간·provenance 규칙은 [현행 FR-01.4 설계](fr01_4_open_meteo_dni_design.md)를 따른다.
 
+## KMA AI operational nowcast
+
+```text
+GET /api/scenes/{scene_id}/ai-nowcast/latest
+```
+
+이 endpoint는 background worker가 미리 계산한 최신 10·30·60분 결과를 읽기만 한다.
+외부 provider 호출, 모델 학습, 요청 시 추론은 수행하지 않는다. 기본 shadow 운영에서는
+세 horizon 모두 Open-Meteo가 사용자 값이며 AI 결과는 내부 shadow 필드에만 저장된다.
+active 전환 후에는 10·30분에 동결 V1의 P10·P50·P90을 제공하고 60분은 Open-Meteo를
+유지한다. KMA가 20분보다 오래됐거나 필수값이 없으면 Open-Meteo로 fallback하며,
+Open-Meteo도 없으면 `prediction_source=unavailable`, `dni_W_m2=null`을 반환한다.
+
+응답은 `rollout_mode`, `model_version`, `model_manifest_sha256`, `prediction_origin`,
+입력 snapshot ID·관측/발행 시각, `fallback_reason`, `quality_flags`를 포함해 재현 가능하다.
+scene이 없으면 404, 아직 유효한 worker 결과가 없으면 503이다. 구형
+`GET /nowcast-comparison`은 deprecated alias이며 POST 입력 API는 존재하지 않는다.
+
 ## Endpoint
 
 ```text

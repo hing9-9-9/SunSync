@@ -14,6 +14,7 @@ from sqlmodel import Session
 
 from app.models.film import FilmApplicationLogRecord, FilmStateRecord
 from app.models.scene import SceneRecord
+from app.nowcast.repository import utc_z
 from app.schemas.adaptive_control import (
     AdaptiveComparisonMetrics as SchemaAdaptiveMetrics,
 )
@@ -96,7 +97,7 @@ def _load_nowcast_uncertainty_timeline(
     scene: Scene,
     nowcast_engine: Engine | None = None,
 ) -> list[UncertaintyTimelinePoint]:
-    """Auto-fetch latest quantile nowcast points from nowcast_point table if available."""
+    """Read active, site-scoped operational quantiles when available."""
     target_engine = nowcast_engine if nowcast_engine is not None else session.get_bind()
     site_key = f"{scene.site.latitude_deg:.6f},{scene.site.longitude_deg:.6f}"
 
@@ -105,31 +106,20 @@ def _load_nowcast_uncertainty_timeline(
             row = query_session.execute(
                 text("""
                 SELECT nr.run_id
-                FROM nowcast_run nr
-                JOIN nowcast_point np ON nr.run_id = np.run_id
+                FROM ai_nowcast_run nr
+                JOIN ai_nowcast_point np ON nr.run_id = np.run_id
                 WHERE nr.site_key = :site_key
+                  AND nr.rollout_mode = 'active'
+                  AND nr.expires_at >= :now
+                  AND np.prediction_source = 'ai_model'
                   AND np.dni_p10_W_m2 IS NOT NULL
                   AND np.dni_p50_W_m2 IS NOT NULL
                   AND np.dni_p90_W_m2 IS NOT NULL
                 ORDER BY nr.created_at DESC
                 LIMIT 1
                 """),
-                {"site_key": site_key},
+                {"site_key": site_key, "now": utc_z(datetime.now(UTC))},
             ).first()
-
-            if row is None:
-                row = query_session.execute(
-                    text("""
-                    SELECT nr.run_id
-                    FROM nowcast_run nr
-                    JOIN nowcast_point np ON nr.run_id = np.run_id
-                    WHERE np.dni_p10_W_m2 IS NOT NULL
-                      AND np.dni_p50_W_m2 IS NOT NULL
-                      AND np.dni_p90_W_m2 IS NOT NULL
-                    ORDER BY nr.created_at DESC
-                    LIMIT 1
-                    """)
-                ).first()
 
             if row is None:
                 return []
@@ -138,7 +128,7 @@ def _load_nowcast_uncertainty_timeline(
             points_rows = query_session.execute(
                 text("""
                 SELECT valid_time, dni_p10_W_m2, dni_p50_W_m2, dni_p90_W_m2
-                FROM nowcast_point
+                FROM ai_nowcast_point
                 WHERE run_id = :run_id
                   AND dni_p10_W_m2 IS NOT NULL
                   AND dni_p50_W_m2 IS NOT NULL

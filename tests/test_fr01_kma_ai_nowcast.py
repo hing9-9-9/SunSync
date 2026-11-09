@@ -19,7 +19,6 @@ from app.schemas.nowcast_ai import (
     AiNowcastRequest,
     CloudPatchSummary,
     KmaPointObservation,
-    NowcastComparisonResponse,
 )
 from fastapi.testclient import TestClient
 from sqlalchemy import inspect, text
@@ -52,8 +51,8 @@ def client(database_engine: Any) -> Iterator[TestClient]:
         yield test_client
 
 
-def test_migration_v3_adds_quantile_columns(tmp_path: Path) -> None:
-    """Verify runner.py upgrades to v3 and adds nullable REAL columns to nowcast_point."""
+def test_migrations_add_quantile_columns(tmp_path: Path) -> None:
+    """Verify the latest schema retains the v3 quantile columns."""
     db_path = tmp_path / "migration_v3.db"
     engine = create_engine(f"sqlite:///{db_path}")
 
@@ -63,7 +62,7 @@ def test_migration_v3_adds_quantile_columns(tmp_path: Path) -> None:
     with engine.connect() as conn:
         ver = conn.exec_driver_sql("PRAGMA user_version").scalar_one()
         assert ver == LATEST_VERSION
-        assert ver == 3
+    assert ver == 4
 
     columns = {col["name"]: col for col in inspect(engine).get_columns("nowcast_point")}
     assert "dni_p10_W_m2" in columns
@@ -75,11 +74,11 @@ def test_migration_v3_adds_quantile_columns(tmp_path: Path) -> None:
     # Verify idempotency
     init_db(engine)
     with engine.connect() as conn:
-        assert conn.exec_driver_sql("PRAGMA user_version").scalar_one() == 3
+        assert conn.exec_driver_sql("PRAGMA user_version").scalar_one() == LATEST_VERSION
 
 
-def test_upgrade_from_v2_to_v3_preserves_existing_data(tmp_path: Path) -> None:
-    """Verify migrating an existing v2 database to v3 preserves records."""
+def test_upgrade_from_v2_to_latest_preserves_existing_data(tmp_path: Path) -> None:
+    """Verify migrating an existing v2 database to the latest version preserves records."""
     db_path = tmp_path / "v2_upgrade.db"
     engine = create_engine(f"sqlite:///{db_path}")
 
@@ -104,11 +103,11 @@ def test_upgrade_from_v2_to_v3_preserves_existing_data(tmp_path: Path) -> None:
             """)
         )
 
-    # Now run upgrade_database to apply v3
+    # Now run upgrade_database to apply all remaining migrations.
     init_db(engine)
 
     with engine.connect() as conn:
-        assert conn.exec_driver_sql("PRAGMA user_version").scalar_one() == 3
+        assert conn.exec_driver_sql("PRAGMA user_version").scalar_one() == LATEST_VERSION
         row = (
             conn.execute(
                 text("SELECT final_dni_W_m2, dni_p50_W_m2 FROM nowcast_point WHERE run_id='run-v2'")
@@ -312,8 +311,10 @@ def test_kma_nowcaster_database_persistence(database_engine: Any) -> None:
             assert p["dni_p10_W_m2"] <= p["dni_p50_W_m2"] <= p["dni_p90_W_m2"]
 
 
-def test_api_create_ai_nowcast_success(client: TestClient, scene_payload: dict[str, Any]) -> None:
-    """POST /scenes/{scene_id}/ai-nowcast returns valid NowcastComparisonResponse."""
+def test_api_rejects_request_supplied_observations(
+    client: TestClient, scene_payload: dict[str, Any]
+) -> None:
+    """The production API does not accept caller-supplied weather observations."""
     create_resp = client.post("/api/scenes", json=scene_payload)
     assert create_resp.status_code == 201
     scene_id = create_resp.json()["scene_id"]
@@ -333,34 +334,19 @@ def test_api_create_ai_nowcast_success(client: TestClient, scene_payload: dict[s
     }
 
     resp = client.post(f"/api/scenes/{scene_id}/ai-nowcast", json=body)
-    assert resp.status_code == 200, resp.text
-    data = resp.json()
-
-    validated = NowcastComparisonResponse.model_validate(data)
-    assert validated.scene_id == scene_id
-    assert validated.mode == "kma_ai_ensemble"
-    assert len(validated.points) == 7
-    assert validated.metrics.sample_count == 7
+    assert resp.status_code == 404
 
 
-def test_api_get_nowcast_comparison_success(
+def test_api_get_nowcast_requires_worker_result(
     client: TestClient, scene_payload: dict[str, Any]
 ) -> None:
-    """GET /scenes/{scene_id}/nowcast-comparison returns comparative timeline."""
+    """GET never synthesizes a timeline when the worker has not produced one."""
     create_resp = client.post("/api/scenes", json=scene_payload)
     assert create_resp.status_code == 201
     scene_id = create_resp.json()["scene_id"]
 
-    resp = client.get(
-        f"/api/scenes/{scene_id}/nowcast-comparison?duration_minutes=120&interval_seconds=900"
-    )
-    assert resp.status_code == 200, resp.text
-    data = resp.json()
-
-    validated = NowcastComparisonResponse.model_validate(data)
-    assert validated.scene_id == scene_id
-    assert len(validated.points) == 9
-    assert validated.metrics.mean_uncertainty_spread_W_m2 >= 0.0
+    resp = client.get(f"/api/scenes/{scene_id}/ai-nowcast/latest")
+    assert resp.status_code == 503
 
 
 def test_api_nowcast_validation_and_not_found(client: TestClient) -> None:
@@ -369,16 +355,12 @@ def test_api_nowcast_validation_and_not_found(client: TestClient) -> None:
     resp = client.get("/api/scenes/nonexistent-scene-123/nowcast-comparison")
     assert resp.status_code == 404
 
-    # 422 for duration < 5
-    resp2 = client.get("/api/scenes/any-scene/nowcast-comparison?duration_minutes=2")
-    assert resp2.status_code == 422
-
-    # 422 for POST with extra forbidden field
+    # POST injection path is deliberately absent.
     resp3 = client.post(
         "/api/scenes/any-scene/ai-nowcast",
         json={"start_time": "2026-10-14T03:00:00Z", "extra_bad_field": 123},
     )
-    assert resp3.status_code == 422
+    assert resp3.status_code == 404
 
 
 def test_kma_nowcaster_strict_physical_bounds_and_night_zero() -> None:

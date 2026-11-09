@@ -15,6 +15,7 @@ from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 import numpy as np
+from pvlib.irradiance import erbs
 from scipy.optimize import minimize
 from sqlalchemy import Engine, text
 
@@ -115,39 +116,26 @@ def calculate_solar_geometry(site: Site, timestamps: list[datetime]) -> list[dic
         return results
 
 
-def erbs_diffuse_fraction(kt: float) -> float:
-    """Erbs correlation for diffuse fraction kd = DHI / GHI from clearness index kt."""
-    if kt <= 0.22:
-        return 1.0 - 0.09 * kt
-    if kt <= 0.80:
-        return 0.9511 - 0.1604 * kt + 4.388 * (kt**2) - 16.638 * (kt**3) + 12.336 * (kt**4)
-    return 0.165
-
-
 def dsr_to_dni_physics(
     dsr_W_m2: float,
-    clear_sky_ghi: float,
     clear_sky_dni: float,
-    solar_elevation_deg: float,
+    solar_zenith_deg: float,
+    timestamp: datetime,
 ) -> tuple[float, float, float]:
-    """Decompose Downward Shortwave Radiation (DSR/GHI) into Direct Normal Irradiance (DNI).
+    """Convert DSR/GHI to DNI with pvlib's official Erbs implementation.
 
     Returns: (kt, kd, decomposed_dni)
     """
-    if solar_elevation_deg <= 0.5 or clear_sky_ghi <= 5.0 or clear_sky_dni <= 1.0:
+    if timestamp.tzinfo is None or timestamp.utcoffset() is None:
+        raise ValueError("timestamp must be timezone-aware")
+    if solar_zenith_deg >= 89.5 or clear_sky_dni <= 1.0 or dsr_W_m2 <= 0.0:
         return 0.0, 1.0, 0.0
 
-    kt = float(np.clip(dsr_W_m2 / clear_sky_ghi, 0.0, 1.25))
-    kd = float(np.clip(erbs_diffuse_fraction(kt), 0.0, 1.0))
-    dhi = kd * dsr_W_m2
-    direct_horizontal = max(0.0, dsr_W_m2 - dhi)
-
-    sin_el = math.sin(math.radians(solar_elevation_deg))
-    if sin_el > 0.08:  # elevation > ~4.6 deg
-        dni_decomp = direct_horizontal / sin_el
-    else:
-        dni_decomp = 0.0
-
+    decomposition = erbs(dsr_W_m2, solar_zenith_deg, timestamp)
+    kt = float(np.asarray(decomposition["kt"]).item())
+    dhi = float(np.asarray(decomposition["dhi"]).item())
+    dni_decomp = float(np.asarray(decomposition["dni"]).item())
+    kd = float(np.clip(dhi / dsr_W_m2, 0.0, 1.0))
     dni_bounded = float(np.clip(dni_decomp, 0.0, clear_sky_dni * 1.05))
     return kt, kd, dni_bounded
 
@@ -341,6 +329,9 @@ class KmaQuantileNowcaster:
         latest_obs_dt = (
             datetime.fromisoformat(latest_obs.timestamp).astimezone(UTC) if latest_obs else start_dt
         )
+        latest_obs_geometry = (
+            calculate_solar_geometry(site, [latest_obs_dt])[0] if latest_obs is not None else None
+        )
 
         quantile_points: list[QuantileNowcastPoint] = []
         recorded_kma_p50: list[float] = []
@@ -350,7 +341,6 @@ class KmaQuantileNowcaster:
             geom = solar_geoms[i]
             el = geom["solar_elevation_deg"]
             cs_dni = geom["clear_sky_dni"]
-            cs_ghi = geom["clear_sky_ghi"]
 
             # Night condition
             if el <= 0.0 or cs_dni <= 0.0:
@@ -394,8 +384,15 @@ class KmaQuantileNowcaster:
 
             # KMA Direct decomposition prior
             if latest_obs is not None:
-                _kt, _kd, dni_erbs = dsr_to_dni_physics(latest_obs.dsr_W_m2, cs_ghi, cs_dni, el)
-                k_erbs = dni_erbs / cs_dni if cs_dni > 0 else 0.0
+                assert latest_obs_geometry is not None
+                obs_clear_sky_dni = latest_obs_geometry["clear_sky_dni"]
+                _kt, _kd, dni_erbs = dsr_to_dni_physics(
+                    latest_obs.dsr_W_m2,
+                    obs_clear_sky_dni,
+                    latest_obs_geometry["zenith_deg"],
+                    latest_obs_dt,
+                )
+                k_erbs = dni_erbs / obs_clear_sky_dni if obs_clear_sky_dni > 0 else 0.0
                 cloud_transmittance = 1.0 - (latest_obs.cloud_cover_pct / 100.0)
             else:
                 # No KMA observations supplied, rely on cloud patch or clear-sky

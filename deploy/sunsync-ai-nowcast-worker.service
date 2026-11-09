@@ -1,0 +1,14 @@
+[Unit]
+Description=SunSync frozen FR-01 operational nowcast (runs once, started by the timer)
+After=network-online.target sunsync-kma-worker.service
+
+[Service]
+Type=oneshot
+User=sunsync
+WorkingDirectory=/opt/sunsync
+EnvironmentFile=/etc/sunsync/sunsync.env
+Environment=PYTHONPATH=/opt/sunsync/backend:/opt/sunsync PYTHONDONTWRITEBYTECODE=1
+ExecStart=/opt/sunsync/.venv/bin/python -m app.nowcast.operational_nowcast_worker
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full

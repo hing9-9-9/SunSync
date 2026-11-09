@@ -1,0 +1,9 @@
+[Unit]
+Description=Build the frozen FR-01 operational nowcast every 10 minutes
+
+[Timer]
+OnCalendar=*-*-* *:06/10:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
