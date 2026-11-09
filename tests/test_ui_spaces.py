@@ -484,3 +484,217 @@ def test_furniture_protects_the_side_facing_the_window(client, payload, wall, fa
     scene = client.get(f"/api/scenes/{saved['serverSceneId']}").json()
     assert scene["protected_regions"][0]["receiving_normal"] == normal
     assert saved["regions"][0]["face"] == face
+
+
+def test_overlapping_furniture_in_same_zone_is_rejected_with_korean_names(client, payload):
+    payload["width"] = 8.0
+    payload["depth"] = 6.0
+    payload["height"] = 3.0
+    payload["furniture"] = [
+        {
+            "id": "table-1",
+            "name": "테이블",
+            "zone": "구역 1",
+            "type": "desk",
+            "x": 5.8,
+            "y": 2.5,
+            "width": 1.6,
+            "depth": 0.8,
+            "height": 0.75,
+        },
+        {
+            "id": "case-1",
+            "name": "진열장",
+            "zone": "구역 1",
+            "type": "display",
+            "x": 6.8,
+            "y": 3.0,
+            "width": 1.0,
+            "depth": 0.5,
+            "height": 1.5,
+        },
+    ]
+    payload["regions"] = []
+    response = client.post("/api/ui/spaces", json=payload)
+    assert response.status_code == 422
+    detail = str(response.json()["detail"])
+    assert "테이블" in detail
+    assert "진열장" in detail
+    assert "겹칩니다" in detail
+
+
+def test_touching_furniture_and_different_zone_furniture_are_allowed(client, payload):
+    payload["zones"] = ["구역 1", "구역 2"]
+    payload["furniture"] = [
+        {
+            "id": "f1",
+            "name": "책장 1",
+            "zone": "구역 1",
+            "type": "bookcase",
+            "x": 1.0,
+            "y": 1.0,
+            "width": 2.0,
+            "depth": 0.8,
+            "height": 1.8,
+        },
+        {
+            "id": "f2",
+            "name": "책장 2",
+            "zone": "구역 1",
+            "type": "bookcase",
+            "x": 3.0,
+            "y": 1.0,
+            "width": 1.0,
+            "depth": 0.8,
+            "height": 1.8,
+        },
+        {
+            "id": "f3",
+            "name": "구역2 책장",
+            "zone": "구역 2",
+            "type": "bookcase",
+            "x": 1.0,
+            "y": 1.0,
+            "width": 2.0,
+            "depth": 0.8,
+            "height": 1.8,
+        },
+    ]
+    payload["regions"] = []
+    response = client.post("/api/ui/spaces", json=payload)
+    assert response.status_code == 201, response.text
+
+
+def test_already_saved_overlapping_space_remains_readable_and_can_be_repaired(
+    client, payload, tmp_path
+):
+    created = client.post("/api/ui/spaces", json=payload)
+    assert created.status_code == 201, created.text
+    saved = created.json()
+
+    overlapping = {
+        **saved,
+        "furniture": [
+            {
+                "id": "f1",
+                "name": "테이블",
+                "zone": "구역 1",
+                "type": "desk",
+                "x": 1.0,
+                "y": 1.0,
+                "width": 2.0,
+                "depth": 1.0,
+                "height": 0.8,
+            },
+            {
+                "id": "f2",
+                "name": "진열장",
+                "zone": "구역 1",
+                "type": "display",
+                "x": 2.0,
+                "y": 1.2,
+                "width": 1.0,
+                "depth": 0.8,
+                "height": 1.5,
+            },
+        ],
+        "regions": [],
+    }
+    # Update fails while overlapping
+    rejected = client.put(f"/api/ui/spaces/{saved['id']}", json=overlapping)
+    assert rejected.status_code == 422
+    assert "테이블" in str(rejected.json()["detail"])
+    assert "진열장" in str(rejected.json()["detail"])
+
+    # Simulate a legacy space already stored in the DB with overlapping furniture
+    import json
+
+    from app.models import UISpaceRecord
+    from app.ui_scene import UISpace, furniture_overlap_message
+    from sqlmodel import Session
+
+    legacy_model = UISpace.model_validate(overlapping)
+    assert furniture_overlap_message(legacy_model) is not None
+    db_engine = create_engine(f"sqlite:///{tmp_path / 'ui.db'}")
+    with Session(db_engine) as session:
+        record = session.get(UISpaceRecord, saved["id"])
+        assert record is not None
+        record.payload_json = json.dumps(overlapping, ensure_ascii=False)
+        session.add(record)
+        session.commit()
+    db_engine.dispose()
+
+    listed = client.get("/api/ui/spaces")
+    assert listed.status_code == 200
+    assert len(listed.json()["spaces"]) == 1
+    assert listed.json()["unavailable"] == []
+
+    fetched = client.get(f"/api/ui/spaces/{saved['id']}")
+    assert fetched.status_code == 200
+    assert len(fetched.json()["furniture"]) == 2
+
+    # Moving the second furniture out of overlap allows saving again
+    repaired = {
+        **overlapping,
+        "furniture": [
+            overlapping["furniture"][0],
+            {**overlapping["furniture"][1], "x": 3.2},
+        ],
+    }
+    updated = client.put(f"/api/ui/spaces/{saved['id']}", json=repaired)
+    assert updated.status_code == 200, updated.text
+
+
+def test_handoff_and_measurement_complete_reject_overlapping_furniture(client, payload):
+    created = client.post("/api/ui/spaces", json=payload)
+    assert created.status_code == 201
+    saved = created.json()
+
+    # 1. Handoff complete with overlapping furniture
+    handoff = client.post("/api/ui/handoffs", json={"space_id": saved["id"]}).json()
+    client.post(f"/api/ui/handoffs/{handoff['token']}/connect")
+    overlapping = {
+        **saved,
+        "furniture": [
+            {
+                "id": "f1",
+                "name": "책상 A",
+                "zone": "구역 1",
+                "type": "desk",
+                "x": 1.0,
+                "y": 1.0,
+                "width": 2.0,
+                "depth": 1.0,
+                "height": 0.8,
+            },
+            {
+                "id": "f2",
+                "name": "책상 B",
+                "zone": "구역 1",
+                "type": "desk",
+                "x": 1.5,
+                "y": 1.2,
+                "width": 1.5,
+                "depth": 1.0,
+                "height": 0.8,
+            },
+        ],
+    }
+    rejected_handoff = client.post(
+        f"/api/ui/handoffs/{handoff['token']}/complete", json=overlapping
+    )
+    assert rejected_handoff.status_code == 422
+    detail_h = str(rejected_handoff.json()["detail"])
+    assert "책상 A" in detail_h and "책상 B" in detail_h and "겹칩니다" in detail_h
+    # Handoff session remains connected (not completed)
+    assert client.get(f"/api/ui/handoffs/{handoff['token']}").json()["status"] == "connected"
+
+    # 2. Measurement job complete with overlapping furniture
+    job = client.post("/api/ui/measurements", json={"space_id": saved["id"]}).json()
+    client.post(f"/api/ui/measurements/{job['token']}/connect")
+    rejected_job = client.post(f"/api/ui/measurements/{job['token']}/complete", json=overlapping)
+    assert rejected_job.status_code == 422
+    detail_m = str(rejected_job.json()["detail"])
+    assert "책상 A" in detail_m and "책상 B" in detail_m and "겹칩니다" in detail_m
+    # Measurement job remains connected (not completed)
+    assert client.get(f"/api/ui/measurements/{job['token']}").json()["status"] == "connected"

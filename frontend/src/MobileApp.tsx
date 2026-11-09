@@ -5,7 +5,7 @@ import NumberField from "./NumberField";
 import { WorkspaceNavigation, WorkspaceHome, WorkspaceCards } from "./WorkspaceDesign";
 import { DeviceHandoff } from "./DeviceHandoff";
 import { CaptureHelp } from "./CaptureHelp";
-import { FilmGrid, ShadingTimeControl } from "./ShadingPlan";
+import { FilmGrid, ShadingTimeControl, VirtualFilmControl } from "./ShadingPlan";
 import { applyShadingTime, formatMinute } from "./sunlight";
 import SpatialCapture, { CameraSetup } from "./SpatialCapture";
 import { savedCamera } from "./measureApi";
@@ -77,6 +77,7 @@ function MobileApp() {
     setError,
     setEditedDraftId,
     draftWarning,
+    savedOverlapWarning,
     setPage,
     toast,
     pendingDelete,
@@ -508,6 +509,14 @@ function MobileApp() {
                 <p ref={errorRef} tabIndex={-1} className="error" role="alert">
                   {error}
                 </p>
+              )}
+              {page === "detail" && active && savedOverlapWarning && (
+                <div className="notice" role="status">
+                  <span>{savedOverlapWarning}</span>
+                  <button type="button" className="text-button" onClick={() => editSpace(active)}>
+                    가구 위치 수정
+                  </button>
+                </div>
               )}
               {page === "home" && !isApp && account && <WorkspaceHome spaces={spaces} selectSpace={selectSpace} navigate={navigate} onStart={begin} />}
               {(page === "spaces" || (isApp && page === "home")) && (
@@ -1397,6 +1406,13 @@ function MobileApp() {
                           JSON.stringify(active.shadingSchedule ?? defaultShadingTime)
                       }
                       saving={saving}
+                    />
+                    {sunSource?.note}
+                    <VirtualFilmControl
+                      space={active}
+                      prediction={filmPrediction}
+                      hour={hour}
+                      setting={detailShading}
                     />
                     </Card>
                     <Card className="detail-management-card">

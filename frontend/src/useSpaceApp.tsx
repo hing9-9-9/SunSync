@@ -15,9 +15,11 @@ import { EXPIRED_MESSAGE, LOGIN_FAILED_MESSAGE, currentPath, fetchSession, googl
 import type { Session } from "./auth";
 import { mergeStash, saveStash, splitForStash, takeStash } from "./userStash";
 import Plan from "./Plan";
+import PredictionSummary from "./PredictionSummary";
 import {
   blankSpace,
   defaultShadingTime,
+  findOpenFurnitureSpot,
   placeCapturedFurniture,
   readState,
   resolveWindow,
@@ -29,6 +31,7 @@ import {
   hasUnsavedChanges,
   updateFurniture,
   upsertSpace,
+  validateFurnitureOverlap,
   validateSpace,
   validateShadingTime,
   } from "./model";
@@ -174,10 +177,11 @@ export function useSpaceApp() {
     | null
   >(null);
   const [error, setError] = useState("");
-  // Inline warnings start once the user edits this draft; opening another draft starts clean.
+  // Inline warnings start once the user edits this draft; opening an already-saved space with overlapping furniture shows its overlap notice right away.
   const [editedDraftId, setEditedDraftId] = useState<string | null>(null);
   const inputEdited = !!draft && editedDraftId === draft.id;
-  const draftWarning = inputEdited && draft ? validateSpace(draft) : null;
+  const draftOverlapWarning = draft ? validateFurnitureOverlap(draft) : null;
+  const draftWarning = (inputEdited && draft ? validateSpace(draft) : null) ?? draftOverlapWarning;
   const setPage = (next: Page) => {
     setError("");
     setPageState(next);
@@ -390,8 +394,8 @@ export function useSpaceApp() {
   // FR-01: the saved space's real sun times for today. Results are keyed by scene revision, so a
   // result for an older save is never shown after the space changes.
   const [predictionNow] = useState(() => new Date());
-  // Today in the space's time zone; the date picker went away with the forecast details.
-  const predictionDate = active?.site ? new Intl.DateTimeFormat("en-CA", { timeZone: active.site.timezone }).format(predictionNow) : "";
+  const [selectedPredictionDate, setSelectedPredictionDate] = useState("");
+  const predictionDate = selectedPredictionDate || (active?.site ? new Intl.DateTimeFormat("en-CA", { timeZone: active.site.timezone }).format(predictionNow) : "");
   const windowReady = !!active?.windowDimensions && active.windowDimensions.wall != null && active.windowDimensions.offset != null && active.windowDimensions.sill != null;
   const predictionKey =
     USE_FR01 && authStatus === "in" && page === "detail" && !editorExample && active?.serverSceneId && active.serverRevision && active.site && active.site.northConfirmed && windowReady && active.regions.length
@@ -445,16 +449,30 @@ export function useSpaceApp() {
     setPrediction(null);
     setPredictionRun((n) => n + 1);
   };
+  const savedOverlapWarning = space ? validateFurnitureOverlap(space) : null;
   const sunSource = predictionKey && active?.site
     ? {
         label: `햇빛이 닿는 시간 (${predictionDate})`,
-        // Forecast details (AI band, assumptions, first-exposure list) stay on the server; people see only a failure.
-        note: predictionError ? (
-          <p className="error" role="alert">
-            {predictionError}{" "}
-            <button type="button" className="text-button" onClick={retryPrediction}>다시 계산</button>
-          </p>
-        ) : <></>,
+        note: (
+          <>
+            {predictionError && (
+              <p className="error" role="alert">
+                {predictionError}{" "}
+                <button type="button" className="text-button" onClick={retryPrediction}>다시 계산</button>
+              </p>
+            )}
+            <details className="forecast-details">
+              <summary className="muted small">기상청 AI(q10~q90) · Open-Meteo 일사량 비교 및 예측 상세</summary>
+              <PredictionSummary
+                result={!predictionError ? currentPrediction?.result : undefined}
+                space={active}
+                date={predictionDate}
+                onDate={setSelectedPredictionDate}
+                onRetry={retryPrediction}
+              />
+            </details>
+          </>
+        ),
       }
     : active && !editorExample ? { label: "예측 준비 필요", note: <p className="muted small">햇빛 예측을 사용하려면 보호 영역과 창문 위치·북쪽 방향을 확인한 뒤 공간을 저장하세요. 현재는 간이 계산으로 표시합니다.</p> } : undefined;
   const predictionPill = !predictionKey ? "시뮬레이션" : predictionError ? "예측 실패" : predicted ? "햇빛 예측" : "계산 중";
@@ -962,10 +980,15 @@ export function useSpaceApp() {
       setError(message);
       return;
     }
+    const next = { ...active, shadingSchedule: shadingEdit, revision: active.revision + 1 };
+    const spaceMessage = validateSpace(next);
+    if (spaceMessage) {
+      setError(spaceMessage);
+      return;
+    }
     setSaving(true);
     setError("");
     try {
-      const next = { ...active, shadingSchedule: shadingEdit, revision: active.revision + 1 };
       const saved = editorExample ? next : await saveServerSpace(next);
       setSpaces((current) => upsertSpace(current, saved));
       setShadingEdit(null);
@@ -1259,16 +1282,20 @@ export function useSpaceApp() {
   function addManualFurniture() {
     setModal(null);
     if (!draft) return;
+    const width = Math.min(1, draft.width);
+    const depth = Math.min(0.6, draft.depth);
+    const height = Math.min(1.8, draft.height);
+    const spot = findOpenFurnitureSpot(draft, width, depth, height);
     const f: Furniture = {
       id: uid(),
       name: `가구 ${draft.furniture.length + 1}`,
       zone: draft.zone,
       type: "other",
-      x: 0,
-      y: 0,
-      width: Math.min(1, draft.width),
-      depth: Math.min(0.6, draft.depth),
-      height: Math.min(1.8, draft.height),
+      x: spot.x,
+      y: spot.y,
+      width,
+      depth,
+      height,
     };
     const regions = withDefaultRegions(draft, [f]);
     change({ furniture: [...draft.furniture, f], regions });
@@ -1493,6 +1520,7 @@ export function useSpaceApp() {
     setEditedDraftId,
     inputEdited,
     draftWarning,
+    savedOverlapWarning,
     setPage,
     toast,
     setToast,

@@ -252,7 +252,74 @@ export function withDefaultRegions(s: Space, furniture: Furniture[]): Region[] {
   const hosted = new Set(s.regions.map((r) => r.furnitureId));
   return [...s.regions, ...furniture.filter((f) => !hosted.has(f.id)).map((f) => regionForFurniture(f))];
 }
-export function validateSpace(s: Space): string | null {
+export const FURNITURE_OVERLAP_EPS = 1e-6;
+/** True when two floor-standing furniture cuboids in the same zone share positive 3D volume (> 1e-6 m). Touching edges are allowed. */
+export function furnitureOverlaps3D(a: Furniture, b: Furniture): boolean {
+  return (
+    a.zone === b.zone &&
+    Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x) > FURNITURE_OVERLAP_EPS &&
+    Math.min(a.y + a.depth, b.y + b.depth) - Math.max(a.y, b.y) > FURNITURE_OVERLAP_EPS &&
+    Math.min(a.height, b.height) > FURNITURE_OVERLAP_EPS
+  );
+}
+export function findFurnitureOverlap(
+  s: Pick<Space, "furniture">,
+  zone?: string,
+): [Furniture, Furniture] | null {
+  for (let i = 0; i < s.furniture.length; i++) {
+    const a = s.furniture[i];
+    if (zone !== undefined && a.zone !== zone) continue;
+    for (let j = i + 1; j < s.furniture.length; j++) {
+      const b = s.furniture[j];
+      if (furnitureOverlaps3D(a, b)) return [a, b];
+    }
+  }
+  return null;
+}
+export function validateFurnitureOverlap(
+  s: Pick<Space, "furniture">,
+  zone?: string,
+): string | null {
+  const pair = findFurnitureOverlap(s, zone);
+  return pair
+    ? `'${pair[0].name}'과 '${pair[1].name}' 가구가 서로 겹칩니다. 가구 위치나 크기를 조정해 주세요.`
+    : null;
+}
+/** Finds the first non-overlapping floor spot in the current zone (starting at 0,0), or (0,0) if full. */
+export function findOpenFurnitureSpot(
+  s: Pick<Space, "width" | "depth" | "zone" | "furniture">,
+  width: number,
+  depth: number,
+  height = 1,
+): { x: number; y: number } {
+  const sameZone = s.furniture.filter((f) => f.zone === s.zone);
+  const maxX = Math.max(0, s.width - width);
+  const maxY = Math.max(0, s.depth - depth);
+  const step = 0.2;
+  for (let y = 0; y <= maxY + 1e-6; y = Number((y + step).toFixed(2))) {
+    const cy = Math.min(y, maxY);
+    for (let x = 0; x <= maxX + 1e-6; x = Number((x + step).toFixed(2))) {
+      const cx = Math.min(x, maxX);
+      const candidate: Furniture = {
+        id: "_candidate",
+        name: "",
+        zone: s.zone,
+        x: cx,
+        y: cy,
+        width,
+        depth,
+        height,
+      };
+      if (!sameZone.some((existing) => furnitureOverlaps3D(candidate, existing))) {
+        return { x: cx, y: cy };
+      }
+      if (cx >= maxX) break;
+    }
+    if (cy >= maxY) break;
+  }
+  return { x: 0, y: 0 };
+}
+export function validateSpace(s: Space, options?: { allowOverlap?: boolean }): string | null {
   if (
     s.site &&
     (!Number.isFinite(s.site.latitude) ||
@@ -293,6 +360,10 @@ export function validateSpace(s: Space): string | null {
       f.height > s.height
     )
       return `${f.name}가 공간 경계를 벗어났습니다.`;
+  }
+  if (!options?.allowOverlap) {
+    const overlapMessage = validateFurnitureOverlap(s);
+    if (overlapMessage) return overlapMessage;
   }
   for (const r of s.regions) {
     if (!s.zones.includes(r.zone)) return "보호 영역의 구역 연결을 확인해 주세요.";
@@ -402,8 +473,8 @@ export function readState(storage: Pick<Storage, "getItem">): SavedState {
           Array.isArray(x.furniture) &&
           Array.isArray(x.regions) &&
           Array.isArray(x.zones) &&
-          // A window that breaks newer rules is fixed on save; it must not hide the whole space.
-          validateSpace({ ...x, windowDimensions: undefined }) === null
+          // A window or furniture placement that breaks newer rules is fixed on save; it must not hide the whole space.
+          validateSpace({ ...x, windowDimensions: undefined }, { allowOverlap: true }) === null
         );
       } catch {
         return false;
