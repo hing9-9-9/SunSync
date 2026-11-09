@@ -614,6 +614,19 @@ def set_marker_mode(
     target_window = next((w for w in scene.windows if w.window_id == target_window_id), None)
     rows = target_window.film_rows if target_window else 10
     cols = target_window.film_cols if target_window else 10
+    start_row, start_col = request.start_row, request.start_col
+    if request.enabled and request.module_row is not None:
+        if target_window is None:
+            raise HTTPException(422, "Choose an installed window for the film module")
+        assert request.module_col is not None
+        try:
+            start_row, start_col, _, _ = target_window.module_marker_placement(
+                request.module_row, request.module_col
+            )
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from exc
+    if record is not None and (record.film_rows, record.film_cols) != (rows, cols):
+        raise HTTPException(409, "Stored film grid differs from window layout; reconfigure film")
 
     if record is None:
         device = VirtualFilmDevice(rows=rows, cols=cols, film_type="PDLC")
@@ -644,19 +657,19 @@ def set_marker_mode(
 
     old_grid = device.get_grid()
     if request.enabled:
-        if not (0 <= request.start_row and request.start_row + 6 <= device.rows):
+        if not (0 <= start_row and start_row + 6 <= device.rows):
             raise HTTPException(status_code=422, detail="Marker rows exceed window film grid")
-        if not (0 <= request.start_col and request.start_col + 6 <= device.cols):
+        if not (0 <= start_col and start_col + 6 <= device.cols):
             raise HTTPException(status_code=422, detail="Marker cols exceed window film grid")
         device.enable_marker_mode(
             code_id=request.code_id,
-            start_row=request.start_row,
-            start_col=request.start_col,
+            start_row=start_row,
+            start_col=start_col,
         )
         record.marker_mode_active = True
         record.marker_code_id = request.code_id
-        record.marker_start_row = request.start_row
-        record.marker_start_col = request.start_col
+        record.marker_start_row = start_row
+        record.marker_start_col = start_col
         record.marker_backup_json = (
             json.dumps(device.marker_backup) if device.marker_backup is not None else None
         )
@@ -1093,14 +1106,20 @@ def pair_marker_for_scene(
             detail="Scene has no windows and auto_provision_window is False",
         )
 
-    # Ensure cells are square for ArUco 6x6 placement
-    if abs(target_window.cell_width_m - target_window.cell_height_m) > EPS:
-        if abs(target_window.width_m - target_window.height_m) <= EPS:
-            target_window.film_rows = 10
-            target_window.film_cols = 10
-        else:
-            cell_size = target_window.cell_height_m
-            target_window.film_cols = max(1, round(target_window.width_m / cell_size))
+    # Never resize physical cells to fit a window. Select one complete 1m module.
+    try:
+        start_row, start_col, u_center, v_center = target_window.module_marker_placement(
+            request.module_row, request.module_col
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    stored_film = session.get(FilmStateRecord, f"{scene_id}:{target_window.window_id}")
+    if stored_film is not None and (stored_film.film_rows, stored_film.film_cols) != (
+        target_window.film_rows,
+        target_window.film_cols,
+    ):
+        raise HTTPException(409, "Stored film grid differs from window layout; reconfigure film")
 
     # 2. ArUco code_id assignment (scoped to scene)
     used_codes = {m.code_id for m in scene.markers if m.window_id != target_window.window_id}
@@ -1110,14 +1129,9 @@ def pair_marker_for_scene(
         assigned_code = next(c for c in range(50) if c not in used_codes)
 
     # 3. Rigid transform T_ENU_marker on target window plane
-    start_row = 2
-    start_col = 2
     marker_rows = 6
     marker_cols = 6
-    side_length = round(6 * target_window.cell_width_m, 6)
-
-    u_center = (start_col + 3) * target_window.cell_width_m
-    v_center = target_window.height_m - (start_row + 3) * target_window.cell_height_m
+    side_length = 0.6
     t_enu = target_window.marker_transform(u_center, v_center)
 
     marker_id = f"marker_{target_window.window_id}"
@@ -1253,6 +1267,14 @@ def pair_marker_for_scene(
             film_type=record.film_type,
             initial_cells=json.loads(record.cells_json),
         )
+
+    if record.marker_mode_active:
+        device.marker_mode_active = True
+        device.marker_code_id = record.marker_code_id
+        device.marker_start_row = record.marker_start_row
+        device.marker_start_col = record.marker_start_col
+        if record.marker_backup_json:
+            device.marker_backup = json.loads(record.marker_backup_json)
 
     if request.enable_marker_display:
         device.enable_marker_mode(

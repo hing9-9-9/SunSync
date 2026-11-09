@@ -60,7 +60,7 @@ function SessionSpatialCapture(props: { sceneId?: string; count: number; onFinis
   if (!session) return <section><p role="alert">{error || "촬영이 종료됐어요."}</p><button onClick={() => { setBusy(true); setError(""); setSession(null); setRetry(n => n + 1); }}>촬영 다시 시작</button></section>;
   return <section>
     <details><summary>가상 필름 표시 확인 · 테스트용</summary>
-      <svg viewBox="0 0 10 10" width="200" height="200" role="img" aria-label="이번 촬영의 가상 필름 마커" shapeRendering="crispEdges">
+      <svg viewBox={`0 0 ${session.film_cells[0]?.length ?? 10} ${session.film_cells.length || 10}`} width="200" height="200" role="img" aria-label="이번 촬영의 가상 필름 마커" shapeRendering="crispEdges">
         {session.film_cells.flatMap((row, y) => row.map((opacity, x) => <rect key={`${x}:${y}`} x={x} y={y} width="1" height="1" fill={opacity >= 0.5 ? "black" : "white"} />))}
       </svg>
       <p>가상 필름에 촬영용 마커를 표시했어요. 실제 필름 장치는 아직 연결되지 않았어요.</p>

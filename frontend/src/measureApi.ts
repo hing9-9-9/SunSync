@@ -84,7 +84,8 @@ async function get<T>(url: string): Promise<T> {
 // The server answers in English; the person sees what to do next.
 export function serverMessage(detail: string): string {
   const rules: [RegExp, string][] = [
-    [/1m x 1m film/i, "촬영용 필름을 1m × 1m, 10 × 10칸으로 설정해 주세요."],
+    [/complete 1m film modules/i, "창의 필름 배치를 확인해 주세요. 1m 필름 여러 장과 10cm 셀을 기준으로 측정해요."],
+    [/Film module outside/i, "선택한 필름이 창의 배치 범위를 벗어났어요."],
     [/Another capture session/i, "이 공간에서 다른 촬영이 진행 중이에요. 먼저 완료하거나 취소해 주세요."],
     [/Capture marker|Capture request/i, "촬영 마커가 바뀌었거나 시간이 만료됐어요. 촬영을 다시 시작해 주세요."],
     [/Move the phone|repeated viewpoints/i, "같은 자리에서 찍은 사진이 있어요. 휴대폰 위치를 바꿔 가며 찍어 주세요."],
@@ -222,8 +223,6 @@ export async function measureAndRegister(space: Space, camera: Camera, item: {
       throw new MeasureError("다른 촬영 세션 또는 마커의 사진이 섞였어요. 다시 촬영해 주세요.");
     }
   }
-  let pose = boardAlignment(space);
-  if (!pose) throw new MeasureError("공간 정보에서 창문 크기와 위치를 입력해 주세요.");
   const scene = await get<{ revision: number; room: { room_id: string }; registration_calibration: { calibration_id: string } | null } & Record<string, unknown>>(
     `/api/scenes/${encodeURIComponent(space.serverSceneId)}`,
   );
@@ -232,7 +231,7 @@ export async function measureAndRegister(space: Space, camera: Camera, item: {
   if (!filmMarker || JSON.stringify(filmMarker.T_ENU_marker) !== JSON.stringify(session.marker.T_ENU_marker)) {
     throw new MeasureError("촬영 중 마커 위치가 바뀌었어요. 다시 촬영해 주세요.");
   }
-  pose = filmBoardAlignment(filmMarker, board);
+  const pose = filmBoardAlignment(filmMarker, board);
   const kind = SERVER_SHAPES[item.shape] ?? "polygon";
   const plan = {
     space_id: scene.room.room_id,
@@ -292,19 +291,21 @@ async function put(url: string, body: unknown) {
 export type CaptureMarker = {
   session_id: string; scene_id: string; window_id: string; expires_at: string;
   display_status: "virtual_applied"; board: Board; marker: FilmMarker; film_cells: number[][];
+  film_module?: { row: number; col: number; rows: number; cols: number; side_m: number; marker_center_uv_m: [number, number] };
 };
+export type CaptureTarget = { window_id?: string; module_row?: number; module_col?: number };
 const markerKey = (sceneId: string) => `sunsync-capture-marker:${sceneId}`;
 const markerUrl = (sceneId: string) => `/api/scenes/${encodeURIComponent(sceneId)}/capture-marker`;
-export async function startCaptureMarker(sceneId: string): Promise<CaptureMarker> {
+export async function startCaptureMarker(sceneId: string, target: CaptureTarget = {}): Promise<CaptureMarker> {
   // Save before sending: retries, remounts and a lost response reuse the same ID.
   let id = sessionStorage.getItem(markerKey(sceneId));
   if (!id) { id = crypto.randomUUID(); sessionStorage.setItem(markerKey(sceneId), id); }
   try {
-    return await post<CaptureMarker>(markerUrl(sceneId), { request_id: id });
+    return await post<CaptureMarker>(markerUrl(sceneId), { ...target, request_id: id });
   } catch (e) {
     if (e instanceof MeasureError && e.status === 410) {
       sessionStorage.removeItem(markerKey(sceneId));
-      return startCaptureMarker(sceneId);
+      return startCaptureMarker(sceneId, target);
     }
     throw e;
   }

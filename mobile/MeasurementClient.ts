@@ -21,7 +21,10 @@ export type CaptureOutcome =
 export type FilmCaptureSession = {
   session_id: string; scene_id: string; expires_at: string; display_status: "virtual_applied";
   board: Record<string, unknown>; marker: { T_ENU_marker: number[] };
+  window_id?: string;
+  film_module?: { row: number; col: number; rows: number; cols: number; side_m: number; marker_center_uv_m: [number, number] };
 };
+export type FilmCaptureTarget = { window_id?: string; module_row?: number; module_col?: number };
 
 function sameBoard(a: Record<string, unknown>, b: Record<string, unknown>): boolean {
   return ["board_id", "dictionary", "marker_side_m", "gap_x_m", "gap_y_m", "border_bits", "ids_by_row"]
@@ -33,10 +36,10 @@ export class MeasurementClient {
   private filmURL = "";
 
   /** Persist requestId in the host until finish/cancel; retry it after a lost response. */
-  async startFilmCapture(backendURL: string, sceneId: string, requestId: string): Promise<FilmCaptureSession> {
+  async startFilmCapture(backendURL: string, sceneId: string, requestId: string, target: FilmCaptureTarget = {}): Promise<FilmCaptureSession> {
     const url = `${backendURL.replace(/\/$/, "")}/api/scenes/${encodeURIComponent(sceneId)}/capture-marker`;
     const response = await this.fetcher(url, { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ request_id: requestId }), signal: AbortSignal.timeout(30000) });
+      body: JSON.stringify({ ...target, request_id: requestId }), signal: AbortSignal.timeout(30000) });
     if (!response.ok) throw new Error(`Film capture start failed: ${response.status}`);
     const session = await response.json() as FilmCaptureSession;
     this.reset();

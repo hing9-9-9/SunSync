@@ -32,7 +32,9 @@ def client(database_engine: Engine) -> Iterator[TestClient]:
         yield test_client
 
 
-def make_scene(client: TestClient, wall: str, paired: bool = True) -> dict[str, Any]:
+def make_scene(
+    client: TestClient, wall: str, paired: bool = True, width: float = 1.0, height: float = 1.0
+) -> dict[str, Any]:
     space = {
         "id": "standard_film",
         "building": "B",
@@ -51,7 +53,13 @@ def make_scene(client: TestClient, wall: str, paired: bool = True) -> dict[str, 
             "timezone": "Asia/Seoul",
             "northConfirmed": True,
         },
-        "windowDimensions": {"width": 1.0, "height": 1.0, "wall": wall, "offset": 2.0, "sill": 0.8},
+        "windowDimensions": {
+            "width": width,
+            "height": height,
+            "wall": wall,
+            "offset": 2.0,
+            "sill": 0.8,
+        },
         "furniture": [],
         "regions": [],
     }
@@ -64,10 +72,10 @@ def make_scene(client: TestClient, wall: str, paired: bool = True) -> dict[str, 
     return client.get(f"/api/scenes/{scene_id}").json()
 
 
-def start(client: TestClient, scene: dict, request_id: str | None = None):
+def start(client: TestClient, scene: dict, request_id: str | None = None, **target):
     return client.post(
         f"/api/scenes/{scene['scene_id']}/capture-marker",
-        json={"request_id": request_id or str(uuid4())},
+        json={"request_id": request_id or str(uuid4()), **target},
     )
 
 
@@ -182,3 +190,143 @@ def test_standard_geometry_required_and_no_scene_creation(client):
     scene["revision"] += 1
     assert client.put(f"/api/scenes/{scene['scene_id']}", json=scene).status_code == 200
     assert start(client, scene).status_code == 422
+
+
+@pytest.mark.parametrize("wall", ["north", "east", "south", "west"])
+def test_selected_module_on_large_window_has_correct_pattern_and_world_height(client, wall):
+    scene = make_scene(client, wall, False, width=3.0, height=2.0)
+    token = str(uuid4())
+    data = start(client, scene, token, module_row=1, module_col=2)
+    assert data.status_code == 200, data.text
+    payload = data.json()
+    assert payload["film_module"] == {
+        "row": 1,
+        "col": 2,
+        "rows": 2,
+        "cols": 3,
+        "side_m": 1.0,
+        "marker_center_uv_m": pytest.approx([2.5, 0.5]),
+    }
+    marker = payload["marker"]
+    assert marker["side_length_m"] == 0.6
+    assert (marker["start_row"], marker["start_col"]) == (12, 22)
+    win = scene["windows"][0]
+    expected = [
+        win["vertices_m"][0][i] + 2.5 * win["u_axis"][i] + 0.5 * win["v_axis"][i] for i in range(3)
+    ]
+    assert marker["T_ENU_marker"][3:12:4] == pytest.approx(expected)
+    assert marker["T_ENU_marker"][11] == pytest.approx(1.3)
+    cells = payload["film_cells"]
+    assert len(cells) == 20 and all(len(row) == 30 for row in cells)
+    assert [row[22:28] for row in cells[12:18]] == generate_aruco_4x4_pattern(marker["code_id"])
+    assert cells[2][2] == 0.0
+    assert start(client, scene, token, module_row=1, module_col=2).json() == payload
+    assert start(client, scene, token, module_row=0, module_col=0).status_code == 409
+    base = f"/api/scenes/{scene['scene_id']}"
+    assert client.post(base + f"/capture-marker/{token}/end").status_code == 200
+    second = start(client, scene, module_row=0, module_col=1)
+    assert second.status_code == 200, second.text
+    assert second.json()["marker"]["T_ENU_marker"][11] == pytest.approx(2.3)
+
+
+@pytest.mark.parametrize(
+    "target",
+    [
+        {"module_row": 2},
+        {"module_col": 3},
+        {"module_row": -1},
+        {"module_col": 0.5},
+        {"module_row": True},
+    ],
+)
+def test_invalid_module_rejected_without_pairing(client, target):
+    scene = make_scene(client, "north", False, width=3.0, height=2.0)
+    assert start(client, scene, **target).status_code == 422
+    assert client.get(f"/api/scenes/{scene['scene_id']}").json() == scene
+
+
+def test_pairing_selects_module_and_keeps_fixed_scale(client):
+    scene = make_scene(client, "north", False, width=3.0, height=2.0)
+    base = f"/api/scenes/{scene['scene_id']}"
+    result = client.post(base + "/marker-pairing", json={"module_row": 1, "module_col": 1})
+    assert result.status_code == 200, result.text
+    marker = client.get(base).json()["markers"][0]
+    assert marker["start_row"] == marker["start_col"] == 12
+    assert marker["side_length_m"] == 0.6
+    assert marker["T_ENU_marker"][11] == pytest.approx(1.3)
+
+
+def test_partial_modules_not_silently_stretched(client):
+    scene = make_scene(client, "north", False, width=2.0, height=1.5)
+    assert start(client, scene).status_code == 422
+    base = f"/api/scenes/{scene['scene_id']}"
+    assert client.post(base + "/marker-pairing", json={}).status_code == 422
+    assert client.get(base).json() == scene
+
+
+def test_module_repair_moves_display_and_end_restores_original_grid(client):
+    scene = make_scene(client, "north", False, width=3.0, height=2.0)
+    base = f"/api/scenes/{scene['scene_id']}"
+    assert client.post(base + "/marker-pairing", json={}).status_code == 200
+    result = client.post(base + "/marker-pairing", json={"module_row": 1, "module_col": 2})
+    assert result.status_code == 200, result.text
+    cells = result.json()["film_state"]["cells"]
+    assert cells[2][2] == 0.0 and cells[12][22] == 1.0
+    assert client.post(base + "/film-marker-mode", json={"enabled": False}).status_code == 200
+    cells = client.get(base + "/film-state").json()["windows"][0]["cells"]
+    assert all(value == 0.0 for row in cells for value in row)
+    result = client.post(
+        base + "/film-marker-mode",
+        json={
+            "enabled": True,
+            "module_row": 1,
+            "module_col": 1,
+        },
+    )
+    assert result.status_code == 200, result.text
+    assert result.json()["cells"][12][12] == 1.0
+    assert (
+        client.post(
+            base + "/film-marker-mode",
+            json={
+                "enabled": True,
+                "module_row": 0,
+                "module_col": 0,
+                "start_row": 2,
+            },
+        ).status_code
+        == 422
+    )
+
+
+def test_multi_module_vision_does_not_assume_window_centre(client):
+    scene = make_scene(client, "north", False, width=3.0, height=2.0)
+    result = client.post(
+        f"/api/scenes/{scene['scene_id']}/vision-furniture-estimate",
+        json={
+            "camera": {
+                "width": 1280,
+                "height": 720,
+                "fx": 900.0,
+                "fy": 900.0,
+                "cx": 640.0,
+                "cy": 360.0,
+            },
+            "marker_anchor": {
+                "code_id": 0,
+                "side_length_m": 0.6,
+                "corners_px": [[550, 270], [730, 270], [730, 450], [550, 450]],
+                "anchor_depth_rel": 3.0,
+            },
+            "detections": [
+                {
+                    "box_xyxy": [450.0, 300.0, 750.0, 550.0],
+                    "label": "chair",
+                    "confidence": 0.9,
+                    "observed_depth_rel": 2.0,
+                }
+            ],
+            "apply_to_scene": False,
+        },
+    )
+    assert result.status_code == 422 and "pair a film module" in result.text

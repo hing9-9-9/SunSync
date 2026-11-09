@@ -78,7 +78,19 @@ class MarkerModeRequest(FilmBaseModel):
     code_id: Annotated[int, Field(ge=0, lt=50)] = 0
     start_row: Annotated[int, Field(ge=0)] = 2
     start_col: Annotated[int, Field(ge=0)] = 2
+    module_row: Annotated[int, Field(ge=0)] | None = None
+    module_col: Annotated[int, Field(ge=0)] | None = None
     timestamp: Timestamp | None = None
+
+    @model_validator(mode="after")
+    def module_target(self) -> Self:
+        if (self.module_row is None) != (self.module_col is None):
+            raise ValueError("module_row and module_col must be supplied together")
+        if self.module_row is not None and (
+            "start_row" in self.model_fields_set or "start_col" in self.model_fields_set
+        ):
+            raise ValueError("choose a film module or raw cell coordinates, not both")
+        return self
 
 
 class ScheduleApplyRequest(FilmBaseModel):
@@ -106,6 +118,8 @@ class MeasuredFurnitureInput(FilmBaseModel):
 class MarkerPairingRequest(FilmBaseModel):
     code_id: Annotated[int, Field(ge=0, lt=50)] = 0
     window_id: Identifier | None = None
+    module_row: Annotated[int, Field(ge=0)] = 0
+    module_col: Annotated[int, Field(ge=0)] = 0
     auto_provision_window: bool = True
     enable_marker_display: bool = True
     clamp_furniture_to_room: bool = True

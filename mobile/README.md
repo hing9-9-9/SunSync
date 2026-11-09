@@ -68,3 +68,6 @@ await client.endFilmCapture();
 ```
 
 클라이언트는 매 촬영 전 세션 상태를 확인하고 다른 보드/ID 및 만료된 세션을 거절한다. 완료된 사진에는 `marker_session_id`가 포함된다. 현재 `virtual_applied`는 가상 필름 상태 적용이며 MCU의 실제 표시 확인은 아니다. 호스트 앱 UI 연결과 실기기 시험은 별도다.
+
+
+필름 선택: `startFilmCapture(backendURL, sceneId, requestId, { window_id, module_row: 1, module_col: 2 })`처럼 네 번째 인자를 전달한다. 행·열은 실내 기준 왼쪽 위부터 0부터 센다. 생략하면 왼쪽 위 모듈이며, 응답 `film_module`과 `marker.T_ENU_marker`가 선택 결과다. 창 전체는 여러 1m 모듈로 구성할 수 있고 마커 크기는 60cm로 고정이다. 선택을 바꿀 때는 기존 세션 종료 후 새 요청 ID를 사용한다.
