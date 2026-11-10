@@ -215,7 +215,12 @@ def protected_face(space: UISpace, region: UIRegion) -> str:
             c, sn = math.cos(angle), math.sin(angle)
             # Rotate each side's outward normal with the furniture; the side that points most
             # toward the window wall is the one to protect (this also holds at 90 and 270 degrees).
-            sides = [("남쪽 전면", 0, -1), ("북쪽 후면", 0, 1), ("동쪽 측면", 1, 0), ("서쪽 측면", -1, 0)]
+            sides = [
+                ("남쪽 전면", 0, -1),
+                ("북쪽 후면", 0, 1),
+                ("동쪽 측면", 1, 0),
+                ("서쪽 측면", -1, 0),
+            ]
             return max(
                 sides,
                 key=lambda v: (
