@@ -794,3 +794,31 @@ def test_smoothing_ignores_the_options_of_the_replace_mode(
         for hardware, edge, tune in (("PDLC", False, False), ("LG_SGF", True, True))
     ]
     assert plans[0] == plans[1]
+
+
+def test_the_sun_path_is_predicted_only_once(
+    client: TestClient, scene_payload: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The prediction is the slow part; the FR-02 baseline plan is built from the same one."""
+    from app.services import adaptive_control, shading
+
+    calls: list[int] = []
+    for module in (adaptive_control, shading):
+        real = module.predict_scene
+
+        def counting(*args: Any, _real: Any = real, **kwargs: Any) -> Any:
+            calls.append(1)
+            return _real(*args, **kwargs)
+
+        monkeypatch.setattr(module, "predict_scene", counting)
+    scene_id = client.post("/api/scenes", json=scene_payload).json()["scene_id"]
+    request = {
+        "start_time": "2026-10-14T04:30:00Z",
+        "duration_minutes": 60,
+        "interval_seconds": 300,
+    }
+    assert (
+        client.post(f"/api/scenes/{scene_id}/adaptive-shading-plan", json=request).status_code
+        == 200
+    )
+    assert len(calls) == 1

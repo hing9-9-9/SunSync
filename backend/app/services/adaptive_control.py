@@ -28,14 +28,14 @@ from app.schemas.adaptive_control import (
     UncertaintyTimelinePoint,
 )
 from app.schemas.scene import Scene
-from app.schemas.shading_plan import ShadingPlan, ShadingPlanRequest
+from app.schemas.shading_plan import ShadingPlan
 from app.schemas.sunpath import SunpathPredictionRequest, SunpathPredictionResponse
 from app.services.film import (
     apply_schedule_to_scene,
     normalize_iso_timestamp,
     opacity_to_applied_state,
 )
-from app.services.shading import _caps, _exposed_tiles, _film_windows, shading_plan_for_scene
+from app.services.shading import _caps, _exposed_tiles, _film_windows, shading_plan_from_prediction
 from app.services.sunpath import SunpathValidationError, predict_scene
 from engine.fr02 import map_tiles_to_cells
 from engine.fr04 import (
@@ -187,12 +187,7 @@ def compute_adaptive_shading_plan(
     except SunpathValidationError as err:
         raise HTTPException(status_code=422, detail=str(err)) from err
 
-    # 1. Run FR-01 sunpath prediction and FR-02 baseline plan
-    shading_req = ShadingPlanRequest(
-        start_time=request.start_time,
-        duration_minutes=request.duration_minutes,
-        interval_seconds=request.interval_seconds,
-    )
+    # 1. Run FR-01 sunpath prediction once and derive the FR-02 baseline plan from it
     prediction: SunpathPredictionResponse = predict_scene(
         scene,
         SunpathPredictionRequest(
@@ -205,9 +200,7 @@ def compute_adaptive_shading_plan(
         ),
         nowcast_engine=nowcast_engine,
     )
-    baseline_plan: ShadingPlan = shading_plan_for_scene(
-        scene, shading_req, nowcast_engine=nowcast_engine
-    )
+    baseline_plan: ShadingPlan = shading_plan_from_prediction(scene, prediction)
 
     optical_profiles = _build_optical_profiles(scene)
     windows_map = {w.window_id: w for w in scene.windows}
