@@ -7,6 +7,7 @@ import type { Shape, CapturePoint } from "./capturePlan";
 import type { CapturedFurniture } from "./model";
 import { browserCaptureEnabled } from "./captureEnvironment";
 import { BOARD, selectFrames, MeasureError, detectFrame, savedCamera, setupCamera, captureTargets, resumeCaptureMarker, cancelStoredCapture, startCaptureMarker, endCaptureMarker } from "./measureApi";
+import FilmModulePicker from "./FilmModulePicker";
 import type { Camera, Frame, Board, CaptureMarker, FilmTargetWindow } from "./measureApi";
 
 type Photo = { file: File; url: string; issue: PhotoIssue | null; metrics: { brightness: number; sharpness: number }; frame?: Frame };
@@ -73,24 +74,20 @@ function SessionSpatialCapture(props: { sceneId?: string; count: number; onFinis
   if (busy) return <p role="status">촬영 마커를 준비하고 있어요…</p>;
   if (!session) {
     const win=windows.find(w=>w.window_id===windowId);
-    return <section>
-      <h3>마커를 표시할 필름 선택</h3>
-      <p>실내에서 창을 바라본 기준이에요. 선택한 1m 필름 중앙에 60cm 마커를 표시합니다.</p>
-      {error && <p role="alert">{error}</p>}
-      {!windows.length && <p>촬영 가능한 필름이 없어요. 창 크기·위치와 1m 필름 배치를 먼저 저장해 주세요.</p>}
-      <label className="field"><span>창문</span><select value={windowId} onChange={e=>{setWindowId(e.target.value);setRow(0);setCol(0);}}>
-        {windows.map((w,i)=><option key={w.window_id} value={w.window_id}>창 {i+1} · 필름 {w.rows}행 × {w.cols}열</option>)}
-      </select></label>
-      {win && <div className="two-fields">
-        <label className="field"><span>위에서 몇 번째 필름</span><select value={row} onChange={e=>setRow(Number(e.target.value))}>
-          {Array.from({length:win.rows},(_,i)=><option key={i} value={i}>{i+1}번째 행</option>)}
-        </select></label>
-        <label className="field"><span>왼쪽에서 몇 번째 필름</span><select value={col} onChange={e=>setCol(Number(e.target.value))}>
-          {Array.from({length:win.cols},(_,i)=><option key={i} value={i}>{i+1}번째 열</option>)}
-        </select></label>
-      </div>}
-      <button type="button" disabled={!win} onClick={()=>void begin()}>이 필름에 마커 표시하고 촬영 시작</button>
-      <button type="button" onClick={()=>{if(!props.sceneId)return;setBusy(true);void cancelStoredCapture(props.sceneId).then(()=>setRetry(n=>n+1)).catch(e=>{setError(String(e));setBusy(false);});}}>이전 촬영 종료하고 다시 선택</button>
+    return <section className="film-select">
+      <h3>마커를 띄울 필름 선택</h3>
+      <p className="muted small">안쪽에서 창문을 본 모습이에요. 고른 칸 가운데에 마커(60cm)가 떠요.</p>
+      {error && <p className="error" role="alert">{error}</p>}
+      {!windows.length && <p className="muted small">촬영할 필름이 없어요. 창문 크기와 위치를 먼저 저장해 주세요.</p>}
+      {windows.length > 1 && <label className="field"><span>창문</span><select value={windowId} onChange={e=>{setWindowId(e.target.value);setRow(0);setCol(0);}}>
+        {windows.map((w,i)=><option key={w.window_id} value={w.window_id}>창 {i+1}</option>)}
+      </select></label>}
+      {win && <>
+        <FilmModulePicker rows={win.rows} cols={win.cols} row={row} col={col} onChange={(r,c)=>{setRow(r);setCol(c);}} />
+        <p className="film-select-choice" role="status">위에서 {row+1}번째 · 왼쪽에서 {col+1}번째 필름</p>
+      </>}
+      <button type="button" className="primary" disabled={!win} onClick={()=>void begin()}>촬영 시작</button>
+      <button type="button" className="text-button" onClick={()=>{if(!props.sceneId)return;setBusy(true);void cancelStoredCapture(props.sceneId).then(()=>setRetry(n=>n+1)).catch(e=>{setError(String(e));setBusy(false);});}}>이전 촬영 끝내기</button>
     </section>;
   }
   return <section>

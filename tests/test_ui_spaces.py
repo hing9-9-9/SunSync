@@ -733,3 +733,21 @@ def test_rotated_host_near_wall_uses_physical_bounds(client, payload):
     payload["regions"][0].update(x=-0.7, y=2, width=2, depth=0.2, face="상단")
     result = client.post("/api/ui/spaces", json=payload)
     assert result.status_code == 201, result.text
+
+
+@pytest.mark.parametrize("wall", ["south", "east", "north", "west"])
+@pytest.mark.parametrize("yaw", [0, 30, 90, 180, 270, 335])
+def test_protected_face_points_at_the_window_wall_after_rotation(wall, yaw):
+    from types import SimpleNamespace as NS
+
+    from app.ui_scene import region_surface
+
+    toward = {"south": (0, -1), "north": (0, 1), "east": (1, 0), "west": (-1, 0)}[wall]
+    space = NS(
+        depth=5,
+        windowDimensions=NS(wall=wall),
+        furniture=[NS(id="f", yaw=yaw, width=1.5, depth=0.6, x=1, y=1, baseHeight=0)],
+    )
+    region = NS(furnitureId="f", face="남쪽 전면", x=1, y=1, width=1.5, depth=0.6, bottom=0, top=1)
+    _, normal = region_surface(space, region)
+    assert normal[0] * toward[0] + normal[1] * toward[1] > 0.8

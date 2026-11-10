@@ -8,13 +8,11 @@ export default function PredictionSummary({
   result,
   space,
   date,
-  onDate,
   onRetry,
 }: {
   result?: SunpathPrediction;
   space: Space;
   date: string;
-  onDate: (value: string) => void;
   onRetry: () => void;
 }) {
   const [serverComparison, setServerComparison] = useState<NowcastComparisonResponse | null>(null);
@@ -53,14 +51,6 @@ export default function PredictionSummary({
 
   return (
     <div className="sun-reference muted small">
-      <label>
-        예측 날짜{" "}
-        <input
-          type="date"
-          value={date}
-          onChange={(e) => e.target.value && onDate(e.target.value)}
-        />
-      </label>{" "}
       <button type="button" className="text-button" onClick={onRetry}>
         다시 계산
       </button>
@@ -71,10 +61,7 @@ export default function PredictionSummary({
 
       {result && (
         <>
-          <p>
-            공간 시간대: {space.site!.timezone} ·{" "}
-            {(result.interval_seconds ?? 1800) / 60}분 간격 예상
-          </p>
+          <p>{(result.interval_seconds ?? 1800) / 60}분 간격으로 계산했어요.</p>
           <p>
             {[...sources]
               .map((source) =>
@@ -94,24 +81,18 @@ export default function PredictionSummary({
               const values = r.timeline.flatMap(
                 (t) => t.samples?.map((s) => s.direct_irradiance_W_m2) ?? [],
               );
-              const known = values.filter((v): v is number => v !== null);
               return (
                 <li key={r.region_id}>
                   {space.regions[index]?.name ?? r.region_id}:{" "}
                   {first
                     ? `첫 노출 예상 ${time(first.timestamp)}`
                     : "계산 시각에 직사광선 경로 없음"}
-                  {known.length > 0 &&
-                    ` · 최대 ${Math.round(known.reduce((max, value) => Math.max(max, value), 0))} W/m²`}
-                  {values.some((v) => v === null) && " · 일부 일사량 확인 불가"}
+                  {values.some((v) => v === null) && " · 일부 시간은 햇빛 세기를 알 수 없어요"}
                 </li>
               );
             })}
           </ul>
-          <p>
-            창 투과율·실외 건물 차폐·반사는 미반영입니다. 필름 표시는 계산된
-            차광 계획이며 실제 장치 실행 상태가 아닙니다.
-          </p>
+          <p>바깥 건물의 그늘과 유리 투과는 계산에 넣지 않았어요.</p>
         </>
       )}
     </div>

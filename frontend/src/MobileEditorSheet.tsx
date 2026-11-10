@@ -15,12 +15,17 @@ export default function MobileEditorSheet({
   const dialog = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const node = dialog.current;
-    if (open && !node?.open) node?.showModal();
+    if (open && !node?.open) {
+      node?.showModal();
+      // Start on the sheet itself so no button (닫기) shows a focus ring the moment it opens.
+      node?.focus();
+    }
     else if (!open && node?.open) node.close();
   }, [open]);
   return (
     <dialog
       ref={dialog}
+      tabIndex={-1}
       className="mobile-editor-sheet"
       aria-labelledby="mobile-editor-sheet-title"
       onCancel={(e) => {

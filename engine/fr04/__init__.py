@@ -12,8 +12,10 @@ from .dp_controller import (
     build_shading_plan_from_trajectories,
     compare_baseline_vs_adaptive,
     compute_stage_risk,
+    count_cap_violations,
     get_candidate_levels,
     optimize_cell_dp,
+    smooth_fr02_plan,
 )
 from .models import (
     AdaptiveComparisonMetrics,
@@ -45,6 +47,8 @@ __all__ = [
     "build_shading_plan_from_trajectories",
     "compare_baseline_vs_adaptive",
     "compute_stage_risk",
+    "count_cap_violations",
     "get_candidate_levels",
     "optimize_cell_dp",
+    "smooth_fr02_plan",
 ]

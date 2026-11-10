@@ -406,8 +406,9 @@ def test_build_shading_plan_from_trajectories_valid_schema() -> None:
 # ==============================================================================
 
 
+@pytest.mark.parametrize("mode", ["smooth_fr02", "replace"])
 def test_api_adaptive_shading_plan_endpoint(
-    client: TestClient, scene_payload: dict[str, Any]
+    client: TestClient, scene_payload: dict[str, Any], mode: str
 ) -> None:
     # 1. Provision Scene
     create_res = client.post("/api/scenes", json=scene_payload)
@@ -417,6 +418,7 @@ def test_api_adaptive_shading_plan_endpoint(
 
     # 2. Call POST /api/scenes/{scene_id}/adaptive-shading-plan
     plan_req = AdaptiveShadingPlanRequest(
+        mode=mode,  # type: ignore[arg-type]
         start_time="2026-10-14T04:30:00Z",
         duration_minutes=30,
         interval_seconds=60,
@@ -442,6 +444,7 @@ def test_api_adaptive_shading_plan_endpoint(
     data = response.json()
 
     assert data["scene_id"] == scene_id
+    assert data["mode"] == mode
     assert data["hardware_mode"] == "LG_SGF"
     assert "baseline_plan" in data
     assert "stabilized_plan" in data
@@ -450,8 +453,9 @@ def test_api_adaptive_shading_plan_endpoint(
     assert "dimming_trajectories" in data
 
 
+@pytest.mark.parametrize("mode", ["smooth_fr02", "replace"])
 def test_api_thinq_hub_sync_endpoint(
-    client: TestClient, scene_payload: dict[str, Any], database_engine: Engine
+    client: TestClient, scene_payload: dict[str, Any], database_engine: Engine, mode: str
 ) -> None:
     # 1. Provision Scene
     create_res = client.post("/api/scenes", json=scene_payload)
@@ -464,6 +468,7 @@ def test_api_thinq_hub_sync_endpoint(
         target_timestamp="2026-10-14T04:50:00Z",
         hardware_mode="LG_SGF",
         plan_request=AdaptiveShadingPlanRequest(
+            mode=mode,  # type: ignore[arg-type]
             start_time="2026-10-14T04:30:00Z",
             duration_minutes=30,
             interval_seconds=60,
@@ -511,10 +516,12 @@ def test_api_adaptive_control_non_existent_scene(client: TestClient) -> None:
     assert response.status_code == 404
 
 
+@pytest.mark.parametrize("mode", ["smooth_fr02", "replace"])
 def test_cross_track_direct_quantile_point_to_adaptive_plan(
     client: TestClient,
     database_engine: Engine,
     scene_payload: dict[str, Any],
+    mode: str,
 ) -> None:
     """Verify Track 1 QuantileNowcastPoint dict with extra fields passes directly into Track 3 API."""
     scene_id = scene_payload["scene_id"]
@@ -568,6 +575,7 @@ def test_cross_track_direct_quantile_point_to_adaptive_plan(
         "start_time": "2026-10-14T04:30:00Z",
         "duration_minutes": 10,
         "interval_seconds": 300,
+        "mode": mode,
         "hardware_mode": "LG_SGF",
         "uncertainty_timeline": track1_points,
     }
@@ -579,10 +587,12 @@ def test_cross_track_direct_quantile_point_to_adaptive_plan(
     assert "metrics" in data
 
 
+@pytest.mark.parametrize("mode", ["smooth_fr02", "replace"])
 def test_cross_track_auto_fetch_nowcast_from_database(
     client: TestClient,
     database_engine: Engine,
     scene_payload: dict[str, Any],
+    mode: str,
 ) -> None:
     """Verify Track 3 auto-fetches nowcast_point records persisted by Track 1 when timeline is omitted."""
     scene_id = scene_payload["scene_id"]
@@ -640,6 +650,7 @@ def test_cross_track_auto_fetch_nowcast_from_database(
         "start_time": "2026-10-14T04:30:00Z",
         "duration_minutes": 30,
         "interval_seconds": 300,
+        "mode": mode,
         "hardware_mode": "LG_SGF",
         "uncertainty_timeline": [],
     }
@@ -650,10 +661,12 @@ def test_cross_track_auto_fetch_nowcast_from_database(
     assert plan_data["metrics"]["protection_violation_count"] == 0
 
 
+@pytest.mark.parametrize("mode", ["smooth_fr02", "replace"])
 def test_adaptive_shading_plan_grade_a_hard_constraint_and_non_overlapping_segments(
     client: TestClient,
     database_engine: Engine,
     scene_payload: dict[str, Any],
+    mode: str,
 ) -> None:
     """Verify Grade A hard constraint requires opacity >= 0.99 and segments have zero overlap."""
     scene_id = scene_payload["scene_id"]
@@ -673,6 +686,7 @@ def test_adaptive_shading_plan_grade_a_hard_constraint_and_non_overlapping_segme
         "start_time": "2026-10-14T04:30:00Z",
         "duration_minutes": 60,
         "interval_seconds": 300,
+        "mode": mode,
         "hardware_mode": "LG_SGF",
     }
     resp = client.post(f"/api/scenes/{scene_id}/adaptive-shading-plan", json=req)
@@ -689,3 +703,122 @@ def test_adaptive_shading_plan_grade_a_hard_constraint_and_non_overlapping_segme
                 t1_end = datetime.fromisoformat(seg1.end_time)
                 t2_start = datetime.fromisoformat(seg2.start_time)
                 assert t1_end <= t2_start, f"Overlap detected between {seg1} and {seg2}"
+
+
+def test_smoothing_mode_is_never_brighter_than_the_fr02_plan(
+    client: TestClient, scene_payload: dict[str, Any]
+) -> None:
+    scene_id = client.post("/api/scenes", json=scene_payload).json()["scene_id"]
+    request = {
+        "start_time": "2026-10-14T04:30:00Z",
+        "duration_minutes": 120,
+        "interval_seconds": 300,
+        "mode": "smooth_fr02",
+    }
+    data = client.post(f"/api/scenes/{scene_id}/adaptive-shading-plan", json=request).json()
+    assert data["mode"] == "smooth_fr02"
+
+    def shaded(plan: dict[str, Any]) -> set[tuple[int, int, int, datetime]]:
+        covered = set()
+        for window in plan["windows"]:
+            for cell in window["cells"]:
+                for segment in cell["segments"]:
+                    moment = datetime.fromisoformat(segment["start_time"])
+                    end = datetime.fromisoformat(segment["end_time"])
+                    while moment < end:
+                        covered.add((window["window_id"], cell["row"], cell["col"], moment))
+                        moment += timedelta(seconds=300)
+        return covered
+
+    baseline, smoothed = shaded(data["baseline_plan"]), shaded(data["stabilized_plan"])
+    assert baseline, "the scene should need some shading in this window"
+    assert baseline <= smoothed
+    metrics = data["metrics"]
+    assert metrics["protection_violation_count"] <= metrics["baseline_violation_count"]
+    assert metrics["protection_violation_count_q90"] <= metrics["baseline_violation_count_q90"]
+
+
+def _segment_count(plan: dict[str, Any]) -> int:
+    return sum(len(cell["segments"]) for window in plan["windows"] for cell in window["cells"])
+
+
+def test_the_default_mode_is_smoothing_of_the_fr02_plan(
+    client: TestClient, scene_payload: dict[str, Any]
+) -> None:
+    scene_id = client.post("/api/scenes", json=scene_payload).json()["scene_id"]
+    request = {
+        "start_time": "2026-10-14T04:30:00Z",
+        "duration_minutes": 60,
+        "interval_seconds": 300,
+    }
+    assert (
+        client.post(f"/api/scenes/{scene_id}/adaptive-shading-plan", json=request).json()["mode"]
+        == "smooth_fr02"
+    )
+
+
+@pytest.mark.parametrize("mode", ["smooth_fr02", "replace"])
+def test_the_adaptive_plan_sees_the_sun(
+    client: TestClient, scene_payload: dict[str, Any], mode: str
+) -> None:
+    """Regression: without diagnostic detail FR-01 returns no exposed samples, so FR-04 saw no sun
+    and shaded nothing (and every violation count was a meaningless zero)."""
+    scene_id = client.post("/api/scenes", json=scene_payload).json()["scene_id"]
+    request = {
+        "mode": mode,
+        "start_time": "2026-10-14T04:30:00Z",
+        "duration_minutes": 180,
+        "interval_seconds": 300,
+    }
+    data = client.post(f"/api/scenes/{scene_id}/adaptive-shading-plan", json=request).json()
+    assert _segment_count(data["baseline_plan"]) > 0
+    assert _segment_count(data["stabilized_plan"]) > 0
+    assert len(data["dimming_trajectories"]) > 0
+
+
+def test_smoothing_ignores_the_options_of_the_replace_mode(
+    client: TestClient, scene_payload: dict[str, Any]
+) -> None:
+    scene_id = client.post("/api/scenes", json=scene_payload).json()["scene_id"]
+    base = {"start_time": "2026-10-14T04:30:00Z", "duration_minutes": 120, "interval_seconds": 300}
+    plans = [
+        client.post(
+            f"/api/scenes/{scene_id}/adaptive-shading-plan",
+            json={
+                **base,
+                "hardware_mode": hardware,
+                "enable_edge_margin": edge,
+                "auto_tune_weights": tune,
+            },
+        ).json()["stabilized_plan"]
+        for hardware, edge, tune in (("PDLC", False, False), ("LG_SGF", True, True))
+    ]
+    assert plans[0] == plans[1]
+
+
+def test_the_sun_path_is_predicted_only_once(
+    client: TestClient, scene_payload: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The prediction is the slow part; the FR-02 baseline plan is built from the same one."""
+    from app.services import adaptive_control, shading
+
+    calls: list[int] = []
+    for module in (adaptive_control, shading):
+        real = module.predict_scene
+
+        def counting(*args: Any, _real: Any = real, **kwargs: Any) -> Any:
+            calls.append(1)
+            return _real(*args, **kwargs)
+
+        monkeypatch.setattr(module, "predict_scene", counting)
+    scene_id = client.post("/api/scenes", json=scene_payload).json()["scene_id"]
+    request = {
+        "start_time": "2026-10-14T04:30:00Z",
+        "duration_minutes": 60,
+        "interval_seconds": 300,
+    }
+    assert (
+        client.post(f"/api/scenes/{scene_id}/adaptive-shading-plan", json=request).status_code
+        == 200
+    )
+    assert len(calls) == 1

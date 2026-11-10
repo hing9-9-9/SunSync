@@ -11,6 +11,9 @@ from app.schemas.scene import Timestamp
 from app.schemas.shading_plan import ShadingPlan
 
 HardwareFilmMode = Literal["PDLC", "LG_SGF", "SPD"]
+# smooth_fr02: FR-04 keeps the FR-02 plan steady (FR-04.1 to FR-04.3) and decides nothing new.
+# replace: FR-04 computes its own plan from the irradiance band (experimental; uses hardware_mode).
+AdaptiveMode = Literal["smooth_fr02", "replace"]
 
 
 class AdaptiveBaseModel(BaseModel):
@@ -43,6 +46,8 @@ class AdaptiveShadingPlanRequest(AdaptiveBaseModel):
     start_time: str
     duration_minutes: Annotated[int, Field(ge=1, le=1440)] = 120
     interval_seconds: Annotated[int, Field(ge=1, le=3600)] = 300
+    mode: AdaptiveMode = "smooth_fr02"
+    # hardware_mode, enable_edge_margin and auto_tune_weights are used only when mode is "replace".
     hardware_mode: HardwareFilmMode = "LG_SGF"
     enable_edge_margin: bool = False
     auto_tune_weights: bool = True
@@ -62,7 +67,12 @@ class AdaptiveShadingPlanRequest(AdaptiveBaseModel):
 
 
 class AdaptiveComparisonMetrics(AdaptiveBaseModel):
-    """Quantitative performance comparison between baseline FR-02 and adaptive FR-04 plans."""
+    """Quantitative performance comparison between baseline FR-02 and adaptive FR-04 plans.
+
+    Percent values are signed: positive is better than the baseline, negative is worse.
+    Violation counts are cell-steps above the protection cap (q50 and q90 variants), counted
+    against the cap itself and also given for the baseline.
+    """
 
     baseline_switch_count: int
     adaptive_switch_count: int
@@ -71,6 +81,12 @@ class AdaptiveComparisonMetrics(AdaptiveBaseModel):
     adaptive_mean_opacity: float
     daylight_gain_pct: float
     protection_violation_count: int
+    baseline_violation_count: int = 0
+    protection_violation_count_q90: int = 0
+    baseline_violation_count_q90: int = 0
+    baseline_total_change: float = 0.0
+    adaptive_total_change: float = 0.0
+    total_change_reduction_pct: float = 0.0
     tuned_weights: dict[str, float] = Field(default_factory=dict)
 
 
@@ -90,6 +106,7 @@ class AdaptiveShadingPlanResponse(AdaptiveBaseModel):
 
     scene_id: str
     scene_revision: int
+    mode: AdaptiveMode = "smooth_fr02"
     hardware_mode: HardwareFilmMode
     baseline_plan: ShadingPlan
     stabilized_plan: ShadingPlan
