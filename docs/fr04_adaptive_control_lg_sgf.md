@@ -300,7 +300,7 @@ Still open: 2 (real forecast and measured irradiance together), 3 (real FR-02 pl
 
 | Before | Now |
 |---|---|
-| `flicker_reduction_pct` and `daylight_gain_pct` were clipped at 0 | Signed: positive is better than the baseline, negative is worse |
+| `flicker_reduction_pct` and `daylight_gain_pct` were clipped at 0 | Signed: positive is better than the baseline, negative is worse. The daylight percentage keeps the old floor: a baseline mean opacity below 0.01 counts as 0.01, so a nearly unshaded baseline does not give a huge percentage |
 | A violation counted only if the baseline kept the cap and the adaptive plan did not | Counted against the cap itself, for the adaptive plan and for the baseline, at q50 and at q90 |
 | Switch count was the only flicker measure | `total_change_reduction_pct` (sum of the opacity changes) added; the switch count stays |
 | The tuner scored the clipped switch reduction and required no violation relative to the baseline | The tuner scores the total-change reduction plus half the daylight gain (signed) and requires no more violations than the baseline at q50 and at q90. If no candidate qualifies it returns the one with the fewest |

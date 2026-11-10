@@ -114,3 +114,13 @@ def test_decision_summary_wording_follows_the_sign():
     assert "나빠졌습니다" in _change_phrase("자연채광", -4.2)
     assert "4.2%" in _change_phrase("자연채광", -4.2)
     assert "같습니다" in _change_phrase("자연채광", 0.0)
+
+
+def test_a_tiny_baseline_does_not_blow_up_the_daylight_percentage():
+    # baseline shades 1 step in 1000 (mean 0.001); the adaptive plan never shades
+    obs = observations(10, steps=1000)
+    baseline = {KEY: [1.0] + [0.0] * 999}
+    adaptive = {KEY: [0.0] * 1000}
+    metrics = compare_baseline_vs_adaptive(baseline, adaptive, obs, PROFILE)
+    assert metrics.baseline_mean_opacity == 0.001
+    assert metrics.daylight_gain_pct == 10.0  # (0.001 - 0) / 0.01, not 100

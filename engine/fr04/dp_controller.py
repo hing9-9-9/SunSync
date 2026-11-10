@@ -372,12 +372,17 @@ def count_cap_violations(
     return count
 
 
-def _percent_better(before: float, after: float) -> float:
+MIN_OPACITY_BASE = 0.01  # a baseline mean opacity below this is treated as this in a percentage
+
+
+def _percent_better(before: float, after: float, floor: float = 0.0) -> float:
     """Percent by which `after` is lower than `before`; negative means it got worse.
 
-    There is no ratio when `before` is zero, so 0.0 is returned then.
+    `floor` keeps a tiny baseline from turning a negligible difference into a huge percentage.
+    There is no ratio when `before` is zero and there is no floor, so 0.0 is returned then.
     """
-    return (before - after) / before * 100.0 if before > 0 else 0.0
+    base = max(before, floor)
+    return (before - after) / base * 100.0 if base > 0 and before > 0 else 0.0
 
 
 def compare_baseline_vs_adaptive(
@@ -435,7 +440,7 @@ def compare_baseline_vs_adaptive(
         ),
         baseline_mean_opacity=round(base_mean, 4),
         adaptive_mean_opacity=round(adapt_mean, 4),
-        daylight_gain_pct=round(_percent_better(base_mean, adapt_mean), 2),
+        daylight_gain_pct=round(_percent_better(base_mean, adapt_mean, MIN_OPACITY_BASE), 2),
         protection_violation_count=violations(adaptive_opacities_by_cell, "q50"),
         baseline_violation_count=violations(baseline_opacities_by_cell, "q50"),
         protection_violation_count_q90=violations(adaptive_opacities_by_cell, "q90"),
