@@ -156,6 +156,15 @@ def _load_nowcast_uncertainty_timeline(
         return []
 
 
+def _change_phrase(label: str, gain_pct: float) -> str:
+    """Wording for a signed change against the baseline (positive is better)."""
+    if abs(gain_pct) < 0.05:
+        return f"{label}은 기준과 같습니다"
+    if gain_pct > 0:
+        return f"{label}은 기준보다 {gain_pct:.1f}% 개선됐습니다"
+    return f"{label}은 기준보다 {-gain_pct:.1f}% 나빠졌습니다"
+
+
 def compute_adaptive_shading_plan(
     session: Session,
     scene_id: str,
@@ -396,6 +405,12 @@ def compute_adaptive_shading_plan(
         adaptive_mean_opacity=raw_metrics.adaptive_mean_opacity,
         daylight_gain_pct=raw_metrics.daylight_gain_pct,
         protection_violation_count=raw_metrics.protection_violation_count,
+        baseline_violation_count=raw_metrics.baseline_violation_count,
+        protection_violation_count_q90=raw_metrics.protection_violation_count_q90,
+        baseline_violation_count_q90=raw_metrics.baseline_violation_count_q90,
+        baseline_total_change=raw_metrics.baseline_total_change,
+        adaptive_total_change=raw_metrics.adaptive_total_change,
+        total_change_reduction_pct=raw_metrics.total_change_reduction_pct,
         tuned_weights=raw_metrics.tuned_weights,
     )
 
@@ -528,8 +543,9 @@ def sync_to_thinq_hub(
 
         decision_summary = (
             f"LG ThinQ ON SGF 제어: 조도 불확실성(P90)을 반영하여 {active_count}개 셀 차광"
-            f"(디밍 {dimmed_count}개)을 최적화했습니다. 플리커를 {plan_resp.metrics.flicker_reduction_pct:.1f}% "
-            f"저감하고 자연채광률을 {plan_resp.metrics.daylight_gain_pct:.1f}% 향상했습니다."
+            f"(디밍 {dimmed_count}개)을 최적화했습니다. "
+            f"{_change_phrase('플리커(불투명도 변화량)', plan_resp.metrics.total_change_reduction_pct)}, "
+            f"{_change_phrase('자연채광', plan_resp.metrics.daylight_gain_pct)}."
         )
 
         # Update SQLite FilmStateRecord

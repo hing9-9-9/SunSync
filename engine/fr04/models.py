@@ -155,4 +155,16 @@ class AdaptiveComparisonMetrics:
     adaptive_mean_opacity: float
     daylight_gain_pct: float
     protection_violation_count: int
+    # Percent values are signed: positive is better than the baseline, negative is worse.
+    # `protection_violation_count` counts cell-steps above the cap if the median forecast (q50)
+    # is true; the `_q90` fields do the same for the sunny end of the band. The baseline's own
+    # counts are given so that an unreachable cap is not blamed on the adaptive plan.
+    baseline_violation_count: int = 0
+    protection_violation_count_q90: int = 0
+    baseline_violation_count_q90: int = 0
+    # Sum of |opacity change| between steps; grows with the size of each change, not only
+    # with their number, so it is fair to multi-level film.
+    baseline_total_change: float = 0.0
+    adaptive_total_change: float = 0.0
+    total_change_reduction_pct: float = 0.0
     tuned_weights: dict[str, float] = field(default_factory=dict)
