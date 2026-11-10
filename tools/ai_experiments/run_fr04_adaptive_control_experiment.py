@@ -31,13 +31,16 @@ from engine.fr04 import (
     AdaptivePolicyTuner,
     AdaptiveWeights,
     CellObservation,
+    CellState,
     OpticalProfileData,
     ProtectionGrade,
     apply_fr04_stabilization,
     compare_baseline_vs_adaptive,
     count_cap_violations,
     optimize_cell_dp,
+    smooth_fr02_plan,
 )
+from engine.fr04.dp_controller import SWITCH_THRESHOLD
 
 
 def generate_solar_profile(
@@ -98,9 +101,6 @@ def generate_solar_profile(
     return timeline
 
 
-SWITCH_STEP = 0.01  # an opacity change larger than this counts as one switch
-
-
 def _cells_of(
     observations_by_cell: Mapping[tuple[str, int, int], Sequence[CellObservation]],
     grades: tuple[str, ...] | None,
@@ -125,7 +125,7 @@ def _series_stats(
         for before, after in pairwise(series):
             change = abs(after - before)
             variation += change
-            switches += change > SWITCH_STEP
+            switches += change > SWITCH_THRESHOLD
     return switches, variation, total / max(1, steps)
 
 
@@ -339,6 +339,16 @@ def simulate_scene(
         },
     )
 
+    # 3. FR-04 as a smoothing step on the FR-02 plan (the default of the API)
+    smooth_opacities: dict[tuple[str, int, int], list[float]] = {}
+    for cell_key, obs_seq in observations_by_cell.items():
+        base = baseline_opacities[cell_key]
+        states: list[CellState] = ["opaque" if value > 0 else "transparent" for value in base]
+        smoothed = smooth_fr02_plan(
+            base, states, obs_seq, optical_profile, weights, interval_seconds
+        )
+        smooth_opacities[cell_key] = [step.opacity for step in smoothed]
+
     return {
         "scenario": scenario_name,
         "baseline_switches": metrics_pdlc.baseline_switch_count,
@@ -346,6 +356,9 @@ def simulate_scene(
         "pdlc": asdict(metrics_pdlc),
         "lg_sgf": asdict(metrics_sgf),
         "signed_metrics": {
+            "smooth": evaluate_mode(
+                baseline_opacities, smooth_opacities, observations_by_cell, optical_profile
+            ),
             "pdlc": evaluate_mode(
                 baseline_opacities, pdlc_adaptive_opacities, observations_by_cell, optical_profile
             ),
@@ -443,7 +456,11 @@ def recommend(rows: Sequence[dict[str, Any]], mode: str) -> dict[str, Any] | Non
     )
 
 
-MODES = (("pdlc", "FR-04 Adaptive PDLC"), ("lg_sgf", "FR-04 Adaptive SGF (5 levels)"))
+REPLACE_MODES = (
+    ("pdlc", "FR-04 replace, PDLC (on/off)"),
+    ("lg_sgf", "FR-04 replace, SGF (5 levels)"),
+)
+MODES = (("smooth", "FR-04 smoothing of FR-02 (default)"), *REPLACE_MODES)
 
 
 def _pct(value: float | None) -> str:
@@ -486,6 +503,19 @@ def build_report(
             f"**Optical profile used**: glazing {profile.glazing_direct_transmittance}, film "
             f"{profile.film_min_direct_transmittance} (opaque) to {profile.film_max_direct_transmittance} "
             "(clear). These are assumed values, not measured ones (see Limitations)."
+        ),
+        "",
+        "**Modes compared**",
+        "",
+        "- *FR-02 rule baseline*: the plan FR-02 would make (here a three-line rule).",
+        (
+            "- *FR-04 smoothing of FR-02* (default of the API): keeps the FR-02 plan steady "
+            "(FR-04.1 gap filling, FR-04.2 holding time, FR-04.3 hysteresis) and decides nothing "
+            "new. It is never brighter than the FR-02 plan. On/off film only."
+        ),
+        (
+            "- *FR-04 replace*: the experimental mode that decides from the irradiance band with "
+            "dynamic programming; PDLC is on/off, SGF has five levels."
         ),
         "",
         "## Summary (range over the scenarios; positive is better than the rule baseline)",
@@ -602,7 +632,7 @@ def build_report(
         "|---|---|---|---|---|",
     ]
     for r in results:
-        for mode, label in MODES:
+        for mode, label in REPLACE_MODES:
             w = r["tuned_weights"][mode]
             lines.append(
                 f"| {r['scenario']} | {label} | {w.get('w_flicker')} | {w.get('w_daylight')} | "
@@ -641,7 +671,7 @@ def build_report(
         ),
         "",
     ]
-    for mode, label in MODES:
+    for mode, label in REPLACE_MODES:
         pick = recommend(sweep, mode)
         if pick is None:
             lines.append(f"- {label}: no tried pair meets the rule.")
@@ -658,7 +688,7 @@ def build_report(
         (
             "The same four scenarios run with one setting changed at a time. Each cell is the "
             "range over the scenarios, positive is better than the rule baseline. `Above cap q90` "
-            "is the total over the scenarios (baseline, then PDLC, then SGF)."
+            "is the total over the scenarios, for the rule baseline and for the mode in the row."
         ),
         "",
         (

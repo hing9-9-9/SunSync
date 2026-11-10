@@ -15,6 +15,7 @@ from .dp_controller import (
     count_cap_violations,
     get_candidate_levels,
     optimize_cell_dp,
+    smooth_fr02_plan,
 )
 from .models import (
     AdaptiveComparisonMetrics,
@@ -49,4 +50,5 @@ __all__ = [
     "count_cap_violations",
     "get_candidate_levels",
     "optimize_cell_dp",
+    "smooth_fr02_plan",
 ]

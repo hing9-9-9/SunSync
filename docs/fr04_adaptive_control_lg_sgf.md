@@ -7,14 +7,16 @@
 
 ---
 
+> **Which mode runs (decision of 2026-11-10).** The API default is `mode: "smooth_fr02"`: FR-04 keeps the FR-02 plan steady (FR-04.1 gap filling, FR-04.2 holding time, FR-04.3 hysteresis) and decides nothing new, as `docs/features.md` describes. The dynamic-programming controller described in sections 2 and 4 is the experimental `mode: "replace"`. Film type (PDLC or SGF) only matters in `replace`. See section 11.
+
 ## 1. Overview and Core Objectives
 
 SunSync's rule-based selective shading (FR-02) operates deterministically on forecasted DNI. However, real-world sky conditions exhibit high cloud intermittency, where brief cumulus passages cause smart film cells to oscillate rapidly between transparent and opaque. This creates severe visual flicker and premature wear on switching electronics.
 
-**FR-04 Adaptive Control** introduces an AI-enhanced, uncertainty-aware multi-objective controller that:
+**FR-04 Adaptive Control** (the experimental `replace` mode; the default smooths the FR-02 plan, see section 11) is an uncertainty-aware multi-objective controller that:
 1. **Suppresses Flicker**: Formulates horizon control as a **Dynamic Programming (Viterbi)** optimization balancing damage risk, daylight quality, and switching costs.
 2. **Quantile Risk-Aversion**: Ingests DNI prediction quantiles $(P_{10}, P_{50}, P_{90})$ to hedge against cloud edge spikes.
-3. **Enforces Strict Safety Rules**: Guaranteed compliance with standard `FR-04.1` (Gap Filling), `FR-04.2` (Holding Time), `FR-04.3` (Dynamic Hysteresis), and `FR-04.4` (Cell-Edge Margin).
+3. **Applies the stabilization rules**: `FR-04.1` (Gap Filling), `FR-04.2` (Holding Time) and `FR-04.3` (Dynamic Hysteresis). `FR-04.4` (edge margin) is met by FR-02.1 (section 3.4). Grade A cells are required to be opaque whenever the sun reaches them; the checks in this document count cell-steps above the cap and do not prove compliance.
 4. **LG SGF Continuous Dimming**: Replaces binary $0/1$ PDLC switching with multi-level continuous dimming ($0.0, 0.25, 0.5, 0.75, 1.0$), maximizing interior natural lighting while respecting strict protection caps ($I_{\max}$).
 5. **LG ThinQ ON Bridge**: Synchronizes real-time cell opacity and transmittance matrices to LG Electronics' ThinQ ON smart home hub.
 
@@ -77,8 +79,9 @@ flowchart TD
 - Brightening is discouraged unless transmitted irradiance falls safely below $I_{\max} - \text{margin}_{\text{hysteresis}}$.
 
 ### 3.4 FR-04.4 Cell-Edge Margin
-- **Rule**: When enabled (`enable_edge_margin=True`), any direct-sun ray hitting within the boundary zone of a cell expands protection needs to adjacent orthogonal neighboring cells.
-- **Effect**: Prevents direct sun leakage caused by penumbra diffraction, slight frame alignment drift, or seasonal sun elevation shift.
+- **Requirement**: the neighbouring cell is shaded when a light path crosses a cell boundary.
+- **Where it is met**: in FR-02.1. `cells_for_hit` (`engine/fr02/cell_mapping.py`) widens each window crossing to one tile and shades every cell that tile overlaps.
+- **The `enable_edge_margin` option** (replace mode only, off by default) is a second, cruder margin: it also shades the four orthogonal neighbours of every cell that is hit, whether or not the path is near a boundary (`edge_margin_threshold_m` is defined but not used). Turning it on shades neighbours twice. It is ignored in smoothing mode.
 
 ---
 
@@ -181,7 +184,7 @@ See section 7. The full tables are in `docs/reports/fr04_adaptive_control_experi
   )
   ```
 - **REST Endpoints**:
-  - `POST /api/scenes/{scene_id}/adaptive-shading-plan`: Returns both `baseline_plan` and `stabilized_plan`, along with continuous `dimming_trajectories` and `metrics`.
+  - `POST /api/scenes/{scene_id}/adaptive-shading-plan`: Returns both `baseline_plan` and `stabilized_plan`, along with `dimming_trajectories` and `metrics`. `mode` is `smooth_fr02` (default) or `replace` (section 11).
   - `POST /api/scenes/{scene_id}/thinq-hub-sync`: Evaluates current dimming state, persists it to virtual film, and returns the LG ThinQ ON device payload.
 
 ---
@@ -192,24 +195,26 @@ Source: `tools/ai_experiments/run_fr04_adaptive_control_experiment.py`; full tab
 
 | Mode | Flicker (total opacity change) | Switch count | Daylight, all 16 cells (opacity) | Daylight, Grade B cells (opacity) | Daylight, Grade B cells (sun-weighted) |
 |---|---|---|---|---|---|
-| FR-04 Adaptive PDLC | +62.5% to +78.6% | +62.5% to +78.6% | -3.1% to +0.0% | -3.5% to +0.0% | -3.9% to +0.8% |
-| FR-04 Adaptive SGF (5 levels) | +62.5% to +78.6% | -12.5% to +35.7% | -1.9% to +1.6% | -2.0% to +2.1% | +1.3% to +20.6% |
+| FR-04 smoothing of FR-02 (default) | +0.0% to +42.9% | +0.0% to +42.9% | -2.0% to +0.0% | -2.7% to +0.0% | -3.9% to +0.0% |
+| FR-04 replace, PDLC | +62.5% to +78.6% | +62.5% to +78.6% | -3.1% to +0.0% | -3.5% to +0.0% | -3.9% to +0.8% |
+| FR-04 replace, SGF (5 levels) | +62.5% to +78.6% | -12.5% to +35.7% | -1.9% to +1.6% | -2.0% to +2.1% | +1.3% to +20.6% |
 
 | Mode | Cell-steps above the cap if q90 is true (Sunny, Partly Cloudy, Squall, Overcast) |
 |---|---|
 | FR-02 rule baseline | 0, 6, 3, 0 |
-| FR-04 Adaptive PDLC | 0, 0, 0, 0 |
-| FR-04 Adaptive SGF | 0, 0, 0, 0 |
+| FR-04 smoothing of FR-02 | 0, 0, 0, 0 |
+| FR-04 replace, PDLC | 0, 0, 0, 0 |
+| FR-04 replace, SGF | 0, 0, 0, 0 |
 
 Nobody exceeds the cap if the median forecast (q50) is true.
 
 How to read it:
 
-1. **Flicker.** Both adaptive modes cut the total opacity change by 62.5% to 78.6%. Most of it comes from the stabilization rules (FR-04.1 to FR-04.4), not from the weights: in the sweep, `w_flicker` above 5 (PDLC) or 20 (SGF) changes nothing.
-2. **Switch count is the wrong measure for SGF.** SGF changes by small steps, so it can switch more often (9 against 8 on the Sunny day) while its total change is much lower (3.0 against 8.0).
-3. **Protection is where FR-04 differs from the rule.** The baseline decides on the median forecast (q50). If the sunny end of the band (q90) is true, it leaves 6 and 3 cell-steps above the cap in the two cloudy scenarios. The adaptive modes use q90 and have none.
-4. **Daylight.** By opacity, PDLC is a little darker than the baseline on Grade B cells (-3.5% to 0.0%) because it hedges against q90 and holds darkness for 10 minutes. SGF is about even (-2.0% to +2.1%). Weighted by how strong the sun is, SGF is clear more often when it matters (+1.3% to +20.6%); PDLC is about even (-3.9% to +0.8%).
-5. **Where SGF helps most.** When the cap leaves room for partial dimming: +20.6% sun-weighted on the Overcast day (100 to 300 W/m2), and up to +48.2% with the earlier 50 W/m2 cap. With a 30 W/m2 cap and a midday sun of 700 to 850 W/m2, the film has to be nearly opaque, so the room for dimming is small.
+1. **Smoothing helps only when FR-02 itself flickers.** On the Sunny day FR-02 switches only at dawn and dusk, so smoothing changes nothing (0.0%). On the two cloudy days it removes 42.9% of the total change (14 to 8). The replace modes remove 62.5% to 78.6%, because they also decide for themselves.
+2. **Smoothing keeps the protection of FR-02 and adds the hysteresis hedge.** It is never brighter than the FR-02 plan, and the hysteresis keeps B and C cells dark until the clear film is well below the cap, so the cap is not exceeded at q90 either (FR-02 alone exceeds it 6 and 3 times in the cloudy scenarios).
+3. **Smoothing costs a little daylight, and gives none back.** It only ever darkens: -2.7% to 0.0% on Grade B cells (opacity), -3.9% to 0.0% sun-weighted.
+4. **Only the replace modes can return daylight.** SGF with five levels is clear more often when the sun is strong (+1.3% to +20.6% sun-weighted), because it can dim partially. That needs film that dims in steps, which is not confirmed (section 8).
+5. **Switch count is the wrong measure for SGF.** It changes by small steps, so it can switch more often (9 against 8 on the Sunny day) while its total change is much lower (3.0 against 8.0).
 6. **Gain on all 16 cells is small by construction.** 12 cells are never shaded and the Grade A cell is always opaque in sun.
 7. **Metrics.** The engine function `compare_baseline_vs_adaptive`, the tuner and the API `metrics` block used to clip negative results to zero and to count a violation only when the baseline had kept the cap. They now report signed values and count against the cap itself (section 10). The first report of this experiment had printed worse-than-baseline results as 0.0%.
 
@@ -217,22 +222,28 @@ How to read it:
 
 Same scenarios, one setting changed at a time (ranges over the scenarios; Grade B cells).
 
-| Variant | Mode | Flicker | Daylight (opacity) | Daylight (sun-weighted) | Above cap at q90, baseline / adaptive (total) |
+| Variant | Mode | Flicker | Daylight (opacity) | Daylight (sun-weighted) | Above cap at q90, baseline / mode (total) |
 |---|---|---|---|---|---|
-| Cap 50 W/m2 (earlier setting) | PDLC | +62.5% to +85.0% | -9.4% to +0.0% | -19.4% to +0.0% | 27 / 0 |
-| | SGF | +62.5% to +85.0% | -5.9% to +6.5% | -0.2% to +48.2% | 27 / 0 |
-| 10-minute steps | PDLC | +57.1% to +76.9% | -1.8% to +0.0% | -1.1% to +1.6% | 3 / 0 |
-| | SGF | +57.1% to +76.9% | -0.4% to +2.1% | +3.7% to +20.3% | 3 / 0 |
-| Band half as wide | PDLC | +62.5% to +78.6% | -3.5% to +0.0% | -3.9% to +0.8% | 9 / 0 |
-| | SGF | +62.5% to +78.6% | -0.9% to +2.3% | +5.0% to +22.5% | 9 / 0 |
-| Band 1.5 times as wide | PDLC | +62.5% to +78.6% | -4.4% to +0.0% | -5.6% to +0.8% | 15 / 0 |
-| | SGF | +62.5% to +78.6% | -2.9% to +0.4% | -1.2% to +7.7% | 15 / 0 |
+| Cap 50 W/m2 (earlier setting) | smoothing | +0.0% to +60.0% | -8.5% to +0.0% | -19.4% to +0.0% | 27 / 0 |
+| | replace, PDLC | +62.5% to +85.0% | -9.4% to +0.0% | -19.4% to +0.0% | 27 / 0 |
+| | replace, SGF | +62.5% to +85.0% | -5.9% to +6.5% | -0.2% to +48.2% | 27 / 0 |
+| 10-minute steps | smoothing | +42.9% to +69.2% | -3.5% to +0.0% | -4.6% to +0.0% | 3 / 0 |
+| | replace, PDLC | +57.1% to +76.9% | -1.8% to +0.0% | -1.1% to +1.6% | 3 / 0 |
+| | replace, SGF | +57.1% to +76.9% | -0.4% to +2.1% | +3.7% to +20.3% | 3 / 0 |
+| Band half as wide | smoothing | +0.0% to +42.9% | -2.7% to +0.0% | -3.9% to +0.0% | 9 / 0 |
+| | replace, PDLC | +62.5% to +78.6% | -3.5% to +0.0% | -3.9% to +0.8% | 9 / 0 |
+| | replace, SGF | +62.5% to +78.6% | -0.9% to +2.3% | +5.0% to +22.5% | 9 / 0 |
+| Band 1.5 times as wide | smoothing | +0.0% to +42.9% | -2.7% to +0.0% | -3.9% to +0.0% | 15 / 3 |
+| | replace, PDLC | +62.5% to +78.6% | -4.4% to +0.0% | -5.6% to +0.8% | 15 / 0 |
+| | replace, SGF | +62.5% to +78.6% | -2.9% to +0.4% | -1.2% to +7.7% | 15 / 0 |
 
-- The conclusions hold in every variant: the adaptive modes cut the flicker, never exceed the cap at q90, and SGF gives back more sun-weighted daylight than PDLC.
-- A wider forecast band costs daylight (the hedge grows); a narrower one gives some back. The real band of the FR-01.4 model should be used before quoting a number.
-- Sampling every 10 minutes (what the nowcast refresh allows) lowers the flicker reduction a little (57.1% to 76.9%).
+- The conclusions hold in every variant, with one exception: with a band 1.5 times as wide, smoothing leaves 3 cell-steps above the cap at q90 (FR-02 alone leaves 15). The replace modes hedge for the band itself and keep 0. Smoothing never does worse than FR-02.
+- A wider forecast band costs daylight in the replace modes; a narrower one gives some back. The real band of the FR-01.4 model should be used before quoting a number.
+- Sampling every 10 minutes (what the nowcast refresh allows) changes the flicker reduction of the replace modes a little (57.1% to 76.9%); smoothing gains more on the cloudy days (up to +69.2%).
 
-### 7.2 Recommended weights
+### 7.2 Recommended weights (replace mode only)
+
+Smoothing does not use `w_flicker`, `w_daylight` or `kappa_B`; it uses `brightening_margin_W_m2`, `min_gap_seconds`, `brightening_hold_seconds` and `kappa_B` / `kappa_C` for the hysteresis margin, all at their defaults. These were not tuned.
 
 Sweep of `w_flicker` (0, 5, 20, 60) and `kappa_B` (0.8, 1.0, 1.2, 1.6), averaged over the four scenarios (table in the benchmark report).
 
@@ -282,7 +293,7 @@ Consequences for this project:
 | 1 | "+25% to +45% daylight" and "50% to 80% flicker removed" were targets | Hypothetical targets from the first draft, with no source (confirmed by the author). The experiment did not support the daylight figure | Replaced by computed results (section 7) |
 | 2 | The forecast is also the truth | The simulation has no separate real irradiance. Protection can only be checked at q50 and q90 | A fair test needs real days: forecast and measured DNI side by side |
 | 3 | The "FR-02 baseline" is FR-02 | In the CLI it is a three-line rule. The API compares with the real FR-02 plan | Run the comparison on real scenes through the API |
-| 4 | FR-04 is a smoothing step after FR-02 | The requirement (`docs/features.md`) says FR-04 smooths FR-02's plan. The DP controller decides from irradiance itself | Decide whether FR-04 post-processes or replaces FR-02 |
+| 4 | FR-04 is a smoothing step after FR-02 | The requirement (`docs/features.md`) says FR-04 smooths FR-02's plan; the DP controller decides from irradiance itself | Decided on 2026-11-10: the default is smoothing (`mode: "smooth_fr02"`); the DP controller stays as the experimental `replace` mode (section 11) |
 | 5 | Cap of 50 W/m2 for Grade B | The scene policy uses 0, 30 and 70 W/m2 (`ui_scene.py`) | Done: the main run uses 30, 50 is a sensitivity run. Grade C (70) is not simulated |
 | 6 | The film lowers direct irradiance by its transmittance | See section 8: scattering | Use total solar transmittance of a real film |
 | 7 | Opacity measures daylight | It ignores diffuse light and the sun's strength | Partly done: a sun-weighted transmittance was added. Measured illuminance is still missing |
@@ -290,9 +301,13 @@ Consequences for this project:
 | 9 | Time step | FR-01 uses 300 s steps and FR-04.2 holds for 600 s; the nowcast refreshes every 10 minutes. Clouds shorter than that are invisible to the controller | Partly done: a 10-minute-step run was added. Say it when presenting |
 | 10 | FR-04 improves the app | FR-04 is only an API. The web app and FR-05 do not call it | Wire it in, or present it as a simulation result |
 | 11 | Metrics are honest | The engine metric and the tuner clipped negative values and counted a violation only relative to the baseline | Done in this change (section 10) |
-| 12 | Cells are independent | Neighbouring cells are controlled one at a time except for the edge margin (off by default) | Not tested |
+| 12 | Cells are independent | FR-04.4 (neighbour cell when a path crosses a cell boundary) is already met by FR-02.1: `cells_for_hit` widens each hit to one tile and shades every cell it overlaps. The FR-04 `enable_edge_margin` option is a cruder second margin (it shades the four neighbours of every hit cell; `edge_margin_threshold_m` is not used) | Keep it off by default and in smoothing mode, where it is ignored. Turning it on would shade neighbours twice |
+| 13 | The API shows the sun to FR-04 | `adaptive-shading-plan` asked FR-01 for the prediction without diagnostic detail, so no exposed samples came back: in `replace` mode FR-04 saw no sun and shaded nothing (FR-02 shaded 68 cells in the same test scene), smoothing had no irradiance for its hysteresis, and every violation count was a meaningless 0 | Fixed (`detail_level="diagnostic"`), with a regression test. Results of the API before the fix must not be quoted |
+| 14 | The experiment tests the API | It calls the engine directly and never the API, so it could not catch item 13 | There is no end-to-end experiment through the API with a real Scene yet |
+| 15 | "Switch change" is always a ratio | When FR-02 has no switch at all (for example a day that is overcast from morning to night) there is no percentage; the engine and the API give 0.0 and the report prints n/a | Read `baseline_total_change` and `adaptive_total_change` in that case |
+| 16 | The API can predict the sun path twice | The service predicted it and then `shading_plan_for_scene` predicted it again for the FR-02 baseline, which doubled the time (4.8 s and 19.7 s for 3 and 12 hours at 5-minute steps) | Fixed: the baseline plan is built from the same prediction (`shading_plan_from_prediction`, 2.4 s and 11.9 s); the plans of the API and of `/shading-plans` were compared before and after and are identical. The 12-hour case is still slow for a screen |
 
-Still open: 2 (real forecast and measured irradiance together), 3 (real FR-02 plan as the baseline), 4 (post-process or replace), 6 (real film data), 10 (connection to the app and FR-05), 12 (neighbour cells). Not checked at all: real hardware behaviour, flicker as people experience it, energy use and cost.
+Still open: 2 (real forecast and measured irradiance together), 3 (the experiment's FR-02 baseline is still a simple rule; the API uses the real plan), 6 (real film data), 10 (connection to the app and FR-05). Not checked at all: real hardware behaviour, flicker as people experience it, energy use and cost.
 
 ---
 
@@ -307,3 +322,28 @@ Still open: 2 (real forecast and measured irradiance together), 3 (real FR-02 pl
 | The Korean summary text said "improved" for any value | The text says "improved" or "got worse" by the sign |
 
 New fields in `AdaptiveComparisonMetrics` (engine and API): `baseline_violation_count`, `protection_violation_count_q90`, `baseline_violation_count_q90`, `baseline_total_change`, `adaptive_total_change`, `total_change_reduction_pct`. They have defaults, so existing readers keep working. `protection_violation_count` now means "above the cap if q50 is true". The web app does not read these fields.
+
+---
+
+## 11. Modes of the adaptive-shading-plan API
+
+`POST /api/scenes/{scene_id}/adaptive-shading-plan` and `POST /api/scenes/{scene_id}/thinq-hub-sync` take `mode` in the plan request. The response repeats it.
+
+| | `smooth_fr02` (default) | `replace` (experimental) |
+|---|---|---|
+| What it does | Takes the FR-02 plan of each cell and keeps it steady | Decides each cell from the irradiance band with dynamic programming |
+| FR-04.1 gap filling, FR-04.2 holding time | Yes | Yes |
+| FR-04.3 hysteresis | Yes, as a hard rule: a B or C cell that FR-02 would brighten stays dark until the clear film is below the cap by the margin | Yes, as a cost inside the optimization |
+| Film levels | On/off only (FR-02 gives on/off) | PDLC on/off, SGF five levels |
+| Weights | Defaults, not tuned | Tuned when `auto_tune_weights` is true |
+| `hardware_mode`, `enable_edge_margin`, `auto_tune_weights` | Ignored | Used |
+| States `infeasible` and `unknown` of FR-02 | Kept | Not produced |
+| Safety | Never brighter than the FR-02 plan at any step (checked by a randomized test) | Can be brighter than FR-02 where the optimizer decides so |
+
+Notes:
+
+- The response structure is the same in both modes (`baseline_plan`, `stabilized_plan`, `dimming_trajectories`, `metrics`). In smoothing mode `dimming_trajectories` has opacities 0 and 1 only.
+- `hardware_mode` names how the film behaves: `PDLC` is on/off, `LG_SGF` and `SPD` have steps. It is not a user choice; the film is a fact of the window. LG Chem sells SGF as a product family in which PDLC is one grade (section 8), so the label "PDLC vs SGF" really means "on/off versus steps". A screen that offers this choice makes sense only for `replace`, as a comparison.
+- Edge margin: FR-04.4 is met by FR-02.1 (section 9, item 12). The option is ignored in smoothing mode.
+- `thinq-hub-sync` has its own top-level `hardware_mode`. It describes the film that receives the payload and is used in both modes; only the `hardware_mode` inside `plan_request` is ignored in smoothing.
+- The metrics of section 10 are computed in both modes against the FR-02 plan.

@@ -124,3 +124,30 @@ def test_a_tiny_baseline_does_not_blow_up_the_daylight_percentage():
     metrics = compare_baseline_vs_adaptive(baseline, adaptive, obs, PROFILE)
     assert metrics.baseline_mean_opacity == 0.001
     assert metrics.daylight_gain_pct == 10.0  # (0.001 - 0) / 0.01, not 100
+
+
+def test_tuner_picks_the_candidate_with_fewer_violations():
+    obs = observations(60, q90=100, steps=12)
+    baseline = {KEY: [1.0] * 12}
+    low = AdaptiveWeights(kappa_B=0.8)
+    high = AdaptiveWeights(kappa_B=1.6)
+
+    def violations(weights):
+        _, metrics = AdaptivePolicyTuner([weights]).tune(obs, baseline, PROFILE, 300, "PDLC")
+        return (metrics.protection_violation_count_q90, metrics.protection_violation_count)
+
+    _, chosen = AdaptivePolicyTuner([low, high]).tune(obs, baseline, PROFILE, 300, "PDLC")
+    assert (
+        chosen.protection_violation_count_q90,
+        chosen.protection_violation_count,
+    ) == min(violations(low), violations(high))
+
+
+def test_a_baseline_without_switches_gives_zero_not_a_ratio():
+    # There is no percentage of nothing: the absolute change fields carry the information.
+    metrics = compare_baseline_vs_adaptive(
+        {KEY: [0.0] * 4}, {KEY: [0.0, 0.5, 0.0, 0.5]}, observations(10, steps=4), PROFILE
+    )
+    assert metrics.flicker_reduction_pct == 0.0
+    assert metrics.total_change_reduction_pct == 0.0
+    assert metrics.baseline_total_change == 0.0 and metrics.adaptive_total_change == 1.5

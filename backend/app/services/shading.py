@@ -94,6 +94,17 @@ def shading_plan_for_scene(
         request_received_at=request_received_at,
         nowcast_engine=nowcast_engine,
     )
+    return shading_plan_from_prediction(scene, prediction)
+
+
+def shading_plan_from_prediction(
+    scene: Scene, prediction: SunpathPredictionResponse
+) -> ShadingPlan:
+    """Return the shading plan of a diagnostic prediction of the same Scene (no new prediction).
+
+    A caller that needs the prediction as well (FR-04) passes it in instead of predicting twice.
+    """
+
     windows = _film_windows(scene)
     candidates = map_tiles_to_cells(_exposed_tiles(prediction), windows)
     grades = {region.region_id: region.grade for region in scene.protected_regions}

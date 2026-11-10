@@ -49,6 +49,18 @@ def _iso(moment: datetime) -> str:
     return moment.astimezone(UTC).isoformat().replace("+00:00", "Z")
 
 
+def effective_irradiance(obs: CellObservation, weights: AdaptiveWeights) -> float:
+    """Risk-averse irradiance of grades B and C: the median plus a share of the upper band."""
+    kappa = weights.kappa_B if obs.strictest_grade == "B" else weights.kappa_C
+    return obs.irradiance_q50 + kappa * max(0.0, obs.irradiance_q90 - obs.irradiance_q50)
+
+
+def hysteresis_margin_w_m2(obs: CellObservation, weights: AdaptiveWeights) -> float:
+    """FR-04.3 margin below the cap that has to be reached before a cell may brighten."""
+    uncertainty_scale = 1.0 + (obs.irradiance_q90 - obs.irradiance_q10) / (obs.irradiance_q50 + 1.0)
+    return weights.brightening_margin_W_m2 * uncertainty_scale
+
+
 def compute_stage_risk(
     opacity: float,
     prev_opacity: float,
@@ -76,15 +88,13 @@ def compute_stage_risk(
 
     # Grades B and C: risk-averse effective irradiance
     cap = obs.cap_W_m2
-    kappa = weights.kappa_B if obs.strictest_grade == "B" else weights.kappa_C
-    i_eff = obs.irradiance_q50 + kappa * max(0.0, obs.irradiance_q90 - obs.irradiance_q50)
+    i_eff = effective_irradiance(obs, weights)
 
     # Transmitted direct irradiance at proposed opacity
     i_trans = optical_profile.transmitted_irradiance(i_eff, opacity)
 
     # FR-04.3 Dynamic hysteresis margin when brightening (reducing opacity)
-    uncertainty_scale = 1.0 + (obs.irradiance_q90 - obs.irradiance_q10) / (obs.irradiance_q50 + 1.0)
-    hysteresis_margin = weights.brightening_margin_W_m2 * uncertainty_scale
+    hysteresis_margin = hysteresis_margin_w_m2(obs, weights)
 
     if i_trans > cap:
         excess = i_trans - cap
@@ -268,7 +278,7 @@ def apply_fr04_stabilization(
 
         state: CellState
         if new_op > 0.01:
-            state = orig.state if orig.state in ("opaque", "infeasible") else "opaque"
+            state = orig.state if orig.state in ("opaque", "infeasible", "unknown") else "opaque"
             reasons = orig.reasons
             # If gap-filled or held, propagate nearest reasons if empty
             if not reasons:
@@ -293,6 +303,57 @@ def apply_fr04_stabilization(
         )
 
     return tuple(stabilized)
+
+
+def smooth_fr02_plan(
+    baseline_opacities: Sequence[float],
+    baseline_states: Sequence[CellState],
+    observations: Sequence[CellObservation],
+    optical_profile: OpticalProfileData,
+    weights: AdaptiveWeights,
+    interval_seconds: int,
+) -> tuple[OptimizedCellStep, ...]:
+    """FR-04 as a smoothing step on the FR-02 plan of one cell (no new decisions).
+
+    FR-02 decides when a cell is shaded. This function only keeps that decision steady:
+
+    - FR-04.3 hysteresis: a grade B or C cell that FR-02 would brighten stays as dark as before
+      until the transmitted irradiance of the clear film is below the cap by the margin.
+    - FR-04.2 minimum holding time and FR-04.1 gap filling, as in `apply_fr04_stabilization`.
+
+    Every step is at least as dark as in the FR-02 plan, so protection is never weaker than
+    FR-02's. States such as `infeasible` and `unknown` are kept.
+    """
+    if not len(baseline_opacities) == len(baseline_states) == len(observations):
+        raise ValueError("baseline opacities, states and observations must have the same length")
+    n = len(observations)
+    if n == 0:
+        return ()
+
+    opacities = [float(value) for value in baseline_opacities[:n]]
+    for t in range(1, n):
+        if opacities[t] >= opacities[t - 1]:
+            continue
+        obs = observations[t]
+        if obs.strictest_grade not in ("B", "C") or obs.cap_W_m2 is None:
+            continue
+        transmitted = optical_profile.transmitted_irradiance(
+            effective_irradiance(obs, weights), opacities[t]
+        )
+        if transmitted > max(0.0, obs.cap_W_m2 - hysteresis_margin_w_m2(obs, weights)):
+            opacities[t] = opacities[t - 1]  # hysteresis: not yet safe to brighten
+
+    steps = [
+        OptimizedCellStep(
+            timestamp=observations[t].timestamp,
+            opacity=opacities[t],
+            transmittance=optical_profile.total_transmittance(opacities[t]),
+            state=baseline_states[t] if opacities[t] > 0.01 else "transparent",
+            reasons=observations[t].reasons,
+        )
+        for t in range(n)
+    ]
+    return apply_fr04_stabilization(steps, interval_seconds, weights, optical_profile)
 
 
 def apply_cell_edge_margin(
