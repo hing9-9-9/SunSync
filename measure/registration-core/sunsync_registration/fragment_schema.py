@@ -39,12 +39,13 @@ class FragmentObservation(Strict):
     note: str
     marker_id: Identifier
     plane: Plane
-    point_ids: list[Identifier] = Field(min_length=4, max_length=5)
+    point_ids: list[Identifier] = Field(min_length=3, max_length=17)
     points_marker_m: list[Vec3] = Field(min_length=1)
     points_enu_m: list[Vec3] = Field(min_length=1)
     derived_fields: list[str]
     independent_tape_error_m: float | None = Field(ge=0)
-    tabletop_shape: Literal["rectangle"]
+    tabletop_shape: Literal["rectangle", "circle", "ellipse", "polygon"]
+    tabletop_outline_enu_m: list[Vec3] | None = None
     model_id: str = Field(min_length=1, max_length=200)
     geometry_source: Literal["standard_model_bounding_box"]
     height_source: Literal["surface_is_top", "capture_highest", "manual"]
@@ -56,7 +57,11 @@ class FragmentObservation(Strict):
 
     @model_validator(mode="after")
     def points_and_height(self):
-        expected = {"P1", "P2", "P3", "P4"}
+        count = {"rectangle":4,"circle":4,"ellipse":6}.get(self.tabletop_shape,
+            len(self.point_ids) - int(self.height_source == "capture_highest"))
+        if not 3 <= count <= 16:
+            raise ValueError("Invalid surface point count")
+        expected = {f"P{i+1}" for i in range(count)}
         if self.height_source == "capture_highest":
             expected.add("H1")
         if (
@@ -64,13 +69,19 @@ class FragmentObservation(Strict):
             or set(self.point_ids) != expected
             or len(self.point_ids) != len(self.points_marker_m)
         ):
-            raise ValueError("Expected rectangle point IDs and matching point counts")
+            raise ValueError("Expected surface point IDs and matching point counts")
         if (self.height_source == "manual") != (self.manual_height_m is not None):
             raise ValueError("Manual height requires an explicit value")
         if not self.floor_supported and self.height_source != "manual":
             raise ValueError("Floating furniture requires manual height")
         if self.floor_supported != (self.manual_base_height_m is None):
             raise ValueError("Floating furniture requires manual base height")
+        points=dict(zip(self.point_ids,self.points_enu_m))
+        if self.tabletop_shape == "polygon":
+            if self.tabletop_outline_enu_m is None or not np.allclose(self.tabletop_outline_enu_m,[points[f"P{i+1}"] for i in range(count)],atol=1e-6):
+                raise ValueError("Polygon outline disagrees with measured points")
+        elif self.tabletop_outline_enu_m is not None:
+            raise ValueError("Only polygon observations carry a vertex outline")
         return self
 
 

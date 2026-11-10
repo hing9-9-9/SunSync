@@ -225,6 +225,22 @@ def start_capture(scene_id: str, request: StartCapture, db: DB) -> dict:
     return response
 
 
+@router.get("/targets")
+def capture_targets(scene_id: str, db: DB) -> dict:
+    record = db.get(SceneRecord, scene_id)
+    if record is None:
+        raise HTTPException(404, "Scene not found")
+    scene = load_stored_scene(record.scene_json)
+    windows = []
+    for window in scene.windows:
+        try:
+            rows, cols = window.film_module_shape()
+        except ValueError:
+            continue
+        windows.append({"window_id": window.window_id, "rows": rows, "cols": cols})
+    return {"windows": windows}
+
+
 @router.get("/{session_id}")
 def read_capture(scene_id: str, session_id: UUID, db: DB) -> dict:
     row = db.get(CaptureMarkerSession, scene_id)

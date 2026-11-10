@@ -193,6 +193,10 @@ def measure(request: MeasureRequest):
         "width_m": fit["width"],
         "depth_m": fit["depth"],
         "center_board_m": centre.tolist(),
+        "kind": request.plan.shape.kind,
+        "outline_board_m": surface_points.tolist() if request.plan.shape.kind == "polygon" else None,
+        "bounding_box": {"width_m": fit["width"], "depth_m": fit["depth"],
+                         "center_board_m": centre.tolist(), "width_axis_board": fit["axis"].tolist()},
         "max_residual_m": fit["max_residual_m"],
         "height_above_floor_m": None,
     }

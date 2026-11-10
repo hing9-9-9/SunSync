@@ -158,14 +158,14 @@ def test_invalid_registration_never_changes_saved_scene(client, change):
     assert client.get("/api/scenes/scene_manual_room").json() == before
 
 
-def test_export_requires_real_capture_times_and_rectangle():
+def test_export_requires_real_capture_times_and_consistent_shape():
     request = example.fixture().model_dump()
     request["captures"][0]["captured_at"] = None
     with pytest.raises(ValueError, match="capture timestamps"):
         export_fragment(measure(MeasureRequest.model_validate(request)))
     measurement = measure(example.fixture())
     measurement["shape"]["kind"] = "circle"
-    with pytest.raises(ValueError, match="rectangle"):
+    with pytest.raises(ValueError, match="dimensions disagree"):
         export_fragment(measurement)
 
 
@@ -302,4 +302,82 @@ def test_registration_keeps_ui_space_editable_and_shows_furniture(tmp_path):
             fragment["markers"][0]["T_ENU_marker"]
         )
         assert len(after["occluders"]) == 1
+        assert any(o["method"] == "aruco_board_camera_at_point" for o in after["observations"])
+        changed = saved.json()
+        changed["site"]["northConfirmed"] = False
+        denied = client.put("/api/ui/spaces/space_sync", json=changed)
+        assert denied.status_code == 409, denied.text
+        assert client.get(f"/api/scenes/{scene_id}").json() == after
     engine.dispose()
+
+
+@pytest.mark.parametrize("kind", ["rectangle", "circle", "ellipse", "polygon", "triangle"])
+def test_all_tabletop_shapes_export_register_and_retrieve(client, kind):
+    import cv2
+    import numpy as np
+
+    request = example.fixture().model_dump()
+    theta = np.arange(6 if kind == "ellipse" else 4) * 2 * np.pi / (6 if kind == "ellipse" else 4)
+    if kind == "rectangle":
+        xy = np.array([[-0.3, -0.2], [0.3, -0.2], [0.3, 0.2], [-0.3, 0.2]])
+    elif kind == "polygon":
+        xy = np.array([[-0.3, -0.25], [0.3, -0.25], [0.3, 0], [0, 0], [0, 0.25], [-0.3, 0.25]])
+    elif kind == "triangle":
+        xy = np.array([[-0.3, -0.2], [0.3, -0.2], [0, 0.25]])
+    else:
+        xy = np.column_stack(
+            [0.3 * np.cos(theta), (0.2 if kind == "ellipse" else 0.3) * np.sin(theta)]
+        )
+    shape = {"kind": "polygon" if kind == "triangle" else kind}
+    if shape["kind"] == "polygon":
+        shape["vertices"] = xy.tolist()
+    request["plan"].update(space_id="room_001", shape=shape)
+    request["alignment"]["T_enu_board"][3] = 2.0
+    request["alignment"]["T_enu_board"][7] = 3.0
+    request["captures"] = []
+    camera, board = example.fixture().captures[0].camera, example.fixture().board
+    k, d = camera.matrices()
+    a = np.deg2rad(31)
+    xy = xy @ np.array([[np.cos(a), np.sin(a)], [-np.sin(a), np.cos(a)]])
+    for i, (x, z) in enumerate(xy):
+        position = np.array([x, 0.45, z - 1.5])
+        forward = np.array([0.125, 0.125, 0]) - position
+        forward /= np.linalg.norm(forward)
+        right = np.cross([0, 1, 0], forward)
+        right /= np.linalg.norm(right)
+        rotation = np.array([right, np.cross(forward, right), forward])
+        rv, _ = cv2.Rodrigues(rotation)
+        detections = []
+        for code, obj in board.objects().items():
+            px, _ = cv2.projectPoints(obj, rv, -rotation @ position, k, d)
+            detections.append({"marker_id": code, "corners_px": px.reshape(4, 2).tolist()})
+        for sample in range(3):
+            request["captures"].append(
+                {
+                    "capture_id": f"P{i + 1}-{sample}",
+                    "point_id": f"P{i + 1}",
+                    "captured_at": f"2026-11-04T10:00:{i * 3 + sample:02d}+09:00",
+                    "camera": camera.model_dump(),
+                    "detections": detections,
+                }
+            )
+    measurement = measure(MeasureRequest.model_validate(request))
+    assert measurement["status"] == "model_ready_unreviewed", measurement["required_actions"]
+    fragment = export_fragment(measurement)
+    result = submit(client, fragment)
+    assert result.status_code == 200, result.text
+    stored = client.get("/api/scenes/scene_manual_room").json()
+    obs = stored["observations"][-1]
+    assert obs["tabletop_shape"] == shape["kind"]
+    assert stored["occluders"][0]["dimensions_m"] == pytest.approx(
+        measurement["model"]["dimensions_m"]
+    )
+    if shape["kind"] == "polygon":
+        assert obs["tabletop_outline_enu_m"] == fragment["observations"][0]["points_enu_m"]
+        assert len(measurement["surface"]["outline_board_m"]) == len(xy)
+    # Altering the dimensions must still fail receiver-side independent geometry checks.
+    bad = copy.deepcopy(fragment)
+    bad["occluders"][0]["dimensions_m"][0] += 0.2
+    stored["occluders"] = bad["occluders"]
+    with pytest.raises(ValueError, match="dimensions disagree"):
+        Scene.model_validate(stored)

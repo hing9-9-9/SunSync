@@ -361,3 +361,26 @@ test("editor example space passes validateSpace without overlap", async () => {
   const { validateFurnitureOverlap } = await import("./model.ts");
   assert.equal(validateFurnitureOverlap(sample), null);
 });
+
+
+test("rotated footprints preserve dimensions, clamp corners and reject real overlaps", async () => {
+  const {furnitureCorners,moveFurnitureInside,furnitureOverlaps3D,localFrontFace}=await import("./model.ts");
+  const f={id:"a",name:"desk",zone:"z",x:1,y:1,width:2,depth:1,height:1,yaw:90};
+  const corners=furnitureCorners(f);
+  assert.ok(Math.abs(Math.min(...corners.map(p=>p.x))-1.5)<1e-9);
+  assert.ok(Math.abs(Math.max(...corners.map(p=>p.y))-2.5)<1e-9);
+  const moved=moveFurnitureInside({...f,x:-1,y:-1},{width:5,depth:5});
+  assert.ok(furnitureCorners(moved).every(p=>p.x>=-1e-9 && p.y>=-1e-9));
+  assert.equal(moved.width,2);
+  assert.equal(furnitureOverlaps3D(f,{...f,id:"b",x:1.5,yaw:30}),true);
+  assert.equal(furnitureOverlaps3D(f,{...f,id:"b",baseHeight:1}),false);
+  assert.equal(localFrontFace({...f,yaw:30},"south"),"남쪽 전면");
+});
+
+
+test("hosted protection near a wall uses the rotated furniture bounds", () => {
+  const space = fixture();
+  space.furniture = [{...space.furniture[0],x:-0.7,y:2,width:2,depth:.2,yaw:90}];
+  space.regions = [regionForFurniture(space.furniture[0])];
+  assert.equal(validateSpace(space),null);
+});

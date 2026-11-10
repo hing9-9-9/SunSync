@@ -43,30 +43,69 @@ def checked_scene(space: UISpace, revision: int, created_at: str | None = None) 
 def keep_paired_markers(scene: Scene, previous: Scene) -> Scene:
     """Keep server-side measurement setup the UI never sends: FR-05 paired markers (while their
     window is unchanged) and the registration calibration (board/ENU/floor reference)."""
-    windows = {w.window_id: w.vertices_m for w in scene.windows}
-    before = {w.window_id: w.vertices_m for w in previous.windows}
-    kept = [
-        m
-        for m in previous.markers
-        if m.window_id is None
-        or (m.window_id in windows and windows[m.window_id] == before.get(m.window_id))
-    ]
-    calibration = previous.registration_calibration
-    if not kept and calibration is None:
+    basis_unchanged = (
+        scene.room.floor_vertices_m == previous.room.floor_vertices_m
+        and scene.room.height_m == previous.room.height_m
+        and scene.north_alignment.model_dump(exclude={"note"})
+        == previous.north_alignment.model_dump(exclude={"note"})
+        and scene.site == previous.site
+        and [w.model_dump(exclude={"quality"}) for w in scene.windows]
+        == [w.model_dump(exclude={"quality"}) for w in previous.windows]
+    )
+    measured = {
+        o.observation_id for o in previous.observations if o.method == "aruco_board_camera_at_point"
+    }
+    if not basis_unchanged:
+        if measured:
+            raise HTTPException(
+                409,
+                "측정된 가구가 있는 공간의 기준은 변경할 수 없습니다. 새 공간을 만들어 창 위치·방향을 등록하고 다시 측정해 주세요.",
+            )
+        # Never retain an old floor/ENU calibration after changing installation geometry.
         return scene
     data = scene.model_dump(mode="json")
-    attempts: list[dict[str, Any]] = [{"markers": [m.model_dump(mode="json") for m in kept]}]
-    if calibration is not None:
-        attempts.insert(
-            0, {**attempts[0], "registration_calibration": calibration.model_dump(mode="json")}
+    data["markers"] = [m.model_dump(mode="json") for m in previous.markers]
+    data["registration_calibration"] = (
+        previous.registration_calibration.model_dump(mode="json")
+        if previous.registration_calibration
+        else None
+    )
+    old = {o.occluder_id: o for o in previous.occluders}
+    preserved = set()
+    for i, current in enumerate(scene.occluders):
+        earlier = old.get(current.occluder_id)
+        geometry_keys = {
+            "quality",
+            "name",
+            "base_center_m",
+            "dimensions_m",
+            "yaw_deg_ccw_from_east",
+        }
+        same_geometry = earlier is not None and (
+            earlier.model_dump(exclude=geometry_keys) == current.model_dump(exclude=geometry_keys)
+            and all(
+                abs(a - b) <= 1e-8
+                for a, b in zip(earlier.base_center_m, current.base_center_m, strict=True)
+            )
+            and all(
+                abs(a - b) <= 1e-8
+                for a, b in zip(earlier.dimensions_m, current.dimensions_m, strict=True)
+            )
+            and abs(
+                (earlier.yaw_deg_ccw_from_east - current.yaw_deg_ccw_from_east + 180) % 360 - 180
+            )
+            <= 1e-8
         )
-    for extra in attempts:
-        try:
-            return Scene.model_validate({**data, **extra})
-        except ValidationError:
-            # Setup that no longer fits the regenerated room or film grid must be done again.
-            continue
-    return scene
+        if earlier is not None and same_geometry:
+            data["occluders"][i] = {**earlier.model_dump(mode="json"), "name": current.name}
+            preserved.update(earlier.quality.observation_ids)
+    existing_ids = {o["observation_id"] for o in data["observations"]}
+    data["observations"] += [
+        o.model_dump(mode="json")
+        for o in previous.observations
+        if o.observation_id in preserved and o.observation_id not in existing_ids
+    ]
+    return Scene.model_validate(data)
 
 
 @router.get("")
@@ -174,6 +213,11 @@ def replace_space(space_id: str, space: UISpace, session: DB) -> UISpace:
         )
     revision = existing.revision + 1
     previous = Scene.model_validate_json(existing.scene_json)
+    # Older UI projections used the measured object's ID directly without a serverId field.
+    previous_ids = {o.occluder_id for o in previous.occluders}
+    for furniture in space.furniture:
+        if furniture.serverId is None and furniture.id in previous_ids:
+            furniture.serverId = furniture.id
     scene = keep_paired_markers(checked_scene(space, revision, previous.created_at), previous)
     saved = space.model_copy(
         update={
