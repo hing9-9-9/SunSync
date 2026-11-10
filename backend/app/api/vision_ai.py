@@ -63,7 +63,18 @@ def estimate_furniture_3d(
     if target_marker is not None:
         t_enu_marker = list(target_marker.T_ENU_marker)
     elif len(scene.windows) > 0:
+        # A window centre is not the selected film's centre on a multi-module window.
+        # Retain the unambiguous single-film legacy path only.
         win = scene.windows[0]
+        if (
+            len(scene.windows) != 1
+            or abs(win.width_m - 1.0) > 1e-6
+            or abs(win.height_m - 1.0) > 1e-6
+        ):
+            raise HTTPException(
+                status_code=422,
+                detail="Select and pair a film module before vision measurement.",
+            )
         t_enu_marker = win.marker_transform(win.width_m / 2.0, win.height_m / 2.0)
     elif request.T_ENU_camera is not None:
         t_enu_marker = [

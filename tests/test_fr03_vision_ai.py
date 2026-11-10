@@ -12,7 +12,7 @@ import numpy as np
 import pytest
 from app.main import create_app
 from app.models.scene import SceneRecord
-from app.schemas.scene import Scene
+from app.schemas.scene import Marker, Scene, Window
 from app.schemas.vision_ai import (
     CameraIntrinsicsInput,
     Detection2DInput,
@@ -41,7 +41,25 @@ EXAMPLES = Path(__file__).resolve().parents[1] / "docs" / "examples"
 
 @pytest.fixture
 def scene_payload() -> dict[str, Any]:
-    return json.loads((EXAMPLES / "fr06_scene_example.json").read_text(encoding="utf-8"))
+    payload = json.loads((EXAMPLES / "fr06_scene_example.json").read_text(encoding="utf-8"))
+    # Physical Vision requests use a registered module, not a guessed window centre.
+    window = payload["windows"][0]
+    window["vertices_m"][2][2] = window["vertices_m"][3][2] = 2.0
+    window["film_rows"], window["film_cols"] = 10, 30
+    frame = Window.model_validate(window)
+    payload["markers"].append(
+        Marker(
+            marker_id="film_reference",
+            family="aruco",
+            dictionary="DICT_4X4_50",
+            code_id=0,
+            side_length_m=0.6,
+            plane="window",
+            window_id=frame.window_id,
+            T_ENU_marker=frame.marker_transform(0.5, 0.5),
+        ).model_dump(mode="json")
+    )
+    return payload
 
 
 @pytest.fixture

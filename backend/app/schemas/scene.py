@@ -146,6 +146,26 @@ class Window(Model):
     def cell_height_m(self) -> float:
         return self.height_m / self.film_rows
 
+    def film_module_shape(self) -> tuple[int, int]:
+        """Installed 1m modules, tiled without gaps; indices start at indoor top-left.
+
+        Legacy simulation grids remain readable, but cannot be used as a physical
+        measurement reference unless they describe complete 10x10 modules.
+        """
+        require(
+            self.film_rows % 10 == 0
+            and self.film_cols % 10 == 0
+            and abs(self.cell_width_m - 0.1) <= EPS
+            and abs(self.cell_height_m - 0.1) <= EPS,
+            "Capture requires complete 1m film modules with 10cm cells",
+        )
+        return self.film_rows // 10, self.film_cols // 10
+
+    def module_marker_placement(self, row: int, col: int) -> tuple[int, int, float, float]:
+        rows, cols = self.film_module_shape()
+        require(0 <= row < rows and 0 <= col < cols, "Film module outside window layout")
+        return row * 10 + 2, col * 10 + 2, col + 0.5, self.height_m - row - 0.5
+
     def grid_from_cell_size(self, cell_size_m: float = 0.1) -> tuple[int, int]:
         require(cell_size_m > 0, "cell_size_m must be positive")
         cols = round(self.width_m / cell_size_m)

@@ -8,6 +8,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict
+from pydantic import Field as InputField
 from sqlalchemy import update
 from sqlmodel import Field, Session, SQLModel, col
 
@@ -32,6 +33,8 @@ class StartCapture(BaseModel):
     model_config = ConfigDict(extra="forbid")
     request_id: UUID
     window_id: str | None = None
+    module_row: Annotated[int, InputField(ge=0, strict=True)] = 0
+    module_col: Annotated[int, InputField(ge=0, strict=True)] = 0
 
 
 DB = Annotated[Session, Depends(get_session)]
@@ -56,15 +59,13 @@ def film_matches(row: CaptureMarkerSession, db: Session) -> bool:
     marker = json.loads(row.marker_json)
     if not film or not film.marker_mode_active or film.marker_code_id != marker["code_id"]:
         return False
-    if (film.film_rows, film.film_cols, film.marker_start_row, film.marker_start_col) != (
-        10,
-        10,
-        2,
-        2,
-    ):
+    start_row, start_col = marker["start_row"], marker["start_col"]
+    if (film.marker_start_row, film.marker_start_col) != (start_row, start_col):
         return False
     cells = json.loads(film.cells_json)
-    return [line[2:8] for line in cells[2:8]] == generate_aruco_4x4_pattern(marker["code_id"])
+    return [line[start_col : start_col + 6] for line in cells[start_row : start_row + 6]] == (
+        generate_aruco_4x4_pattern(marker["code_id"])
+    )
 
 
 def describe(row: CaptureMarkerSession, db: Session) -> dict:
@@ -80,10 +81,34 @@ def describe(row: CaptureMarkerSession, db: Session) -> dict:
         raise HTTPException(409, "Capture marker changed; cancel and start capture again")
     film = db.get(FilmStateRecord, f"{row.scene_id}:{row.window_id}")
     assert film is not None
+    window = next(w for w in scene.windows if w.window_id == row.window_id)
+    module_row, module_col = marker["start_row"] // 10, marker["start_col"] // 10
+    try:
+        module_rows, module_cols = window.film_module_shape()
+        sr, sc, u, v = window.module_marker_placement(module_row, module_col)
+    except ValueError as exc:
+        raise HTTPException(409, "Film layout changed; start capture again") from exc
+    if (
+        (film.film_rows, film.film_cols) != (window.film_rows, window.film_cols)
+        or (sr, sc) != (marker["start_row"], marker["start_col"])
+        or any(
+            abs(a - b) > 1e-6
+            for a, b in zip(window.marker_transform(u, v), marker["T_ENU_marker"], strict=True)
+        )
+    ):
+        raise HTTPException(409, "Film layout changed; start capture again")
     return {
         "session_id": row.session_id,
         "scene_id": row.scene_id,
         "window_id": row.window_id,
+        "film_module": {
+            "row": module_row,
+            "col": module_col,
+            "rows": module_rows,
+            "cols": module_cols,
+            "side_m": 1.0,
+            "marker_center_uv_m": [u, v],
+        },
         "expires_at": row.expires_at,
         "display_status": "virtual_applied",
         "marker": marker,
@@ -108,6 +133,12 @@ def start_capture(scene_id: str, request: StartCapture, db: DB) -> dict:
     if previous and previous.session_id == token:
         if request.window_id is not None and request.window_id != previous.window_id:
             raise HTTPException(409, "Capture request is already bound to another window")
+        marker = json.loads(previous.marker_json)
+        if (request.module_row, request.module_col) != (
+            marker["start_row"] // 10,
+            marker["start_col"] // 10,
+        ):
+            raise HTTPException(409, "Capture request is already bound to another film module")
         return describe(previous, db)
     if (
         previous
@@ -122,10 +153,12 @@ def start_capture(scene_id: str, request: StartCapture, db: DB) -> dict:
     if len(windows) != 1:
         raise HTTPException(422, "Choose exactly one installed window for capture")
     window = windows[0]
-    if (window.film_rows, window.film_cols) != (10, 10) or any(
-        abs(value - 1.0) > 1e-6 for value in (window.width_m, window.height_m)
-    ):
-        raise HTTPException(422, "Capture requires a 1m x 1m film with 10x10 cells")
+    try:
+        start_row, start_col, _, _ = window.module_marker_placement(
+            request.module_row, request.module_col
+        )
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
     used = {m.code_id for m in scene.markers if m.window_id != window.window_id}
     available = [code for code in range(50) if code not in used]
     if not available:
@@ -151,6 +184,8 @@ def start_capture(scene_id: str, request: StartCapture, db: DB) -> dict:
         MarkerPairingRequest(
             code_id=code,
             window_id=window.window_id,
+            module_row=request.module_row,
+            module_col=request.module_col,
             auto_provision_window=False,
             enable_marker_display=False,
             clamp_furniture_to_room=False,
@@ -164,6 +199,8 @@ def start_capture(scene_id: str, request: StartCapture, db: DB) -> dict:
             window_id=window.window_id,
             enabled=True,
             code_id=code,
+            start_row=start_row,
+            start_col=start_col,
         ),
         commit=False,
     )

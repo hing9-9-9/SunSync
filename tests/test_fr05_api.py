@@ -21,6 +21,16 @@ def scene_payload() -> dict[str, Any]:
 
 
 @pytest.fixture
+def installed_film_payload(scene_payload: dict[str, Any]) -> dict[str, Any]:
+    # The generic simulation fixture is 3m x 1.5m with arbitrary cells. Physical
+    # marker pairing instead uses three complete 1m films with 10cm cells.
+    window = scene_payload["windows"][0]
+    window["vertices_m"][2][2] = window["vertices_m"][3][2] = 2.0
+    window["film_rows"], window["film_cols"] = 10, 30
+    return scene_payload
+
+
+@pytest.fixture
 def database_engine(tmp_path: Path) -> Iterator[Engine]:
     db_file = tmp_path / "test_film.db"
     engine = create_engine(f"sqlite:///{db_file}", connect_args={"check_same_thread": False})
@@ -333,7 +343,7 @@ def test_server_restart_persistence(tmp_path: Path, scene_payload: dict[str, Any
 
 
 def test_multi_user_simultaneous_ppt_aruco_safeguards(
-    client: TestClient, scene_payload: dict[str, Any]
+    client: TestClient, installed_film_payload: dict[str, Any]
 ) -> None:
     """Acceptance test: 5 users with 5 different scenes photograph the same PPT slide (code_id=0).
 
@@ -346,7 +356,7 @@ def test_multi_user_simultaneous_ppt_aruco_safeguards(
 
     # 1. Create 5 distinct scenes for 5 concurrent users
     for i in range(num_users):
-        user_payload = copy.deepcopy(scene_payload)
+        user_payload = copy.deepcopy(installed_film_payload)
         user_payload["scene_id"] = f"scene_user_{i + 1}"
         s_id = create_test_scene(client, user_payload)
         user_scenes.append(s_id)
@@ -533,9 +543,9 @@ def test_simulation_clock_manual_playback_and_timezone_tolerance(
 
 
 def test_marker_pairing_with_rotated_furniture_clamping(
-    client: TestClient, scene_payload: dict[str, Any]
+    client: TestClient, installed_film_payload: dict[str, Any]
 ) -> None:
-    scene_id = create_test_scene(client, scene_payload)
+    scene_id = create_test_scene(client, installed_film_payload)
 
     # Provide furniture rotated at 45.0 degrees and located far outside room
     pairing_req = {
@@ -642,7 +652,7 @@ def test_ui_save_keeps_paired_marker_until_window_moves(client: TestClient) -> N
         },
         "windowDimensions": {
             "width": 2.0,
-            "height": 1.5,
+            "height": 2.0,
             "wall": "south",
             "offset": 2.0,
             "sill": 0.8,

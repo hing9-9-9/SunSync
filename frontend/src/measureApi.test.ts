@@ -65,18 +65,20 @@ test("capture start retries the persisted request ID and end releases it", async
     board:{...BOARD,ids_by_row:[[37]]}, marker:{code_id:37,dictionary:"DICT_4X4_50",side_length_m:.6,plane:"window",T_ENU_marker:[]}, film_cells:[] };
   t.mock.method(globalThis,"fetch",async (url: string, init:RequestInit) => {
     if (url.endsWith("/end")) return Response.json({status:"ended"});
-    const id = JSON.parse(init.body as string).request_id;
+    const {request_id:id,...target} = JSON.parse(init.body as string);
+    assert.deepEqual(target,{window_id:"win",module_row:1,module_col:2});
     ids.push(id);
     if (ids.length === 1) throw new Error("lost response");
     return Response.json({...fake,session_id:id});
   });
   try {
-    await assert.rejects(startCaptureMarker("scene"));
-    const session = await startCaptureMarker("scene");
+    const target = {window_id:"win",module_row:1,module_col:2};
+    await assert.rejects(startCaptureMarker("scene",target));
+    const session = await startCaptureMarker("scene",target);
     assert.equal(ids[0],ids[1]);
     assert.deepEqual(session.board.ids_by_row,[[37]]);
     await endCaptureMarker(session);
-    await startCaptureMarker("scene");
+    await startCaptureMarker("scene",target);
     assert.notEqual(ids[1],ids[2]);
   } finally { if(original) Object.defineProperty(globalThis,"sessionStorage",original); else Reflect.deleteProperty(globalThis,"sessionStorage"); }
 });

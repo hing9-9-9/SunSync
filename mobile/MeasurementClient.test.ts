@@ -60,11 +60,14 @@ test("film capture binds the random board and refuses old marker IDs", async () 
   const calls:string[]=[];
   const client = new MeasurementClient("https://measure",async(url,init)=>{
     calls.push(String(url));
+    if (String(url).endsWith("capture-marker") && init?.method === "POST") {
+      assert.deepEqual(JSON.parse(init.body as string), {request_id:"request",window_id:"win",module_row:1,module_col:2});
+    }
     if(String(url).includes("capture-marker")) return Response.json(session);
     assert.deepEqual(JSON.parse(init!.body as string).board,board);
     return Response.json({camera,detections:[{marker_id:detected,corners_px:[[1,1],[2,1],[2,2],[1,2]]}],pose:{status:"ok"}});
   });
-  const selected=await client.startFilmCapture("https://backend","scene","request");
+  const selected=await client.startFilmCapture("https://backend","scene","request",{window_id:"win",module_row:1,module_col:2});
   const payload={...frame(),board:selected.board};
   const result=await client.capture(payload);
   assert.equal(result.status,"accepted");
