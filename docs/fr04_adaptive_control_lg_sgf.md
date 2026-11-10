@@ -13,10 +13,10 @@
 
 SunSync's rule-based selective shading (FR-02) operates deterministically on forecasted DNI. However, real-world sky conditions exhibit high cloud intermittency, where brief cumulus passages cause smart film cells to oscillate rapidly between transparent and opaque. This creates severe visual flicker and premature wear on switching electronics.
 
-**FR-04 Adaptive Control** introduces an AI-enhanced, uncertainty-aware multi-objective controller that:
+**FR-04 Adaptive Control** (the experimental `replace` mode; the default smooths the FR-02 plan, see section 11) is an uncertainty-aware multi-objective controller that:
 1. **Suppresses Flicker**: Formulates horizon control as a **Dynamic Programming (Viterbi)** optimization balancing damage risk, daylight quality, and switching costs.
 2. **Quantile Risk-Aversion**: Ingests DNI prediction quantiles $(P_{10}, P_{50}, P_{90})$ to hedge against cloud edge spikes.
-3. **Enforces Strict Safety Rules**: Guaranteed compliance with standard `FR-04.1` (Gap Filling), `FR-04.2` (Holding Time), `FR-04.3` (Dynamic Hysteresis), and `FR-04.4` (Cell-Edge Margin).
+3. **Applies the stabilization rules**: `FR-04.1` (Gap Filling), `FR-04.2` (Holding Time) and `FR-04.3` (Dynamic Hysteresis). `FR-04.4` (edge margin) is met by FR-02.1 (section 3.4). Grade A cells are required to be opaque whenever the sun reaches them; the checks in this document count cell-steps above the cap and do not prove compliance.
 4. **LG SGF Continuous Dimming**: Replaces binary $0/1$ PDLC switching with multi-level continuous dimming ($0.0, 0.25, 0.5, 0.75, 1.0$), maximizing interior natural lighting while respecting strict protection caps ($I_{\max}$).
 5. **LG ThinQ ON Bridge**: Synchronizes real-time cell opacity and transmittance matrices to LG Electronics' ThinQ ON smart home hub.
 
@@ -302,6 +302,9 @@ Consequences for this project:
 | 10 | FR-04 improves the app | FR-04 is only an API. The web app and FR-05 do not call it | Wire it in, or present it as a simulation result |
 | 11 | Metrics are honest | The engine metric and the tuner clipped negative values and counted a violation only relative to the baseline | Done in this change (section 10) |
 | 12 | Cells are independent | FR-04.4 (neighbour cell when a path crosses a cell boundary) is already met by FR-02.1: `cells_for_hit` widens each hit to one tile and shades every cell it overlaps. The FR-04 `enable_edge_margin` option is a cruder second margin (it shades the four neighbours of every hit cell; `edge_margin_threshold_m` is not used) | Keep it off by default and in smoothing mode, where it is ignored. Turning it on would shade neighbours twice |
+| 13 | The API shows the sun to FR-04 | `adaptive-shading-plan` asked FR-01 for the prediction without diagnostic detail, so no exposed samples came back: in `replace` mode FR-04 saw no sun and shaded nothing (FR-02 shaded 68 cells in the same test scene), smoothing had no irradiance for its hysteresis, and every violation count was a meaningless 0 | Fixed (`detail_level="diagnostic"`), with a regression test. Results of the API before the fix must not be quoted |
+| 14 | The experiment tests the API | It calls the engine directly and never the API, so it could not catch item 13 | There is no end-to-end experiment through the API with a real Scene yet |
+| 15 | "Switch change" is always a ratio | When FR-02 has no switch at all (for example a day that is overcast from morning to night) there is no percentage; the engine and the API give 0.0 and the report prints n/a | Read `baseline_total_change` and `adaptive_total_change` in that case |
 
 Still open: 2 (real forecast and measured irradiance together), 3 (the experiment's FR-02 baseline is still a simple rule; the API uses the real plan), 6 (real film data), 10 (connection to the app and FR-05). Not checked at all: real hardware behaviour, flicker as people experience it, energy use and cost.
 
@@ -341,4 +344,5 @@ Notes:
 - The response structure is the same in both modes (`baseline_plan`, `stabilized_plan`, `dimming_trajectories`, `metrics`). In smoothing mode `dimming_trajectories` has opacities 0 and 1 only.
 - `hardware_mode` names how the film behaves: `PDLC` is on/off, `LG_SGF` and `SPD` have steps. It is not a user choice; the film is a fact of the window. LG Chem sells SGF as a product family in which PDLC is one grade (section 8), so the label "PDLC vs SGF" really means "on/off versus steps". A screen that offers this choice makes sense only for `replace`, as a comparison.
 - Edge margin: FR-04.4 is met by FR-02.1 (section 9, item 12). The option is ignored in smoothing mode.
+- `thinq-hub-sync` has its own top-level `hardware_mode`. It describes the film that receives the payload and is used in both modes; only the `hardware_mode` inside `plan_request` is ignored in smoothing.
 - The metrics of section 10 are computed in both modes against the FR-02 plan.

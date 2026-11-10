@@ -736,3 +736,61 @@ def test_smoothing_mode_is_never_brighter_than_the_fr02_plan(
     metrics = data["metrics"]
     assert metrics["protection_violation_count"] <= metrics["baseline_violation_count"]
     assert metrics["protection_violation_count_q90"] <= metrics["baseline_violation_count_q90"]
+
+
+def _segment_count(plan: dict[str, Any]) -> int:
+    return sum(len(cell["segments"]) for window in plan["windows"] for cell in window["cells"])
+
+
+def test_the_default_mode_is_smoothing_of_the_fr02_plan(
+    client: TestClient, scene_payload: dict[str, Any]
+) -> None:
+    scene_id = client.post("/api/scenes", json=scene_payload).json()["scene_id"]
+    request = {
+        "start_time": "2026-10-14T04:30:00Z",
+        "duration_minutes": 60,
+        "interval_seconds": 300,
+    }
+    assert (
+        client.post(f"/api/scenes/{scene_id}/adaptive-shading-plan", json=request).json()["mode"]
+        == "smooth_fr02"
+    )
+
+
+@pytest.mark.parametrize("mode", ["smooth_fr02", "replace"])
+def test_the_adaptive_plan_sees_the_sun(
+    client: TestClient, scene_payload: dict[str, Any], mode: str
+) -> None:
+    """Regression: without diagnostic detail FR-01 returns no exposed samples, so FR-04 saw no sun
+    and shaded nothing (and every violation count was a meaningless zero)."""
+    scene_id = client.post("/api/scenes", json=scene_payload).json()["scene_id"]
+    request = {
+        "mode": mode,
+        "start_time": "2026-10-14T04:30:00Z",
+        "duration_minutes": 180,
+        "interval_seconds": 300,
+    }
+    data = client.post(f"/api/scenes/{scene_id}/adaptive-shading-plan", json=request).json()
+    assert _segment_count(data["baseline_plan"]) > 0
+    assert _segment_count(data["stabilized_plan"]) > 0
+    assert len(data["dimming_trajectories"]) > 0
+
+
+def test_smoothing_ignores_the_options_of_the_replace_mode(
+    client: TestClient, scene_payload: dict[str, Any]
+) -> None:
+    scene_id = client.post("/api/scenes", json=scene_payload).json()["scene_id"]
+    base = {"start_time": "2026-10-14T04:30:00Z", "duration_minutes": 120, "interval_seconds": 300}
+    plans = [
+        client.post(
+            f"/api/scenes/{scene_id}/adaptive-shading-plan",
+            json={
+                **base,
+                "hardware_mode": hardware,
+                "enable_edge_margin": edge,
+                "auto_tune_weights": tune,
+            },
+        ).json()["stabilized_plan"]
+        for hardware, edge, tune in (("PDLC", False, False), ("LG_SGF", True, True))
+    ]
+    assert plans[0] == plans[1]

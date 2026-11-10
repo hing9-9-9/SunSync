@@ -3,6 +3,8 @@
 import random
 from datetime import UTC, datetime, timedelta
 
+import pytest
+
 from engine.fr04 import AdaptiveWeights, CellObservation, OpticalProfileData, smooth_fr02_plan
 
 PROFILE = OpticalProfileData(
@@ -101,3 +103,8 @@ def test_fr02_states_such_as_unknown_and_infeasible_are_kept():
 
 def test_an_empty_plan_gives_no_steps():
     assert smooth_fr02_plan([], [], [], PROFILE, WEIGHTS, 300) == ()
+
+
+def test_inputs_of_different_length_are_refused_not_cut_short():
+    with pytest.raises(ValueError, match="same length"):
+        smooth_fr02_plan([1.0, 0.0], ["opaque"], observations([5, 5]), PROFILE, WEIGHTS, 300)

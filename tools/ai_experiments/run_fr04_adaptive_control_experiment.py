@@ -40,6 +40,7 @@ from engine.fr04 import (
     optimize_cell_dp,
     smooth_fr02_plan,
 )
+from engine.fr04.dp_controller import SWITCH_THRESHOLD
 
 
 def generate_solar_profile(
@@ -100,9 +101,6 @@ def generate_solar_profile(
     return timeline
 
 
-SWITCH_STEP = 0.01  # an opacity change larger than this counts as one switch
-
-
 def _cells_of(
     observations_by_cell: Mapping[tuple[str, int, int], Sequence[CellObservation]],
     grades: tuple[str, ...] | None,
@@ -127,7 +125,7 @@ def _series_stats(
         for before, after in pairwise(series):
             change = abs(after - before)
             variation += change
-            switches += change > SWITCH_STEP
+            switches += change > SWITCH_THRESHOLD
     return switches, variation, total / max(1, steps)
 
 

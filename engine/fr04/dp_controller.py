@@ -324,7 +324,9 @@ def smooth_fr02_plan(
     Every step is at least as dark as in the FR-02 plan, so protection is never weaker than
     FR-02's. States such as `infeasible` and `unknown` are kept.
     """
-    n = min(len(baseline_opacities), len(baseline_states), len(observations))
+    if not len(baseline_opacities) == len(baseline_states) == len(observations):
+        raise ValueError("baseline opacities, states and observations must have the same length")
+    n = len(observations)
     if n == 0:
         return ()
 

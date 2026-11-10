@@ -199,6 +199,9 @@ def compute_adaptive_shading_plan(
             start_time=request.start_time,
             duration_minutes=request.duration_minutes,
             interval_seconds=request.interval_seconds,
+            # The exposed samples are only returned in diagnostic detail. Without them no cell has
+            # an observation and FR-04 sees no sun at all.
+            detail_level="diagnostic",
         ),
         nowcast_engine=nowcast_engine,
     )

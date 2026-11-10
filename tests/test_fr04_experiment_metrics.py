@@ -86,3 +86,21 @@ def test_the_overcast_scenario_stays_in_the_low_irradiance_band():
     timeline = experiment.generate_solar_profile("Overcast Low Irradiance", start)
     assert all(q50 > 0 for _, _, q50, _ in timeline)
     assert max(q90 for *_, q90 in timeline) < 500
+
+
+def test_the_experiment_metrics_agree_with_the_engine_metrics():
+    """The script counts switches, change and violations with its own code for the scopes it
+    reports; for all cells they must give the engine's numbers."""
+    start = datetime(2026, 10, 15, 8, 0, tzinfo=UTC)
+    timeline = experiment.generate_solar_profile("Partly Cloudy Rapid-Flicker", start)
+    weights = experiment.AdaptiveWeights()
+    result = experiment.simulate_scene("x", timeline, PROFILE, weights, cap_b=30.0)
+    for mode in ("pdlc", "lg_sgf"):
+        engine, own = result[mode], result["signed_metrics"][mode]
+        scope = own["all_cells"]
+        assert engine["baseline_switch_count"] == scope["baseline_switches"]
+        assert engine["adaptive_switch_count"] == scope["adaptive_switches"]
+        assert abs(engine["adaptive_total_change"] - scope["adaptive_total_change"]) < 1e-6
+        assert engine["protection_violation_count"] == own["adaptive_violations_q50"]
+        assert engine["protection_violation_count_q90"] == own["adaptive_violations_q90"]
+        assert engine["baseline_violation_count_q90"] == own["baseline_violations_q90"]
