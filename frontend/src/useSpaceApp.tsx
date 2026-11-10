@@ -1461,8 +1461,9 @@ export function useSpaceApp() {
   function changeWindow(patch: Partial<NonNullable<Space["windowDimensions"]>>) {
     if (!draft) return;
     const next = { ...(draft.windowDimensions ?? { width: NaN, height: NaN }), ...patch };
-    // Store the wall, margins and marker the form shows (see withWindowPosition).
-    change({ windowDimensions: resolveWindow({ ...draft, windowDimensions: next }) ?? next });
+    // Capture sessions own marker placement; discard obsolete manual marker settings.
+    const resolved = resolveWindow({ ...draft, windowDimensions: next }) ?? next;
+    change({ windowDimensions: { ...resolved, marker: undefined } });
   }
   const draftSite = draft?.site ?? {
     latitude: NaN,

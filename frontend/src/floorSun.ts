@@ -1,6 +1,6 @@
 // Sunlight on the floor of the 2D plan: the window cast along the sun's direction, minus the
 // shadows furniture throws. A plain geometric drawing for the plan (no reflections or film).
-import { resolveWindow } from "./model.ts";
+import { furnitureCorners, resolveWindow } from "./model.ts";
 import type { Furniture, Space } from "./model.ts";
 import { sunPosition } from "./sun3d.ts";
 
@@ -96,10 +96,10 @@ export function floorSunlight(space: Space, hour: number, date: Date = new Date(
   const patch = clip(enu, W, D).map(toPlan);
   if (patch.length < 3) return null;
   const shadow = (fu: Furniture): Point[] => {
-    const x0 = fu.x, x1 = fu.x + fu.width, n0 = D - (fu.y + fu.depth), n1 = D - fu.y;
-    const foot: V3[] = [[x0, n0, 0], [x1, n0, 0], [x1, n1, 0], [x0, n1, 0]];
-    const top = foot.map(([x, y]) => toFloor([x, y, fu.height] as V3));
-    return hull([...foot.map(([x, y]) => ({ x, y })), ...top]).map(toPlan);
+    const base=fu.baseHeight ?? 0;
+    const foot: V3[]=furnitureCorners(fu).map(p=>[p.x,D-p.y,base]);
+    const top=foot.map(([x,y])=>toFloor([x,y,base+fu.height]));
+    return hull([...foot.map(toFloor),...top]).map(toPlan);
   };
   return { patch, shadows: space.furniture.filter((fu) => fu.zone === space.zone).map(shadow), altitude: sun.altitude };
 }

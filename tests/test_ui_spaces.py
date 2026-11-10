@@ -698,3 +698,38 @@ def test_handoff_and_measurement_complete_reject_overlapping_furniture(client, p
     assert "책상 A" in detail_m and "책상 B" in detail_m and "겹칩니다" in detail_m
     # Measurement job remains connected (not completed)
     assert client.get(f"/api/ui/measurements/{job['token']}").json()["status"] == "connected"
+
+
+@pytest.mark.parametrize("yaw", [0, 30, 90, 215])
+def test_rotated_furniture_dimensions_and_protection_survive_ui_save(client, payload, yaw):
+    payload["furniture"][0]["yaw"] = yaw
+    created = client.post("/api/ui/spaces", json=payload)
+    assert created.status_code == 201, created.text
+    scene_id = created.json()["serverSceneId"]
+    before = client.get(f"/api/scenes/{scene_id}").json()
+    assert before["occluders"][0]["yaw_deg_ccw_from_east"] == yaw
+    assert before["occluders"][0]["dimensions_m"] == [2, 1, 2]
+    changed = created.json()
+    changed["name"] = "Renamed"
+    saved = client.put("/api/ui/spaces/test-space", json=changed)
+    assert saved.status_code == 200, saved.text
+    after = client.get(f"/api/scenes/{scene_id}").json()
+    assert after["occluders"][0]["base_center_m"] == before["occluders"][0]["base_center_m"]
+    assert after["occluders"][0]["dimensions_m"] == [2, 1, 2]
+    assert after["occluders"][0]["yaw_deg_ccw_from_east"] == yaw
+
+
+def test_rotated_outside_room_and_overlap_are_rejected(client, payload):
+    payload["regions"] = []
+    payload["furniture"][0].update(x=0, y=0, yaw=45)
+    assert client.post("/api/ui/spaces", json=payload).status_code == 422
+    payload["furniture"][0].update(x=1, y=1)
+    payload["furniture"].append({**payload["furniture"][0], "id": "f2", "yaw": -45})
+    assert client.post("/api/ui/spaces", json=payload).status_code == 422
+
+
+def test_rotated_host_near_wall_uses_physical_bounds(client, payload):
+    payload["furniture"][0].update(x=-0.7, y=2, width=2, depth=0.2, yaw=90)
+    payload["regions"][0].update(x=-0.7, y=2, width=2, depth=0.2, face="상단")
+    result = client.post("/api/ui/spaces", json=payload)
+    assert result.status_code == 201, result.text

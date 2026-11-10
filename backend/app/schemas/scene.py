@@ -7,7 +7,7 @@ The schema describes structure; model validators also enforce geometry and refer
 from __future__ import annotations
 
 from datetime import datetime
-from math import atan2, degrees, floor, sqrt
+from math import atan2, degrees, floor
 from typing import Annotated, Literal, Self
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -27,6 +27,7 @@ from app.schemas.geometry import (
     subtract,
     unit,
 )
+from app.schemas.surface_fit import fit_surface
 
 Number = Annotated[float, Field(allow_inf_nan=False)]
 Positive = Annotated[Number, Field(gt=0)]
@@ -457,7 +458,7 @@ class ArucoObservation(Model):
 
 
 class BoardCameraObservation(Model):
-    """General 3D rectangle observations; legacy floor observations stay unchanged."""
+    """General 3D tabletop observations; legacy floor observations stay unchanged."""
 
     observation_id: Identifier
     method: Literal["aruco_board_camera_at_point"]
@@ -468,12 +469,15 @@ class BoardCameraObservation(Model):
     note: str
     marker_id: Identifier
     plane: Literal["floor", "window", "vertical", "horizontal"]
-    point_ids: Annotated[list[Identifier], Field(min_length=4, max_length=5)]
-    points_marker_m: Annotated[list[Vector], Field(min_length=4, max_length=5)]
-    points_enu_m: Annotated[list[Vector], Field(min_length=4, max_length=5)]
+    point_ids: Annotated[list[Identifier], Field(min_length=3, max_length=17)]
+    points_marker_m: Annotated[list[Vector], Field(min_length=3, max_length=17)]
+    points_enu_m: Annotated[list[Vector], Field(min_length=3, max_length=17)]
     derived_fields: list[str]
     independent_tape_error_m: Nonnegative | None
-    tabletop_shape: Literal["rectangle"]
+    tabletop_shape: Literal["rectangle", "circle", "ellipse", "polygon"]
+    tabletop_outline_enu_m: Annotated[list[Vector], Field(min_length=3, max_length=16)] | None = (
+        None
+    )
     model_id: Annotated[str, Field(min_length=1, max_length=200)]
     geometry_source: Literal["standard_model_bounding_box"]
     height_source: Literal["surface_is_top", "capture_highest", "manual"]
@@ -485,14 +489,36 @@ class BoardCameraObservation(Model):
 
     @model_validator(mode="after")
     def points_and_height_source(self) -> Self:
-        expected = {"P1", "P2", "P3", "P4"}
+        count = {"rectangle": 4, "circle": 4, "ellipse": 6}.get(
+            self.tabletop_shape, len(self.point_ids) - int(self.height_source == "capture_highest")
+        )
+        require(3 <= count <= 16, "invalid tabletop point count")
+        expected = {f"P{i + 1}" for i in range(count)}
         if self.height_source == "capture_highest":
             expected.add("H1")
         require(
             len(self.point_ids) == len(set(self.point_ids))
             and set(self.point_ids) == expected
             and len(self.points_marker_m) == len(self.points_enu_m) == len(self.point_ids),
-            "board observation needs matching rectangle point IDs and point counts",
+            "board observation needs matching tabletop point IDs and point counts",
+        )
+        points = dict(zip(self.point_ids, self.points_enu_m, strict=True))
+        require(
+            (self.tabletop_shape != "polygon" and self.tabletop_outline_enu_m is None)
+            or (
+                self.tabletop_shape == "polygon"
+                and self.tabletop_outline_enu_m is not None
+                and len(self.tabletop_outline_enu_m) == count
+                and all(
+                    close(a, b)
+                    for a, b in zip(
+                        self.tabletop_outline_enu_m,
+                        [points[f"P{i + 1}"] for i in range(count)],
+                        strict=True,
+                    )
+                )
+            ),
+            "polygon outline must match measured points",
         )
         require(
             len(set(self.derived_fields)) == len(self.derived_fields),
@@ -1031,43 +1057,27 @@ class Scene(Model):
     @staticmethod
     def _validate_board_cuboid(observation: BoardCameraObservation, obj: Occluder) -> None:
         points = dict(zip(observation.point_ids, observation.points_enu_m, strict=True))
-        p = [points[key] for key in ("P1", "P2", "P3", "P4")]
-        centre = tuple(sum(point[i] for point in p) / 4 for i in range(3))
-        width = tuple((p[1][i] - p[0][i] + p[2][i] - p[3][i]) / 2 for i in range(3))
-        depth = tuple((p[3][i] - p[0][i] + p[2][i] - p[1][i]) / 2 for i in range(3))
-        width_length = sqrt(dot(width, width))
+        keys = sorted((key for key in points if key != "H1"), key=lambda key: int(key[1:]))
+        p = [points[key] for key in keys]
         tolerance = observation.surface_tolerance_m
-        require(width_length > EPS, "board rectangle has zero width")
-        x = tuple(v / width_length for v in width)
-        perpendicular = tuple(depth[i] - dot(depth, x) * x[i] for i in range(3))
-        depth_length = sqrt(dot(perpendicular, perpendicular))
-        require(depth_length > EPS, "board rectangle has zero depth")
-        y = tuple(v / depth_length for v in perpendicular)
-        predicted = [
-            tuple(centre[i] + a * width[i] / 2 + b * y[i] * depth_length / 2 for i in range(3))
-            for a, b in ((-1, -1), (1, -1), (1, 1), (-1, 1))
-        ]
-        require(
-            max(
-                sqrt(dot(subtract(actual, fitted), subtract(actual, fitted)))
-                for actual, fitted in zip(p, predicted, strict=True)
-            )
-            <= tolerance,
-            "board points do not form a rectangle within tolerance",
-        )
+        fit = fit_surface(observation.tabletop_shape, p, tolerance)
+        centre = fit["centre"]
         require(
             max(abs(point[2] - centre[2]) for point in p) <= tolerance,
             "board tabletop must be horizontal",
         )
         require(
-            abs(obj.dimensions_m[0] - width_length) <= tolerance
-            and abs(obj.dimensions_m[1] - depth_length) <= tolerance
+            abs(obj.dimensions_m[0] - fit["width"]) <= tolerance
+            and abs(obj.dimensions_m[1] - fit["depth"]) <= tolerance
             and all(abs(obj.base_center_m[i] - centre[i]) <= tolerance for i in (0, 1)),
             "cuboid placement/dimensions disagree with board points",
         )
-        yaw = degrees(atan2(width[1], width[0])) % 360
+        axis = fit["axis"]
+        yaw = degrees(atan2(axis[1], axis[0])) % 360
+        # Ellipse axes have no distinguished positive end. Its box is identical after 180 degrees.
+        period = 180 if observation.tabletop_shape == "ellipse" else 360
         require(
-            abs((obj.yaw_deg_ccw_from_east - yaw + 180) % 360 - 180) <= EPS,
+            abs((obj.yaw_deg_ccw_from_east - yaw + period / 2) % period - period / 2) <= 0.001,
             "cuboid yaw disagrees with board points",
         )
         base = obj.base_center_m[2]

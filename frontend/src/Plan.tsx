@@ -5,7 +5,7 @@ import { floorSunlight } from "./floorSun";
 const duskFade = (hour: number) => Math.max(0, Math.min(1, hour - 5.5, 18.5 - hour));
 import { useEffect, useId, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
-import { clamp, isWidthWall, resolveWindow, uid } from "./model";
+import { moveFurnitureInside, clamp, isWidthWall, resolveWindow, uid } from "./model";
 import type { Furniture, Space, Region } from "./model";
 import type { SceneApi } from "./Space3DScene";
 import "./Space3DView.css";
@@ -190,11 +190,11 @@ export default function Plan({
     const p = point(e);
     if (g.kind === "furniture") {
       const f = g.furniture;
-      setMoving({
+      setMoving(moveFurnitureInside({
         ...f,
-        x: Number(clamp(f.x + p.x - g.x, 0, space.width - f.width).toFixed(2)),
-        y: Number(clamp(f.y + p.y - g.y, 0, space.depth - f.depth).toFixed(2)),
-      });
+        x: f.x + p.x - g.x,
+        y: f.y + p.y - g.y,
+      }, space));
       return;
     }
     if (!onRegions) return;
@@ -311,6 +311,7 @@ export default function Plan({
           .map((f, i) => (
             <g
               key={f.id}
+              transform={`rotate(${-(f.yaw ?? 0)} ${left+f.x+f.width/2} ${top+f.y+f.depth/2})`}
               role="button"
               tabIndex={0}
               aria-label={`${f.name} 선택`}
@@ -353,6 +354,7 @@ export default function Plan({
           .map((r) => (
             <g
               key={r.id}
+              transform={(() => {const f=space.furniture.find(f=>f.id===r.furnitureId);return f ? `rotate(${-(f.yaw ?? 0)} ${left+f.x+f.width/2} ${top+f.y+f.depth/2})` : undefined;})()}
               role="button"
               tabIndex={0}
               aria-label={`${r.name} 선택`}

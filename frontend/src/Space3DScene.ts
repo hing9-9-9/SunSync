@@ -1,9 +1,10 @@
+import {localFrontFace} from "./model.ts";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { CSS2DObject, CSS2DRenderer } from "three/examples/jsm/renderers/CSS2DRenderer.js";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { filmGrid, isWidthWall, resolveWindow } from "./model.ts";
-import type { Face, Furniture, Region, Space, Wall } from "./model.ts";
+import type { Furniture, Region, Space, Wall } from "./model.ts";
 import { sunPosition } from "./sun3d.ts";
 import { createOffsetCache } from "./floorSun.ts";
 import { shelfFront } from "./shelfFront.ts";
@@ -26,7 +27,6 @@ export type ServerMoment = { sun?: [number, number, number] | null; cells?: Uint
 const INK = "#1d1c22", ACTION = "#6660e5", SUN = "#ff7426";
 // Cell state codes from space3dServer STATE_CODE: 1 opaque, 2 infeasible (darkest film is not enough). Unknown (3) cells are counted, not drawn.
 // Same rule as the server (backend/app/ui_scene.py protected_face): furniture protects the side facing the window.
-const WINDOW_FACE: Record<Wall, Face> = { south: "남쪽 전면", north: "북쪽 후면", east: "동쪽 측면", west: "서쪽 측면" };
 const STATE_COLOR: Record<number, string> = { 1: "#4b45c6", 2: "#2a2833" };
 const closes = (code: number) => code === 1 || code === 2;
 const TYPE_COLOR: Record<string, string> = { bookcase: "#f2f0ea", desk: "#ececf0", table: "#f3f3f5", cabinet: "#e4e4e9", display: "#f3f3f5", other: "#ececec" };
@@ -208,7 +208,10 @@ export function createSpaceScene(host: HTMLElement, space: Space, events: Events
   const random = (() => { let s = 7; return () => ((s = (s * 16807) % 2147483647) / 2147483647); })();
   for (const f of space.furniture) {
     const group = new THREE.Group();
-    group.position.copy(at(f.x, f.y));
+    const angle=(f.yaw ?? 0)*Math.PI/180;
+    group.rotation.y=angle;
+    group.position.copy(at(f.x+f.width/2, f.y+f.depth/2, f.baseHeight ?? 0));
+    group.position.add(new THREE.Vector3(-f.width/2,0,-f.depth/2).applyAxisAngle(new THREE.Vector3(0,1,0),angle));
     const mat = new THREE.MeshStandardMaterial({ color: TYPE_COLOR[f.type ?? "other"], roughness: 0.85 });
     const line = new THREE.LineBasicMaterial({ color: INK, transparent: true, opacity: 0.42 });
     const mats = [mat];
@@ -227,7 +230,7 @@ export function createSpaceScene(host: HTMLElement, space: Space, events: Events
     if (f.type === "bookcase") {
       // Built with its open front toward +z, then turned so the front looks at the window (the
       // protected face); the footprint w x d stays as drawn in the plan. Books sit on each shelf.
-      const front = shelfFront(win?.wall);
+      const front = shelfFront(win?.wall, f);
       const sideways = front.dx !== 0;
       const [lw, ld] = sideways ? [d, w] : [w, d];
       const turn = new THREE.Group();
@@ -319,6 +322,7 @@ export function createSpaceScene(host: HTMLElement, space: Space, events: Events
   const regionViews: RegionView[] = [];
   for (const r of space.regions) {
     const { x, y, width: w, depth: d, bottom: lo, top: hi } = r;
+    const host = space.furniture.find(f => f.id === r.furnitureId);
     // corner, then the two edge vectors (u along the face, v up or southwards) and the outward normal.
     const [corner, u, v, normal] = {
       "남쪽 전면": [at(x, y + d, lo), new THREE.Vector3(w, 0, 0), new THREE.Vector3(0, hi - lo, 0), new THREE.Vector3(0, 0, 1)],
@@ -326,18 +330,22 @@ export function createSpaceScene(host: HTMLElement, space: Space, events: Events
       "동쪽 측면": [at(x + w, y, lo), new THREE.Vector3(0, 0, d), new THREE.Vector3(0, hi - lo, 0), new THREE.Vector3(1, 0, 0)],
       "서쪽 측면": [at(x, y, lo), new THREE.Vector3(0, 0, d), new THREE.Vector3(0, hi - lo, 0), new THREE.Vector3(-1, 0, 0)],
       "상단": [at(x, y, hi), new THREE.Vector3(w, 0, 0), new THREE.Vector3(0, 0, d), new THREE.Vector3(0, 1, 0)],
-    }[r.furnitureId && r.face !== "상단" && win ? WINDOW_FACE[win.wall] : r.face];
+    }[host && r.face !== "상단" && win ? localFrontFace(host,win.wall) : r.face];
+    if(host) {
+      const centre=at(host.x+host.width/2,host.y+host.depth/2),axis=new THREE.Vector3(0,1,0),angle=(host.yaw ?? 0)*Math.PI/180;
+      corner.sub(centre).applyAxisAngle(axis,angle).add(centre);corner.y+=host.baseHeight ?? 0;
+      u.applyAxisAngle(axis,angle);v.applyAxisAngle(axis,angle);normal.applyAxisAngle(axis,angle);
+    }
     const chip = document.createElement("div");
     chip.className = `s3-chip g-${r.grade}`;
     chip.textContent = r.grade;
     const label = new CSS2DObject(chip);
     // Every grade chip sits over the middle of its furniture (or of a free area), whatever the face.
-    const host = space.furniture.find(f => f.id === r.furnitureId);
     label.position.copy(host
-      ? at(host.x + host.width / 2, host.y + host.depth / 2, host.height + 0.16)
+      ? at(host.x + host.width / 2, host.y + host.depth / 2, (host.baseHeight ?? 0) + host.height + 0.16)
       : at(r.x + r.width / 2, r.y + r.depth / 2, r.top + 0.16));
     scene.add(label);
-    const box = new THREE.Box3().setFromPoints([corner, corner.clone().add(u).add(v)]).expandByVector(new THREE.Vector3(1, 1, 1).multiply(normal).multiplyScalar(0.01));
+    const box = new THREE.Box3().setFromPoints([corner,corner.clone().add(u),corner.clone().add(v),corner.clone().add(u).add(v)]).expandByVector(new THREE.Vector3(Math.abs(normal.x), Math.abs(normal.y), Math.abs(normal.z)).multiplyScalar(0.01));
     regionViews.push({ r, box, corner, u, v, normal, chip });
   }
   // Furniture without a protection area is grade D (decided 2026-11-06), so it gets a D chip too.
@@ -347,7 +355,7 @@ export function createSpaceScene(host: HTMLElement, space: Space, events: Events
     chip.className = "s3-chip g-D";
     chip.textContent = "D";
     const label = new CSS2DObject(chip);
-    label.position.copy(at(f.x + f.width / 2, f.y + f.depth / 2, f.height + 0.16));
+    label.position.copy(at(f.x + f.width / 2, f.y + f.depth / 2, (f.baseHeight ?? 0) + f.height + 0.16));
     scene.add(label);
   }
 
@@ -659,7 +667,10 @@ export function createSpaceScene(host: HTMLElement, space: Space, events: Events
     previewFurniture(furniture) {
       for (const [id, item] of items) {
         const f = furniture?.id === id ? furniture : item.f;
-        item.group.position.copy(at(f.x, f.y));
+        const angle=(f.yaw ?? 0)*Math.PI/180;
+        item.group.rotation.y=angle;
+        item.group.position.copy(at(f.x+f.width/2,f.y+f.depth/2,f.baseHeight ?? 0));
+        item.group.position.add(new THREE.Vector3(-f.width/2,0,-f.depth/2).applyAxisAngle(new THREE.Vector3(0,1,0),angle));
       }
     },
     dispose() {

@@ -5,8 +5,8 @@ import { shapes, validPolygon, nextPhotoSlot, photosPerPoint } from "./capturePl
 import type { Shape, CapturePoint } from "./capturePlan";
 import type { CapturedFurniture } from "./model";
 import { browserCaptureEnabled } from "./captureEnvironment";
-import { BOARD, MeasureError, detectFrame, savedCamera, setupCamera, startCaptureMarker, endCaptureMarker } from "./measureApi";
-import type { Camera, Frame, Board, CaptureMarker } from "./measureApi";
+import { BOARD, MeasureError, detectFrame, savedCamera, setupCamera, captureTargets, resumeCaptureMarker, cancelStoredCapture, startCaptureMarker, endCaptureMarker } from "./measureApi";
+import type { Camera, Frame, Board, CaptureMarker, FilmTargetWindow } from "./measureApi";
 
 type Photo = { file: File; url: string; issue: PhotoIssue | null; metrics: { brightness: number; sharpness: number }; frame?: Frame };
 
@@ -40,15 +40,27 @@ function SessionSpatialCapture(props: { sceneId?: string; count: number; onFinis
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(true);
   const [retry, setRetry] = useState(0);
+  const [windows,setWindows]=useState<FilmTargetWindow[]>([]);
+  const [windowId,setWindowId]=useState("");
+  const [row,setRow]=useState(0), [col,setCol]=useState(0);
   useEffect(() => {
     let live = true;
     if (!props.sceneId) return;
-    void startCaptureMarker(props.sceneId).then(value => { if (live) setSession(value); })
+    void Promise.all([resumeCaptureMarker(props.sceneId),captureTargets(props.sceneId)]).then(([value,targets]) => {
+      if (live) {setSession(value);setWindows(targets);setWindowId(targets[0]?.window_id ?? "");setRow(0);setCol(0);}
+    })
       .catch(e => { if (live) setError(e instanceof Error ? e.message : "촬영 마커를 준비하지 못했어요."); })
       .finally(() => { if (live) setBusy(false); });
     // A remount must not end a server session or rotate its marker.
     return () => { live = false; };
   }, [props.sceneId, retry]);
+  async function begin() {
+    if (!props.sceneId || busy || !windowId) return;
+    setBusy(true);setError("");
+    try {setSession(await startCaptureMarker(props.sceneId,{window_id:windowId,module_row:row,module_col:col}));}
+    catch(e) {setError(e instanceof Error ? e.message : "필름을 선택하지 못했어요.");}
+    finally {setBusy(false);}
+  }
   async function cancel() {
     if (!session || busy) return;
     setBusy(true); setError("");
@@ -57,8 +69,30 @@ function SessionSpatialCapture(props: { sceneId?: string; count: number; onFinis
     finally { setBusy(false); }
   }
   if (busy) return <p role="status">촬영 마커를 준비하고 있어요…</p>;
-  if (!session) return <section><p role="alert">{error || "촬영이 종료됐어요."}</p><button onClick={() => { setBusy(true); setError(""); setSession(null); setRetry(n => n + 1); }}>촬영 다시 시작</button></section>;
+  if (!session) {
+    const win=windows.find(w=>w.window_id===windowId);
+    return <section>
+      <h3>마커를 표시할 필름 선택</h3>
+      <p>실내에서 창을 바라본 기준이에요. 선택한 1m 필름 중앙에 60cm 마커를 표시합니다.</p>
+      {error && <p role="alert">{error}</p>}
+      {!windows.length && <p>촬영 가능한 필름이 없어요. 창 크기·위치와 1m 필름 배치를 먼저 저장해 주세요.</p>}
+      <label className="field"><span>창문</span><select value={windowId} onChange={e=>{setWindowId(e.target.value);setRow(0);setCol(0);}}>
+        {windows.map((w,i)=><option key={w.window_id} value={w.window_id}>창 {i+1} · 필름 {w.rows}행 × {w.cols}열</option>)}
+      </select></label>
+      {win && <div className="two-fields">
+        <label className="field"><span>위에서 몇 번째 필름</span><select value={row} onChange={e=>setRow(Number(e.target.value))}>
+          {Array.from({length:win.rows},(_,i)=><option key={i} value={i}>{i+1}번째 행</option>)}
+        </select></label>
+        <label className="field"><span>왼쪽에서 몇 번째 필름</span><select value={col} onChange={e=>setCol(Number(e.target.value))}>
+          {Array.from({length:win.cols},(_,i)=><option key={i} value={i}>{i+1}번째 열</option>)}
+        </select></label>
+      </div>}
+      <button type="button" disabled={!win} onClick={()=>void begin()}>이 필름에 마커 표시하고 촬영 시작</button>
+      <button type="button" onClick={()=>{if(!props.sceneId)return;setBusy(true);void cancelStoredCapture(props.sceneId).then(()=>setRetry(n=>n+1)).catch(e=>{setError(String(e));setBusy(false);});}}>이전 촬영 종료하고 다시 선택</button>
+    </section>;
+  }
   return <section>
+    <p>선택한 필름: 위에서 {(session.film_module?.row ?? 0)+1}번째, 왼쪽에서 {(session.film_module?.col ?? 0)+1}번째 · 마커 60cm</p>
     <details><summary>가상 필름 표시 확인 · 테스트용</summary>
       <svg viewBox={`0 0 ${session.film_cells[0]?.length ?? 10} ${session.film_cells.length || 10}`} width="200" height="200" role="img" aria-label="이번 촬영의 가상 필름 마커" shapeRendering="crispEdges">
         {session.film_cells.flatMap((row, y) => row.map((opacity, x) => <rect key={`${x}:${y}`} x={x} y={y} width="1" height="1" fill={opacity >= 0.5 ? "black" : "white"} />))}

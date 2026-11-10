@@ -1,4 +1,5 @@
-import type { Wall } from "./model.ts";
+import { localFrontFace } from "./model.ts";
+import type { Furniture, Wall } from "./model.ts";
 
 /**
  * The open front of a bookcase in the 3D scene. The server protects the side of furniture that
@@ -16,6 +17,10 @@ const FRONT: Record<Wall, Front> = {
   west: { dx: -1, dz: 0, yaw: -Math.PI / 2 },
 };
 
-export function shelfFront(wall: Wall | null | undefined): Front {
+export function shelfFront(wall: Wall | null | undefined, furniture?: Furniture): Front {
+  if (furniture) {
+    const face=localFrontFace(furniture,wall ?? "south");
+    return {"남쪽 전면":FRONT.south,"북쪽 후면":FRONT.north,"동쪽 측면":FRONT.east,"서쪽 측면":FRONT.west,"상단":FRONT.south}[face];
+  }
   return FRONT[wall ?? "south"] ?? FRONT.south;
 }

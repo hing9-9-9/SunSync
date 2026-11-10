@@ -484,32 +484,9 @@ function App() {
                               onChange={(sill) => changeWindow({ sill })}
                             />
                           </div>
-                          <h3>필름 QR 마커</h3>
-                          <div className="dimensions">
-                            <NumberField
-                              label="마커 크기"
-                              value={draftWindow.marker.size}
-                              min={0.05}
-                              onChange={(size) =>
-                                changeWindow({ marker: { ...draftWindow.marker, size } })
-                              }
-                            />
-                            <NumberField
-                              label="창 왼쪽에서 중심"
-                              value={draftWindow.marker.x}
-                              onChange={(x) =>
-                                changeWindow({ marker: { ...draftWindow.marker, x } })
-                              }
-                            />
-                            <NumberField
-                              label="창 아래에서 중심"
-                              value={draftWindow.marker.y}
-                              onChange={(y) =>
-                                changeWindow({ marker: { ...draftWindow.marker, y } })
-                              }
-                            />
-                          </div>
-                          <FilmGrid space={draft} marker />
+                          <h3>필름 ArUco 마커</h3>
+                          <p>마커는 60 × 60cm로 고정됩니다. 촬영을 시작할 때 표시할 필름을 선택해 주세요.</p>
+                          <FilmGrid space={draft} />
                         </>
                       )}
                       <div className="mini-room">
@@ -874,6 +851,8 @@ function App() {
                               : "직접 입력한 치수예요."}{" "}
                             단위는 m입니다.
                           </p>
+                          <button type="button" onClick={() => changeFurniture({...furniture, yaw: ((furniture.yaw ?? 0)+90)%360})}>↻ 90° 회전</button>
+                          <p className="muted small">현재 회전 {Math.round((furniture.yaw ?? 0)*10)/10}°</p>
                           <div className="dimensions">
                             {(["width", "depth", "height"] as const).map(
                               (key, i) => (

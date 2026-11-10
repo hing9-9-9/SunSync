@@ -8,10 +8,12 @@ from typing import Annotated, Literal, Self
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
+from shapely.geometry import Polygon
 from sqlalchemy import Column, Text
 from sqlmodel import Field as SQLField
 from sqlmodel import Session, SQLModel, select
 
+from app.schemas.geometry import cuboid_footprint
 from app.schemas.scene import Occluder, Scene
 
 Number = Annotated[float, Field(allow_inf_nan=False)]
@@ -47,15 +49,18 @@ class UISite(UIModel):
 
 
 class UIFurniture(UIModel):
+    serverId: Identifier | None = None
     id: Identifier
     name: Name
     zone: Name
     type: FurnitureType | None = None
-    x: Nonnegative
-    y: Nonnegative
+    x: Number
+    y: Number
     width: Positive
     depth: Positive
     height: Positive
+    yaw: Number = 0.0
+    baseHeight: Nonnegative = 0.0
 
 
 class UIRegion(UIModel):
@@ -63,8 +68,8 @@ class UIRegion(UIModel):
     name: Name
     zone: Name
     furnitureId: Identifier | None
-    x: Nonnegative
-    y: Nonnegative
+    x: Number
+    y: Number
     width: Positive
     depth: Positive
     face: Face
@@ -203,11 +208,27 @@ WINDOW_FACE = {"south": "남쪽 전면", "north": "북쪽 후면", "east": "동�
 def protected_face(space: UISpace, region: UIRegion) -> str:
     wall = space.windowDimensions.wall if space.windowDimensions else None
     if region.furnitureId and region.face != "상단" and wall:
+        host = next((f for f in space.furniture if f.id == region.furnitureId), None)
+        if host is not None and abs(host.yaw % 360) > 1e-9:
+            toward = {"south": (0, -1), "north": (0, 1), "east": (1, 0), "west": (-1, 0)}[wall]
+            angle = math.radians(host.yaw)
+            c, sn = math.cos(angle), math.sin(angle)
+            choices = (
+                [("남쪽 전면", 0, -1), ("북쪽 후면", 0, 1)]
+                if host.width >= host.depth
+                else [("동쪽 측면", 1, 0), ("서쪽 측면", -1, 0)]
+            )
+            return max(
+                choices,
+                key=lambda v: (
+                    (c * v[1] - sn * v[2]) * toward[0] + (sn * v[1] + c * v[2]) * toward[1]
+                ),
+            )[0]
         return WINDOW_FACE[wall]
     return region.face
 
 
-def region_surface(space: UISpace, region: UIRegion) -> tuple[list[list[float]], list[int]]:
+def _region_surface(space: UISpace, region: UIRegion) -> tuple[list[list[float]], list[int]]:
     """Screen y grows down; ENU y grows north. Wind every face along its normal."""
     west, east = region.x, region.x + region.width
     south, north = space.depth - region.y - region.depth, space.depth - region.y
@@ -244,6 +265,27 @@ def region_surface(space: UISpace, region: UIRegion) -> tuple[list[list[float]],
     ]
 
 
+def region_surface(space: UISpace, region: UIRegion) -> tuple[list[list[float]], list[float]]:
+    vertices, normal = _region_surface(space, region)
+    host = next((f for f in space.furniture if f.id == region.furnitureId), None)
+    if host is None:
+        return vertices, [float(v) for v in normal]
+    angle = math.radians(host.yaw)
+    c, sn = math.cos(angle), math.sin(angle)
+    cx, cy = host.x + host.width / 2, space.depth - host.y - host.depth / 2
+    return (
+        [
+            [
+                cx + c * (x - cx) - sn * (y - cy),
+                cy + sn * (x - cx) + c * (y - cy),
+                z + host.baseHeight,
+            ]
+            for x, y, z in vertices
+        ],
+        [c * normal[0] - sn * normal[1], sn * normal[0] + c * normal[1], float(normal[2])],
+    )
+
+
 FURNITURE_OVERLAP_EPS = 1e-6
 
 
@@ -252,13 +294,26 @@ def furniture_overlaps_3d(a: UIFurniture, b: UIFurniture) -> bool:
     3D interior volume (> 1e-6 m along X, Y, and Z). Touching boundaries are allowed."""
     if a.zone != b.zone:
         return False
-    overlap_x = min(a.x + a.width, b.x + b.width) - max(a.x, b.x)
-    overlap_y = min(a.y + a.depth, b.y + b.depth) - max(a.y, b.y)
-    overlap_z = min(a.height, b.height)
+
+    def footprint(f: UIFurniture) -> Polygon:
+        return Polygon(
+            [
+                (p[0], p[1])
+                for p in cuboid_footprint(
+                    (f.x + f.width / 2, -f.y - f.depth / 2, f.baseHeight),
+                    (f.width, f.depth, f.height),
+                    f.yaw,
+                )
+            ]
+        )
+
+    overlap_z = min(a.baseHeight + a.height, b.baseHeight + b.height) - max(
+        a.baseHeight, b.baseHeight
+    )
+    # A geometric tolerance keeps touching edges from counting as overlap.
     return (
-        overlap_x > FURNITURE_OVERLAP_EPS
-        and overlap_y > FURNITURE_OVERLAP_EPS
-        and overlap_z > FURNITURE_OVERLAP_EPS
+        overlap_z > FURNITURE_OVERLAP_EPS
+        and footprint(a).intersection(footprint(b)).buffer(-FURNITURE_OVERLAP_EPS / 2).area > 0
     )
 
 
@@ -292,6 +347,7 @@ def to_scene(space: UISpace, revision: int, created_at: str | None = None) -> Sc
     observation_id = canonical_id("observation", space.id)
     policy_id = canonical_id("policy", space.id)
     quality = {"observation_ids": [observation_id], "confirmed": True}
+    furniture_ids = {f.id: f.serverId or canonical_id("furniture", f.id) for f in space.furniture}
     protected = []
     for region in space.regions:
         vertices, normal = region_surface(space, region)
@@ -300,7 +356,7 @@ def to_scene(space: UISpace, revision: int, created_at: str | None = None) -> Sc
                 "region_id": canonical_id("region", region.id),
                 "room_id": room_id,
                 "name": region.name,
-                "host_occluder_id": canonical_id("furniture", region.furnitureId)
+                "host_occluder_id": furniture_ids[region.furnitureId]
                 if region.furnitureId
                 else None,
                 "vertices_m": vertices,
@@ -364,7 +420,7 @@ def to_scene(space: UISpace, revision: int, created_at: str | None = None) -> Sc
             "east": ([space.width, space.depth - o, z], [0, -1, 0], [-1, 0, 0], 90),
             "west": ([0, space.depth - o - width, z], [0, 1, 0], [1, 0, 0], 270),
         }
-        origin, u, normal, azimuth = frames[w.wall]
+        origin, u, window_normal, azimuth = frames[w.wall]
         vertices = [
             [origin[i] + u[i] * du + (dz if i == 2 else 0) for i in range(3)]
             for du, dz in [(0, 0), (width, 0), (width, height), (0, height)]
@@ -375,7 +431,7 @@ def to_scene(space: UISpace, revision: int, created_at: str | None = None) -> Sc
                 "window_id": canonical_id("window", space.id),
                 "room_id": room_id,
                 "vertices_m": vertices,
-                "inward_normal": normal,
+                "inward_normal": window_normal,
                 "u_axis": u,
                 "v_axis": [0, 0, 1],
                 "azimuth_deg_true": azimuth,
@@ -437,16 +493,20 @@ def to_scene(space: UISpace, revision: int, created_at: str | None = None) -> Sc
             },
             "occluders": [
                 {
-                    "occluder_id": canonical_id("furniture", f.id),
+                    "occluder_id": furniture_ids[f.id],
                     "room_id": room_id,
                     "name": f.name,
                     "kind": "cuboid",
                     "type": {"bookcase": "bookshelf", "desk": "desk", "table": "desk"}.get(
                         f.type or "other", "other"
                     ),
-                    "base_center_m": [f.x + f.width / 2, space.depth - f.y - f.depth / 2, 0],
+                    "base_center_m": [
+                        f.x + f.width / 2,
+                        space.depth - f.y - f.depth / 2,
+                        f.baseHeight,
+                    ],
                     "dimensions_m": [f.width, f.depth, f.height],
-                    "yaw_deg_ccw_from_east": 0,
+                    "yaw_deg_ccw_from_east": f.yaw % 360,
                     "material": "opaque",
                     "quality": quality,
                 }
@@ -490,26 +550,25 @@ UI_LABELS = {"bookcase": "책장", "desk": "책상"}
 
 
 def ui_furniture(occluder: Occluder, space: UISpace, number: int = 1) -> UIFurniture:
-    """A measured cuboid seen from above: the plan has no rotation, so a turned piece shows as its
-    axis-aligned footprint, moved inside the room."""
+    """Keep measured dimensions and pose; x/y locate the unrotated local box."""
     width, depth, height = occluder.dimensions_m
-    yaw = math.radians(occluder.yaw_deg_ccw_from_east)
-    w = min(abs(width * math.cos(yaw)) + abs(depth * math.sin(yaw)), space.width)
-    d = min(abs(width * math.sin(yaw)) + abs(depth * math.cos(yaw)), space.depth)
     cx, cy = occluder.base_center_m[0], occluder.base_center_m[1]
     kind = UI_TYPES.get(occluder.type, "other")
     # Engine names are machine text ("desk standard-model bounding box"); users read Korean labels.
     korean = re.search(r"[가-힣]", occluder.name) is not None
     return UIFurniture(
         id=occluder.occluder_id,
+        serverId=occluder.occluder_id,
         name=occluder.name if korean else f"측정 {UI_LABELS.get(kind, '가구')} {number}",
         zone=space.zone,
         type=kind,
-        x=round(min(max(cx - w / 2, 0), space.width - w), 3),
-        y=round(min(max(space.depth - cy - d / 2, 0), space.depth - d), 3),
-        width=round(w, 3),
-        depth=round(d, 3),
-        height=round(min(height, space.height), 3),
+        x=cx - width / 2,
+        y=space.depth - cy - depth / 2,
+        width=width,
+        depth=depth,
+        height=height,
+        yaw=occluder.yaw_deg_ccw_from_east,
+        baseHeight=occluder.base_center_m[2],
     )
 
 

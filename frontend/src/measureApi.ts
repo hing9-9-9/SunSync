@@ -254,14 +254,10 @@ export async function measureAndRegister(space: Space, camera: Camera, item: {
   );
   fragment.occluders.forEach((o) => (o.name = item.name));
   const sceneUrl = `/api/scenes/${encodeURIComponent(space.serverSceneId)}`;
-  let current = scene;
+  const current = scene;
   if (current.registration_calibration?.calibration_id !== fragment.calibration_id) {
     if (current.registration_calibration) {
-      // The board moved (window or marker changed): records measured against the old placement
-      // no longer match. A plain web save turns them into ordinary furniture first.
-      const ui = await get<Space>(`/api/ui/spaces/${encodeURIComponent(space.id)}`);
-      await put(`/api/ui/spaces/${encodeURIComponent(space.id)}`, ui);
-      current = await get<typeof scene>(sceneUrl);
+      throw new MeasureError("측정 기준이 바뀌었어요. 기존 공간을 보존하고 새 공간에서 측정해 주세요.");
     }
     // The board/ENU/floor reference is stored once per board placement, before its furniture.
     await put(sceneUrl, {
@@ -269,7 +265,7 @@ export async function measureAndRegister(space: Space, camera: Camera, item: {
       revision: current.revision + 1,
       registration_calibration: { calibration_id: fragment.calibration_id, marker: fragment.markers[0] },
     });
-    current = { ...current, revision: current.revision + 1 };
+    current.revision += 1;
   }
   await checkCaptureMarker(session);
   await post(`${sceneUrl}/registrations`, { expected_revision: current.revision, fragment });
@@ -321,4 +317,25 @@ export async function checkCaptureMarker(session: CaptureMarker): Promise<Captur
 export async function endCaptureMarker(session: CaptureMarker): Promise<void> {
   await post(`${markerUrl(session.scene_id)}/${session.session_id}/end`, {});
   if (sessionStorage.getItem(markerKey(session.scene_id)) === session.session_id) sessionStorage.removeItem(markerKey(session.scene_id));
+}
+
+export type FilmTargetWindow = {window_id:string; rows:number; cols:number};
+export async function captureTargets(sceneId:string):Promise<FilmTargetWindow[]> {
+  return (await get<{windows:FilmTargetWindow[]}>(`${markerUrl(sceneId)}/targets`)).windows;
+}
+export async function resumeCaptureMarker(sceneId:string):Promise<CaptureMarker|null> {
+  const id=sessionStorage.getItem(markerKey(sceneId));
+  if (!id) return null;
+  try { return await get<CaptureMarker>(`${markerUrl(sceneId)}/${id}`); }
+  catch(e) {
+    if(e instanceof MeasureError && (e.status===404 || e.status===410)) {
+      sessionStorage.removeItem(markerKey(sceneId)); return null;
+    }
+    throw e;
+  }
+}
+export async function cancelStoredCapture(sceneId:string):Promise<void> {
+  const id=sessionStorage.getItem(markerKey(sceneId));
+  if(id) await post(`${markerUrl(sceneId)}/${id}/end`,{});
+  sessionStorage.removeItem(markerKey(sceneId));
 }
