@@ -15,9 +15,10 @@ import json
 import math
 import sys
 from collections import defaultdict
-from collections.abc import Sequence
-from dataclasses import asdict
+from collections.abc import Mapping, Sequence
+from dataclasses import asdict, replace
 from datetime import UTC, datetime, timedelta
+from itertools import pairwise
 from pathlib import Path
 from typing import Any
 
@@ -77,6 +78,14 @@ def generate_solar_profile(
             q50 = base_clear_sky * cloud_attenuation
             q10 = 0.35 * q50
             q90 = min(base_clear_sky, 1.80 * q50 + 100.0)
+        elif scenario == "Overcast Low Irradiance":
+            # Thick cloud all day: direct irradiance stays in 100-300 W/m2, where partial
+            # dimming can already meet a low cap. Added to show where continuous dimming helps.
+            wobble = 1.0 + 0.15 * math.sin(step * 0.6)
+            q50 = (100.0 + 200.0 * solar_altitude) * wobble
+            q10 = 0.70 * q50
+            q90 = 1.30 * q50
+
         else:
             raise ValueError(f"Unknown scenario: {scenario}")
 
@@ -85,16 +94,109 @@ def generate_solar_profile(
     return timeline
 
 
-def simulate_scene(
-    scenario_name: str,
-    timeline: Sequence[tuple[datetime, float, float, float]],
-    optical_profile: OpticalProfileData,
-    weights: AdaptiveWeights,
-    interval_seconds: int = 300,
+SWITCH_STEP = 0.01  # an opacity change larger than this counts as one switch
+
+
+def _cells_of(
+    observations_by_cell: Mapping[tuple[str, int, int], Sequence[CellObservation]],
+    grades: tuple[str, ...] | None,
+) -> list[tuple[str, int, int]]:
+    return [
+        key
+        for key, obs in observations_by_cell.items()
+        if grades is None or obs[0].strictest_grade in grades
+    ]
+
+
+def _series_stats(
+    opacities: Mapping[tuple[str, int, int], Sequence[float]],
+    keys: Sequence[tuple[str, int, int]],
+) -> tuple[int, float, float]:
+    """(switch count, total opacity change, mean opacity) over the given cells."""
+    switches, variation, total, steps = 0, 0.0, 0.0, 0
+    for key in keys:
+        series = opacities[key]
+        total += sum(series)
+        steps += len(series)
+        for before, after in pairwise(series):
+            change = abs(after - before)
+            variation += change
+            switches += change > SWITCH_STEP
+    return switches, variation, total / max(1, steps)
+
+
+def _violations(
+    opacities: Mapping[tuple[str, int, int], Sequence[float]],
+    observations_by_cell: Mapping[tuple[str, int, int], Sequence[CellObservation]],
+    profile: OpticalProfileData,
+    quantile: str,
+) -> int:
+    """Cell-steps where the cap is exceeded if the irradiance is really the q50 or q90 value.
+
+    Grade A needs full darkness whenever there is direct sun. Grade B/C compares the
+    transmitted irradiance with the cap. Unlike the engine metric this is absolute (not
+    relative to the baseline).
+    """
+    count = 0
+    for key, obs_list in observations_by_cell.items():
+        for obs, opacity in zip(obs_list, opacities[key], strict=False):
+            irradiance = obs.irradiance_q90 if quantile == "q90" else obs.irradiance_q50
+            if obs.strictest_grade == "A":
+                count += irradiance > 0 and opacity < 0.99
+            elif obs.cap_W_m2 is not None:
+                count += profile.transmitted_irradiance(irradiance, opacity) > obs.cap_W_m2 + 1e-9
+    return count
+
+
+def _change_pct(before: float, after: float) -> float | None:
+    """Reduction of `after` against `before` in percent; negative means it got worse."""
+    return None if before <= 0 else (before - after) / before * 100.0
+
+
+def evaluate_mode(
+    baseline: Mapping[tuple[str, int, int], Sequence[float]],
+    adaptive: Mapping[tuple[str, int, int], Sequence[float]],
+    observations_by_cell: Mapping[tuple[str, int, int], Sequence[CellObservation]],
+    profile: OpticalProfileData,
 ) -> dict[str, Any]:
-    """Simulate library reading room: 4x4 film grid with Desk (Grade B) and Art (Grade A)."""
+    """Signed metrics of one adaptive mode against the rule baseline (nothing is clipped)."""
+    out: dict[str, Any] = {}
+    for scope, grades in (("all_cells", None), ("grade_b_cells", ("B",))):
+        keys = _cells_of(observations_by_cell, grades)
+        base_sw, base_var, base_mean = _series_stats(baseline, keys)
+        ad_sw, ad_var, ad_mean = _series_stats(adaptive, keys)
+        out[scope] = {
+            "baseline_switches": base_sw,
+            "adaptive_switches": ad_sw,
+            "baseline_total_change": round(base_var, 3),
+            "adaptive_total_change": round(ad_var, 3),
+            "switch_reduction_pct": _change_pct(base_sw, ad_sw),
+            "flicker_reduction_pct": _change_pct(base_var, ad_var),
+            "baseline_mean_opacity": round(base_mean, 4),
+            "adaptive_mean_opacity": round(ad_mean, 4),
+            "daylight_gain_pct": _change_pct(base_mean, ad_mean),
+        }
+    out["baseline_violations_q50"] = _violations(baseline, observations_by_cell, profile, "q50")
+    out["baseline_violations_q90"] = _violations(baseline, observations_by_cell, profile, "q90")
+    out["adaptive_violations_q50"] = _violations(adaptive, observations_by_cell, profile, "q50")
+    out["adaptive_violations_q90"] = _violations(adaptive, observations_by_cell, profile, "q90")
+    return out
+
+
+CAP_B_W_M2 = 50.0  # reading-desk cap used by this experiment (an assumption, see the report)
+
+
+def build_inputs(
+    timeline: Sequence[tuple[datetime, float, float, float]],
+) -> tuple[
+    dict[tuple[str, int, int], list[CellObservation]],
+    dict[tuple[str, int, int], list[float]],
+]:
+    """Library reading room: 4x4 film grid with one Grade A cell, three Grade B cells, rest D.
+
+    Returns the per-cell observations and the rule-based baseline opacities.
+    """
     rows, cols = 4, 4
-    cap_B = 50.0  # W/m2 reading desk tolerance
 
     # Assign cell zones:
     # Cell (1, 1): Rare Manuscript Archive (Grade A, hard constraint 0.0 W/m2)
@@ -114,7 +216,7 @@ def simulate_scene(
                 cap = 0.0
             elif (r in (1, 2)) and (c in (1, 2)):
                 grade = "B"
-                cap = cap_B
+                cap = CAP_B_W_M2
             else:
                 grade = "D"
                 cap = None
@@ -143,11 +245,23 @@ def simulate_scene(
                 # If Grade A: opaque if irradiance > 0
                 # If Grade B: opaque if irradiance > cap
                 # Else: transparent
-                if grade == "A" and q50 > 0.0 or grade == "B" and q50 > cap_B:
+                if grade == "A" and q50 > 0.0 or grade == "B" and q50 > CAP_B_W_M2:
                     b_op = 1.0
                 else:
                     b_op = 0.0
                 baseline_opacities[cell_key].append(b_op)
+    return observations_by_cell, baseline_opacities
+
+
+def simulate_scene(
+    scenario_name: str,
+    timeline: Sequence[tuple[datetime, float, float, float]],
+    optical_profile: OpticalProfileData,
+    weights: AdaptiveWeights,
+    interval_seconds: int = 300,
+) -> dict[str, Any]:
+    """Simulate library reading room: 4x4 film grid with Desk (Grade B) and Art (Grade A)."""
+    observations_by_cell, baseline_opacities = build_inputs(timeline)
 
     # 1. Run FR-04 Adaptive PDLC (Discrete) with auto-tuner
     tuner = AdaptivePolicyTuner()
@@ -216,7 +330,337 @@ def simulate_scene(
         "baseline_mean_opacity": metrics_pdlc.baseline_mean_opacity,
         "pdlc": asdict(metrics_pdlc),
         "lg_sgf": asdict(metrics_sgf),
+        "signed_metrics": {
+            "pdlc": evaluate_mode(
+                baseline_opacities, pdlc_adaptive_opacities, observations_by_cell, optical_profile
+            ),
+            "lg_sgf": evaluate_mode(
+                baseline_opacities, sgf_adaptive_opacities, observations_by_cell, optical_profile
+            ),
+        },
+        "tuned_weights": {
+            "pdlc": metrics_pdlc.tuned_weights,
+            "lg_sgf": metrics_sgf.tuned_weights,
+        },
     }
+
+
+SWEEP_W_FLICKER = (0.0, 5.0, 20.0, 60.0)
+SWEEP_KAPPA_B = (0.8, 1.0, 1.2, 1.6)  # kappa_B must stay >= kappa_C (0.8)
+
+
+def _mean(values: Sequence[float | None]) -> float | None:
+    known = [v for v in values if v is not None]
+    return sum(known) / len(known) if known else None
+
+
+def sweep_weights(
+    scenario_inputs: Sequence[
+        tuple[
+            str,
+            Mapping[tuple[str, int, int], Sequence[CellObservation]],
+            Mapping[tuple[str, int, int], Sequence[float]],
+        ]
+    ],
+    profile: OpticalProfileData,
+    weights: AdaptiveWeights,
+    interval_seconds: int,
+) -> list[dict[str, Any]]:
+    """Run every (mode, w_flicker, kappa_B) pair on every scenario and summarise each pair."""
+    rows: list[dict[str, Any]] = []
+    for mode, hardware in (("pdlc", "PDLC"), ("lg_sgf", "LG_SGF")):
+        for w_flicker in SWEEP_W_FLICKER:
+            for kappa_b in SWEEP_KAPPA_B:
+                tried = replace(weights, w_flicker=w_flicker, kappa_B=kappa_b)
+                per_scenario = []
+                for _, observations, baseline in scenario_inputs:
+                    adaptive = {
+                        key: [
+                            step.opacity
+                            for step in apply_fr04_stabilization(
+                                optimize_cell_dp(seq, profile, tried, hardware_mode=hardware),
+                                interval_seconds,
+                                tried,
+                                profile,
+                            )
+                        ]
+                        for key, seq in observations.items()
+                    }
+                    per_scenario.append(evaluate_mode(baseline, adaptive, observations, profile))
+                rows.append(
+                    {
+                        "mode": mode,
+                        "w_flicker": w_flicker,
+                        "kappa_B": kappa_b,
+                        "mean_flicker_reduction_pct": _mean(
+                            [m["all_cells"]["flicker_reduction_pct"] for m in per_scenario]
+                        ),
+                        "mean_daylight_gain_grade_b_pct": _mean(
+                            [m["grade_b_cells"]["daylight_gain_pct"] for m in per_scenario]
+                        ),
+                        "max_violations_q50": max(
+                            m["adaptive_violations_q50"] for m in per_scenario
+                        ),
+                        "max_violations_q90": max(
+                            m["adaptive_violations_q90"] for m in per_scenario
+                        ),
+                    }
+                )
+    return rows
+
+
+def recommend(rows: Sequence[dict[str, Any]], mode: str) -> dict[str, Any] | None:
+    """Rule used in the report: no cap exceeded at q50 or q90 in any scenario, then the
+    largest mean flicker reduction, then the largest Grade B daylight gain."""
+    safe = [
+        r
+        for r in rows
+        if r["mode"] == mode and r["max_violations_q50"] == 0 and r["max_violations_q90"] == 0
+    ]
+    if not safe:
+        return None
+    return max(
+        safe,
+        key=lambda r: (
+            r["mean_flicker_reduction_pct"] or 0.0,
+            r["mean_daylight_gain_grade_b_pct"] or 0.0,
+        ),
+    )
+
+
+MODES = (("pdlc", "FR-04 Adaptive PDLC"), ("lg_sgf", "FR-04 Adaptive SGF (5 levels)"))
+
+
+def _pct(value: float | None) -> str:
+    return "n/a" if value is None else f"{value:+.1f}%"
+
+
+def _range(values: Sequence[float | None]) -> str:
+    known = [v for v in values if v is not None]
+    return "n/a" if not known else f"{min(known):+.1f}% to {max(known):+.1f}%"
+
+
+def build_report(
+    results: Sequence[dict[str, Any]],
+    profile: OpticalProfileData,
+    weights: AdaptiveWeights,
+    sweep: Sequence[dict[str, Any]],
+) -> str:
+    """Markdown report; every number comes from the simulation results (nothing is hard-coded)."""
+
+    def column(mode: str, scope: str, key: str) -> list[float | None]:
+        return [r["signed_metrics"][mode][scope][key] for r in results]
+
+    lines = [
+        "# SunSync FR-04 Adaptive Smart Film Control Benchmark Report",
+        "",
+        (
+            "Generated by `tools/ai_experiments/run_fr04_adaptive_control_experiment.py`. "
+            "Every number below is computed by that run; re-run it to refresh this file."
+        ),
+        "",
+        (
+            "**Test scene**: one 4x4 south window; 1 Grade A cell, 3 Grade B cells (cap 50 W/m2), "
+            "12 Grade D cells (never shaded). Synthetic irradiance, 5-minute steps, 08:00-18:00."
+        ),
+        (
+            f"**Optical profile used**: glazing {profile.glazing_direct_transmittance}, film "
+            f"{profile.film_min_direct_transmittance} (opaque) to {profile.film_max_direct_transmittance} "
+            "(clear). These are assumed values, not measured ones (see Limitations)."
+        ),
+        "",
+        "## Summary (range over the scenarios; positive is better than the rule baseline)",
+        "",
+        (
+            "| Mode | Flicker change, total opacity change | Switch count change | "
+            "Daylight gain, all 16 cells | Daylight gain, Grade B cells |"
+        ),
+        "|---|---|---|---|---|",
+    ]
+    for mode, label in MODES:
+        lines.append(
+            f"| {label} | {_range(column(mode, 'all_cells', 'flicker_reduction_pct'))} | "
+            f"{_range(column(mode, 'all_cells', 'switch_reduction_pct'))} | "
+            f"{_range(column(mode, 'all_cells', 'daylight_gain_pct'))} | "
+            f"{_range(column(mode, 'grade_b_cells', 'daylight_gain_pct'))} |"
+        )
+    lines += [
+        "",
+        "## Flicker (all 16 cells)",
+        "",
+        (
+            "`Total change` is the sum of |opacity change| between steps; it grows with the size of "
+            "each change, not only with their number. A negative reduction means the mode is worse than "
+            "the baseline."
+        ),
+        "",
+        "| Scenario | Mode | Switches | Switch change | Total change | Flicker change |",
+        "|---|---|---|---|---|---|",
+    ]
+    for r in results:
+        first = r["signed_metrics"]["pdlc"]["all_cells"]
+        lines.append(
+            f"| **{r['scenario']}** | FR-02 rule baseline | {first['baseline_switches']} | - | "
+            f"{first['baseline_total_change']:.2f} | - |"
+        )
+        for mode, label in MODES:
+            m = r["signed_metrics"][mode]["all_cells"]
+            lines.append(
+                f"| | {label} | {m['adaptive_switches']} | {_pct(m['switch_reduction_pct'])} | "
+                f"{m['adaptive_total_change']:.2f} | {_pct(m['flicker_reduction_pct'])} |"
+            )
+    lines += [
+        "",
+        "## Daylight (mean opacity; lower opacity means more daylight)",
+        "",
+        (
+            "Opacity is a stand-in for daylight: it ignores diffuse light and the sun's strength at "
+            "each moment. The all-cell value is diluted by the 12 Grade D cells that are never shaded; "
+            "the Grade B value looks only at the cells that are actually controlled."
+        ),
+        "",
+        "| Scenario | Mode | Mean opacity, all | Gain, all | Mean opacity, Grade B | Gain, Grade B |",
+        "|---|---|---|---|---|---|",
+    ]
+    for r in results:
+        base_all = r["signed_metrics"]["pdlc"]["all_cells"]["baseline_mean_opacity"]
+        base_b = r["signed_metrics"]["pdlc"]["grade_b_cells"]["baseline_mean_opacity"]
+        lines.append(
+            f"| **{r['scenario']}** | FR-02 rule baseline | {base_all:.3f} | - | {base_b:.3f} | - |"
+        )
+        for mode, label in MODES:
+            a = r["signed_metrics"][mode]["all_cells"]
+            b = r["signed_metrics"][mode]["grade_b_cells"]
+            lines.append(
+                f"| | {label} | {a['adaptive_mean_opacity']:.3f} | {_pct(a['daylight_gain_pct'])} | "
+                f"{b['adaptive_mean_opacity']:.3f} | {_pct(b['daylight_gain_pct'])} |"
+            )
+    lines += [
+        "",
+        "## Protection (cell-steps above the cap)",
+        "",
+        (
+            "Counted against the cap directly, not against the baseline. `q50` assumes the median "
+            "forecast is true; `q90` assumes the sunny end of the forecast band is true. The simulation "
+            "has no separate 'real' irradiance, so these are the only two checks it can make."
+        ),
+        "",
+        "| Scenario | Mode | Above cap at q50 | Above cap at q90 |",
+        "|---|---|---|---|",
+    ]
+    for r in results:
+        sm = r["signed_metrics"]["pdlc"]
+        lines.append(
+            f"| **{r['scenario']}** | FR-02 rule baseline | {sm['baseline_violations_q50']} | "
+            f"{sm['baseline_violations_q90']} |"
+        )
+        for mode, label in MODES:
+            m = r["signed_metrics"][mode]
+            lines.append(
+                f"| | {label} | {m['adaptive_violations_q50']} | {m['adaptive_violations_q90']} |"
+            )
+    lines += [
+        "",
+        "## Weights",
+        "",
+        "Two sources of weights are shown.",
+        "",
+        (
+            "1. **`AdaptivePolicyTuner`** (used for the tables above) picks, per scenario and mode, the "
+            "candidate with the best score among those with no violation relative to the baseline. Its "
+            "score uses the switch-count reduction clipped at zero, which favours binary PDLC, and its "
+            "violation check is relative to the baseline at q50. Treat its choice as a default, not as "
+            "a finding."
+        ),
+        "",
+        "| Scenario | Mode | w_flicker | w_daylight | kappa_B |",
+        "|---|---|---|---|---|",
+    ]
+    for r in results:
+        for mode, label in MODES:
+            w = r["tuned_weights"][mode]
+            lines.append(
+                f"| {r['scenario']} | {label} | {w.get('w_flicker')} | {w.get('w_daylight')} | "
+                f"{w.get('kappa_B')} |"
+            )
+    lines += [
+        "",
+        (
+            f"2. **Sweep** over w_flicker and kappa_B with the other weights fixed (w_damage="
+            f"{weights.w_damage}, w_daylight={weights.w_daylight}). Each row is averaged over the "
+            "scenarios (flicker change is total opacity change, daylight gain is Grade B cells; a "
+            "scenario where the baseline has no change is left out of the average). `Max above cap` "
+            "is the worst scenario."
+        ),
+        "",
+        (
+            "| Mode | w_flicker | kappa_B | Mean flicker change | Mean Grade B daylight gain | "
+            "Max above cap q50 | Max above cap q90 |"
+        ),
+        "|---|---|---|---|---|---|---|",
+    ]
+    for r in sweep:
+        label = dict(MODES)[r["mode"]]
+        lines.append(
+            f"| {label} | {r['w_flicker']} | {r['kappa_B']} | "
+            f"{_pct(r['mean_flicker_reduction_pct'])} | "
+            f"{_pct(r['mean_daylight_gain_grade_b_pct'])} | {r['max_violations_q50']} | "
+            f"{r['max_violations_q90']} |"
+        )
+    lines += [
+        "",
+        (
+            "Recommendation rule (chosen for this report, open to review): no cap exceeded at q50 or "
+            "q90 in any scenario, then the largest mean flicker change, then the largest Grade B "
+            "daylight gain."
+        ),
+        "",
+    ]
+    for mode, label in MODES:
+        pick = recommend(sweep, mode)
+        if pick is None:
+            lines.append(f"- {label}: no tried pair meets the rule.")
+        else:
+            lines.append(
+                f"- {label}: w_flicker={pick['w_flicker']}, kappa_B={pick['kappa_B']} "
+                f"(flicker {_pct(pick['mean_flicker_reduction_pct'])}, "
+                f"Grade B daylight {_pct(pick['mean_daylight_gain_grade_b_pct'])})."
+            )
+    lines += [
+        "",
+        "## Limitations",
+        "",
+        (
+            "- The irradiance is synthetic (sine-based), not measured. It shows how the controllers "
+            "behave on a made-up sky, not how much they would help on a real day."
+        ),
+        (
+            "- The 'FR-02 rule baseline' here is a three-line rule (opaque above the cap), not the real "
+            "FR-02 planner. The API in `backend/app/api/adaptive_control.py` does compare against the "
+            "real FR-02 plan."
+        ),
+        (
+            "- The forecast band (q10, q50, q90) is made up. The real band width comes from the FR-01.4 "
+            "model and may be narrower or wider."
+        ),
+        (
+            "- The cap (50 W/m2) and the optical profile are assumptions. The cap should follow the "
+            "grade policy of the scene and the film values should come from a measured film. No SGF "
+            "datasheet with transmittance, haze or response time was found (see "
+            "`docs/fr04_adaptive_control_lg_sgf.md`)."
+        ),
+        (
+            "- The model treats a film as lowering direct irradiance. A scattering film (PDLC) turns "
+            "direct light into diffuse light and may block much less total energy than this assumes."
+        ),
+        (
+            "- Steps are 5 minutes; the nowcast refreshes every 10 minutes, and the minimum hold and gap "
+            "rules are 10 minutes."
+        ),
+        "- Opacity is used as a proxy for daylight.",
+        "",
+    ]
+    return "\n".join(lines)
 
 
 def main() -> None:
@@ -242,7 +686,12 @@ def main() -> None:
         brightening_hold_seconds=600,
     )
 
-    scenarios = ["Sunny", "Partly Cloudy Rapid-Flicker", "High Uncertainty Squall"]
+    scenarios = [
+        "Sunny",
+        "Partly Cloudy Rapid-Flicker",
+        "High Uncertainty Squall",
+        "Overcast Low Irradiance",
+    ]
     start_time = datetime(2026, 10, 15, 8, 0, 0, tzinfo=UTC)
     results = []
 
@@ -253,72 +702,15 @@ def main() -> None:
         res = simulate_scene(sc, timeline, optical_profile, weights, interval_seconds=300)
         results.append(res)
 
-    # Format Markdown Report
-    markdown_lines = [
-        "# SunSync FR-04 Adaptive Smart Film Control Benchmark Report",
-        "",
-        "**Teammate Briefing**: For FR-02/FR-04 teammate (`0nsetofspring`)",
-        "**Test Scene**: Library Reading Room (South Window 4x4 Grid, Grade A Art Archive & Grade B Desks)",
-        f"**Date Generated**: {datetime.now(UTC).strftime('%Y-%m-%d %H:%M:%S UTC')}",
-        "",
-        "## Executive Summary",
-        "",
-        "- **Flicker Reduction**: FR-04 Adaptive DP eliminates **50% to 80%** of erratic switching under intermittent clouds.",
-        "- **Daylight Gain**: LG SGF continuous multi-level dimming preserves **25% to 45%** more natural daylight than binary PDLC.",
-        "- **Protection Guarantee**: **0 violations** of Grade A or Grade B irradiance thresholds across all scenarios.",
-        "",
-        "## Benchmark Results Table",
-        "",
-        "| Weather Scenario | Control Mode | Switches | Flicker Red. (%) | Mean Opacity | Daylight Gain (%) | Violations |",
-        "|---|---|---|---|---|---|---|",
-    ]
-
-    for r in results:
-        sc = r["scenario"]
-        base_sw = r["baseline_switches"]
-        base_op = r["baseline_mean_opacity"]
-
-        # Baseline row
-        markdown_lines.append(
-            f"| **{sc}** | FR-02 Rule Baseline | {base_sw} | 0.0% | {base_op:.3f} | 0.0% | 0 |"
+    scenario_inputs = []
+    for sc in scenarios:
+        timeline = generate_solar_profile(
+            sc, start_time, duration_minutes=600, interval_seconds=300
         )
-
-        # PDLC row
-        p = r["pdlc"]
-        markdown_lines.append(
-            f"| | FR-04 Adaptive PDLC | {p['adaptive_switch_count']} | {p['flicker_reduction_pct']:.1f}% | "
-            f"{p['adaptive_mean_opacity']:.3f} | {p['daylight_gain_pct']:.1f}% | {p['protection_violation_count']} |"
-        )
-
-        # LG SGF row
-        s = r["lg_sgf"]
-        markdown_lines.append(
-            f"| | **FR-04 LG SGF Dimming** | **{s['adaptive_switch_count']}** | **{s['flicker_reduction_pct']:.1f}%** | "
-            f"**{s['adaptive_mean_opacity']:.3f}** | **{s['daylight_gain_pct']:.1f}%** | **{s['protection_violation_count']}** |"
-        )
-
-    markdown_lines.extend(
-        [
-            "",
-            "## Key Architectural Findings",
-            "",
-            "1. **Gap Filling (`FR-04.1`) & Hold Time (`FR-04.2`)**:",
-            "   Under rapid cloud passages (Partly Cloudy scenario), the baseline controller switches the film up to 40 times,",
-            "   causing severe visual flicker. The FR-04 adaptive stabilizer suppresses brief gap transitions while allowing",
-            "   immediate darkening when direct sun spikes.",
-            "",
-            "2. **Risk-Averse P90 Modeling & Dynamic Hysteresis (`FR-04.3`)**:",
-            "   In high-uncertainty squall conditions, using the $P_{90}$ upper bound ($I_{eff} = q_{50} + 1.2(q_{90} - q_{50})$)",
-            "   prevents premature brightening when sudden breaks in clouds would otherwise cause glare.",
-            "",
-            "3. **LG SGF Continuous Dimming Advantage**:",
-            "   Unlike binary PDLC which drops opacity completely to 0 or 1, LG SGF fine-tunes opacity to 25%, 50%, or 75%,",
-            "   providing smooth transitions and significantly higher indoor illuminance while honoring the 50 W/m² limit.",
-            "",
-        ]
-    )
-
-    report_md = "\n".join(markdown_lines)
+        observations, baseline = build_inputs(timeline)
+        scenario_inputs.append((sc, observations, baseline))
+    sweep = sweep_weights(scenario_inputs, optical_profile, weights, interval_seconds=300)
+    report_md = build_report(results, optical_profile, weights, sweep)
     print(report_md)
 
     # Save artifacts
@@ -329,7 +721,9 @@ def main() -> None:
     print(f"\n[Artifact Saved] Benchmark Markdown report written to {report_file}")
 
     json_file = reports_dir / "fr04_adaptive_control_experiment_results.json"
-    json_file.write_text(json.dumps(results, indent=2), encoding="utf-8")
+    json_file.write_text(
+        json.dumps({"scenarios": results, "weight_sweep": sweep}, indent=2), encoding="utf-8"
+    )
     print(f"[Artifact Saved] Benchmark JSON data written to {json_file}")
 
 

@@ -1,101 +1,706 @@
-[
-  {
-    "scenario": "Sunny",
-    "baseline_switches": 8,
-    "baseline_mean_opacity": 0.2396,
-    "pdlc": {
-      "baseline_switch_count": 8,
-      "adaptive_switch_count": 3,
-      "flicker_reduction_pct": 62.5,
+{
+  "scenarios": [
+    {
+      "scenario": "Sunny",
+      "baseline_switches": 8,
       "baseline_mean_opacity": 0.2396,
-      "adaptive_mean_opacity": 0.2437,
-      "daylight_gain_pct": 0.0,
-      "protection_violation_count": 0,
+      "pdlc": {
+        "baseline_switch_count": 8,
+        "adaptive_switch_count": 3,
+        "flicker_reduction_pct": 62.5,
+        "baseline_mean_opacity": 0.2396,
+        "adaptive_mean_opacity": 0.2437,
+        "daylight_gain_pct": 0.0,
+        "protection_violation_count": 0,
+        "tuned_weights": {
+          "w_flicker": 5.0,
+          "w_daylight": 1.0,
+          "kappa_B": 1.0
+        }
+      },
+      "lg_sgf": {
+        "baseline_switch_count": 8,
+        "adaptive_switch_count": 18,
+        "flicker_reduction_pct": 0.0,
+        "baseline_mean_opacity": 0.2396,
+        "adaptive_mean_opacity": 0.2332,
+        "daylight_gain_pct": 2.66,
+        "protection_violation_count": 0,
+        "tuned_weights": {
+          "w_flicker": 5.0,
+          "w_daylight": 1.0,
+          "kappa_B": 1.0
+        }
+      },
+      "signed_metrics": {
+        "pdlc": {
+          "all_cells": {
+            "baseline_switches": 8,
+            "adaptive_switches": 3,
+            "baseline_total_change": 8.0,
+            "adaptive_total_change": 3.0,
+            "switch_reduction_pct": 62.5,
+            "flicker_reduction_pct": 62.5,
+            "baseline_mean_opacity": 0.2396,
+            "adaptive_mean_opacity": 0.2437,
+            "daylight_gain_pct": -1.7391304347826024
+          },
+          "grade_b_cells": {
+            "baseline_switches": 6,
+            "adaptive_switches": 3,
+            "baseline_total_change": 6.0,
+            "adaptive_total_change": 3.0,
+            "switch_reduction_pct": 50.0,
+            "flicker_reduction_pct": 50.0,
+            "baseline_mean_opacity": 0.95,
+            "adaptive_mean_opacity": 0.9667,
+            "daylight_gain_pct": -1.7543859649122862
+          },
+          "baseline_violations_q50": 0,
+          "baseline_violations_q90": 0,
+          "adaptive_violations_q50": 0,
+          "adaptive_violations_q90": 0
+        },
+        "lg_sgf": {
+          "all_cells": {
+            "baseline_switches": 8,
+            "adaptive_switches": 18,
+            "baseline_total_change": 8.0,
+            "adaptive_total_change": 4.5,
+            "switch_reduction_pct": -125.0,
+            "flicker_reduction_pct": 43.75,
+            "baseline_mean_opacity": 0.2396,
+            "adaptive_mean_opacity": 0.2332,
+            "daylight_gain_pct": 2.6630434782608687
+          },
+          "grade_b_cells": {
+            "baseline_switches": 6,
+            "adaptive_switches": 18,
+            "baseline_total_change": 6.0,
+            "adaptive_total_change": 4.5,
+            "switch_reduction_pct": -200.0,
+            "flicker_reduction_pct": 25.0,
+            "baseline_mean_opacity": 0.95,
+            "adaptive_mean_opacity": 0.9104,
+            "daylight_gain_pct": 4.166666666666663
+          },
+          "baseline_violations_q50": 0,
+          "baseline_violations_q90": 0,
+          "adaptive_violations_q50": 0,
+          "adaptive_violations_q90": 0
+        }
+      },
       "tuned_weights": {
-        "w_flicker": 5.0,
-        "w_daylight": 1.0,
-        "kappa_B": 1.0
+        "pdlc": {
+          "w_flicker": 5.0,
+          "w_daylight": 1.0,
+          "kappa_B": 1.0
+        },
+        "lg_sgf": {
+          "w_flicker": 5.0,
+          "w_daylight": 1.0,
+          "kappa_B": 1.0
+        }
       }
     },
-    "lg_sgf": {
-      "baseline_switch_count": 8,
-      "adaptive_switch_count": 18,
-      "flicker_reduction_pct": 0.0,
-      "baseline_mean_opacity": 0.2396,
-      "adaptive_mean_opacity": 0.2332,
-      "daylight_gain_pct": 2.66,
-      "protection_violation_count": 0,
-      "tuned_weights": {
-        "w_flicker": 5.0,
-        "w_daylight": 1.0,
-        "kappa_B": 1.0
-      }
-    }
-  },
-  {
-    "scenario": "Partly Cloudy Rapid-Flicker",
-    "baseline_switches": 20,
-    "baseline_mean_opacity": 0.2333,
-    "pdlc": {
-      "baseline_switch_count": 20,
-      "adaptive_switch_count": 3,
-      "flicker_reduction_pct": 85.0,
+    {
+      "scenario": "Partly Cloudy Rapid-Flicker",
+      "baseline_switches": 20,
       "baseline_mean_opacity": 0.2333,
-      "adaptive_mean_opacity": 0.2437,
-      "daylight_gain_pct": 0.0,
-      "protection_violation_count": 0,
+      "pdlc": {
+        "baseline_switch_count": 20,
+        "adaptive_switch_count": 3,
+        "flicker_reduction_pct": 85.0,
+        "baseline_mean_opacity": 0.2333,
+        "adaptive_mean_opacity": 0.2437,
+        "daylight_gain_pct": 0.0,
+        "protection_violation_count": 0,
+        "tuned_weights": {
+          "w_flicker": 5.0,
+          "w_daylight": 1.0,
+          "kappa_B": 1.0
+        }
+      },
+      "lg_sgf": {
+        "baseline_switch_count": 20,
+        "adaptive_switch_count": 12,
+        "flicker_reduction_pct": 40.0,
+        "baseline_mean_opacity": 0.2333,
+        "adaptive_mean_opacity": 0.2371,
+        "daylight_gain_pct": 0.0,
+        "protection_violation_count": 0,
+        "tuned_weights": {
+          "w_flicker": 15.0,
+          "w_daylight": 1.0,
+          "kappa_B": 1.2
+        }
+      },
+      "signed_metrics": {
+        "pdlc": {
+          "all_cells": {
+            "baseline_switches": 20,
+            "adaptive_switches": 3,
+            "baseline_total_change": 20.0,
+            "adaptive_total_change": 3.0,
+            "switch_reduction_pct": 85.0,
+            "flicker_reduction_pct": 85.0,
+            "baseline_mean_opacity": 0.2333,
+            "adaptive_mean_opacity": 0.2437,
+            "daylight_gain_pct": -4.46428571428571
+          },
+          "grade_b_cells": {
+            "baseline_switches": 18,
+            "adaptive_switches": 3,
+            "baseline_total_change": 18.0,
+            "adaptive_total_change": 3.0,
+            "switch_reduction_pct": 83.33333333333334,
+            "flicker_reduction_pct": 83.33333333333334,
+            "baseline_mean_opacity": 0.9167,
+            "adaptive_mean_opacity": 0.9667,
+            "daylight_gain_pct": -5.4545454545454595
+          },
+          "baseline_violations_q50": 0,
+          "baseline_violations_q90": 9,
+          "adaptive_violations_q50": 0,
+          "adaptive_violations_q90": 0
+        },
+        "lg_sgf": {
+          "all_cells": {
+            "baseline_switches": 20,
+            "adaptive_switches": 12,
+            "baseline_total_change": 20.0,
+            "adaptive_total_change": 3.0,
+            "switch_reduction_pct": 40.0,
+            "flicker_reduction_pct": 85.0,
+            "baseline_mean_opacity": 0.2333,
+            "adaptive_mean_opacity": 0.2371,
+            "daylight_gain_pct": -1.6183035714285747
+          },
+          "grade_b_cells": {
+            "baseline_switches": 18,
+            "adaptive_switches": 12,
+            "baseline_total_change": 18.0,
+            "adaptive_total_change": 3.0,
+            "switch_reduction_pct": 33.33333333333333,
+            "flicker_reduction_pct": 83.33333333333334,
+            "baseline_mean_opacity": 0.9167,
+            "adaptive_mean_opacity": 0.9313,
+            "daylight_gain_pct": -1.5909090909090973
+          },
+          "baseline_violations_q50": 0,
+          "baseline_violations_q90": 9,
+          "adaptive_violations_q50": 0,
+          "adaptive_violations_q90": 0
+        }
+      },
       "tuned_weights": {
-        "w_flicker": 5.0,
-        "w_daylight": 1.0,
-        "kappa_B": 1.0
+        "pdlc": {
+          "w_flicker": 5.0,
+          "w_daylight": 1.0,
+          "kappa_B": 1.0
+        },
+        "lg_sgf": {
+          "w_flicker": 15.0,
+          "w_daylight": 1.0,
+          "kappa_B": 1.2
+        }
       }
     },
-    "lg_sgf": {
-      "baseline_switch_count": 20,
-      "adaptive_switch_count": 12,
-      "flicker_reduction_pct": 40.0,
-      "baseline_mean_opacity": 0.2333,
-      "adaptive_mean_opacity": 0.2371,
-      "daylight_gain_pct": 0.0,
-      "protection_violation_count": 0,
-      "tuned_weights": {
-        "w_flicker": 15.0,
-        "w_daylight": 1.0,
-        "kappa_B": 1.2
-      }
-    }
-  },
-  {
-    "scenario": "High Uncertainty Squall",
-    "baseline_switches": 20,
-    "baseline_mean_opacity": 0.2271,
-    "pdlc": {
-      "baseline_switch_count": 20,
-      "adaptive_switch_count": 3,
-      "flicker_reduction_pct": 85.0,
+    {
+      "scenario": "High Uncertainty Squall",
+      "baseline_switches": 20,
       "baseline_mean_opacity": 0.2271,
-      "adaptive_mean_opacity": 0.2437,
-      "daylight_gain_pct": 0.0,
-      "protection_violation_count": 0,
+      "pdlc": {
+        "baseline_switch_count": 20,
+        "adaptive_switch_count": 3,
+        "flicker_reduction_pct": 85.0,
+        "baseline_mean_opacity": 0.2271,
+        "adaptive_mean_opacity": 0.2437,
+        "daylight_gain_pct": 0.0,
+        "protection_violation_count": 0,
+        "tuned_weights": {
+          "w_flicker": 5.0,
+          "w_daylight": 1.0,
+          "kappa_B": 1.0
+        }
+      },
+      "lg_sgf": {
+        "baseline_switch_count": 20,
+        "adaptive_switch_count": 12,
+        "flicker_reduction_pct": 40.0,
+        "baseline_mean_opacity": 0.2271,
+        "adaptive_mean_opacity": 0.2379,
+        "daylight_gain_pct": 0.0,
+        "protection_violation_count": 0,
+        "tuned_weights": {
+          "w_flicker": 5.0,
+          "w_daylight": 1.0,
+          "kappa_B": 1.0
+        }
+      },
+      "signed_metrics": {
+        "pdlc": {
+          "all_cells": {
+            "baseline_switches": 20,
+            "adaptive_switches": 3,
+            "baseline_total_change": 20.0,
+            "adaptive_total_change": 3.0,
+            "switch_reduction_pct": 85.0,
+            "flicker_reduction_pct": 85.0,
+            "baseline_mean_opacity": 0.2271,
+            "adaptive_mean_opacity": 0.2437,
+            "daylight_gain_pct": -7.339449541284402
+          },
+          "grade_b_cells": {
+            "baseline_switches": 18,
+            "adaptive_switches": 3,
+            "baseline_total_change": 18.0,
+            "adaptive_total_change": 3.0,
+            "switch_reduction_pct": 83.33333333333334,
+            "flicker_reduction_pct": 83.33333333333334,
+            "baseline_mean_opacity": 0.8833,
+            "adaptive_mean_opacity": 0.9667,
+            "daylight_gain_pct": -9.433962264150948
+          },
+          "baseline_violations_q50": 0,
+          "baseline_violations_q90": 18,
+          "adaptive_violations_q50": 0,
+          "adaptive_violations_q90": 0
+        },
+        "lg_sgf": {
+          "all_cells": {
+            "baseline_switches": 20,
+            "adaptive_switches": 12,
+            "baseline_total_change": 20.0,
+            "adaptive_total_change": 3.0,
+            "switch_reduction_pct": 40.0,
+            "flicker_reduction_pct": 85.0,
+            "baseline_mean_opacity": 0.2271,
+            "adaptive_mean_opacity": 0.2379,
+            "daylight_gain_pct": -4.759174311926604
+          },
+          "grade_b_cells": {
+            "baseline_switches": 18,
+            "adaptive_switches": 12,
+            "baseline_total_change": 18.0,
+            "adaptive_total_change": 3.0,
+            "switch_reduction_pct": 33.33333333333333,
+            "flicker_reduction_pct": 83.33333333333334,
+            "baseline_mean_opacity": 0.8833,
+            "adaptive_mean_opacity": 0.9354,
+            "daylight_gain_pct": -5.896226415094344
+          },
+          "baseline_violations_q50": 0,
+          "baseline_violations_q90": 18,
+          "adaptive_violations_q50": 0,
+          "adaptive_violations_q90": 0
+        }
+      },
       "tuned_weights": {
-        "w_flicker": 5.0,
-        "w_daylight": 1.0,
-        "kappa_B": 1.0
+        "pdlc": {
+          "w_flicker": 5.0,
+          "w_daylight": 1.0,
+          "kappa_B": 1.0
+        },
+        "lg_sgf": {
+          "w_flicker": 5.0,
+          "w_daylight": 1.0,
+          "kappa_B": 1.0
+        }
       }
     },
-    "lg_sgf": {
-      "baseline_switch_count": 20,
-      "adaptive_switch_count": 12,
-      "flicker_reduction_pct": 40.0,
-      "baseline_mean_opacity": 0.2271,
-      "adaptive_mean_opacity": 0.2379,
-      "daylight_gain_pct": 0.0,
-      "protection_violation_count": 0,
+    {
+      "scenario": "Overcast Low Irradiance",
+      "baseline_switches": 0,
+      "baseline_mean_opacity": 0.25,
+      "pdlc": {
+        "baseline_switch_count": 0,
+        "adaptive_switch_count": 0,
+        "flicker_reduction_pct": 0.0,
+        "baseline_mean_opacity": 0.25,
+        "adaptive_mean_opacity": 0.25,
+        "daylight_gain_pct": 0.0,
+        "protection_violation_count": 0,
+        "tuned_weights": {
+          "w_flicker": 5.0,
+          "w_daylight": 1.0,
+          "kappa_B": 1.0
+        }
+      },
+      "lg_sgf": {
+        "baseline_switch_count": 0,
+        "adaptive_switch_count": 9,
+        "flicker_reduction_pct": 0.0,
+        "baseline_mean_opacity": 0.25,
+        "adaptive_mean_opacity": 0.2379,
+        "daylight_gain_pct": 4.84,
+        "protection_violation_count": 0,
+        "tuned_weights": {
+          "w_flicker": 5.0,
+          "w_daylight": 1.0,
+          "kappa_B": 1.0
+        }
+      },
+      "signed_metrics": {
+        "pdlc": {
+          "all_cells": {
+            "baseline_switches": 0,
+            "adaptive_switches": 0,
+            "baseline_total_change": 0.0,
+            "adaptive_total_change": 0.0,
+            "switch_reduction_pct": null,
+            "flicker_reduction_pct": null,
+            "baseline_mean_opacity": 0.25,
+            "adaptive_mean_opacity": 0.25,
+            "daylight_gain_pct": 0.0
+          },
+          "grade_b_cells": {
+            "baseline_switches": 0,
+            "adaptive_switches": 0,
+            "baseline_total_change": 0.0,
+            "adaptive_total_change": 0.0,
+            "switch_reduction_pct": null,
+            "flicker_reduction_pct": null,
+            "baseline_mean_opacity": 1.0,
+            "adaptive_mean_opacity": 1.0,
+            "daylight_gain_pct": 0.0
+          },
+          "baseline_violations_q50": 0,
+          "baseline_violations_q90": 0,
+          "adaptive_violations_q50": 0,
+          "adaptive_violations_q90": 0
+        },
+        "lg_sgf": {
+          "all_cells": {
+            "baseline_switches": 0,
+            "adaptive_switches": 9,
+            "baseline_total_change": 0.0,
+            "adaptive_total_change": 2.25,
+            "switch_reduction_pct": null,
+            "flicker_reduction_pct": null,
+            "baseline_mean_opacity": 0.25,
+            "adaptive_mean_opacity": 0.2379,
+            "daylight_gain_pct": 4.843750000000002
+          },
+          "grade_b_cells": {
+            "baseline_switches": 0,
+            "adaptive_switches": 9,
+            "baseline_total_change": 0.0,
+            "adaptive_total_change": 2.25,
+            "switch_reduction_pct": null,
+            "flicker_reduction_pct": null,
+            "baseline_mean_opacity": 1.0,
+            "adaptive_mean_opacity": 0.9354,
+            "daylight_gain_pct": 6.458333333333332
+          },
+          "baseline_violations_q50": 0,
+          "baseline_violations_q90": 0,
+          "adaptive_violations_q50": 0,
+          "adaptive_violations_q90": 0
+        }
+      },
       "tuned_weights": {
-        "w_flicker": 5.0,
-        "w_daylight": 1.0,
-        "kappa_B": 1.0
+        "pdlc": {
+          "w_flicker": 5.0,
+          "w_daylight": 1.0,
+          "kappa_B": 1.0
+        },
+        "lg_sgf": {
+          "w_flicker": 5.0,
+          "w_daylight": 1.0,
+          "kappa_B": 1.0
+        }
       }
     }
-  }
-]
+  ],
+  "weight_sweep": [
+    {
+      "mode": "pdlc",
+      "w_flicker": 0.0,
+      "kappa_B": 0.8,
+      "mean_flicker_reduction_pct": 55.0,
+      "mean_daylight_gain_grade_b_pct": -2.5851614456381125,
+      "max_violations_q50": 0,
+      "max_violations_q90": 0
+    },
+    {
+      "mode": "pdlc",
+      "w_flicker": 0.0,
+      "kappa_B": 1.0,
+      "mean_flicker_reduction_pct": 55.0,
+      "mean_daylight_gain_grade_b_pct": -2.5851614456381125,
+      "max_violations_q50": 0,
+      "max_violations_q90": 0
+    },
+    {
+      "mode": "pdlc",
+      "w_flicker": 0.0,
+      "kappa_B": 1.2,
+      "mean_flicker_reduction_pct": 55.0,
+      "mean_daylight_gain_grade_b_pct": -2.5851614456381125,
+      "max_violations_q50": 0,
+      "max_violations_q90": 0
+    },
+    {
+      "mode": "pdlc",
+      "w_flicker": 0.0,
+      "kappa_B": 1.6,
+      "mean_flicker_reduction_pct": 55.0,
+      "mean_daylight_gain_grade_b_pct": -2.8210105022418848,
+      "max_violations_q50": 0,
+      "max_violations_q90": 0
+    },
+    {
+      "mode": "pdlc",
+      "w_flicker": 5.0,
+      "kappa_B": 0.8,
+      "mean_flicker_reduction_pct": 77.5,
+      "mean_daylight_gain_grade_b_pct": -4.1607234209021735,
+      "max_violations_q50": 0,
+      "max_violations_q90": 0
+    },
+    {
+      "mode": "pdlc",
+      "w_flicker": 5.0,
+      "kappa_B": 1.0,
+      "mean_flicker_reduction_pct": 77.5,
+      "mean_daylight_gain_grade_b_pct": -4.1607234209021735,
+      "max_violations_q50": 0,
+      "max_violations_q90": 0
+    },
+    {
+      "mode": "pdlc",
+      "w_flicker": 5.0,
+      "kappa_B": 1.2,
+      "mean_flicker_reduction_pct": 77.5,
+      "mean_daylight_gain_grade_b_pct": -4.1607234209021735,
+      "max_violations_q50": 0,
+      "max_violations_q90": 0
+    },
+    {
+      "mode": "pdlc",
+      "w_flicker": 5.0,
+      "kappa_B": 1.6,
+      "mean_flicker_reduction_pct": 77.5,
+      "mean_daylight_gain_grade_b_pct": -4.396572477505947,
+      "max_violations_q50": 0,
+      "max_violations_q90": 0
+    },
+    {
+      "mode": "pdlc",
+      "w_flicker": 20.0,
+      "kappa_B": 0.8,
+      "mean_flicker_reduction_pct": 77.5,
+      "mean_daylight_gain_grade_b_pct": -4.1607234209021735,
+      "max_violations_q50": 0,
+      "max_violations_q90": 0
+    },
+    {
+      "mode": "pdlc",
+      "w_flicker": 20.0,
+      "kappa_B": 1.0,
+      "mean_flicker_reduction_pct": 77.5,
+      "mean_daylight_gain_grade_b_pct": -4.1607234209021735,
+      "max_violations_q50": 0,
+      "max_violations_q90": 0
+    },
+    {
+      "mode": "pdlc",
+      "w_flicker": 20.0,
+      "kappa_B": 1.2,
+      "mean_flicker_reduction_pct": 77.5,
+      "mean_daylight_gain_grade_b_pct": -4.1607234209021735,
+      "max_violations_q50": 0,
+      "max_violations_q90": 0
+    },
+    {
+      "mode": "pdlc",
+      "w_flicker": 20.0,
+      "kappa_B": 1.6,
+      "mean_flicker_reduction_pct": 77.5,
+      "mean_daylight_gain_grade_b_pct": -4.396572477505947,
+      "max_violations_q50": 0,
+      "max_violations_q90": 0
+    },
+    {
+      "mode": "pdlc",
+      "w_flicker": 60.0,
+      "kappa_B": 0.8,
+      "mean_flicker_reduction_pct": 77.5,
+      "mean_daylight_gain_grade_b_pct": -4.1607234209021735,
+      "max_violations_q50": 0,
+      "max_violations_q90": 0
+    },
+    {
+      "mode": "pdlc",
+      "w_flicker": 60.0,
+      "kappa_B": 1.0,
+      "mean_flicker_reduction_pct": 77.5,
+      "mean_daylight_gain_grade_b_pct": -4.1607234209021735,
+      "max_violations_q50": 0,
+      "max_violations_q90": 0
+    },
+    {
+      "mode": "pdlc",
+      "w_flicker": 60.0,
+      "kappa_B": 1.2,
+      "mean_flicker_reduction_pct": 77.5,
+      "mean_daylight_gain_grade_b_pct": -4.1607234209021735,
+      "max_violations_q50": 0,
+      "max_violations_q90": 0
+    },
+    {
+      "mode": "pdlc",
+      "w_flicker": 60.0,
+      "kappa_B": 1.6,
+      "mean_flicker_reduction_pct": 77.5,
+      "mean_daylight_gain_grade_b_pct": -4.396572477505947,
+      "max_violations_q50": 0,
+      "max_violations_q90": 0
+    },
+    {
+      "mode": "lg_sgf",
+      "w_flicker": 0.0,
+      "kappa_B": 0.8,
+      "mean_flicker_reduction_pct": 55.0,
+      "mean_daylight_gain_grade_b_pct": 2.934693885227644,
+      "max_violations_q50": 0,
+      "max_violations_q90": 6
+    },
+    {
+      "mode": "lg_sgf",
+      "w_flicker": 0.0,
+      "kappa_B": 1.0,
+      "mean_flicker_reduction_pct": 55.0,
+      "mean_daylight_gain_grade_b_pct": 2.4836325644729254,
+      "max_violations_q50": 0,
+      "max_violations_q90": 0
+    },
+    {
+      "mode": "lg_sgf",
+      "w_flicker": 0.0,
+      "kappa_B": 1.2,
+      "mean_flicker_reduction_pct": 55.0,
+      "mean_daylight_gain_grade_b_pct": 2.112170300321983,
+      "max_violations_q50": 0,
+      "max_violations_q90": 0
+    },
+    {
+      "mode": "lg_sgf",
+      "w_flicker": 0.0,
+      "kappa_B": 1.6,
+      "mean_flicker_reduction_pct": 55.0,
+      "mean_daylight_gain_grade_b_pct": 1.5473221540128135,
+      "max_violations_q50": 0,
+      "max_violations_q90": 0
+    },
+    {
+      "mode": "lg_sgf",
+      "w_flicker": 5.0,
+      "kappa_B": 0.8,
+      "mean_flicker_reduction_pct": 67.5,
+      "mean_daylight_gain_grade_b_pct": 2.0331260720411612,
+      "max_violations_q50": 0,
+      "max_violations_q90": 6
+    },
+    {
+      "mode": "lg_sgf",
+      "w_flicker": 5.0,
+      "kappa_B": 1.0,
+      "mean_flicker_reduction_pct": 68.75,
+      "mean_daylight_gain_grade_b_pct": 1.5231024871355026,
+      "max_violations_q50": 0,
+      "max_violations_q90": 0
+    },
+    {
+      "mode": "lg_sgf",
+      "w_flicker": 5.0,
+      "kappa_B": 1.2,
+      "mean_flicker_reduction_pct": 68.75,
+      "mean_daylight_gain_grade_b_pct": 1.0995568896512276,
+      "max_violations_q50": 0,
+      "max_violations_q90": 0
+    },
+    {
+      "mode": "lg_sgf",
+      "w_flicker": 5.0,
+      "kappa_B": 1.6,
+      "mean_flicker_reduction_pct": 68.75,
+      "mean_daylight_gain_grade_b_pct": 0.6416166380788995,
+      "max_violations_q50": 0,
+      "max_violations_q90": 0
+    },
+    {
+      "mode": "lg_sgf",
+      "w_flicker": 20.0,
+      "kappa_B": 0.8,
+      "mean_flicker_reduction_pct": 77.5,
+      "mean_daylight_gain_grade_b_pct": -0.12556987451476348,
+      "max_violations_q50": 0,
+      "max_violations_q90": 6
+    },
+    {
+      "mode": "lg_sgf",
+      "w_flicker": 20.0,
+      "kappa_B": 1.0,
+      "mean_flicker_reduction_pct": 77.5,
+      "mean_daylight_gain_grade_b_pct": -0.3476610694833164,
+      "max_violations_q50": 0,
+      "max_violations_q90": 0
+    },
+    {
+      "mode": "lg_sgf",
+      "w_flicker": 20.0,
+      "kappa_B": 1.2,
+      "mean_flicker_reduction_pct": 77.5,
+      "mean_daylight_gain_grade_b_pct": -0.40662333363425945,
+      "max_violations_q50": 0,
+      "max_violations_q90": 0
+    },
+    {
+      "mode": "lg_sgf",
+      "w_flicker": 20.0,
+      "kappa_B": 1.6,
+      "mean_flicker_reduction_pct": 77.5,
+      "mean_daylight_gain_grade_b_pct": -0.8645635852065876,
+      "max_violations_q50": 0,
+      "max_violations_q90": 0
+    },
+    {
+      "mode": "lg_sgf",
+      "w_flicker": 60.0,
+      "kappa_B": 0.8,
+      "mean_flicker_reduction_pct": 77.5,
+      "mean_daylight_gain_grade_b_pct": -0.12556987451476348,
+      "max_violations_q50": 0,
+      "max_violations_q90": 6
+    },
+    {
+      "mode": "lg_sgf",
+      "w_flicker": 60.0,
+      "kappa_B": 1.0,
+      "mean_flicker_reduction_pct": 77.5,
+      "mean_daylight_gain_grade_b_pct": -0.3476610694833164,
+      "max_violations_q50": 0,
+      "max_violations_q90": 0
+    },
+    {
+      "mode": "lg_sgf",
+      "w_flicker": 60.0,
+      "kappa_B": 1.2,
+      "mean_flicker_reduction_pct": 77.5,
+      "mean_daylight_gain_grade_b_pct": -0.40662333363425945,
+      "max_violations_q50": 0,
+      "max_violations_q90": 0
+    },
+    {
+      "mode": "lg_sgf",
+      "w_flicker": 60.0,
+      "kappa_B": 1.6,
+      "mean_flicker_reduction_pct": 77.5,
+      "mean_daylight_gain_grade_b_pct": -0.8645635852065876,
+      "max_violations_q50": 0,
+      "max_violations_q90": 0
+    }
+  ]
+}
