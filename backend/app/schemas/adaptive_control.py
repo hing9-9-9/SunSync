@@ -62,7 +62,12 @@ class AdaptiveShadingPlanRequest(AdaptiveBaseModel):
 
 
 class AdaptiveComparisonMetrics(AdaptiveBaseModel):
-    """Quantitative performance comparison between baseline FR-02 and adaptive FR-04 plans."""
+    """Quantitative performance comparison between baseline FR-02 and adaptive FR-04 plans.
+
+    Percent values are signed: positive is better than the baseline, negative is worse.
+    Violation counts are cell-steps above the protection cap (q50 and q90 variants), counted
+    against the cap itself and also given for the baseline.
+    """
 
     baseline_switch_count: int
     adaptive_switch_count: int
@@ -71,6 +76,12 @@ class AdaptiveComparisonMetrics(AdaptiveBaseModel):
     adaptive_mean_opacity: float
     daylight_gain_pct: float
     protection_violation_count: int
+    baseline_violation_count: int = 0
+    protection_violation_count_q90: int = 0
+    baseline_violation_count_q90: int = 0
+    baseline_total_change: float = 0.0
+    adaptive_total_change: float = 0.0
+    total_change_reduction_pct: float = 0.0
     tuned_weights: dict[str, float] = Field(default_factory=dict)
 
 

@@ -35,6 +35,7 @@ from engine.fr04 import (
     ProtectionGrade,
     apply_fr04_stabilization,
     compare_baseline_vs_adaptive,
+    count_cap_violations,
     optimize_cell_dp,
 )
 
@@ -44,6 +45,7 @@ def generate_solar_profile(
     start_time: datetime,
     duration_minutes: int = 600,  # 10 hours (08:00 to 18:00)
     interval_seconds: int = 300,  # 5-minute steps (120 steps)
+    band_scale: float = 1.0,  # widens (>1) or narrows (<1) the q10..q90 band around q50
 ) -> list[tuple[datetime, float, float, float]]:
     """Generate time series of (timestamp, q10, q50, q90) direct irradiance."""
     n_steps = duration_minutes * 60 // interval_seconds
@@ -89,6 +91,8 @@ def generate_solar_profile(
         else:
             raise ValueError(f"Unknown scenario: {scenario}")
 
+        q10 = max(0.0, q50 - band_scale * (q50 - q10))
+        q90 = q50 + band_scale * (q90 - q50)
         timeline.append((t, round(q10, 2), round(q50, 2), round(q90, 2)))
 
     return timeline
@@ -125,27 +129,23 @@ def _series_stats(
     return switches, variation, total / max(1, steps)
 
 
-def _violations(
+def _sun_weighted_transmittance(
     opacities: Mapping[tuple[str, int, int], Sequence[float]],
     observations_by_cell: Mapping[tuple[str, int, int], Sequence[CellObservation]],
+    keys: Sequence[tuple[str, int, int]],
     profile: OpticalProfileData,
-    quantile: str,
-) -> int:
-    """Cell-steps where the cap is exceeded if the irradiance is really the q50 or q90 value.
+) -> float:
+    """Film transmittance averaged over the cells and steps, weighted by the median irradiance.
 
-    Grade A needs full darkness whenever there is direct sun. Grade B/C compares the
-    transmitted irradiance with the cap. Unlike the engine metric this is absolute (not
-    relative to the baseline).
+    A film that is clear when the sun is strong scores higher than one that is clear only when
+    the sun is weak. It is a better stand-in for daylight than the mean opacity.
     """
-    count = 0
-    for key, obs_list in observations_by_cell.items():
-        for obs, opacity in zip(obs_list, opacities[key], strict=False):
-            irradiance = obs.irradiance_q90 if quantile == "q90" else obs.irradiance_q50
-            if obs.strictest_grade == "A":
-                count += irradiance > 0 and opacity < 0.99
-            elif obs.cap_W_m2 is not None:
-                count += profile.transmitted_irradiance(irradiance, opacity) > obs.cap_W_m2 + 1e-9
-    return count
+    weighted, total = 0.0, 0.0
+    for key in keys:
+        for obs, opacity in zip(observations_by_cell[key], opacities[key], strict=False):
+            weighted += profile.film_transmittance(opacity) * obs.irradiance_q50
+            total += obs.irradiance_q50
+    return weighted / total if total > 0 else 0.0
 
 
 def _change_pct(before: float, after: float) -> float | None:
@@ -165,6 +165,8 @@ def evaluate_mode(
         keys = _cells_of(observations_by_cell, grades)
         base_sw, base_var, base_mean = _series_stats(baseline, keys)
         ad_sw, ad_var, ad_mean = _series_stats(adaptive, keys)
+        base_sun = _sun_weighted_transmittance(baseline, observations_by_cell, keys, profile)
+        ad_sun = _sun_weighted_transmittance(adaptive, observations_by_cell, keys, profile)
         out[scope] = {
             "baseline_switches": base_sw,
             "adaptive_switches": ad_sw,
@@ -175,19 +177,31 @@ def evaluate_mode(
             "baseline_mean_opacity": round(base_mean, 4),
             "adaptive_mean_opacity": round(ad_mean, 4),
             "daylight_gain_pct": _change_pct(base_mean, ad_mean),
+            "baseline_sun_weighted_transmittance": round(base_sun, 4),
+            "adaptive_sun_weighted_transmittance": round(ad_sun, 4),
+            "sun_weighted_gain_pct": _change_pct(ad_sun, base_sun),
         }
-    out["baseline_violations_q50"] = _violations(baseline, observations_by_cell, profile, "q50")
-    out["baseline_violations_q90"] = _violations(baseline, observations_by_cell, profile, "q90")
-    out["adaptive_violations_q50"] = _violations(adaptive, observations_by_cell, profile, "q50")
-    out["adaptive_violations_q90"] = _violations(adaptive, observations_by_cell, profile, "q90")
+    out["baseline_violations_q50"] = count_cap_violations(
+        baseline, observations_by_cell, profile, "q50"
+    )
+    out["baseline_violations_q90"] = count_cap_violations(
+        baseline, observations_by_cell, profile, "q90"
+    )
+    out["adaptive_violations_q50"] = count_cap_violations(
+        adaptive, observations_by_cell, profile, "q50"
+    )
+    out["adaptive_violations_q90"] = count_cap_violations(
+        adaptive, observations_by_cell, profile, "q90"
+    )
     return out
 
 
-CAP_B_W_M2 = 50.0  # reading-desk cap used by this experiment (an assumption, see the report)
+CAP_B_W_M2 = 30.0  # Grade B cap of the app policy (backend/app/ui_scene.py)
 
 
 def build_inputs(
     timeline: Sequence[tuple[datetime, float, float, float]],
+    cap_b: float = CAP_B_W_M2,
 ) -> tuple[
     dict[tuple[str, int, int], list[CellObservation]],
     dict[tuple[str, int, int], list[float]],
@@ -200,7 +214,7 @@ def build_inputs(
 
     # Assign cell zones:
     # Cell (1, 1): Rare Manuscript Archive (Grade A, hard constraint 0.0 W/m2)
-    # Cells (1, 2), (2, 1), (2, 2): Study Desks (Grade B, cap 50 W/m2)
+    # Cells (1, 2), (2, 1), (2, 2): Study Desks (Grade B, cap `cap_b`)
     # Remaining cells: General Walkway (Grade D, no cap)
     observations_by_cell: dict[tuple[str, int, int], list[CellObservation]] = defaultdict(list)
     baseline_opacities: dict[tuple[str, int, int], list[float]] = defaultdict(list)
@@ -216,7 +230,7 @@ def build_inputs(
                 cap = 0.0
             elif (r in (1, 2)) and (c in (1, 2)):
                 grade = "B"
-                cap = CAP_B_W_M2
+                cap = cap_b
             else:
                 grade = "D"
                 cap = None
@@ -245,7 +259,7 @@ def build_inputs(
                 # If Grade A: opaque if irradiance > 0
                 # If Grade B: opaque if irradiance > cap
                 # Else: transparent
-                if grade == "A" and q50 > 0.0 or grade == "B" and q50 > CAP_B_W_M2:
+                if grade == "A" and q50 > 0.0 or grade == "B" and q50 > cap_b:
                     b_op = 1.0
                 else:
                     b_op = 0.0
@@ -259,9 +273,10 @@ def simulate_scene(
     optical_profile: OpticalProfileData,
     weights: AdaptiveWeights,
     interval_seconds: int = 300,
+    cap_b: float = CAP_B_W_M2,
 ) -> dict[str, Any]:
     """Simulate library reading room: 4x4 film grid with Desk (Grade B) and Art (Grade A)."""
-    observations_by_cell, baseline_opacities = build_inputs(timeline)
+    observations_by_cell, baseline_opacities = build_inputs(timeline, cap_b)
 
     # 1. Run FR-04 Adaptive PDLC (Discrete) with auto-tuner
     tuner = AdaptivePolicyTuner()
@@ -445,6 +460,8 @@ def build_report(
     profile: OpticalProfileData,
     weights: AdaptiveWeights,
     sweep: Sequence[dict[str, Any]],
+    sensitivity: Sequence[dict[str, Any]],
+    cap_b: float,
 ) -> str:
     """Markdown report; every number comes from the simulation results (nothing is hard-coded)."""
 
@@ -460,7 +477,9 @@ def build_report(
         ),
         "",
         (
-            "**Test scene**: one 4x4 south window; 1 Grade A cell, 3 Grade B cells (cap 50 W/m2), "
+            "**Test scene**: one 4x4 south window; 1 Grade A cell, 3 Grade B cells (cap "
+            + f"{cap_b:g}"
+            + " W/m2, the Grade B cap of the app policy), "
             "12 Grade D cells (never shaded). Synthetic irradiance, 5-minute steps, 08:00-18:00."
         ),
         (
@@ -473,16 +492,18 @@ def build_report(
         "",
         (
             "| Mode | Flicker change, total opacity change | Switch count change | "
-            "Daylight gain, all 16 cells | Daylight gain, Grade B cells |"
+            "Daylight gain, all 16 cells | Daylight gain, Grade B cells | "
+            "Sun-weighted gain, Grade B cells |"
         ),
-        "|---|---|---|---|---|",
+        "|---|---|---|---|---|---|",
     ]
     for mode, label in MODES:
         lines.append(
             f"| {label} | {_range(column(mode, 'all_cells', 'flicker_reduction_pct'))} | "
             f"{_range(column(mode, 'all_cells', 'switch_reduction_pct'))} | "
             f"{_range(column(mode, 'all_cells', 'daylight_gain_pct'))} | "
-            f"{_range(column(mode, 'grade_b_cells', 'daylight_gain_pct'))} |"
+            f"{_range(column(mode, 'grade_b_cells', 'daylight_gain_pct'))} | "
+            f"{_range(column(mode, 'grade_b_cells', 'sun_weighted_gain_pct'))} |"
         )
     lines += [
         "",
@@ -519,21 +540,25 @@ def build_report(
             "the Grade B value looks only at the cells that are actually controlled."
         ),
         "",
-        "| Scenario | Mode | Mean opacity, all | Gain, all | Mean opacity, Grade B | Gain, Grade B |",
-        "|---|---|---|---|---|---|",
+        (
+            "| Scenario | Mode | Mean opacity, all | Gain, all | Mean opacity, Grade B | "
+            "Gain, Grade B | Sun-weighted gain, Grade B |"
+        ),
+        "|---|---|---|---|---|---|---|",
     ]
     for r in results:
         base_all = r["signed_metrics"]["pdlc"]["all_cells"]["baseline_mean_opacity"]
         base_b = r["signed_metrics"]["pdlc"]["grade_b_cells"]["baseline_mean_opacity"]
         lines.append(
-            f"| **{r['scenario']}** | FR-02 rule baseline | {base_all:.3f} | - | {base_b:.3f} | - |"
+            f"| **{r['scenario']}** | FR-02 rule baseline | {base_all:.3f} | - | {base_b:.3f} | - | - |"
         )
         for mode, label in MODES:
             a = r["signed_metrics"][mode]["all_cells"]
             b = r["signed_metrics"][mode]["grade_b_cells"]
             lines.append(
                 f"| | {label} | {a['adaptive_mean_opacity']:.3f} | {_pct(a['daylight_gain_pct'])} | "
-                f"{b['adaptive_mean_opacity']:.3f} | {_pct(b['daylight_gain_pct'])} |"
+                f"{b['adaptive_mean_opacity']:.3f} | {_pct(b['daylight_gain_pct'])} | "
+                f"{_pct(b['sun_weighted_gain_pct'])} |"
             )
     lines += [
         "",
@@ -566,11 +591,11 @@ def build_report(
         "Two sources of weights are shown.",
         "",
         (
-            "1. **`AdaptivePolicyTuner`** (used for the tables above) picks, per scenario and mode, the "
-            "candidate with the best score among those with no violation relative to the baseline. Its "
-            "score uses the switch-count reduction clipped at zero, which favours binary PDLC, and its "
-            "violation check is relative to the baseline at q50. Treat its choice as a default, not as "
-            "a finding."
+            "1. **`AdaptivePolicyTuner`** (used for the tables above) picks, per scenario and "
+            "mode, the candidate with the best score among those that do not exceed the cap more "
+            "often than the baseline, at q50 and at q90. The score is the reduction of the total "
+            "opacity change plus half the daylight gain, both signed. Its candidate list is short "
+            "(five), so treat its choice as a default."
         ),
         "",
         "| Scenario | Mode | w_flicker | w_daylight | kappa_B |",
@@ -628,39 +653,115 @@ def build_report(
             )
     lines += [
         "",
+        "## Sensitivity",
+        "",
+        (
+            "The same four scenarios run with one setting changed at a time. Each cell is the "
+            "range over the scenarios, positive is better than the rule baseline. `Above cap q90` "
+            "is the total over the scenarios (baseline, then PDLC, then SGF)."
+        ),
+        "",
+        (
+            "| Variant | Mode | Flicker change | Grade B daylight gain | Grade B sun-weighted gain | "
+            "Above cap at q90 (baseline / adaptive) |"
+        ),
+        "|---|---|---|---|---|---|",
+    ]
+    for variant in sensitivity:
+        rs = variant["results"]
+        for mode, label in MODES:
+            sm = [r["signed_metrics"][mode] for r in rs]
+            lines.append(
+                f"| {variant['name']} | {label} | "
+                f"{_range([m['all_cells']['flicker_reduction_pct'] for m in sm])} | "
+                f"{_range([m['grade_b_cells']['daylight_gain_pct'] for m in sm])} | "
+                f"{_range([m['grade_b_cells']['sun_weighted_gain_pct'] for m in sm])} | "
+                f"{sum(m['baseline_violations_q90'] for m in sm)} / "
+                f"{sum(m['adaptive_violations_q90'] for m in sm)} |"
+            )
+    lines += [
+        "",
         "## Limitations",
         "",
         (
-            "- The irradiance is synthetic (sine-based), not measured. It shows how the controllers "
-            "behave on a made-up sky, not how much they would help on a real day."
+            "- The irradiance is synthetic (sine-based), not measured, and the forecast is also "
+            "taken as the truth. It shows how the controllers behave on a made-up sky, not how "
+            "much they would help on a real day."
         ),
         (
-            "- The 'FR-02 rule baseline' here is a three-line rule (opaque above the cap), not the real "
-            "FR-02 planner. The API in `backend/app/api/adaptive_control.py` does compare against the "
-            "real FR-02 plan."
+            "- The 'FR-02 rule baseline' here is a three-line rule (opaque above the cap), not the "
+            "real FR-02 planner. The API in `backend/app/api/adaptive_control.py` does compare "
+            "against the real FR-02 plan."
         ),
         (
-            "- The forecast band (q10, q50, q90) is made up. The real band width comes from the FR-01.4 "
-            "model and may be narrower or wider."
+            "- The forecast band (q10, q50, q90) is made up; the sensitivity table shows what a "
+            "narrower or wider band does. The real band comes from the FR-01.4 model."
         ),
+        ("- Only a Grade B cap is simulated (30 W/m2, the app policy). Grade C (70 W/m2) is not."),
         (
-            "- The cap (50 W/m2) and the optical profile are assumptions. The cap should follow the "
-            "grade policy of the scene and the film values should come from a measured film. No SGF "
-            "datasheet with transmittance, haze or response time was found (see "
+            "- The film values (glazing 0.85, film 0.03 to 0.72) are assumptions. No SGF datasheet "
+            "with transmittance, haze or response time was found (see "
             "`docs/fr04_adaptive_control_lg_sgf.md`)."
         ),
         (
-            "- The model treats a film as lowering direct irradiance. A scattering film (PDLC) turns "
-            "direct light into diffuse light and may block much less total energy than this assumes."
+            "- The model treats a film as lowering direct irradiance. A scattering film (PDLC) "
+            "turns direct light into diffuse light and may block much less total energy than this "
+            "assumes."
         ),
         (
-            "- Steps are 5 minutes; the nowcast refreshes every 10 minutes, and the minimum hold and gap "
-            "rules are 10 minutes."
+            "- Daylight is judged by opacity and by the sun-weighted film transmittance. Neither "
+            "is measured illuminance."
         ),
-        "- Opacity is used as a proxy for daylight.",
+        "- Neighbouring cells are controlled one at a time; the edge margin is off.",
         "",
     ]
     return "\n".join(lines)
+
+
+SCENARIOS = (
+    "Sunny",
+    "Partly Cloudy Rapid-Flicker",
+    "High Uncertainty Squall",
+    "Overcast Low Irradiance",
+)
+START_TIME = datetime(2026, 10, 15, 8, 0, 0, tzinfo=UTC)
+BASE_STEP_SECONDS = 300
+
+
+def suite_timelines(
+    interval_seconds: int = BASE_STEP_SECONDS, band_scale: float = 1.0
+) -> list[tuple[str, list[tuple[datetime, float, float, float]]]]:
+    """Each scenario's timeline. A longer step samples the same 5-minute sky less often."""
+    stride = max(1, interval_seconds // BASE_STEP_SECONDS)
+    return [
+        (
+            name,
+            generate_solar_profile(
+                name,
+                START_TIME,
+                duration_minutes=600,
+                interval_seconds=BASE_STEP_SECONDS,
+                band_scale=band_scale,
+            )[::stride],
+        )
+        for name in SCENARIOS
+    ]
+
+
+def run_suite(
+    optical_profile: OpticalProfileData,
+    weights: AdaptiveWeights,
+    cap_b: float = CAP_B_W_M2,
+    interval_seconds: int = BASE_STEP_SECONDS,
+    band_scale: float = 1.0,
+) -> list[dict[str, Any]]:
+    """Run all scenarios with one setting; returns one result per scenario."""
+    return [
+        simulate_scene(
+            name, timeline, optical_profile, weights, interval_seconds=interval_seconds, cap_b=cap_b
+        )
+        for name, timeline in suite_timelines(interval_seconds, band_scale)
+    ]
 
 
 def main() -> None:
@@ -686,32 +787,28 @@ def main() -> None:
         brightening_hold_seconds=600,
     )
 
-    scenarios = [
-        "Sunny",
-        "Partly Cloudy Rapid-Flicker",
-        "High Uncertainty Squall",
-        "Overcast Low Irradiance",
+    primary = run_suite(optical_profile, weights, cap_b=CAP_B_W_M2)
+    scenario_inputs = [
+        (name, *build_inputs(timeline, CAP_B_W_M2))
+        for name, timeline in suite_timelines(interval_seconds=300, band_scale=1.0)
     ]
-    start_time = datetime(2026, 10, 15, 8, 0, 0, tzinfo=UTC)
-    results = []
-
-    for sc in scenarios:
-        timeline = generate_solar_profile(
-            sc, start_time, duration_minutes=600, interval_seconds=300
-        )
-        res = simulate_scene(sc, timeline, optical_profile, weights, interval_seconds=300)
-        results.append(res)
-
-    scenario_inputs = []
-    for sc in scenarios:
-        timeline = generate_solar_profile(
-            sc, start_time, duration_minutes=600, interval_seconds=300
-        )
-        observations, baseline = build_inputs(timeline)
-        scenario_inputs.append((sc, observations, baseline))
     sweep = sweep_weights(scenario_inputs, optical_profile, weights, interval_seconds=300)
-    report_md = build_report(results, optical_profile, weights, sweep)
+    variants = [
+        ("Grade B cap 50 W/m2 (earlier setting)", {"cap_b": 50.0}),
+        ("10-minute steps (every second step)", {"interval_seconds": 600}),
+        ("Narrow band (half the width)", {"band_scale": 0.5}),
+        ("Wide band (one and a half times)", {"band_scale": 1.5}),
+    ]
+    sensitivity = [
+        {
+            "name": name,
+            "results": run_suite(optical_profile, weights, **{"cap_b": CAP_B_W_M2, **kw}),
+        }
+        for name, kw in variants
+    ]
+    report_md = build_report(primary, optical_profile, weights, sweep, sensitivity, CAP_B_W_M2)
     print(report_md)
+    results = primary
 
     # Save artifacts
     reports_dir = WORKSPACE_ROOT / "docs" / "reports"
@@ -722,7 +819,10 @@ def main() -> None:
 
     json_file = reports_dir / "fr04_adaptive_control_experiment_results.json"
     json_file.write_text(
-        json.dumps({"scenarios": results, "weight_sweep": sweep}, indent=2), encoding="utf-8"
+        json.dumps(
+            {"scenarios": results, "weight_sweep": sweep, "sensitivity": sensitivity}, indent=2
+        ),
+        encoding="utf-8",
     )
     print(f"[Artifact Saved] Benchmark JSON data written to {json_file}")
 

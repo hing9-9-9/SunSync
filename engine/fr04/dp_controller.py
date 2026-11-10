@@ -341,6 +341,45 @@ def apply_cell_edge_margin(
     return result
 
 
+SWITCH_THRESHOLD = 0.01  # an opacity change larger than this counts as one switch
+
+
+def count_cap_violations(
+    opacities_by_cell: Mapping[tuple[str, int, int], Sequence[float]],
+    observations_by_cell: Mapping[tuple[str, int, int], Sequence[CellObservation]],
+    optical_profile: OpticalProfileData,
+    quantile: str = "q50",
+) -> int:
+    """Count cell-steps where the protection cap is exceeded, against the cap itself.
+
+    `quantile` is the irradiance taken as true: "q50" (median forecast) or "q90" (the sunny
+    end of the band). Grade A needs full darkness whenever there is direct sun; any other
+    capped grade compares the transmitted irradiance with its cap.
+    """
+    if quantile not in ("q50", "q90"):
+        raise ValueError("quantile must be 'q50' or 'q90'")
+    count = 0
+    for key, obs_list in observations_by_cell.items():
+        for obs, opacity in zip(obs_list, opacities_by_cell.get(key, ()), strict=False):
+            irradiance = obs.irradiance_q90 if quantile == "q90" else obs.irradiance_q50
+            if obs.strictest_grade == "A":
+                if irradiance > 0 and opacity < 0.99:
+                    count += 1
+            elif obs.cap_W_m2 is not None and (
+                optical_profile.transmitted_irradiance(irradiance, opacity) > obs.cap_W_m2 + 1e-9
+            ):
+                count += 1
+    return count
+
+
+def _percent_better(before: float, after: float) -> float:
+    """Percent by which `after` is lower than `before`; negative means it got worse.
+
+    There is no ratio when `before` is zero, so 0.0 is returned then.
+    """
+    return (before - after) / before * 100.0 if before > 0 else 0.0
+
+
 def compare_baseline_vs_adaptive(
     baseline_opacities_by_cell: Mapping[tuple[str, int, int], Sequence[float]],
     adaptive_opacities_by_cell: Mapping[tuple[str, int, int], Sequence[float]],
@@ -348,13 +387,18 @@ def compare_baseline_vs_adaptive(
     optical_profile: OpticalProfileData,
     tuned_weights: Mapping[str, float] | None = None,
 ) -> AdaptiveComparisonMetrics:
-    """Compute quantitative metrics comparing baseline FR-02 vs adaptive FR-04 control."""
+    """Compare baseline FR-02 and adaptive FR-04 control.
+
+    Percent values are signed (positive is better than the baseline, negative is worse); nothing
+    is clipped at zero. Violations are counted against the cap itself, for both plans.
+    """
     baseline_switches = 0
     adaptive_switches = 0
+    baseline_change = 0.0
+    adaptive_change = 0.0
     total_baseline_opacity = 0.0
     total_adaptive_opacity = 0.0
     total_evaluated_steps = 0
-    violations = 0
 
     all_keys = set(baseline_opacities_by_cell.keys()) | set(adaptive_opacities_by_cell.keys())
 
@@ -366,59 +410,50 @@ def compare_baseline_vs_adaptive(
 
         for t in range(n):
             total_evaluated_steps += 1
-            b_curr = base_ops[t]
-            a_curr = adapt_ops[t]
-            total_baseline_opacity += b_curr
-            total_adaptive_opacity += a_curr
-
+            total_baseline_opacity += base_ops[t]
+            total_adaptive_opacity += adapt_ops[t]
             if t > 0:
-                if abs(b_curr - base_ops[t - 1]) > 0.01:
-                    baseline_switches += 1
-                if abs(a_curr - adapt_ops[t - 1]) > 0.01:
-                    adaptive_switches += 1
-
-            # Protection check: verify whether adaptive transmitted irradiance violates cap
-            # when baseline did not
-            obs = obs_list[t]
-            if obs.strictest_grade == "A" and (obs.irradiance_q50 > 0 or obs.reasons):
-                if a_curr < 0.99 and b_curr >= 0.99:
-                    violations += 1
-            elif obs.cap_W_m2 is not None and obs.irradiance_q50 > 0:
-                base_trans = optical_profile.transmitted_irradiance(obs.irradiance_q50, b_curr)
-                adapt_trans = optical_profile.transmitted_irradiance(obs.irradiance_q50, a_curr)
-                if base_trans <= obs.cap_W_m2 < adapt_trans:
-                    violations += 1
+                base_step = abs(base_ops[t] - base_ops[t - 1])
+                adapt_step = abs(adapt_ops[t] - adapt_ops[t - 1])
+                baseline_change += base_step
+                adaptive_change += adapt_step
+                baseline_switches += base_step > SWITCH_THRESHOLD
+                adaptive_switches += adapt_step > SWITCH_THRESHOLD
 
     steps_denom = max(1, total_evaluated_steps)
     base_mean = total_baseline_opacity / steps_denom
     adapt_mean = total_adaptive_opacity / steps_denom
 
-    flicker_reduction = (
-        ((baseline_switches - adaptive_switches) / max(1, baseline_switches)) * 100.0
-        if baseline_switches > 0
-        else 0.0
-    )
-    # Daylight gain: reduction in unnecessary shading relative to baseline
-    daylight_gain = (
-        ((base_mean - adapt_mean) / max(0.01, base_mean)) * 100.0 if base_mean > 0 else 0.0
-    )
-
-    weights_dict = dict(tuned_weights) if tuned_weights is not None else {}
+    def violations(opacities: Mapping[tuple[str, int, int], Sequence[float]], quantile: str) -> int:
+        return count_cap_violations(opacities, observations_by_cell, optical_profile, quantile)
 
     return AdaptiveComparisonMetrics(
         baseline_switch_count=baseline_switches,
         adaptive_switch_count=adaptive_switches,
-        flicker_reduction_pct=round(max(0.0, flicker_reduction), 2),
+        flicker_reduction_pct=round(
+            _percent_better(float(baseline_switches), float(adaptive_switches)), 2
+        ),
         baseline_mean_opacity=round(base_mean, 4),
         adaptive_mean_opacity=round(adapt_mean, 4),
-        daylight_gain_pct=round(max(0.0, daylight_gain), 2),
-        protection_violation_count=violations,
-        tuned_weights=weights_dict,
+        daylight_gain_pct=round(_percent_better(base_mean, adapt_mean), 2),
+        protection_violation_count=violations(adaptive_opacities_by_cell, "q50"),
+        baseline_violation_count=violations(baseline_opacities_by_cell, "q50"),
+        protection_violation_count_q90=violations(adaptive_opacities_by_cell, "q90"),
+        baseline_violation_count_q90=violations(baseline_opacities_by_cell, "q90"),
+        baseline_total_change=round(baseline_change, 3),
+        adaptive_total_change=round(adaptive_change, 3),
+        total_change_reduction_pct=round(_percent_better(baseline_change, adaptive_change), 2),
+        tuned_weights=dict(tuned_weights) if tuned_weights is not None else {},
     )
 
 
 class AdaptivePolicyTuner:
-    """Hyperparameter tuner searching weights to maximize flicker reduction with 0% violations."""
+    """Hyperparameter tuner: pick the weights with the best score among the candidates that do not
+    exceed the cap more often than the baseline does, at q50 and at q90.
+
+    The score is the reduction of the total opacity change plus half the daylight gain, both
+    signed, so a candidate that darkens the room more than the baseline loses points.
+    """
 
     def __init__(
         self,
@@ -447,6 +482,9 @@ class AdaptivePolicyTuner:
         best_weights = self.candidates[0]
         best_metrics: AdaptiveComparisonMetrics | None = None
         best_score = -float("inf")
+        safest_weights = self.candidates[0]
+        safest_metrics: AdaptiveComparisonMetrics | None = None
+        fewest_violations = (float("inf"), float("inf"))
 
         for weights in self.candidates:
             # Run DP + stabilization for each cell under this weight configuration
@@ -474,25 +512,26 @@ class AdaptivePolicyTuner:
                 tuned_weights=candidate_tuned_weights,
             )
 
-            # Strict protection guarantee: zero violations allowed
-            if metrics.protection_violation_count == 0:
-                # Score combines flicker reduction and daylight gain
-                score = metrics.flicker_reduction_pct + 0.5 * metrics.daylight_gain_pct
+            # Protection: no more cap violations than the baseline has, at q50 and at q90
+            no_worse = (
+                metrics.protection_violation_count <= metrics.baseline_violation_count
+                and metrics.protection_violation_count_q90 <= metrics.baseline_violation_count_q90
+            )
+            fewest = (metrics.protection_violation_count_q90, metrics.protection_violation_count)
+            if fewest < fewest_violations:
+                fewest_violations = fewest
+                safest_weights, safest_metrics = weights, metrics
+            if no_worse:
+                score = metrics.total_change_reduction_pct + 0.5 * metrics.daylight_gain_pct
                 if score > best_score:
                     best_score = score
                     best_weights = weights
                     best_metrics = metrics
 
         if best_metrics is None:
-            # Fallback to default
-            best_weights = self.candidates[0]
-            best_metrics = compare_baseline_vs_adaptive(
-                baseline_opacities_by_cell=baseline_opacities_by_cell,
-                adaptive_opacities_by_cell=baseline_opacities_by_cell,
-                observations_by_cell=observations_by_cell,
-                optical_profile=optical_profile,
-                tuned_weights={"w_flicker": best_weights.w_flicker},
-            )
+            # No candidate protects as well as the baseline: return the one with the fewest violations
+            best_weights, best_metrics = safest_weights, safest_metrics
+        assert best_metrics is not None  # the candidate list is never empty
 
         return best_weights, best_metrics
 

@@ -144,11 +144,11 @@ SunSync bridges directly to LG ThinQ ON smart home hubs via `POST /api/scenes/{s
   "active_shaded_cells": 3,
   "dimmed_cells": 2,
   "energy_daylight_score": 0.8142,
-  "decision_summary_ko": "LG ThinQ ON SGF 제어: 조도 불확실성(P90)을 반영하여 3개 셀 차광(디밍 2개)을 최적화했습니다. 플리커를 75.0% 저감하고 자연채광률을 32.4% 향상했습니다."
+  "decision_summary_ko": "LG ThinQ ON SGF 제어: 조도 불확실성(P90)을 반영하여 3개 셀 차광(디밍 2개)을 최적화했습니다. 플리커(불투명도 변화량)은 기준보다 75.0% 개선됐습니다, 자연채광은 기준보다 1.2% 나빠졌습니다."
 }
 ```
 
-The numbers in this payload (for example "75.0%" and "32.4%" in `decision_summary_ko`) are an illustrative example, not measured results. `LG_THINQ_ON_SGF_V1` is a contract defined inside SunSync; no LG-published ThinQ ON interface was checked.
+The numbers in this payload (for example "75.0%" and "1.2%" in `decision_summary_ko`) are an illustrative example, not measured results. `LG_THINQ_ON_SGF_V1` is a contract defined inside SunSync; no LG-published ThinQ ON interface was checked.
 
 ---
 
@@ -188,47 +188,69 @@ See section 7. The full tables are in `docs/reports/fr04_adaptive_control_experi
 
 ## 7. Experiment results (run of 2026-11-10)
 
-Source: `tools/ai_experiments/run_fr04_adaptive_control_experiment.py`. Four synthetic days (Sunny, Partly Cloudy Rapid-Flicker, High Uncertainty Squall, Overcast Low Irradiance), one 4x4 window (1 Grade A cell, 3 Grade B cells with a 50 W/m2 cap, 12 Grade D cells), 5-minute steps. Positive means better than the rule baseline. Nothing is clipped at zero.
+Source: `tools/ai_experiments/run_fr04_adaptive_control_experiment.py`; full tables in `docs/reports/fr04_adaptive_control_experiment_benchmark.md`. Four synthetic days (Sunny, Partly Cloudy Rapid-Flicker, High Uncertainty Squall, Overcast Low Irradiance), one 4x4 window (1 Grade A cell, 3 Grade B cells with a 30 W/m2 cap as in the app policy, 12 Grade D cells), 5-minute steps. Ranges are over the four scenarios. Positive means better than the rule baseline; nothing is clipped at zero.
 
-| Mode | Flicker change (total opacity change) | Switch count change | Daylight gain, all 16 cells | Daylight gain, Grade B cells |
-|---|---|---|---|---|
-| FR-04 Adaptive PDLC | +62.5% to +85.0% | +62.5% to +85.0% | -7.3% to +0.0% | -9.4% to +0.0% |
-| FR-04 Adaptive SGF (5 levels) | +43.8% to +85.0% | -125.0% to +40.0% | -4.8% to +4.8% | -5.9% to +6.5% |
+| Mode | Flicker (total opacity change) | Switch count | Daylight, all 16 cells (opacity) | Daylight, Grade B cells (opacity) | Daylight, Grade B cells (sun-weighted) |
+|---|---|---|---|---|---|
+| FR-04 Adaptive PDLC | +62.5% to +78.6% | +62.5% to +78.6% | -3.1% to +0.0% | -3.5% to +0.0% | -3.9% to +0.8% |
+| FR-04 Adaptive SGF (5 levels) | +62.5% to +78.6% | -12.5% to +35.7% | -1.9% to +1.6% | -2.0% to +2.1% | +1.3% to +20.6% |
 
-| Mode | Cell-steps above the cap if q90 is true (all four scenarios) |
+| Mode | Cell-steps above the cap if q90 is true (Sunny, Partly Cloudy, Squall, Overcast) |
 |---|---|
-| FR-02 rule baseline | 0, 9, 18, 0 |
+| FR-02 rule baseline | 0, 6, 3, 0 |
 | FR-04 Adaptive PDLC | 0, 0, 0, 0 |
 | FR-04 Adaptive SGF | 0, 0, 0, 0 |
 
+Nobody exceeds the cap if the median forecast (q50) is true.
+
 How to read it:
 
-1. **Flicker.** Both adaptive modes cut the total opacity change by 44% to 85%. The effect comes mostly from the stabilization rules (FR-04.1 to FR-04.4): raising `w_flicker` from 5 to 60 changes nothing in the sweep.
-2. **Switch count is the wrong measure for SGF.** SGF changes by small steps, so it can switch more often (18 against 8 on the Sunny day) while its total change is lower (4.5 against 8.0).
-3. **Protection is where FR-04 differs from the rule.** The baseline decides on the median forecast (q50). If the sunny end of the band (q90) is true, it leaves 9 and 18 cell-steps above the cap in the two cloudy scenarios. The adaptive modes use q90 and have none. This costs daylight.
-4. **Daylight.** Adaptive PDLC is darker than the baseline on Grade B cells (-1.8%, -5.5% and -9.4% in the first three scenarios, 0.0% in Overcast), because it hedges against q90 and holds darkness for 10 minutes. SGF is close to even (-5.9% to +6.5%). The gain on all 16 cells is small by construction: 12 cells are never shaded and the Grade A cell is always opaque in sun.
-5. **Where SGF helps.** Only when the irradiance is low enough that partial dimming meets the cap: +6.5% on Grade B cells in the Overcast scenario (100 to 300 W/m2), and +4.2% on the Sunny day. With a 50 W/m2 cap and a midday sun of 700 to 850 W/m2, the film has to be nearly fully opaque.
-6. **Older numbers.** The earlier report printed flicker reduction and daylight gain clipped at 0.0%, so a worse-than-baseline result looked like "no gain". The engine function `compare_baseline_vs_adaptive` still clips, and so does the `metrics` block of the adaptive-shading-plan API.
+1. **Flicker.** Both adaptive modes cut the total opacity change by 62.5% to 78.6%. Most of it comes from the stabilization rules (FR-04.1 to FR-04.4), not from the weights: in the sweep, `w_flicker` above 5 (PDLC) or 20 (SGF) changes nothing.
+2. **Switch count is the wrong measure for SGF.** SGF changes by small steps, so it can switch more often (9 against 8 on the Sunny day) while its total change is much lower (3.0 against 8.0).
+3. **Protection is where FR-04 differs from the rule.** The baseline decides on the median forecast (q50). If the sunny end of the band (q90) is true, it leaves 6 and 3 cell-steps above the cap in the two cloudy scenarios. The adaptive modes use q90 and have none.
+4. **Daylight.** By opacity, PDLC is a little darker than the baseline on Grade B cells (-3.5% to 0.0%) because it hedges against q90 and holds darkness for 10 minutes. SGF is about even (-2.0% to +2.1%). Weighted by how strong the sun is, SGF is clear more often when it matters (+1.3% to +20.6%); PDLC is about even (-3.9% to +0.8%).
+5. **Where SGF helps most.** When the cap leaves room for partial dimming: +20.6% sun-weighted on the Overcast day (100 to 300 W/m2), and up to +48.2% with the earlier 50 W/m2 cap. With a 30 W/m2 cap and a midday sun of 700 to 850 W/m2, the film has to be nearly opaque, so the room for dimming is small.
+6. **Gain on all 16 cells is small by construction.** 12 cells are never shaded and the Grade A cell is always opaque in sun.
+7. **Metrics.** The engine function `compare_baseline_vs_adaptive`, the tuner and the API `metrics` block used to clip negative results to zero and to count a violation only when the baseline had kept the cap. They now report signed values and count against the cap itself (section 10). The first report of this experiment had printed worse-than-baseline results as 0.0%.
 
-### 7.1 Recommended weights
+### 7.1 Sensitivity
+
+Same scenarios, one setting changed at a time (ranges over the scenarios; Grade B cells).
+
+| Variant | Mode | Flicker | Daylight (opacity) | Daylight (sun-weighted) | Above cap at q90, baseline / adaptive (total) |
+|---|---|---|---|---|---|
+| Cap 50 W/m2 (earlier setting) | PDLC | +62.5% to +85.0% | -9.4% to +0.0% | -19.4% to +0.0% | 27 / 0 |
+| | SGF | +62.5% to +85.0% | -5.9% to +6.5% | -0.2% to +48.2% | 27 / 0 |
+| 10-minute steps | PDLC | +57.1% to +76.9% | -1.8% to +0.0% | -1.1% to +1.6% | 3 / 0 |
+| | SGF | +57.1% to +76.9% | -0.4% to +2.1% | +3.7% to +20.3% | 3 / 0 |
+| Band half as wide | PDLC | +62.5% to +78.6% | -3.5% to +0.0% | -3.9% to +0.8% | 9 / 0 |
+| | SGF | +62.5% to +78.6% | -0.9% to +2.3% | +5.0% to +22.5% | 9 / 0 |
+| Band 1.5 times as wide | PDLC | +62.5% to +78.6% | -4.4% to +0.0% | -5.6% to +0.8% | 15 / 0 |
+| | SGF | +62.5% to +78.6% | -2.9% to +0.4% | -1.2% to +7.7% | 15 / 0 |
+
+- The conclusions hold in every variant: the adaptive modes cut the flicker, never exceed the cap at q90, and SGF gives back more sun-weighted daylight than PDLC.
+- A wider forecast band costs daylight (the hedge grows); a narrower one gives some back. The real band of the FR-01.4 model should be used before quoting a number.
+- Sampling every 10 minutes (what the nowcast refresh allows) lowers the flicker reduction a little (57.1% to 76.9%).
+
+### 7.2 Recommended weights
 
 Sweep of `w_flicker` (0, 5, 20, 60) and `kappa_B` (0.8, 1.0, 1.2, 1.6), averaged over the four scenarios (table in the benchmark report).
 
 | Finding | Evidence |
 |---|---|
-| `w_flicker` above 5 adds nothing | PDLC +77.5% at 5, 20 and 60; SGF +77.5% at 20 and 60 |
+| `w_flicker` has a ceiling | PDLC +73.2% from 5 upward; SGF +73.2% from 20 upward |
 | `kappa_B` is the protection lever for SGF | SGF with `kappa_B` 0.8 leaves 6 cell-steps above the cap at q90; 1.0 and above leave none |
-| `kappa_B` barely changes flicker | Nearly the same flicker for 0.8 to 1.6 |
-| Cost of a higher `kappa_B` | About 0.3 to 0.4 points of Grade B daylight per 0.2 step in SGF (2.9% at 0.8, 1.5% at 1.6, with `w_flicker` 0) |
+| `kappa_B` barely changes flicker | Same flicker for 0.8 to 1.6 at a given `w_flicker` |
+| Cost of a higher `kappa_B` | SGF Grade B daylight falls from +1.1% at 1.0 to +0.4% at 1.6 (`w_flicker` 0) |
 
 Recommended starting point, by the rule "no cap exceeded at q50 or q90 in any scenario, then the largest flicker change, then the largest Grade B daylight gain":
 
-| Mode | w_flicker | kappa_B | Flicker change | Grade B daylight |
+| Mode | w_flicker | kappa_B | Flicker | Grade B daylight (opacity) |
 |---|---|---|---|---|
-| PDLC | 5 | 0.8 to 1.6 (no difference in protection) | +77.5% | -4.2% |
-| SGF | 20 | 1.0 | +77.5% | -0.3% |
+| PDLC | 5 | 1.0 (0.8 gives the same result; 1.0 shares one value with SGF) | +73.2% | -1.8% |
+| SGF | 20 | 1.0 | +73.2% | +0.0% |
 
-The rule is ours and open to review. `w_damage` (1000) and `w_daylight` (1.0) were not varied. `AdaptivePolicyTuner` picks its own weights with a score based on the clipped switch count and a baseline-relative violation check; its choice is a default, not a finding.
+The rule is ours and open to review. `w_damage` (1000) and `w_daylight` (1.0) were not varied. `AdaptivePolicyTuner` has only five candidates and picks per scenario; its choice is a default.
 
 ---
 
@@ -261,13 +283,27 @@ Consequences for this project:
 | 2 | The forecast is also the truth | The simulation has no separate real irradiance. Protection can only be checked at q50 and q90 | A fair test needs real days: forecast and measured DNI side by side |
 | 3 | The "FR-02 baseline" is FR-02 | In the CLI it is a three-line rule. The API compares with the real FR-02 plan | Run the comparison on real scenes through the API |
 | 4 | FR-04 is a smoothing step after FR-02 | The requirement (`docs/features.md`) says FR-04 smooths FR-02's plan. The DP controller decides from irradiance itself | Decide whether FR-04 post-processes or replaces FR-02 |
-| 5 | Cap of 50 W/m2 for Grade B | The scene policy uses 0, 30 and 70 W/m2 (`ui_scene.py`) | Rerun with 30 and 70. A lower cap makes dimming even rarer |
+| 5 | Cap of 50 W/m2 for Grade B | The scene policy uses 0, 30 and 70 W/m2 (`ui_scene.py`) | Done: the main run uses 30, 50 is a sensitivity run. Grade C (70) is not simulated |
 | 6 | The film lowers direct irradiance by its transmittance | See section 8: scattering | Use total solar transmittance of a real film |
-| 7 | Opacity measures daylight | It ignores diffuse light and the sun's strength | Use transmitted illuminance if daylight is a claim |
-| 8 | Quantile band widths (0.6 and 1.4 of q50, and so on) | Made up; the real band comes from the FR-01.4 model | Use the real model's band on recorded days |
-| 9 | Time step | FR-01 uses 300 s steps and FR-04.2 holds for 600 s; the nowcast refreshes every 10 minutes. Clouds shorter than that are invisible to the controller | State it when presenting |
+| 7 | Opacity measures daylight | It ignores diffuse light and the sun's strength | Partly done: a sun-weighted transmittance was added. Measured illuminance is still missing |
+| 8 | Quantile band widths (0.6 and 1.4 of q50, and so on) | Made up; the real band comes from the FR-01.4 model | Partly done: half and 1.5 times the width were run. The real band is still needed |
+| 9 | Time step | FR-01 uses 300 s steps and FR-04.2 holds for 600 s; the nowcast refreshes every 10 minutes. Clouds shorter than that are invisible to the controller | Partly done: a 10-minute-step run was added. Say it when presenting |
 | 10 | FR-04 improves the app | FR-04 is only an API. The web app and FR-05 do not call it | Wire it in, or present it as a simulation result |
-| 11 | Metrics are honest | The engine metric and the tuner clip negative values, and count a violation only relative to the baseline | Fix in a separate change; the existing test asserts `>= 0` |
+| 11 | Metrics are honest | The engine metric and the tuner clipped negative values and counted a violation only relative to the baseline | Done in this change (section 10) |
 | 12 | Cells are independent | Neighbouring cells are controlled one at a time except for the edge margin (off by default) | Not tested |
 
-Not checked at all: real hardware behaviour, flicker as people experience it, energy use and cost.
+Still open: 2 (real forecast and measured irradiance together), 3 (real FR-02 plan as the baseline), 4 (post-process or replace), 6 (real film data), 10 (connection to the app and FR-05), 12 (neighbour cells). Not checked at all: real hardware behaviour, flicker as people experience it, energy use and cost.
+
+---
+
+## 10. Comparison metrics: what changed
+
+| Before | Now |
+|---|---|
+| `flicker_reduction_pct` and `daylight_gain_pct` were clipped at 0 | Signed: positive is better than the baseline, negative is worse |
+| A violation counted only if the baseline kept the cap and the adaptive plan did not | Counted against the cap itself, for the adaptive plan and for the baseline, at q50 and at q90 |
+| Switch count was the only flicker measure | `total_change_reduction_pct` (sum of the opacity changes) added; the switch count stays |
+| The tuner scored the clipped switch reduction and required no violation relative to the baseline | The tuner scores the total-change reduction plus half the daylight gain (signed) and requires no more violations than the baseline at q50 and at q90. If no candidate qualifies it returns the one with the fewest |
+| The Korean summary text said "improved" for any value | The text says "improved" or "got worse" by the sign |
+
+New fields in `AdaptiveComparisonMetrics` (engine and API): `baseline_violation_count`, `protection_violation_count_q90`, `baseline_violation_count_q90`, `baseline_total_change`, `adaptive_total_change`, `total_change_reduction_pct`. They have defaults, so existing readers keep working. `protection_violation_count` now means "above the cap if q50 is true". The web app does not read these fields.
