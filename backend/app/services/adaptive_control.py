@@ -43,6 +43,7 @@ from engine.fr04 import (
     AdaptivePolicyTuner,
     AdaptiveWeights,
     CellObservation,
+    CellState,
     CellTrajectory,
     OpticalProfileData,
     ProtectionGrade,
@@ -51,6 +52,7 @@ from engine.fr04 import (
     build_shading_plan_from_trajectories,
     compare_baseline_vs_adaptive,
     optimize_cell_dp,
+    smooth_fr02_plan,
 )
 
 
@@ -318,7 +320,7 @@ def compute_adaptive_shading_plan(
 
     # 4. Optional FR-04.4 Cell-edge margin expansion
     obs_by_cell = raw_obs_by_cell
-    if request.enable_edge_margin:
+    if request.enable_edge_margin and request.mode == "replace":
         for win_id, (rows, cols) in windows_grid.items():
             win_obs = {k: v for k, v in obs_by_cell.items() if k[0] == win_id}
             expanded = apply_cell_edge_margin(win_obs, film_rows=rows, film_cols=cols, enabled=True)
@@ -326,6 +328,7 @@ def compute_adaptive_shading_plan(
 
     # 5. Extract baseline opacities
     baseline_opacities: dict[tuple[str, int, int], list[float]] = defaultdict(list)
+    baseline_states: dict[tuple[str, int, int], list[CellState]] = defaultdict(list)
     # Build baseline segment lookup
     baseline_segments: dict[tuple[str, int, int], list[Any]] = defaultdict(list)
     for win_plan in baseline_plan.windows:
@@ -337,20 +340,25 @@ def compute_adaptive_shading_plan(
         segments = baseline_segments.get(cell_key, [])
         for obs in obs_seq:
             op = 0.0
+            state: CellState = "transparent"
             for seg in segments:
                 s_start = datetime.fromisoformat(seg.start_time).astimezone(UTC)
                 s_end = datetime.fromisoformat(seg.end_time).astimezone(UTC)
                 if s_start <= obs.timestamp < s_end:
-                    op = 1.0 if seg.state in ("opaque", "infeasible", "unknown") else 0.0
+                    if seg.state in ("opaque", "infeasible", "unknown"):
+                        op, state = 1.0, seg.state
                     break
             baseline_opacities[cell_key].append(op)
+            baseline_states[cell_key].append(state)
 
     # Default optical profile for scene
     default_profile = next(iter(optical_profiles.values()))
 
-    # 6. Tune weights or use default
+    # 6. Weights: FR-04 smoothing uses the defaults; the experimental replace mode may tune them
     tuned_weights_dict: dict[str, float] = {}
-    if request.auto_tune_weights:
+    if request.mode == "smooth_fr02":
+        best_weights = AdaptiveWeights()
+    elif request.auto_tune_weights:
         tuner = AdaptivePolicyTuner()
         best_weights, _ = tuner.tune(
             observations_by_cell=obs_by_cell,
@@ -359,18 +367,18 @@ def compute_adaptive_shading_plan(
             interval_seconds=request.interval_seconds,
             hardware_mode=request.hardware_mode,
         )
-        tuned_weights_dict = {
-            "w_damage": best_weights.w_damage,
-            "w_daylight": best_weights.w_daylight,
-            "w_flicker": best_weights.w_flicker,
-            "kappa_B": best_weights.kappa_B,
-            "kappa_C": best_weights.kappa_C,
-            "brightening_margin_W_m2": best_weights.brightening_margin_W_m2,
-        }
     else:
         best_weights = AdaptiveWeights(enable_edge_margin=request.enable_edge_margin)
+    tuned_weights_dict = {
+        "w_damage": best_weights.w_damage,
+        "w_daylight": best_weights.w_daylight,
+        "w_flicker": best_weights.w_flicker,
+        "kappa_B": best_weights.kappa_B,
+        "kappa_C": best_weights.kappa_C,
+        "brightening_margin_W_m2": best_weights.brightening_margin_W_m2,
+    }
 
-    # 7. Run DP optimization & stabilization across all cells
+    # 7. Smooth the FR-02 plan (default) or run the DP optimization, across all cells
     cell_trajectories: list[CellTrajectory] = []
     adaptive_opacities: dict[tuple[str, int, int], list[float]] = {}
 
@@ -379,10 +387,20 @@ def compute_adaptive_shading_plan(
         win_obj = windows_map[win_id]
         profile = optical_profiles.get(win_obj.optical_profile_id, default_profile)
 
-        dp_steps = optimize_cell_dp(obs_seq, profile, best_weights, request.hardware_mode)
-        stabilized_steps = apply_fr04_stabilization(
-            dp_steps, request.interval_seconds, best_weights, profile
-        )
+        if request.mode == "smooth_fr02":
+            stabilized_steps = smooth_fr02_plan(
+                baseline_opacities[cell_key],
+                baseline_states[cell_key],
+                obs_seq,
+                profile,
+                best_weights,
+                request.interval_seconds,
+            )
+        else:
+            dp_steps = optimize_cell_dp(obs_seq, profile, best_weights, request.hardware_mode)
+            stabilized_steps = apply_fr04_stabilization(
+                dp_steps, request.interval_seconds, best_weights, profile
+            )
 
         traj = CellTrajectory(window_id=win_id, row=row, col=col, steps=stabilized_steps)
         cell_trajectories.append(traj)
@@ -450,7 +468,7 @@ def compute_adaptive_shading_plan(
             at=request.start_time,
         )
         # Update FilmStateRecord if continuous
-        if request.hardware_mode in ("LG_SGF", "SPD"):
+        if request.mode == "replace" and request.hardware_mode in ("LG_SGF", "SPD"):
             for win_id, (rows, cols) in windows_grid.items():
                 state_key = f"{scene_id}:{win_id}"
                 rec = session.get(FilmStateRecord, state_key)
@@ -467,6 +485,7 @@ def compute_adaptive_shading_plan(
     return AdaptiveShadingPlanResponse(
         scene_id=scene.scene_id,
         scene_revision=prediction.scene_revision,
+        mode=request.mode,
         hardware_mode=request.hardware_mode,
         baseline_plan=baseline_plan,
         stabilized_plan=stabilized_shading_plan,

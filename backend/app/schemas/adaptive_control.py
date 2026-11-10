@@ -11,6 +11,9 @@ from app.schemas.scene import Timestamp
 from app.schemas.shading_plan import ShadingPlan
 
 HardwareFilmMode = Literal["PDLC", "LG_SGF", "SPD"]
+# smooth_fr02: FR-04 keeps the FR-02 plan steady (FR-04.1 to FR-04.3) and decides nothing new.
+# replace: FR-04 computes its own plan from the irradiance band (experimental; uses hardware_mode).
+AdaptiveMode = Literal["smooth_fr02", "replace"]
 
 
 class AdaptiveBaseModel(BaseModel):
@@ -43,6 +46,8 @@ class AdaptiveShadingPlanRequest(AdaptiveBaseModel):
     start_time: str
     duration_minutes: Annotated[int, Field(ge=1, le=1440)] = 120
     interval_seconds: Annotated[int, Field(ge=1, le=3600)] = 300
+    mode: AdaptiveMode = "smooth_fr02"
+    # hardware_mode, enable_edge_margin and auto_tune_weights are used only when mode is "replace".
     hardware_mode: HardwareFilmMode = "LG_SGF"
     enable_edge_margin: bool = False
     auto_tune_weights: bool = True
@@ -101,6 +106,7 @@ class AdaptiveShadingPlanResponse(AdaptiveBaseModel):
 
     scene_id: str
     scene_revision: int
+    mode: AdaptiveMode = "smooth_fr02"
     hardware_mode: HardwareFilmMode
     baseline_plan: ShadingPlan
     stabilized_plan: ShadingPlan

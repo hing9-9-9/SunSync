@@ -45,6 +45,40 @@
         }
       },
       "signed_metrics": {
+        "smooth": {
+          "all_cells": {
+            "baseline_switches": 8,
+            "adaptive_switches": 8,
+            "baseline_total_change": 8.0,
+            "adaptive_total_change": 8.0,
+            "switch_reduction_pct": 0.0,
+            "flicker_reduction_pct": 0.0,
+            "baseline_mean_opacity": 0.2427,
+            "adaptive_mean_opacity": 0.2443,
+            "daylight_gain_pct": -0.6437768240343325,
+            "baseline_sun_weighted_transmittance": 0.5476,
+            "adaptive_sun_weighted_transmittance": 0.5475,
+            "sun_weighted_gain_pct": -0.008234412338174695
+          },
+          "grade_b_cells": {
+            "baseline_switches": 6,
+            "adaptive_switches": 6,
+            "baseline_total_change": 6.0,
+            "adaptive_total_change": 6.0,
+            "switch_reduction_pct": 0.0,
+            "flicker_reduction_pct": 0.0,
+            "baseline_mean_opacity": 0.9667,
+            "adaptive_mean_opacity": 0.975,
+            "daylight_gain_pct": -0.8620689655172382,
+            "baseline_sun_weighted_transmittance": 0.0305,
+            "adaptive_sun_weighted_transmittance": 0.0302,
+            "sun_weighted_gain_pct": -0.7951750873487867
+          },
+          "baseline_violations_q50": 0,
+          "baseline_violations_q90": 0,
+          "adaptive_violations_q50": 0,
+          "adaptive_violations_q90": 0
+        },
         "pdlc": {
           "all_cells": {
             "baseline_switches": 8,
@@ -172,6 +206,40 @@
         }
       },
       "signed_metrics": {
+        "smooth": {
+          "all_cells": {
+            "baseline_switches": 14,
+            "adaptive_switches": 8,
+            "baseline_total_change": 14.0,
+            "adaptive_total_change": 8.0,
+            "switch_reduction_pct": 42.857142857142854,
+            "flicker_reduction_pct": 42.857142857142854,
+            "baseline_mean_opacity": 0.2396,
+            "adaptive_mean_opacity": 0.2443,
+            "daylight_gain_pct": -1.9565217391304277,
+            "baseline_sun_weighted_transmittance": 0.5478,
+            "adaptive_sun_weighted_transmittance": 0.5476,
+            "sun_weighted_gain_pct": -0.03777218180387046
+          },
+          "grade_b_cells": {
+            "baseline_switches": 12,
+            "adaptive_switches": 6,
+            "baseline_total_change": 12.0,
+            "adaptive_total_change": 6.0,
+            "switch_reduction_pct": 50.0,
+            "flicker_reduction_pct": 50.0,
+            "baseline_mean_opacity": 0.95,
+            "adaptive_mean_opacity": 0.975,
+            "daylight_gain_pct": -2.631578947368424,
+            "baseline_sun_weighted_transmittance": 0.0314,
+            "adaptive_sun_weighted_transmittance": 0.0303,
+            "sun_weighted_gain_pct": -3.6350554296915623
+          },
+          "baseline_violations_q50": 0,
+          "baseline_violations_q90": 6,
+          "adaptive_violations_q50": 0,
+          "adaptive_violations_q90": 0
+        },
         "pdlc": {
           "all_cells": {
             "baseline_switches": 14,
@@ -299,6 +367,40 @@
         }
       },
       "signed_metrics": {
+        "smooth": {
+          "all_cells": {
+            "baseline_switches": 14,
+            "adaptive_switches": 8,
+            "baseline_total_change": 14.0,
+            "adaptive_total_change": 8.0,
+            "switch_reduction_pct": 42.857142857142854,
+            "flicker_reduction_pct": 42.857142857142854,
+            "baseline_mean_opacity": 0.238,
+            "adaptive_mean_opacity": 0.2427,
+            "daylight_gain_pct": -1.9693654266958471,
+            "baseline_sun_weighted_transmittance": 0.5479,
+            "adaptive_sun_weighted_transmittance": 0.5477,
+            "sun_weighted_gain_pct": -0.04124578887945693
+          },
+          "grade_b_cells": {
+            "baseline_switches": 12,
+            "adaptive_switches": 6,
+            "baseline_total_change": 12.0,
+            "adaptive_total_change": 6.0,
+            "switch_reduction_pct": 50.0,
+            "flicker_reduction_pct": 50.0,
+            "baseline_mean_opacity": 0.9417,
+            "adaptive_mean_opacity": 0.9667,
+            "daylight_gain_pct": -2.6548672566371705,
+            "baseline_sun_weighted_transmittance": 0.032,
+            "adaptive_sun_weighted_transmittance": 0.0308,
+            "sun_weighted_gain_pct": -3.9059253970061727
+          },
+          "baseline_violations_q50": 0,
+          "baseline_violations_q90": 3,
+          "adaptive_violations_q50": 0,
+          "adaptive_violations_q90": 0
+        },
         "pdlc": {
           "all_cells": {
             "baseline_switches": 14,
@@ -426,6 +528,40 @@
         }
       },
       "signed_metrics": {
+        "smooth": {
+          "all_cells": {
+            "baseline_switches": 0,
+            "adaptive_switches": 0,
+            "baseline_total_change": 0.0,
+            "adaptive_total_change": 0.0,
+            "switch_reduction_pct": null,
+            "flicker_reduction_pct": null,
+            "baseline_mean_opacity": 0.25,
+            "adaptive_mean_opacity": 0.25,
+            "daylight_gain_pct": 0.0,
+            "baseline_sun_weighted_transmittance": 0.5475,
+            "adaptive_sun_weighted_transmittance": 0.5475,
+            "sun_weighted_gain_pct": 0.0
+          },
+          "grade_b_cells": {
+            "baseline_switches": 0,
+            "adaptive_switches": 0,
+            "baseline_total_change": 0.0,
+            "adaptive_total_change": 0.0,
+            "switch_reduction_pct": null,
+            "flicker_reduction_pct": null,
+            "baseline_mean_opacity": 1.0,
+            "adaptive_mean_opacity": 1.0,
+            "daylight_gain_pct": 0.0,
+            "baseline_sun_weighted_transmittance": 0.03,
+            "adaptive_sun_weighted_transmittance": 0.03,
+            "sun_weighted_gain_pct": 0.0
+          },
+          "baseline_violations_q50": 0,
+          "baseline_violations_q90": 0,
+          "adaptive_violations_q50": 0,
+          "adaptive_violations_q90": 0
+        },
         "pdlc": {
           "all_cells": {
             "baseline_switches": 0,
@@ -848,6 +984,40 @@
             }
           },
           "signed_metrics": {
+            "smooth": {
+              "all_cells": {
+                "baseline_switches": 8,
+                "adaptive_switches": 8,
+                "baseline_total_change": 8.0,
+                "adaptive_total_change": 8.0,
+                "switch_reduction_pct": 0.0,
+                "flicker_reduction_pct": 0.0,
+                "baseline_mean_opacity": 0.2396,
+                "adaptive_mean_opacity": 0.2396,
+                "daylight_gain_pct": 0.0,
+                "baseline_sun_weighted_transmittance": 0.5478,
+                "adaptive_sun_weighted_transmittance": 0.5478,
+                "sun_weighted_gain_pct": 0.0
+              },
+              "grade_b_cells": {
+                "baseline_switches": 6,
+                "adaptive_switches": 6,
+                "baseline_total_change": 6.0,
+                "adaptive_total_change": 6.0,
+                "switch_reduction_pct": 0.0,
+                "flicker_reduction_pct": 0.0,
+                "baseline_mean_opacity": 0.95,
+                "adaptive_mean_opacity": 0.95,
+                "daylight_gain_pct": 0.0,
+                "baseline_sun_weighted_transmittance": 0.0314,
+                "adaptive_sun_weighted_transmittance": 0.0314,
+                "sun_weighted_gain_pct": 0.0
+              },
+              "baseline_violations_q50": 0,
+              "baseline_violations_q90": 0,
+              "adaptive_violations_q50": 0,
+              "adaptive_violations_q90": 0
+            },
             "pdlc": {
               "all_cells": {
                 "baseline_switches": 8,
@@ -975,6 +1145,40 @@
             }
           },
           "signed_metrics": {
+            "smooth": {
+              "all_cells": {
+                "baseline_switches": 20,
+                "adaptive_switches": 8,
+                "baseline_total_change": 20.0,
+                "adaptive_total_change": 8.0,
+                "switch_reduction_pct": 60.0,
+                "flicker_reduction_pct": 60.0,
+                "baseline_mean_opacity": 0.2333,
+                "adaptive_mean_opacity": 0.2396,
+                "daylight_gain_pct": -2.678571428571431,
+                "baseline_sun_weighted_transmittance": 0.5482,
+                "adaptive_sun_weighted_transmittance": 0.5479,
+                "sun_weighted_gain_pct": -0.06579215235935307
+              },
+              "grade_b_cells": {
+                "baseline_switches": 18,
+                "adaptive_switches": 6,
+                "baseline_total_change": 18.0,
+                "adaptive_total_change": 6.0,
+                "switch_reduction_pct": 66.66666666666666,
+                "flicker_reduction_pct": 66.66666666666666,
+                "baseline_mean_opacity": 0.9167,
+                "adaptive_mean_opacity": 0.95,
+                "daylight_gain_pct": -3.6363636363636354,
+                "baseline_sun_weighted_transmittance": 0.034,
+                "adaptive_sun_weighted_transmittance": 0.0321,
+                "sun_weighted_gain_pct": -5.99415973793136
+              },
+              "baseline_violations_q50": 0,
+              "baseline_violations_q90": 9,
+              "adaptive_violations_q50": 0,
+              "adaptive_violations_q90": 0
+            },
             "pdlc": {
               "all_cells": {
                 "baseline_switches": 20,
@@ -1102,6 +1306,40 @@
             }
           },
           "signed_metrics": {
+            "smooth": {
+              "all_cells": {
+                "baseline_switches": 20,
+                "adaptive_switches": 8,
+                "baseline_total_change": 20.0,
+                "adaptive_total_change": 8.0,
+                "switch_reduction_pct": 60.0,
+                "flicker_reduction_pct": 60.0,
+                "baseline_mean_opacity": 0.2271,
+                "adaptive_mean_opacity": 0.2411,
+                "daylight_gain_pct": -6.192660550458718,
+                "baseline_sun_weighted_transmittance": 0.5489,
+                "adaptive_sun_weighted_transmittance": 0.5478,
+                "sun_weighted_gain_pct": -0.20974502974893788
+              },
+              "grade_b_cells": {
+                "baseline_switches": 18,
+                "adaptive_switches": 6,
+                "baseline_total_change": 18.0,
+                "adaptive_total_change": 6.0,
+                "switch_reduction_pct": 66.66666666666666,
+                "flicker_reduction_pct": 66.66666666666666,
+                "baseline_mean_opacity": 0.8833,
+                "adaptive_mean_opacity": 0.9583,
+                "daylight_gain_pct": -8.490566037735856,
+                "baseline_sun_weighted_transmittance": 0.0377,
+                "adaptive_sun_weighted_transmittance": 0.0315,
+                "sun_weighted_gain_pct": -19.42261358251818
+              },
+              "baseline_violations_q50": 0,
+              "baseline_violations_q90": 18,
+              "adaptive_violations_q50": 0,
+              "adaptive_violations_q90": 0
+            },
             "pdlc": {
               "all_cells": {
                 "baseline_switches": 20,
@@ -1229,6 +1467,40 @@
             }
           },
           "signed_metrics": {
+            "smooth": {
+              "all_cells": {
+                "baseline_switches": 0,
+                "adaptive_switches": 0,
+                "baseline_total_change": 0.0,
+                "adaptive_total_change": 0.0,
+                "switch_reduction_pct": null,
+                "flicker_reduction_pct": null,
+                "baseline_mean_opacity": 0.25,
+                "adaptive_mean_opacity": 0.25,
+                "daylight_gain_pct": 0.0,
+                "baseline_sun_weighted_transmittance": 0.5475,
+                "adaptive_sun_weighted_transmittance": 0.5475,
+                "sun_weighted_gain_pct": 0.0
+              },
+              "grade_b_cells": {
+                "baseline_switches": 0,
+                "adaptive_switches": 0,
+                "baseline_total_change": 0.0,
+                "adaptive_total_change": 0.0,
+                "switch_reduction_pct": null,
+                "flicker_reduction_pct": null,
+                "baseline_mean_opacity": 1.0,
+                "adaptive_mean_opacity": 1.0,
+                "daylight_gain_pct": 0.0,
+                "baseline_sun_weighted_transmittance": 0.03,
+                "adaptive_sun_weighted_transmittance": 0.03,
+                "sun_weighted_gain_pct": 0.0
+              },
+              "baseline_violations_q50": 0,
+              "baseline_violations_q90": 0,
+              "adaptive_violations_q50": 0,
+              "adaptive_violations_q90": 0
+            },
             "pdlc": {
               "all_cells": {
                 "baseline_switches": 0,
@@ -1361,6 +1633,40 @@
             }
           },
           "signed_metrics": {
+            "smooth": {
+              "all_cells": {
+                "baseline_switches": 7,
+                "adaptive_switches": 4,
+                "baseline_total_change": 7.0,
+                "adaptive_total_change": 4.0,
+                "switch_reduction_pct": 42.857142857142854,
+                "flicker_reduction_pct": 42.857142857142854,
+                "baseline_mean_opacity": 0.2427,
+                "adaptive_mean_opacity": 0.2458,
+                "daylight_gain_pct": -1.287553648068665,
+                "baseline_sun_weighted_transmittance": 0.5476,
+                "adaptive_sun_weighted_transmittance": 0.5475,
+                "sun_weighted_gain_pct": -0.01647018089893721
+              },
+              "grade_b_cells": {
+                "baseline_switches": 6,
+                "adaptive_switches": 3,
+                "baseline_total_change": 6.0,
+                "adaptive_total_change": 3.0,
+                "switch_reduction_pct": 50.0,
+                "flicker_reduction_pct": 50.0,
+                "baseline_mean_opacity": 0.9667,
+                "adaptive_mean_opacity": 0.9833,
+                "daylight_gain_pct": -1.7241379310344764,
+                "baseline_sun_weighted_transmittance": 0.0305,
+                "adaptive_sun_weighted_transmittance": 0.03,
+                "sun_weighted_gain_pct": -1.6030976074982735
+              },
+              "baseline_violations_q50": 0,
+              "baseline_violations_q90": 0,
+              "adaptive_violations_q50": 0,
+              "adaptive_violations_q90": 0
+            },
             "pdlc": {
               "all_cells": {
                 "baseline_switches": 7,
@@ -1488,6 +1794,40 @@
             }
           },
           "signed_metrics": {
+            "smooth": {
+              "all_cells": {
+                "baseline_switches": 13,
+                "adaptive_switches": 4,
+                "baseline_total_change": 13.0,
+                "adaptive_total_change": 4.0,
+                "switch_reduction_pct": 69.23076923076923,
+                "flicker_reduction_pct": 69.23076923076923,
+                "baseline_mean_opacity": 0.2396,
+                "adaptive_mean_opacity": 0.2458,
+                "daylight_gain_pct": -2.6086956521739033,
+                "baseline_sun_weighted_transmittance": 0.5478,
+                "adaptive_sun_weighted_transmittance": 0.5475,
+                "sun_weighted_gain_pct": -0.04724475416047576
+              },
+              "grade_b_cells": {
+                "baseline_switches": 12,
+                "adaptive_switches": 3,
+                "baseline_total_change": 12.0,
+                "adaptive_total_change": 3.0,
+                "switch_reduction_pct": 75.0,
+                "flicker_reduction_pct": 75.0,
+                "baseline_mean_opacity": 0.95,
+                "adaptive_mean_opacity": 0.9833,
+                "daylight_gain_pct": -3.5087719298245603,
+                "baseline_sun_weighted_transmittance": 0.0314,
+                "adaptive_sun_weighted_transmittance": 0.03,
+                "sun_weighted_gain_pct": -4.59848940495333
+              },
+              "baseline_violations_q50": 0,
+              "baseline_violations_q90": 3,
+              "adaptive_violations_q50": 0,
+              "adaptive_violations_q90": 0
+            },
             "pdlc": {
               "all_cells": {
                 "baseline_switches": 13,
@@ -1615,6 +1955,40 @@
             }
           },
           "signed_metrics": {
+            "smooth": {
+              "all_cells": {
+                "baseline_switches": 7,
+                "adaptive_switches": 4,
+                "baseline_total_change": 7.0,
+                "adaptive_total_change": 4.0,
+                "switch_reduction_pct": 42.857142857142854,
+                "flicker_reduction_pct": 42.857142857142854,
+                "baseline_mean_opacity": 0.2396,
+                "adaptive_mean_opacity": 0.2427,
+                "daylight_gain_pct": -1.3043478260869517,
+                "baseline_sun_weighted_transmittance": 0.5478,
+                "adaptive_sun_weighted_transmittance": 0.5477,
+                "sun_weighted_gain_pct": -0.011815969218273327
+              },
+              "grade_b_cells": {
+                "baseline_switches": 6,
+                "adaptive_switches": 3,
+                "baseline_total_change": 6.0,
+                "adaptive_total_change": 3.0,
+                "switch_reduction_pct": 50.0,
+                "flicker_reduction_pct": 50.0,
+                "baseline_mean_opacity": 0.95,
+                "adaptive_mean_opacity": 0.9667,
+                "daylight_gain_pct": -1.7543859649122862,
+                "baseline_sun_weighted_transmittance": 0.0314,
+                "adaptive_sun_weighted_transmittance": 0.031,
+                "sun_weighted_gain_pct": -1.112780599212682
+              },
+              "baseline_violations_q50": 0,
+              "baseline_violations_q90": 0,
+              "adaptive_violations_q50": 0,
+              "adaptive_violations_q90": 0
+            },
             "pdlc": {
               "all_cells": {
                 "baseline_switches": 7,
@@ -1742,6 +2116,40 @@
             }
           },
           "signed_metrics": {
+            "smooth": {
+              "all_cells": {
+                "baseline_switches": 0,
+                "adaptive_switches": 0,
+                "baseline_total_change": 0.0,
+                "adaptive_total_change": 0.0,
+                "switch_reduction_pct": null,
+                "flicker_reduction_pct": null,
+                "baseline_mean_opacity": 0.25,
+                "adaptive_mean_opacity": 0.25,
+                "daylight_gain_pct": 0.0,
+                "baseline_sun_weighted_transmittance": 0.5475,
+                "adaptive_sun_weighted_transmittance": 0.5475,
+                "sun_weighted_gain_pct": 0.0
+              },
+              "grade_b_cells": {
+                "baseline_switches": 0,
+                "adaptive_switches": 0,
+                "baseline_total_change": 0.0,
+                "adaptive_total_change": 0.0,
+                "switch_reduction_pct": null,
+                "flicker_reduction_pct": null,
+                "baseline_mean_opacity": 1.0,
+                "adaptive_mean_opacity": 1.0,
+                "daylight_gain_pct": 0.0,
+                "baseline_sun_weighted_transmittance": 0.03,
+                "adaptive_sun_weighted_transmittance": 0.03,
+                "sun_weighted_gain_pct": 0.0
+              },
+              "baseline_violations_q50": 0,
+              "baseline_violations_q90": 0,
+              "adaptive_violations_q50": 0,
+              "adaptive_violations_q90": 0
+            },
             "pdlc": {
               "all_cells": {
                 "baseline_switches": 0,
@@ -1874,6 +2282,40 @@
             }
           },
           "signed_metrics": {
+            "smooth": {
+              "all_cells": {
+                "baseline_switches": 8,
+                "adaptive_switches": 8,
+                "baseline_total_change": 8.0,
+                "adaptive_total_change": 8.0,
+                "switch_reduction_pct": 0.0,
+                "flicker_reduction_pct": 0.0,
+                "baseline_mean_opacity": 0.2427,
+                "adaptive_mean_opacity": 0.2427,
+                "daylight_gain_pct": 0.0,
+                "baseline_sun_weighted_transmittance": 0.5476,
+                "adaptive_sun_weighted_transmittance": 0.5476,
+                "sun_weighted_gain_pct": 0.0
+              },
+              "grade_b_cells": {
+                "baseline_switches": 6,
+                "adaptive_switches": 6,
+                "baseline_total_change": 6.0,
+                "adaptive_total_change": 6.0,
+                "switch_reduction_pct": 0.0,
+                "flicker_reduction_pct": 0.0,
+                "baseline_mean_opacity": 0.9667,
+                "adaptive_mean_opacity": 0.9667,
+                "daylight_gain_pct": 0.0,
+                "baseline_sun_weighted_transmittance": 0.0305,
+                "adaptive_sun_weighted_transmittance": 0.0305,
+                "sun_weighted_gain_pct": 0.0
+              },
+              "baseline_violations_q50": 0,
+              "baseline_violations_q90": 0,
+              "adaptive_violations_q50": 0,
+              "adaptive_violations_q90": 0
+            },
             "pdlc": {
               "all_cells": {
                 "baseline_switches": 8,
@@ -2001,6 +2443,40 @@
             }
           },
           "signed_metrics": {
+            "smooth": {
+              "all_cells": {
+                "baseline_switches": 14,
+                "adaptive_switches": 8,
+                "baseline_total_change": 14.0,
+                "adaptive_total_change": 8.0,
+                "switch_reduction_pct": 42.857142857142854,
+                "flicker_reduction_pct": 42.857142857142854,
+                "baseline_mean_opacity": 0.2396,
+                "adaptive_mean_opacity": 0.2443,
+                "daylight_gain_pct": -1.9565217391304277,
+                "baseline_sun_weighted_transmittance": 0.5478,
+                "adaptive_sun_weighted_transmittance": 0.5476,
+                "sun_weighted_gain_pct": -0.03777218180387046
+              },
+              "grade_b_cells": {
+                "baseline_switches": 12,
+                "adaptive_switches": 6,
+                "baseline_total_change": 12.0,
+                "adaptive_total_change": 6.0,
+                "switch_reduction_pct": 50.0,
+                "flicker_reduction_pct": 50.0,
+                "baseline_mean_opacity": 0.95,
+                "adaptive_mean_opacity": 0.975,
+                "daylight_gain_pct": -2.631578947368424,
+                "baseline_sun_weighted_transmittance": 0.0314,
+                "adaptive_sun_weighted_transmittance": 0.0303,
+                "sun_weighted_gain_pct": -3.6350554296915623
+              },
+              "baseline_violations_q50": 0,
+              "baseline_violations_q90": 6,
+              "adaptive_violations_q50": 0,
+              "adaptive_violations_q90": 0
+            },
             "pdlc": {
               "all_cells": {
                 "baseline_switches": 14,
@@ -2128,6 +2604,40 @@
             }
           },
           "signed_metrics": {
+            "smooth": {
+              "all_cells": {
+                "baseline_switches": 14,
+                "adaptive_switches": 8,
+                "baseline_total_change": 14.0,
+                "adaptive_total_change": 8.0,
+                "switch_reduction_pct": 42.857142857142854,
+                "flicker_reduction_pct": 42.857142857142854,
+                "baseline_mean_opacity": 0.238,
+                "adaptive_mean_opacity": 0.2427,
+                "daylight_gain_pct": -1.9693654266958471,
+                "baseline_sun_weighted_transmittance": 0.5479,
+                "adaptive_sun_weighted_transmittance": 0.5477,
+                "sun_weighted_gain_pct": -0.04124578887945693
+              },
+              "grade_b_cells": {
+                "baseline_switches": 12,
+                "adaptive_switches": 6,
+                "baseline_total_change": 12.0,
+                "adaptive_total_change": 6.0,
+                "switch_reduction_pct": 50.0,
+                "flicker_reduction_pct": 50.0,
+                "baseline_mean_opacity": 0.9417,
+                "adaptive_mean_opacity": 0.9667,
+                "daylight_gain_pct": -2.6548672566371705,
+                "baseline_sun_weighted_transmittance": 0.032,
+                "adaptive_sun_weighted_transmittance": 0.0308,
+                "sun_weighted_gain_pct": -3.9059253970061727
+              },
+              "baseline_violations_q50": 0,
+              "baseline_violations_q90": 3,
+              "adaptive_violations_q50": 0,
+              "adaptive_violations_q90": 0
+            },
             "pdlc": {
               "all_cells": {
                 "baseline_switches": 14,
@@ -2255,6 +2765,40 @@
             }
           },
           "signed_metrics": {
+            "smooth": {
+              "all_cells": {
+                "baseline_switches": 0,
+                "adaptive_switches": 0,
+                "baseline_total_change": 0.0,
+                "adaptive_total_change": 0.0,
+                "switch_reduction_pct": null,
+                "flicker_reduction_pct": null,
+                "baseline_mean_opacity": 0.25,
+                "adaptive_mean_opacity": 0.25,
+                "daylight_gain_pct": 0.0,
+                "baseline_sun_weighted_transmittance": 0.5475,
+                "adaptive_sun_weighted_transmittance": 0.5475,
+                "sun_weighted_gain_pct": 0.0
+              },
+              "grade_b_cells": {
+                "baseline_switches": 0,
+                "adaptive_switches": 0,
+                "baseline_total_change": 0.0,
+                "adaptive_total_change": 0.0,
+                "switch_reduction_pct": null,
+                "flicker_reduction_pct": null,
+                "baseline_mean_opacity": 1.0,
+                "adaptive_mean_opacity": 1.0,
+                "daylight_gain_pct": 0.0,
+                "baseline_sun_weighted_transmittance": 0.03,
+                "adaptive_sun_weighted_transmittance": 0.03,
+                "sun_weighted_gain_pct": 0.0
+              },
+              "baseline_violations_q50": 0,
+              "baseline_violations_q90": 0,
+              "adaptive_violations_q50": 0,
+              "adaptive_violations_q90": 0
+            },
             "pdlc": {
               "all_cells": {
                 "baseline_switches": 0,
@@ -2387,6 +2931,40 @@
             }
           },
           "signed_metrics": {
+            "smooth": {
+              "all_cells": {
+                "baseline_switches": 8,
+                "adaptive_switches": 8,
+                "baseline_total_change": 8.0,
+                "adaptive_total_change": 8.0,
+                "switch_reduction_pct": 0.0,
+                "flicker_reduction_pct": 0.0,
+                "baseline_mean_opacity": 0.2427,
+                "adaptive_mean_opacity": 0.2443,
+                "daylight_gain_pct": -0.6437768240343325,
+                "baseline_sun_weighted_transmittance": 0.5476,
+                "adaptive_sun_weighted_transmittance": 0.5475,
+                "sun_weighted_gain_pct": -0.008234412338174695
+              },
+              "grade_b_cells": {
+                "baseline_switches": 6,
+                "adaptive_switches": 6,
+                "baseline_total_change": 6.0,
+                "adaptive_total_change": 6.0,
+                "switch_reduction_pct": 0.0,
+                "flicker_reduction_pct": 0.0,
+                "baseline_mean_opacity": 0.9667,
+                "adaptive_mean_opacity": 0.975,
+                "daylight_gain_pct": -0.8620689655172382,
+                "baseline_sun_weighted_transmittance": 0.0305,
+                "adaptive_sun_weighted_transmittance": 0.0302,
+                "sun_weighted_gain_pct": -0.7951750873487867
+              },
+              "baseline_violations_q50": 0,
+              "baseline_violations_q90": 0,
+              "adaptive_violations_q50": 0,
+              "adaptive_violations_q90": 0
+            },
             "pdlc": {
               "all_cells": {
                 "baseline_switches": 8,
@@ -2514,6 +3092,40 @@
             }
           },
           "signed_metrics": {
+            "smooth": {
+              "all_cells": {
+                "baseline_switches": 14,
+                "adaptive_switches": 8,
+                "baseline_total_change": 14.0,
+                "adaptive_total_change": 8.0,
+                "switch_reduction_pct": 42.857142857142854,
+                "flicker_reduction_pct": 42.857142857142854,
+                "baseline_mean_opacity": 0.2396,
+                "adaptive_mean_opacity": 0.2443,
+                "daylight_gain_pct": -1.9565217391304277,
+                "baseline_sun_weighted_transmittance": 0.5478,
+                "adaptive_sun_weighted_transmittance": 0.5476,
+                "sun_weighted_gain_pct": -0.03777218180387046
+              },
+              "grade_b_cells": {
+                "baseline_switches": 12,
+                "adaptive_switches": 6,
+                "baseline_total_change": 12.0,
+                "adaptive_total_change": 6.0,
+                "switch_reduction_pct": 50.0,
+                "flicker_reduction_pct": 50.0,
+                "baseline_mean_opacity": 0.95,
+                "adaptive_mean_opacity": 0.975,
+                "daylight_gain_pct": -2.631578947368424,
+                "baseline_sun_weighted_transmittance": 0.0314,
+                "adaptive_sun_weighted_transmittance": 0.0303,
+                "sun_weighted_gain_pct": -3.6350554296915623
+              },
+              "baseline_violations_q50": 0,
+              "baseline_violations_q90": 6,
+              "adaptive_violations_q50": 0,
+              "adaptive_violations_q90": 0
+            },
             "pdlc": {
               "all_cells": {
                 "baseline_switches": 14,
@@ -2641,6 +3253,40 @@
             }
           },
           "signed_metrics": {
+            "smooth": {
+              "all_cells": {
+                "baseline_switches": 14,
+                "adaptive_switches": 8,
+                "baseline_total_change": 14.0,
+                "adaptive_total_change": 8.0,
+                "switch_reduction_pct": 42.857142857142854,
+                "flicker_reduction_pct": 42.857142857142854,
+                "baseline_mean_opacity": 0.238,
+                "adaptive_mean_opacity": 0.2427,
+                "daylight_gain_pct": -1.9693654266958471,
+                "baseline_sun_weighted_transmittance": 0.5479,
+                "adaptive_sun_weighted_transmittance": 0.5477,
+                "sun_weighted_gain_pct": -0.04124578887945693
+              },
+              "grade_b_cells": {
+                "baseline_switches": 12,
+                "adaptive_switches": 6,
+                "baseline_total_change": 12.0,
+                "adaptive_total_change": 6.0,
+                "switch_reduction_pct": 50.0,
+                "flicker_reduction_pct": 50.0,
+                "baseline_mean_opacity": 0.9417,
+                "adaptive_mean_opacity": 0.9667,
+                "daylight_gain_pct": -2.6548672566371705,
+                "baseline_sun_weighted_transmittance": 0.032,
+                "adaptive_sun_weighted_transmittance": 0.0308,
+                "sun_weighted_gain_pct": -3.9059253970061727
+              },
+              "baseline_violations_q50": 0,
+              "baseline_violations_q90": 9,
+              "adaptive_violations_q50": 0,
+              "adaptive_violations_q90": 3
+            },
             "pdlc": {
               "all_cells": {
                 "baseline_switches": 14,
@@ -2768,6 +3414,40 @@
             }
           },
           "signed_metrics": {
+            "smooth": {
+              "all_cells": {
+                "baseline_switches": 0,
+                "adaptive_switches": 0,
+                "baseline_total_change": 0.0,
+                "adaptive_total_change": 0.0,
+                "switch_reduction_pct": null,
+                "flicker_reduction_pct": null,
+                "baseline_mean_opacity": 0.25,
+                "adaptive_mean_opacity": 0.25,
+                "daylight_gain_pct": 0.0,
+                "baseline_sun_weighted_transmittance": 0.5475,
+                "adaptive_sun_weighted_transmittance": 0.5475,
+                "sun_weighted_gain_pct": 0.0
+              },
+              "grade_b_cells": {
+                "baseline_switches": 0,
+                "adaptive_switches": 0,
+                "baseline_total_change": 0.0,
+                "adaptive_total_change": 0.0,
+                "switch_reduction_pct": null,
+                "flicker_reduction_pct": null,
+                "baseline_mean_opacity": 1.0,
+                "adaptive_mean_opacity": 1.0,
+                "daylight_gain_pct": 0.0,
+                "baseline_sun_weighted_transmittance": 0.03,
+                "adaptive_sun_weighted_transmittance": 0.03,
+                "sun_weighted_gain_pct": 0.0
+              },
+              "baseline_violations_q50": 0,
+              "baseline_violations_q90": 0,
+              "adaptive_violations_q50": 0,
+              "adaptive_violations_q90": 0
+            },
             "pdlc": {
               "all_cells": {
                 "baseline_switches": 0,
