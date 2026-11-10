@@ -51,12 +51,12 @@ def fit_surface(kind, points, tolerance):
     if kind == "rectangle":
         x = (p[1] - p[0] + p[2] - p[3]) / 2
         y = (p[3] - p[0] + p[2] - p[1]) / 2
-        width = np.linalg.norm(x)
+        width = float(np.linalg.norm(x))
         if width < 1e-8:
             raise ValueError("Zero width")
         axis = x / width
         yy = y - axis * np.dot(y, axis)
-        depth = np.linalg.norm(yy)
+        depth = float(np.linalg.norm(yy))
         if depth < 1e-8:
             raise ValueError("Zero depth")
         yy /= depth
@@ -78,7 +78,7 @@ def fit_surface(kind, points, tolerance):
         radius = np.sqrt(radius2)
         centre = centre + basis @ sol[:2]
         residual = max(residual, float(np.max(abs(np.linalg.norm(q - sol[:2], axis=1) - radius))))
-        width = depth = 2 * radius
+        width = depth = float(2 * radius)
         axis = p[1] - centre
         axis /= np.linalg.norm(axis)
     elif kind == "ellipse":
@@ -104,7 +104,7 @@ def fit_surface(kind, points, tolerance):
         yy /= np.linalg.norm(yy)
         local = (p - centre) @ np.column_stack([axis, yy])
         lo, hi = local.min(axis=0), local.max(axis=0)
-        width, depth = hi - lo
+        width, depth = map(float, hi - lo)
         centre = centre + np.column_stack([axis, yy]) @ ((lo + hi) / 2)
     if residual > tolerance:
         raise ValueError(f"Surface residual {residual:.4f} m exceeds tolerance")
