@@ -7,7 +7,7 @@ name = "sunsync-registration-core"
 version = "0.1.0"
 description = "Platform-neutral ArUco furniture registration and ENU integration"
 requires-python = ">=3.11"
-dependencies = ["numpy>=1.26,<3", "opencv-contrib-python>=4.10,<5", "pydantic>=2.7,<3", "Pillow>=10,<14"]
+dependencies = ["numpy>=1.26,<3", "scipy>=1.11,<2", "opencv-contrib-python>=4.10,<5", "pydantic>=2.7,<3", "Pillow>=10,<14"]
 
 [project.optional-dependencies]
 api = ["fastapi>=0.115,<1", "uvicorn>=0.30,<1"]

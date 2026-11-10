@@ -2,14 +2,16 @@
 
 import cv2
 from fastapi import FastAPI, HTTPException
-from starlette.responses import JSONResponse
 from pydantic import Field
-from .models import PlanRequest, MeasureRequest, DetectRequest, Strict
-from .core import plan, measure, compose_scene
-from .pose import detect
+from starlette.responses import JSONResponse
+
+from .core import compose_scene, measure, plan
 from .fr06 import export_fragment
 from .fragment_schema import BoardCameraFragmentV1
-from .mobile import NativeFrame, AutomaticSetup, ingest_frame, calibrate_automatically
+from .mobile import AutomaticSetup, NativeFrame, calibrate_automatically, ingest_frame
+from .models import DetectRequest, MeasureRequest, PlanRequest, SelectRequest, Strict
+from .pose import detect
+from .selection import select_observations
 
 
 class SceneRequest(Strict):
@@ -73,6 +75,10 @@ def create_app():
     @app.post("/v1/detect")
     def detect_image(request: DetectRequest):
         return run(detect, request)
+
+    @app.post("/v1/observations/select")
+    def select_burst(request: SelectRequest):
+        return run(select_observations, request)
 
     @app.post("/v1/measurements")
     def make_measurement(request: MeasureRequest):
