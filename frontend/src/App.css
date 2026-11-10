@@ -2360,11 +2360,48 @@ dialog[open]::backdrop {
 .app .detail-settings { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(280px, 1fr); gap: 16px; align-items: start; margin-bottom: 40px; }
 .app .detail-manage h3 { margin: 0 0 6px; }
 .app .detail-manage .detail-actions { margin-top: 16px; }
-.app .virtual-film-control { margin-top: var(--space-4); padding-top: var(--space-3); border-top: 1px solid var(--c-e3e6ee, #e3e6ee); display: grid; gap: var(--space-2); }
-.app .virtual-film-control h4,
-.app .virtual-film-control h5 { margin: 0; }
-.app .film-log-list { list-style: none; margin: var(--space-1) 0 0; padding: 0; display: grid; gap: var(--space-1); font-size: var(--fs-small); font-variant-numeric: tabular-nums; }
-.app .film-log-item { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 6px 8px; border-radius: 6px; background: var(--c-f7f8fb, #f7f8fb); }
+/* Film card: what is covered now, one button, and the unmet times only when there are any. */
+.app .film-card { display: grid; gap: var(--space-3); }
+.app .film-card h3 { margin: 0; }
+.app .film-card p { margin: 0; }
+.app .film-card .secondary { width: 100%; }
+.app .film-status { display: grid; gap: var(--space-2); font-size: var(--fs-body); font-variant-numeric: tabular-nums; }
+.app .film-meter { height: 8px; border-radius: 4px; background: var(--paper); overflow: hidden; }
+.app .film-meter span { display: block; height: 100%; border-radius: 4px; background: var(--data); transition: width 0.26s; }
+.app .film-unmet { display: grid; gap: var(--space-1); }
+.app .film-unmet-list { list-style: none; margin: 0; padding: 0; font-variant-numeric: tabular-nums; }
+@media (min-width: 901px) {
+  .app .detail-settings .detail-film { grid-column: 1; }
+  .app .detail-settings .detail-manage { grid-column: 2; grid-row: 1 / span 2; }
+}
+/* Rotation: the angle field, then two quarter-turn buttons in the usual two-column row. */
+.app .rotate-field { margin-bottom: var(--space-4); }
+.app.app.app .rotate-field .field { margin-bottom: 0 !important; }
+.app .rotate-field .furniture-actions { margin: var(--space-3) 0 0 !important; }
+/* The two buttons sit inside the same group as the inputs, so they share the inputs' border. */
+.app.app.app .rotate-field .furniture-actions > button { border-color: var(--c-bdbac5) !important; box-shadow: none !important; }
+.app.app.app .rotate-field .furniture-actions { margin-top: var(--space-3) !important; }
+.app.app.app .mobile-editor-sheet-body .rotate-field .furniture-actions { margin-top: 0 !important; }
+.mobile-editor-sheet:focus { outline: none; }
+/* Film modules: tappable tiles with the 60 cm marker drawn on the chosen one. */
+.app .module-picker { display: grid; gap: var(--space-2); justify-content: center; margin: var(--space-4) 0 var(--space-2); }
+.app .module { position: relative; aspect-ratio: 1; display: grid; place-items: center; padding: 0; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); min-height: 0; }
+/* Hover A: shape and border stay put; 3% darker, a light shadow and a 1px lift. */
+.app .module-picker:not(.readonly) .module { cursor: pointer; transition: transform 0.2s, box-shadow 0.2s, filter 0.2s; }
+.app .module-picker:not(.readonly) .module:hover { filter: brightness(0.97); box-shadow: 0 2px 8px rgba(29, 28, 34, 0.06); transform: translateY(-1px); }
+.app .module-picker:not(.readonly) .module:active { filter: brightness(0.95); box-shadow: none; transform: none; }
+/* Chosen tile: the same light purple as the selected chips; the marker drawn on it says the rest. */
+.app .module.on { border-color: var(--accent); background: var(--c-efeefd, #efeefd); }
+.app .module-marker { width: 60%; height: 60%; border-radius: 3px; background: var(--c-272b40); background-image: linear-gradient(45deg, var(--c-ffffff-a20) 25%, transparent 25%, transparent 75%, var(--c-ffffff-a20) 75%); background-size: 25% 25%; }
+.app .film-select, .app .film-layout { display: grid; gap: var(--space-3); }
+.app .film-layout { margin-top: var(--space-4); }
+.app .film-select h3, .app .film-select p, .app .film-layout h3, .app .film-layout p { margin: 0; }
+.app .film-select-choice { text-align: center; font-weight: 500; }
+.app .film-select > .primary { width: 100%; }
+/* Forecast notes sit under the save button, closed by default. */
 .app .forecast-details { margin-top: var(--space-2); }
 .app .forecast-details summary { cursor: pointer; font-weight: 500; }
+/* A saved overlap: the message, then the way to fix it on the same line (or the next on a narrow screen). */
+.app .notice.overlap-notice { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-3); }
+.app .notice.overlap-notice .text-button { min-height: 32px; padding: 0; }
 @media (max-width: 900px) { .app .detail-settings { grid-template-columns: 1fr; } }

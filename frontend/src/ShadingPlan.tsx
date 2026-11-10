@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { filmStatesAt } from "./shading";
 import type { ShadingResult } from "./shading";
 import { filmGrid, resolveWindow, timeToMinute, validateShadingTime, validateWindow, walls } from "./model";
@@ -6,19 +6,8 @@ import { defaultShadingTime } from "./model";
 import type { ShadingTime, Space } from "./model";
 import { DAY_MINUTES, formatMinute, protectedRegions, shadedCells } from "./sunlight";
 import type { BlockingSchedule as Schedule } from "./sunlight";
-import {
-  applyFilmSchedule,
-  fetchFilmLogs,
-  fetchFilmState,
-  formatTimeLabel,
-  userMessage,
-} from "./spaceApi";
-import type {
-  AppliedCellState,
-  FilmApplicationLogEntry,
-  ScheduleApplyResponse,
-  WindowFilmStateResponse,
-} from "./spaceApi";
+import { applyFilmSchedule, fetchFilmLogs, fetchFilmState, formatTimeLabel, userMessage } from "./spaceApi";
+import type { FilmApplicationLogEntry, ScheduleApplyResponse, WindowFilmStateResponse } from "./spaceApi";
 import type { ReactNode } from "react";
 
 // Surface gap between cells, in cell units: white space separates the cells instead of grid lines.
@@ -141,169 +130,103 @@ export function ShadingTimeControl({ space, value, onChange, sunSchedule, hour, 
     {!compact && <p className="blocking-status" role="status">
       {active ? `${value.start} ~ ${value.end} 차단 · 지금 선택한 ${formatMinute(minute)}은 ${minute >= start && minute < end ? "차단 시간" : "차단 시간 밖"}` : "차단 시간이 설정되지 않음"}
     </p>}
-    {!compact && (regions.length > 0 ? sunSource?.note ?? <ul className="sun-reference muted small">
+    {!compact && (regions.length > 0 ? (sunSource?.note ? null : <ul className="sun-reference muted small">
       {regions.map((r) => {
         const periods = sunSchedule.get(r.id) ?? [];
         return <li key={r.id}>
           {r.name} · {sunSource?.label ?? "햇빛 닿는 시간(간이 계산)"} {periods.length ? periods.map((p) => `${formatMinute(p.arrival)}~${formatMinute(p.end)}`).join(", ") : sunSource ? "직사광이 닿지 않음" : "없음"}
         </li>;
       })}
-    </ul> : <p className="muted small">보호 영역이 없어 가릴 곳이 없습니다. D 등급은 채광을 우선해 가리지 않습니다.</p>)}
+    </ul>) : <p className="muted small">보호 영역이 없어 가릴 곳이 없습니다. D 등급은 채광을 우선해 가리지 않습니다.</p>)}
     {onSave && <button type="button" className="secondary" disabled={!dirty || saving || (value.enabled && !!error)} onClick={onSave}>
       {saving ? "저장 중…" : "차단 시간 저장"}
     </button>}
+    {/* The forecast notes come after the save button so they do not split the form. */}
+    {!compact && regions.length > 0 && sunSource?.note}
   </section>;
 }
 
-const stateLabel: Record<AppliedCellState, string> = {
-  transparent: "열림",
-  opaque: "가림",
-  dimmed: "디밍",
-};
+/** Groups the not-fully-protected cells by the time they were commanded, so the list reads as "08:00 · 4칸". */
+function unmetByTime(logs: FilmApplicationLogEntry[], timezone?: string) {
+  const groups = new Map<string, number>();
+  for (const entry of logs) {
+    const label = formatTimeLabel(entry.timestamp, timezone);
+    groups.set(label, (groups.get(label) ?? 0) + 1);
+  }
+  return [...groups].slice(0, 3);
+}
 
-const statusLabel: Record<FilmApplicationLogEntry["status"], string> = {
-  applied: "적용됨",
-  target_unmet: "목표 미달",
-  unknown_intensity: "조도 미상",
-};
-
-/** FR-05: apply the computed ShadingPlan to the virtual film and inspect cell states & transition logs. */
-export function VirtualFilmControl({
-  space,
-  prediction,
-  hour,
-  setting,
-}: {
-  space: Space;
-  prediction?: ShadingResult;
-  hour: number;
-  setting?: ShadingTime;
-}) {
+/**
+ * The film as its own card: what is covered at the chosen time, and one button that sends the plan on.
+ * The unmet-times list appears only when the film could not reach the wanted cover.
+ */
+export function VirtualFilmControl({ space, prediction, hour }: { space: Space; prediction?: ShadingResult; hour: number }) {
   const sceneId = space.serverSceneId;
   const win = resolveWindow(space);
-  const [applying, setApplying] = useState(false);
-  const [loadingLogs, setLoadingLogs] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [applied, setApplied] = useState<ScheduleApplyResponse | null>(null);
   const [windowState, setWindowState] = useState<WindowFilmStateResponse | null>(null);
-  const [logs, setLogs] = useState<FilmApplicationLogEntry[] | null>(null);
+  const [unmet, setUnmet] = useState<{ total: number; logs: FilmApplicationLogEntry[] } | null>(null);
   const [error, setError] = useState("");
+
+  const plan = prediction?.plan;
+  const simulatedAt = plan ? new Date(Date.parse(plan.start_time) + Math.round(hour * 60) * 60_000).toISOString() : undefined;
+  const timezone = space.site?.timezone;
+
+  async function load(apply: boolean) {
+    if (!sceneId || busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      const result = apply && plan ? await applyFilmSchedule(sceneId, plan, simulatedAt) : null;
+      const [state, logs] = await Promise.all([
+        result ? Promise.resolve({ windows: result.windows }) : fetchFilmState(sceneId, simulatedAt),
+        fetchFilmLogs(sceneId, { status: "target_unmet", limit: 500 }),
+      ]);
+      if (result) setApplied(result);
+      setWindowState(state.windows[0] ?? null);
+      setUnmet({ total: logs.total, logs: logs.logs });
+    } catch (err) {
+      setError(userMessage(err, "필름 상태를 불러오지 못했어요."));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // Read the film's current state once the plan is ready, and again when the chosen time moves.
+  useEffect(() => {
+    if (plan && sceneId) void load(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sceneId, plan, simulatedAt]);
 
   if (!sceneId || !win) return null;
 
-  const plan = prediction?.plan;
-  const simulatedAt = plan
-    ? new Date(Date.parse(plan.start_time) + Math.round(hour * 60) * 60_000).toISOString()
-    : undefined;
-
-  async function handleApplySchedule() {
-    if (!sceneId || !plan || applying) return;
-    setApplying(true);
-    setError("");
-    try {
-      const result = await applyFilmSchedule(sceneId, plan, simulatedAt);
-      setApplied(result);
-      setWindowState(result.windows[0] ?? null);
-      const logResult = await fetchFilmLogs(sceneId, { limit: 20 });
-      setLogs(logResult.logs);
-    } catch (err) {
-      setError(userMessage(err, "가상 필름에 일정을 적용하지 못했습니다."));
-    } finally {
-      setApplying(false);
-    }
-  }
-
-  async function handleInspectStateAndLogs() {
-    if (!sceneId || loadingLogs) return;
-    setLoadingLogs(true);
-    setError("");
-    try {
-      const [stateRes, logRes] = await Promise.all([
-        fetchFilmState(sceneId, simulatedAt),
-        fetchFilmLogs(sceneId, { limit: 20 }),
-      ]);
-      setWindowState(stateRes.windows[0] ?? null);
-      setLogs(logRes.logs);
-    } catch (err) {
-      setError(userMessage(err, "가상 필름 상태와 적용 기록을 불러오지 못했습니다."));
-    } finally {
-      setLoadingLogs(false);
-    }
-  }
-
-  const opaqueCells = windowState
-    ? windowState.states.reduce(
-        (sum, row) => sum + row.filter((cell) => cell === "opaque").length,
-        0,
-      )
-    : 0;
-  const totalCells = windowState ? windowState.film_rows * windowState.film_cols : 0;
+  const total = windowState ? windowState.film_rows * windowState.film_cols : 0;
+  const covered = windowState ? windowState.states.reduce((sum, row) => sum + row.filter((cell) => cell === "opaque").length, 0) : 0;
 
   return (
-    <section className="virtual-film-control" aria-label="가상 필름 제어 및 적용 기록">
-      <div className="divider" />
-      <div className="section-row">
-        <h4>가상 필름 제어 (FR-05)</h4>
-        <span className="muted small">{formatMinute(Math.round(hour * 60))} 기준</span>
+    <section className="film-card" aria-label="필름">
+      <h3>필름</h3>
+      <div className="film-status" aria-live="polite">
+        {windowState
+          ? <>
+              <p>{formatTimeLabel(windowState.evaluated_at, timezone)} 기준 <strong>{total}칸 중 {covered}칸</strong> 가림</p>
+              <div className="film-meter" role="img" aria-label={`전체 ${total}칸 중 ${covered}칸 가림`}><span style={{ width: `${total ? (covered / total) * 100 : 0}%` }} /></div>
+            </>
+          : <p className="muted small">{!plan ? "아직 계산된 차단 계획이 없어요." : busy ? "불러오는 중…" : "필름 상태를 불러오지 못했어요."}</p>}
       </div>
-      <p className="muted small">
-        계산된 차광 일정(FR-02)을 가상 필름 장치에 적용하고 시각별 칸 상태와 전환 기록을 확인합니다.
-        {setting && (setting.enabled
-          ? ` (사용자 차단 시간 ${setting.start}~${setting.end} 설정과 별개로 서버에서 계산된 일사 차광 계획 원본 전체가 장치에 전송됩니다.)`
-          : " (사용자 차단 시간이 꺼져 있어 상단 도면은 열림 상태로 표시되나, 가상 필름 장치에는 서버에서 계산된 일사 차광 계획 원본이 전송됩니다.)")}
-      </p>
-      <div className="actions">
-        <button
-          type="button"
-          className="secondary"
-          disabled={!plan || applying}
-          onClick={handleApplySchedule}
-        >
-          {applying ? "일정 적용 중…" : "가상 필름에 일정 적용"}
-        </button>
-        <button
-          type="button"
-          className="text-button"
-          disabled={loadingLogs}
-          onClick={handleInspectStateAndLogs}
-        >
-          {loadingLogs ? "불러오는 중…" : "필름 상태·기록 조회"}
-        </button>
-      </div>
-      {error && (
-        <p className="error" role="alert">
-          {error}
-        </p>
-      )}
-      {(applied || windowState) && (
-        <p className="muted small" role="status">
-          {windowState &&
-            `현재 시각(${formatTimeLabel(windowState.evaluated_at, space.site?.timezone)}) 가림 ${opaqueCells}/${totalCells}칸`}
-          {applied &&
-            ` · 전환 기록 ${applied.applied_records_count}건${
-              applied.target_unmet_count > 0 ? ` · 목표 미달 ${applied.target_unmet_count}건` : ""
-            }`}
-        </p>
-      )}
-      {logs !== null && (
-        <details className="film-log-details" open={logs.length > 0}>
-          <summary className="muted small">
-            필름 적용 기록 ({logs.length}건)
-          </summary>
-          {logs.length === 0 ? (
-            <p className="muted small">아직 기록된 필름 상태 전환이 없습니다.</p>
-          ) : (
-            <ul className="sun-reference muted small">
-              {logs.slice(0, 10).map((entry, idx) => (
-                <li key={entry.log_id ?? `${entry.timestamp}-${entry.row}-${entry.col}-${idx}`}>
-                  {formatTimeLabel(entry.timestamp, space.site?.timezone)} · {entry.row + 1}행{" "}
-                  {entry.col + 1}열 · {stateLabel[entry.previous_state]} →{" "}
-                  {stateLabel[entry.new_state]} · <strong>{statusLabel[entry.status]}</strong>
-                  {entry.note ? ` (${entry.note})` : ""}
-                </li>
-              ))}
-            </ul>
-          )}
-        </details>
+      <button type="button" className="secondary" disabled={!plan || busy} onClick={() => void load(true)}>
+        {busy ? "적용 중…" : "필름에 적용"}
+      </button>
+      {error && <p className="error" role="alert">{error}</p>}
+      {applied && !error && <p className="muted small" role="status">적용했어요.</p>}
+      {unmet && unmet.total > 0 && (
+        <div className="film-unmet muted small">
+          <p>목표만큼 못 가린 칸이 {unmet.total}건 있어요.</p>
+          <ul className="film-unmet-list">
+            {unmetByTime(unmet.logs, timezone).map(([time, cells]) => <li key={time}>{time} · {cells}칸</li>)}
+          </ul>
+        </div>
       )}
     </section>
   );

@@ -338,6 +338,25 @@ export function findOpenFurnitureSpot(
   }
   return { x: 0, y: 0 };
 }
+/** 이/가 by whether the last character is read with a final consonant (digits are read aloud). */
+function subjectParticle(name: string): string {
+  const c = name.trim().slice(-1);
+  const code = c.charCodeAt(0);
+  if (code >= 0xac00 && code <= 0xd7a3) return (code - 0xac00) % 28 ? "이" : "가";
+  if (/[0-9]/.test(c)) return "013678".includes(c) ? "이" : "가";
+  return "가";
+}
+/** Messages that only mean a box is still empty or half typed; they belong to the moment the person moves on, not to typing. */
+const UNFILLED = [
+  "건물, 층, 공간과 구역 이름을 입력해 주세요.",
+  "공간 치수는 0보다 큰 숫자로 입력해 주세요.",
+  "창문 가로와 높이를 0보다 큰 숫자로 입력해 주세요.",
+  "창문 위치는 0 이상의 숫자로 입력해 주세요.",
+  "가구 이름을 입력해 주세요.",
+];
+export function isUnfilledInput(message: string | null): boolean {
+  return message != null && (UNFILLED.includes(message) || message.endsWith("의 가로·세로·높이를 확인해 주세요."));
+}
 export function validateSpace(s: Space, options?: { allowOverlap?: boolean }): string | null {
   if (
     s.site &&
@@ -376,7 +395,7 @@ export function validateSpace(s: Space, options?: { allowOverlap?: boolean }): s
       furnitureCorners(f).some(p=>p.x < -0.001 || p.y < -0.001 || p.x > s.width+0.001 || p.y > s.depth+0.001) ||
       (f.baseHeight ?? 0) + f.height > s.height
     )
-      return `${f.name}가 공간 경계를 벗어났습니다.`;
+      return `${f.name}${subjectParticle(f.name)} 공간 경계를 벗어났습니다.`;
   }
   if (!options?.allowOverlap) {
     const overlapMessage = validateFurnitureOverlap(s);
@@ -431,27 +450,49 @@ export function validateWindow(s: Space): string | null {
     return "QR 마커가 창문 밖으로 나갔습니다. 마커 크기와 위치를 확인해 주세요.";
   return null;
 }
+const validBox = (f: Furniture) => [f.width, f.depth, f.height].every((n) => Number.isFinite(n) && n > 0);
+/** A region that follows its furniture: same footprint, and a top that follows the furniture height unless the person set it lower. */
+function followHost(r: Region, host: Furniture, previous?: Furniture): Region {
+  const broken = r.top <= r.bottom;
+  const followsTop = broken || (previous != null && Math.abs(r.top - previous.height) < 1e-6);
+  const bottom = broken ? 0 : Math.min(r.bottom, Math.max(0, host.height - 0.01));
+  return {
+    ...r,
+    x: host.x,
+    y: host.y,
+    width: host.width,
+    depth: host.depth,
+    bottom,
+    top: r.face === "상단" || followsTop ? host.height : Math.min(r.top, host.height),
+  };
+}
+/** Puts hosted regions back in step with their furniture, e.g. after an older version saved them out of step. */
+export function repairRegions(s: Space): Space {
+  let changed = false;
+  const regions = s.regions.map((r) => {
+    const host = s.furniture.find((f) => f.id === r.furnitureId);
+    if (!host || !validBox(host)) return r;
+    const out =
+      r.top <= r.bottom ||
+      r.top > host.height + 0.001 ||
+      r.x < host.x - 0.001 || r.y < host.y - 0.001 ||
+      r.x + r.width > host.x + host.width + 0.001 || r.y + r.depth > host.y + host.depth + 0.001;
+    if (!out) return r;
+    changed = true;
+    return followHost(r, host);
+  });
+  return changed ? { ...s, regions } : s;
+}
 export function updateFurniture(s: Space, updated: Furniture): Space {
+  const previous = s.furniture.find((f) => f.id === updated.id);
   return {
     ...s,
     revision: s.revision + 1,
     furniture: s.furniture.map((f) => (f.id === updated.id ? updated : f)),
-    regions: s.regions.map((r) =>
-      r.furnitureId === updated.id
-        ? {
-            ...r,
-            x: updated.x,
-            y: updated.y,
-            width: updated.width,
-            depth: updated.depth,
-            bottom: Math.min(r.bottom, Math.max(0, updated.height - 0.01)),
-            top:
-              r.face === "상단"
-                ? updated.height
-                : Math.min(r.top, updated.height),
-          }
-        : r,
-    ),
+    // Half-typed numbers (0 on the way to 0.5) leave the region as it was.
+    regions: validBox(updated)
+      ? s.regions.map((r) => (r.furnitureId === updated.id ? followHost(r, updated, previous) : r))
+      : s.regions,
   };
 }
 // Save stamps change on every save, the selected zone is only what is being looked at, and the

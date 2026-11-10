@@ -2,6 +2,8 @@ import { useRef, useState } from "react";
 import MobileEditorSheet from "./MobileEditorSheet";
 import MobileFurnitureList from "./MobileFurnitureList";
 import NumberField from "./NumberField";
+import RotateField from "./RotateField";
+import { FilmLayout } from "./FilmModulePicker";
 import { WorkspaceNavigation, WorkspaceHome, WorkspaceCards } from "./WorkspaceDesign";
 import { DeviceHandoff } from "./DeviceHandoff";
 import { CaptureHelp } from "./CaptureHelp";
@@ -511,7 +513,7 @@ function MobileApp() {
                 </p>
               )}
               {page === "detail" && active && savedOverlapWarning && (
-                <div className="notice" role="status">
+                <div className="notice overlap-notice" role="status">
                   <span>{savedOverlapWarning}</span>
                   <button type="button" className="text-button" onClick={() => editSpace(active)}>
                     가구 위치 수정
@@ -758,9 +760,7 @@ function MobileApp() {
                               onChange={(sill) => changeWindow({ sill })}
                             />
                           </div>
-                          <h3>필름 ArUco 마커</h3>
-                          <p>마커는 60 × 60cm로 고정됩니다. 촬영을 시작할 때 표시할 필름을 선택해 주세요.</p>
-                          <FilmGrid space={draft} />
+                          <FilmLayout space={draft} />
                         </>
                       )}
                       <div className="mini-room">
@@ -1121,8 +1121,7 @@ function MobileApp() {
                               ))}
                             </select>
                           </label>
-                          <button type="button" onClick={() => changeFurniture({...furniture, yaw: ((furniture.yaw ?? 0)+90)%360})}>↻ 90° 회전</button>
-                          <p className="muted small">현재 회전 {Math.round((furniture.yaw ?? 0)*10)/10}°</p>
+                          <RotateField value={furniture.yaw ?? 0} onChange={(yaw) => changeFurniture({ ...furniture, yaw })} />
                           <div className="dimensions">
                             {(["width", "depth", "height"] as const).map(
                               (key, i) => (
@@ -1387,12 +1386,9 @@ function MobileApp() {
                       saving={saving}
                     />
                     {sunSource?.note}
-                    <VirtualFilmControl
-                      space={active}
-                      prediction={filmPrediction}
-                      hour={hour}
-                      setting={detailShading}
-                    />
+                    </Card>
+                    <Card className="detail-film">
+                      <VirtualFilmControl space={active} prediction={filmPrediction} hour={hour} />
                     </Card>
                     <Card className="detail-management-card">
                       <h3>공간 관리</h3>

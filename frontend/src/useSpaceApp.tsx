@@ -24,6 +24,8 @@ import {
   readState,
   resolveWindow,
   regionForFurniture,
+  isUnfilledInput,
+  repairRegions,
   withDefaultRegions,
   removeZone,
   STORAGE_KEY,
@@ -181,7 +183,9 @@ export function useSpaceApp() {
   const [editedDraftId, setEditedDraftId] = useState<string | null>(null);
   const inputEdited = !!draft && editedDraftId === draft.id;
   const draftOverlapWarning = draft ? validateFurnitureOverlap(draft) : null;
-  const draftWarning = (inputEdited && draft ? validateSpace(draft) : null) ?? draftOverlapWarning;
+  const liveMessage = inputEdited && draft ? validateSpace(draft) : null;
+  // Empty or half-typed boxes are reported when the person moves on, not while typing.
+  const draftWarning = (isUnfilledInput(liveMessage) ? null : liveMessage) ?? draftOverlapWarning;
   const setPage = (next: Page) => {
     setError("");
     setPageState(next);
@@ -394,8 +398,8 @@ export function useSpaceApp() {
   // FR-01: the saved space's real sun times for today. Results are keyed by scene revision, so a
   // result for an older save is never shown after the space changes.
   const [predictionNow] = useState(() => new Date());
-  const [selectedPredictionDate, setSelectedPredictionDate] = useState("");
-  const predictionDate = selectedPredictionDate || (active?.site ? new Intl.DateTimeFormat("en-CA", { timeZone: active.site.timezone }).format(predictionNow) : "");
+  // Today in the space's time zone; the forecast has no date picker.
+  const predictionDate = active?.site ? new Intl.DateTimeFormat("en-CA", { timeZone: active.site.timezone }).format(predictionNow) : "";
   const windowReady = !!active?.windowDimensions && active.windowDimensions.wall != null && active.windowDimensions.offset != null && active.windowDimensions.sill != null;
   const predictionKey =
     USE_FR01 && authStatus === "in" && page === "detail" && !editorExample && active?.serverSceneId && active.serverRevision && active.site && active.site.northConfirmed && windowReady && active.regions.length
@@ -462,12 +466,11 @@ export function useSpaceApp() {
               </p>
             )}
             <details className="forecast-details">
-              <summary className="muted small">기상청 AI(q10~q90) · Open-Meteo 일사량 비교 및 예측 상세</summary>
+              <summary className="muted small">예측 근거 자세히</summary>
               <PredictionSummary
                 result={!predictionError ? currentPrediction?.result : undefined}
                 space={active}
                 date={predictionDate}
-                onDate={setSelectedPredictionDate}
                 onRetry={retryPrediction}
               />
             </details>
@@ -920,8 +923,10 @@ export function useSpaceApp() {
     setToast("작성 중인 공간을 삭제했습니다.");
   }
   function resumeTempDraft(t: TempDraft, at: Page = t.page) {
-    if (spaces.some((s) => s.id === t.space.id)) setActiveId(t.space.id);
-    setDraft(structuredClone(t.space));
+    const server = spaces.find((s) => s.id === t.space.id);
+    if (server) setActiveId(server.id);
+    if (server?.serverRevision && t.space.serverRevision !== server.serverRevision) setToast("서버에 최근 임시 저장본이 있어요");
+    setDraft(repairRegions(structuredClone(t.space)));
     setSelectedFurniture(at === "register" ? null : (t.space.furniture[0]?.id ?? null));
     setSelectedRegion(null);
     setPage(at);
@@ -1005,9 +1010,12 @@ export function useSpaceApp() {
   }
   function editSpace(s: Space, at: Page = "protect") {
     const temp = tempDrafts.find((t) => t.space.id === s.id);
-    if (temp) return resumeTempDraft(temp, at);
+    if (temp) {
+      resumeTempDraft(temp, at);
+      return;
+    }
     setActiveId(s.id);
-    setDraft(structuredClone(s));
+    setDraft(repairRegions(structuredClone(s)));
     setSelectedFurniture(at === "register" ? null : (s.furniture[0]?.id ?? null));
     setSelectedRegion(null);
     setPage(at);
