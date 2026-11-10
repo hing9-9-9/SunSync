@@ -1,12 +1,14 @@
 import { lazy, Suspense } from "react";
 import { WebLoginGoogleStep } from "./WebLoginStep";
 import NumberField from "./NumberField";
+import RotateField from "./RotateField";
+import { FilmLayout } from "./FilmModulePicker";
 import FurnitureTable from "./FurnitureTable";
 import "./ReferencePreview.css";
 import "./WorkspaceDesign.css";
 import { DeviceHandoff } from "./DeviceHandoff";
 import { CaptureHelp } from "./CaptureHelp";
-import { FilmGrid, ShadingTimeControl, VirtualFilmControl } from "./ShadingPlan";
+import { ShadingTimeControl, VirtualFilmControl } from "./ShadingPlan";
 import SpatialCapture from "./SpatialCapture";
 import {
   defaultShadingTime,
@@ -267,7 +269,7 @@ function App() {
                 </p>
               )}
               {page === "detail" && active && savedOverlapWarning && (
-                <div className="notice" role="status">
+                <div className="notice overlap-notice" role="status">
                   <span>{savedOverlapWarning}</span>
                   <button type="button" className="text-button" onClick={() => editSpace(active)}>
                     가구 위치 수정
@@ -484,9 +486,7 @@ function App() {
                               onChange={(sill) => changeWindow({ sill })}
                             />
                           </div>
-                          <h3>필름 ArUco 마커</h3>
-                          <p>마커는 60 × 60cm로 고정됩니다. 촬영을 시작할 때 표시할 필름을 선택해 주세요.</p>
-                          <FilmGrid space={draft} />
+                          <FilmLayout space={draft} />
                         </>
                       )}
                       <div className="mini-room">
@@ -847,12 +847,11 @@ function App() {
                           </label>
                           <p className="muted small">
                             {draft.source === "sample"
-                              ? "가구 종류별 기본 치수예요. 실제 치수로 고쳐 주세요."
+                              ? "종류별 기본 치수예요. 실제 치수로 고쳐 주세요."
                               : "직접 입력한 치수예요."}{" "}
-                            단위는 m입니다.
+                            단위는 m예요.
                           </p>
-                          <button type="button" onClick={() => changeFurniture({...furniture, yaw: ((furniture.yaw ?? 0)+90)%360})}>↻ 90° 회전</button>
-                          <p className="muted small">현재 회전 {Math.round((furniture.yaw ?? 0)*10)/10}°</p>
+                          <RotateField value={furniture.yaw ?? 0} onChange={(yaw) => changeFurniture({ ...furniture, yaw })} />
                           <div className="dimensions">
                             {(["width", "depth", "height"] as const).map(
                               (key, i) => (
@@ -1120,12 +1119,9 @@ function App() {
                         }
                         saving={saving}
                       />
-                      <VirtualFilmControl
-                        space={active}
-                        prediction={filmPrediction}
-                        hour={hour}
-                        setting={detailShading}
-                      />
+                    </Card>
+                    <Card className="detail-film">
+                      <VirtualFilmControl space={active} prediction={filmPrediction} hour={hour} />
                     </Card>
                     <Card className="detail-manage">
                       <h3>공간 관리</h3>

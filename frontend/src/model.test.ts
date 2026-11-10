@@ -13,6 +13,8 @@ import {
   sampleFurniture,
   STORAGE_KEY,
   updateFurniture,
+  isUnfilledInput,
+  repairRegions,
   upsertSpace,
   validateSpace,
   uid,
@@ -383,4 +385,43 @@ test("hosted protection near a wall uses the rotated furniture bounds", () => {
   space.furniture = [{...space.furniture[0],x:-0.7,y:2,width:2,depth:.2,yaw:90}];
   space.regions = [regionForFurniture(space.furniture[0])];
   assert.equal(validateSpace(space),null);
+});
+
+test("typing a size through 0 keeps the hosted region, which follows once the number is valid", () => {
+  const space = { ...blankSpace(), width: 5, depth: 5, building: "본관", floor: "3층", name: "방" };
+  const f = { id: "f", name: "가구 1", type: "other" as const, zone: space.zone, x: 3, y: 3, width: 1, depth: 0.6, height: 1.8 };
+  space.furniture = [f];
+  space.regions = [regionForFurniture(f)];
+  const zero = updateFurniture(space, { ...f, height: 0 });
+  assert.deepEqual([zero.regions[0].bottom, zero.regions[0].top], [0, 1.8]);
+  const back = updateFurniture(zero, { ...f, height: 0.5 });
+  assert.deepEqual([back.regions[0].bottom, back.regions[0].top], [0, 0.5]);
+  assert.equal(validateSpace(back), null);
+});
+
+test("a region saved out of step with its furniture is put back on open", () => {
+  const space = { ...blankSpace(), width: 5, depth: 5, building: "본관", floor: "3층", name: "방" };
+  const f = { id: "f", name: "가구 1", type: "other" as const, zone: space.zone, x: 3, y: 3, width: 1, depth: 0.6, height: 0.5 };
+  space.furniture = [f];
+  space.regions = [{ ...regionForFurniture(f), bottom: 0, top: 0 }];
+  assert.notEqual(validateSpace(space), null);
+  assert.equal(validateSpace(repairRegions(space)), null);
+});
+
+test("the furniture boundary message uses the right particle", () => {
+  const space = { ...blankSpace(), width: 5, depth: 5, building: "본관", floor: "3층", name: "방" };
+  const f = { id: "f", name: "가구 1", type: "other" as const, zone: space.zone, x: 9, y: 3, width: 1, depth: 0.6, height: 1 };
+  space.furniture = [f];
+  assert.equal(validateSpace(space), "가구 1이 공간 경계를 벗어났습니다.");
+  space.furniture = [{ ...f, name: "책장" }];
+  assert.equal(validateSpace(space), "책장이 공간 경계를 벗어났습니다.");
+  space.furniture = [{ ...f, name: "서가" }];
+  assert.equal(validateSpace(space), "서가가 공간 경계를 벗어났습니다.");
+});
+
+test("empty or half-typed boxes are left for when the person moves on", () => {
+  const space = { ...blankSpace(), building: "", floor: "", name: "" };
+  assert.equal(isUnfilledInput(validateSpace(space)), true);
+  assert.equal(isUnfilledInput(validateSpace({ ...space, building: "본관", floor: "3층", name: "방", width: 0 })), true);
+  assert.equal(isUnfilledInput("보호 영역이 공간 경계를 벗어났습니다."), false);
 });

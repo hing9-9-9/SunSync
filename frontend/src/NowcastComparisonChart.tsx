@@ -95,7 +95,7 @@ export default function NowcastComparisonChart({
             fontWeight: 600,
           }}
         >
-          운영 모드 {data.rollout_mode === "active" ? "AI 활성" : "Shadow"}
+          {data.rollout_mode === "active" ? "AI 예측을 반영해요" : "AI 예측은 참고만 해요"}
         </span>
         <span
           className="pill"
@@ -105,28 +105,18 @@ export default function NowcastComparisonChart({
             padding: "3px 10px",
           }}
         >
-          모델 {data.model_version}
-        </span>
-        <span
-          className="pill"
-          style={{
-            background: "var(--c-block, #e9e9e9)",
-            color: "var(--c-protect-ink, #343434)",
-            padding: "3px 10px",
-          }}
-        >
-          {data.status === "ready" ? "입력 정상" : "일부 입력 불가"}
+          {data.status === "ready" ? "기상 정보를 모두 받았어요" : "일부 기상 정보를 받지 못했어요"}
         </span>
       </div>
 
       <div style={{ position: "relative", width: "100%", overflowX: "auto" }}>
         <svg
           role="img"
-          aria-label="KMA AI × Open-Meteo 일사량 예측 불확실성 밴드 및 비교 차트"
+          aria-label="곧 들어올 햇빛 세기를 AI 예측과 일반 날씨 예보로 비교한 차트"
           viewBox={`0 0 ${width} ${height}`}
           style={{ width: "100%", maxWidth: `${width}px`, height: "auto", display: "block" }}
         >
-          <title>KMA AI × Open-Meteo 일사량 예측 불확실성 밴드 및 비교 차트</title>
+          <title>곧 들어올 햇빛 세기를 AI 예측과 일반 날씨 예보로 비교한 차트</title>
 
           {/* Grid lines and Y labels */}
           {yTicks.map((val) => {
@@ -168,7 +158,7 @@ export default function NowcastComparisonChart({
                 fill="var(--c-muted, #75727d)"
                 fontSize="10"
               >
-                +{pt.horizon_minutes}분
+                {pt.horizon_minutes}분 뒤
               </text>
             );
           })}
@@ -178,7 +168,7 @@ export default function NowcastComparisonChart({
             <polygon
               points={bandPolygon}
               fill="rgba(102, 96, 229, 0.22)"
-              aria-label="AI 예측 불확실성 밴드 (p10-p90)"
+              aria-label="AI 예측 범위"
             />
           )}
 
@@ -271,7 +261,7 @@ export default function NowcastComparisonChart({
                 borderRadius: "2px",
               }}
             />
-            AI 불확실성 밴드(q10~q90)
+            AI 예측 범위
           </span>
           <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
             <span
@@ -281,7 +271,7 @@ export default function NowcastComparisonChart({
                 background: "var(--c-action, #6660e5)",
               }}
             />
-            선택된 운영 DNI
+            지금 쓰는 햇빛 세기
           </span>
           <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
             <span
@@ -292,7 +282,7 @@ export default function NowcastComparisonChart({
                 borderBottom: "1px dashed #ff7426",
               }}
             />
-            Open-Meteo 예보
+            일반 날씨 예보
           </span>
           <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
             <span
@@ -303,15 +293,15 @@ export default function NowcastComparisonChart({
                 borderBottom: "1px dotted #9d9d9d",
               }}
             />
-            AI 중앙값(q50, 10·30분 활성 시)
+            AI 예측 중간값
           </span>
         </div>
 
         {hoveredPoint && (
           <div style={{ fontWeight: 600, color: "var(--c-ink, #1d1c22)" }}>
-            +{hoveredPoint.horizon_minutes}분: {hoveredPoint.dni_W_m2 ?? "확인 불가"} W/m²
+            {hoveredPoint.horizon_minutes}분 뒤: {hoveredPoint.dni_W_m2 ?? "확인할 수 없어요"} W/m²
             {hoveredPoint.p50_dni_W_m2 !== null
-              ? ` (AI 밴드 ${hoveredPoint.p10_dni_W_m2}~${hoveredPoint.p90_dni_W_m2})`
+              ? ` (AI 예측 범위 ${hoveredPoint.p10_dni_W_m2}~${hoveredPoint.p90_dni_W_m2})`
               : ""}
           </div>
         )}
