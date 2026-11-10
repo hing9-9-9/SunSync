@@ -330,3 +330,19 @@ def test_multi_module_vision_does_not_assume_window_centre(client):
         },
     )
     assert result.status_code == 422 and "pair a film module" in result.text
+
+
+def test_capture_targets_exposes_full_module_grid(client):
+    scene = make_scene(client, "east", False, width=3, height=2)
+    response = client.get(f"/api/scenes/{scene['scene_id']}/capture-marker/targets")
+    assert response.status_code == 200
+    assert response.json() == {
+        "windows": [{"window_id": scene["windows"][0]["window_id"], "rows": 2, "cols": 3}]
+    }
+
+
+def test_capture_targets_excludes_partial_modules(client):
+    scene = make_scene(client, "east", False, width=2, height=1.5)
+    response = client.get(f"/api/scenes/{scene['scene_id']}/capture-marker/targets")
+    assert response.status_code == 200
+    assert response.json() == {"windows": []}

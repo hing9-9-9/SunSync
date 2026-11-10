@@ -10,8 +10,11 @@ export type FurnitureType =
   | "other";
 export type Furniture = {
   id: string;
+  serverId?: string;
   name: string;
   type?: FurnitureType;
+  yaw?: number; // ENU degrees counterclockwise from east
+  baseHeight?: number;
   zone: string;
   x: number;
   y: number;
@@ -252,15 +255,31 @@ export function withDefaultRegions(s: Space, furniture: Furniture[]): Region[] {
   const hosted = new Set(s.regions.map((r) => r.furnitureId));
   return [...s.regions, ...furniture.filter((f) => !hosted.has(f.id)).map((f) => regionForFurniture(f))];
 }
+/** Unrotated x/y locate the local box; rotation is about its centre in plan coordinates. */
+export function furnitureCorners(f: Furniture): {x:number;y:number}[] {
+  const a=-(f.yaw ?? 0)*Math.PI/180,c=Math.cos(a),s=Math.sin(a),cx=f.x+f.width/2,cy=f.y+f.depth/2;
+  return [[-1,-1],[1,-1],[1,1],[-1,1]].map(([x,y])=>({
+    x:cx+c*x*f.width/2-s*y*f.depth/2,y:cy+s*x*f.width/2+c*y*f.depth/2,
+  }));
+}
+export function moveFurnitureInside(f: Furniture, space: Pick<Space,"width"|"depth">): Furniture {
+  const points=furnitureCorners(f),xs=points.map(p=>p.x),ys=points.map(p=>p.y);
+  const dx=Math.max(0,-Math.min(...xs))+Math.min(0,space.width-Math.max(...xs));
+  const dy=Math.max(0,-Math.min(...ys))+Math.min(0,space.depth-Math.max(...ys));
+  return {...f,x:f.x+dx,y:f.y+dy};
+}
 export const FURNITURE_OVERLAP_EPS = 1e-6;
 /** True when two floor-standing furniture cuboids in the same zone share positive 3D volume (> 1e-6 m). Touching edges are allowed. */
 export function furnitureOverlaps3D(a: Furniture, b: Furniture): boolean {
-  return (
-    a.zone === b.zone &&
-    Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x) > FURNITURE_OVERLAP_EPS &&
-    Math.min(a.y + a.depth, b.y + b.depth) - Math.max(a.y, b.y) > FURNITURE_OVERLAP_EPS &&
-    Math.min(a.height, b.height) > FURNITURE_OVERLAP_EPS
-  );
+  if (a.zone !== b.zone || Math.min((a.baseHeight ?? 0)+a.height, (b.baseHeight ?? 0)+b.height)
+    - Math.max(a.baseHeight ?? 0,b.baseHeight ?? 0) <= FURNITURE_OVERLAP_EPS) return false;
+  const pa = furnitureCorners(a), pb = furnitureCorners(b);
+  return [pa,pb].every(points => [0,1].every(i => {
+    const dx=points[i+1].x-points[i].x, dy=points[i+1].y-points[i].y, length=Math.hypot(dx,dy);
+    const project=(p: {x:number;y:number})=>(-dy*p.x+dx*p.y)/length;
+    const va=pa.map(project), vb=pb.map(project);
+    return Math.min(Math.max(...va),Math.max(...vb))-Math.max(Math.min(...va),Math.min(...vb)) > FURNITURE_OVERLAP_EPS;
+  }));
 }
 export function findFurnitureOverlap(
   s: Pick<Space, "furniture">,
@@ -352,12 +371,10 @@ export function validateSpace(s: Space, options?: { allowOverlap?: boolean }): s
     if (![f.width, f.depth, f.height].every((n) => Number.isFinite(n) && n > 0))
       return `${f.name}의 가로·세로·높이를 확인해 주세요.`;
     if (
-      ![f.x, f.y].every(Number.isFinite) ||
-      f.x < 0 ||
-      f.y < 0 ||
-      f.x + f.width > s.width + 0.001 ||
-      f.y + f.depth > s.depth + 0.001 ||
-      f.height > s.height
+      ![f.x, f.y, f.yaw ?? 0, f.baseHeight ?? 0].every(Number.isFinite) ||
+      (f.baseHeight ?? 0) < 0 ||
+      furnitureCorners(f).some(p=>p.x < -0.001 || p.y < -0.001 || p.x > s.width+0.001 || p.y > s.depth+0.001) ||
+      (f.baseHeight ?? 0) + f.height > s.height
     )
       return `${f.name}가 공간 경계를 벗어났습니다.`;
   }
@@ -376,10 +393,10 @@ export function validateSpace(s: Space, options?: { allowOverlap?: boolean }): s
       ![r.x, r.y, r.width, r.depth, r.bottom, r.top].every(Number.isFinite) ||
       r.width <= 0 ||
       r.depth <= 0 ||
-      r.x < 0 ||
-      r.y < 0 ||
-      r.x + r.width > s.width + 0.001 ||
-      r.y + r.depth > s.depth + 0.001
+      r.x < (host?.x ?? 0) - 0.001 ||
+      r.y < (host?.y ?? 0) - 0.001 ||
+      r.x + r.width > (host ? host.x + host.width : s.width) + 0.001 ||
+      r.y + r.depth > (host ? host.y + host.depth : s.depth) + 0.001
     )
       return "보호 영역이 공간 경계를 벗어났습니다.";
     if (r.bottom < 0 || r.top <= r.bottom || r.top > (host?.height ?? s.height))
@@ -520,4 +537,13 @@ export function gradeCounts(space: Pick<Space, "furniture" | "regions">): Record
   }
   for (const r of space.regions) if (!r.furnitureId) counts[r.grade]++;
   return counts;
+}
+
+export function localFrontFace(f: Furniture, wall: Wall = "south"): Face {
+  const fixed: Record<Wall,Face>={south:"남쪽 전면",north:"북쪽 후면",east:"동쪽 측면",west:"서쪽 측면"};
+  if(Math.abs((f.yaw ?? 0)%360)<1e-9)return fixed[wall];
+  const [tx,ty]={south:[0,-1],north:[0,1],east:[1,0],west:[-1,0]}[wall];
+  const a=(f.yaw ?? 0)*Math.PI/180,c=Math.cos(a),s=Math.sin(a);
+  const choices: [Face,number,number][]=f.width>=f.depth ? [["남쪽 전면",0,-1],["북쪽 후면",0,1]] : [["동쪽 측면",1,0],["서쪽 측면",-1,0]];
+  return choices.sort((a,b)=>((c*b[1]-s*b[2])*tx+(s*b[1]+c*b[2])*ty)-((c*a[1]-s*a[2])*tx+(s*a[1]+c*a[2])*ty))[0][0];
 }

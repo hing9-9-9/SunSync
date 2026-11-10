@@ -131,7 +131,7 @@
     },
     "BoardCameraObservation": {
       "additionalProperties": false,
-      "description": "General 3D rectangle observations; legacy floor observations stay unchanged.",
+      "description": "General 3D tabletop observations; legacy floor observations stay unchanged.",
       "properties": {
         "observation_id": {
           "pattern": "^[a-zA-Z][a-zA-Z0-9_]*$",
@@ -194,8 +194,8 @@
             "pattern": "^[a-zA-Z][a-zA-Z0-9_]*$",
             "type": "string"
           },
-          "maxItems": 5,
-          "minItems": 4,
+          "maxItems": 17,
+          "minItems": 3,
           "title": "Point Ids",
           "type": "array"
         },
@@ -216,8 +216,8 @@
             ],
             "type": "array"
           },
-          "maxItems": 5,
-          "minItems": 4,
+          "maxItems": 17,
+          "minItems": 3,
           "title": "Points Marker M",
           "type": "array"
         },
@@ -238,8 +238,8 @@
             ],
             "type": "array"
           },
-          "maxItems": 5,
-          "minItems": 4,
+          "maxItems": 17,
+          "minItems": 3,
           "title": "Points Enu M",
           "type": "array"
         },
@@ -263,9 +263,44 @@
           "title": "Independent Tape Error M"
         },
         "tabletop_shape": {
-          "const": "rectangle",
+          "enum": [
+            "rectangle",
+            "circle",
+            "ellipse",
+            "polygon"
+          ],
           "title": "Tabletop Shape",
           "type": "string"
+        },
+        "tabletop_outline_enu_m": {
+          "anyOf": [
+            {
+              "items": {
+                "maxItems": 3,
+                "minItems": 3,
+                "prefixItems": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ],
+                "type": "array"
+              },
+              "maxItems": 16,
+              "minItems": 3,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tabletop Outline Enu M"
         },
         "model_id": {
           "maxLength": 200,

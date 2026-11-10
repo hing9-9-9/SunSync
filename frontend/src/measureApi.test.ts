@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { BOARD, boardAlignment, filmBoardAlignment, serverMessage, startCaptureMarker, checkCaptureMarker, endCaptureMarker, measureAndRegister, setupCamera } from "./measureApi.ts";
+import { BOARD, captureTargets, resumeCaptureMarker, cancelStoredCapture, boardAlignment, filmBoardAlignment, serverMessage, startCaptureMarker, checkCaptureMarker, endCaptureMarker, measureAndRegister, setupCamera } from "./measureApi.ts";
 import { blankSpace } from "./model.ts";
 
 const space = (wall: "south" | "north" | "east" | "west") => ({
@@ -120,4 +120,39 @@ test("a 401 with a non-JSON body becomes the expired message and notifies", asyn
   await assert.rejects(checkCaptureMarker({ scene_id: "scene-1", session_id: "s" } as never), (e: unknown) => (e as { status?: number }).status === 401 && (e as Error).message === "로그인이 만료됐어요. 다시 로그인해 주세요.");
   off();
   assert.equal(notified, 1);
+});
+
+
+test("capture selection lists modules, resumes without changing ID, and clears an expired session", async t => {
+  const storage = new Map<string,string>();
+  const original = Object.getOwnPropertyDescriptor(globalThis, "sessionStorage");
+  Object.defineProperty(globalThis, "sessionStorage", {configurable:true,value:{
+    getItem:(k:string)=>storage.get(k)??null, setItem:(k:string,v:string)=>storage.set(k,v), removeItem:(k:string)=>storage.delete(k),
+  }});
+  try {
+    let expired = false;
+    let creates = 0;
+    const fake = {session_id:"test-session",scene_id:"scene"};
+    t.mock.method(globalThis,"fetch",async (input: string, init?:RequestInit) => {
+      const url = String(input);
+      if (url.endsWith("/targets")) return Response.json({windows:[{window_id:"win",rows:2,cols:3}]});
+      if (url.endsWith("/end")) return Response.json({status:"ended"});
+      if (init?.method === "POST") { creates++; return Response.json(fake); }
+      return expired ? Response.json({detail:"Expired"},{status:410}) : Response.json(fake);
+    });
+    assert.deepEqual(await captureTargets("scene"),[{window_id:"win",rows:2,cols:3}]);
+    assert.equal(await resumeCaptureMarker("scene"),null);
+    await startCaptureMarker("scene",{window_id:"win",module_row:1,module_col:2});
+    assert.deepEqual(await resumeCaptureMarker("scene"),fake);
+    assert.equal(creates,1);
+    expired=true;
+    assert.equal(await resumeCaptureMarker("scene"),null);
+    assert.equal(storage.size,0);
+    await startCaptureMarker("scene");
+    await cancelStoredCapture("scene");
+    assert.equal(storage.size,0);
+  } finally {
+    if(original) Object.defineProperty(globalThis,"sessionStorage",original);
+    else Reflect.deleteProperty(globalThis,"sessionStorage");
+  }
 });

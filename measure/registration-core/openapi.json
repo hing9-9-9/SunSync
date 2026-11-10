@@ -1094,8 +1094,8 @@
               "pattern": "^[a-zA-Z][a-zA-Z0-9_]*$"
             },
             "type": "array",
-            "maxItems": 5,
-            "minItems": 4,
+            "maxItems": 17,
+            "minItems": 3,
             "title": "Point Ids"
           },
           "points_marker_m": {
@@ -1161,8 +1161,40 @@
           },
           "tabletop_shape": {
             "type": "string",
-            "const": "rectangle",
+            "enum": [
+              "rectangle",
+              "circle",
+              "ellipse",
+              "polygon"
+            ],
             "title": "Tabletop Shape"
+          },
+          "tabletop_outline_enu_m": {
+            "anyOf": [
+              {
+                "items": {
+                  "prefixItems": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "number"
+                    }
+                  ],
+                  "type": "array",
+                  "maxItems": 3,
+                  "minItems": 3
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tabletop Outline Enu M"
           },
           "model_id": {
             "type": "string",

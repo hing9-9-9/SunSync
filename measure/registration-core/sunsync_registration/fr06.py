@@ -18,8 +18,6 @@ def schema_id(value, suffix=""):
 
 
 def export_fragment(measurement):
-    if measurement.get("shape", {}).get("kind") != "rectangle":
-        raise ValueError("FR-06 furniture registration currently requires a rectangle")
     if not measurement.get("captured_at"):
         raise ValueError(
             "FR-06 export requires actual timezone-bearing capture timestamps"
@@ -95,7 +93,8 @@ def export_fragment(measurement):
                 "points_enu_m": enu_points,
                 "derived_fields": derived,
                 "independent_tape_error_m": None,
-                "tabletop_shape": "rectangle",
+                "tabletop_shape": measurement["shape"]["kind"],
+                "tabletop_outline_enu_m": [p["point_enu_m"] for key, p in pairs if key != "H1"] if measurement["shape"]["kind"] == "polygon" else None,
                 "model_id": model["model_id"],
                 "geometry_source": "standard_model_bounding_box",
                 "height_source": model["height_source"],
