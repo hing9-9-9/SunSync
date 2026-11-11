@@ -425,3 +425,10 @@ test("empty or half-typed boxes are left for when the person moves on", () => {
   assert.equal(isUnfilledInput(validateSpace({ ...space, building: "본관", floor: "3층", name: "방", width: 0 })), true);
   assert.equal(isUnfilledInput("보호 영역이 공간 경계를 벗어났습니다."), false);
 });
+
+
+test("window normalization retains an explicit film selection across device handoff", () => {
+  const room = {...blankSpace(), windowDimensions:{width:3,height:2,captureModule:{row:1,col:2}}};
+  assert.deepEqual(resolveWindow(room)?.captureModule,{row:1,col:2});
+  assert.equal(resolveWindow({...room,windowDimensions:{width:3,height:2}})?.captureModule,undefined);
+});

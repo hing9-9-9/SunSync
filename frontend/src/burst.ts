@@ -33,3 +33,23 @@ export async function acquireBurst<T>(
   }
   return frames;
 }
+
+
+/** Geometry relevant to calibration; frame rate and exposure are not camera geometry. */
+export function captureGeometry(settings: {
+  deviceId?: string; facingMode?: string; resizeMode?: string; zoom?: number; focusDistance?: number;
+}, width: number, height: number): string {
+  return JSON.stringify([settings.deviceId ?? null, settings.facingMode ?? null,
+    settings.resizeMode ?? null, settings.zoom ?? null, settings.focusDistance ?? null, width, height]);
+}
+
+/** Bind only once pixels are available; a real change resets the baseline for the next setup. */
+export class CaptureGeometryGuard {
+  private baseline: string | null = null;
+  reset() { this.baseline = null; }
+  accept(signature: string): boolean {
+    const changed = this.baseline !== null && this.baseline !== signature;
+    this.baseline = signature;
+    return !changed;
+  }
+}

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { BOARD, captureTargets, resumeCaptureMarker, cancelStoredCapture, boardAlignment, filmBoardAlignment, serverMessage, startCaptureMarker, checkCaptureMarker, endCaptureMarker, measureAndRegister, setupCamera } from "./measureApi.ts";
+import { BOARD, captureSelection, captureTargets, resumeCaptureMarker, cancelStoredCapture, boardAlignment, filmBoardAlignment, serverMessage, startCaptureMarker, checkCaptureMarker, endCaptureMarker, measureAndRegister, setupCamera } from "./measureApi.ts";
 import { blankSpace } from "./model.ts";
 
 const space = (wall: "south" | "north" | "east" | "west") => ({
@@ -172,4 +172,16 @@ test("live video setup cannot overwrite the still-photo calibration",async t=>{
     if(original)Object.defineProperty(globalThis,"localStorage",original);
     else Reflect.deleteProperty(globalThis,"localStorage");
   }
+});
+
+
+test("capture selection loads the window and module saved on another device", async t => {
+  const selected = {window_id:"registered-window",module_row:1,module_col:2};
+  t.mock.method(globalThis,"fetch",async (url:string) => {
+    assert.equal(url,"/api/scenes/scene/capture-marker/targets");
+    return Response.json({windows:[{window_id:"registered-window",rows:2,cols:3}],selected_target:selected});
+  });
+  const result = await captureSelection("scene");
+  assert.deepEqual(result.selected_target,selected);
+  assert.equal(result.windows[0].cols,3);
 });

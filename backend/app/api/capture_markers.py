@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict
 from pydantic import Field as InputField
 from sqlalchemy import update
-from sqlmodel import Field, Session, SQLModel, col
+from sqlmodel import Field, Session, SQLModel, col, select
 
 from app.db import get_session
 from app.models.film import FilmStateRecord
@@ -18,6 +18,7 @@ from app.models.scene import SceneRecord
 from app.schemas.film import MarkerModeRequest, MarkerPairingRequest
 from app.services.film import generate_aruco_4x4_pattern, pair_marker_for_scene, set_marker_mode
 from app.services.stored_scene import load_stored_scene
+from app.ui_scene import UISpace, UISpaceRecord, canonical_id
 
 
 class CaptureMarkerSession(SQLModel, table=True):
@@ -83,6 +84,12 @@ def describe(row: CaptureMarkerSession, db: Session) -> dict:
     assert film is not None
     window = next(w for w in scene.windows if w.window_id == row.window_id)
     module_row, module_col = marker["start_row"] // 10, marker["start_col"] // 10
+    selected = saved_capture_target(row.scene_id, db)
+    if selected and (
+        selected["window_id"] != row.window_id
+        or (selected["module_row"], selected["module_col"]) != (module_row, module_col)
+    ):
+        raise HTTPException(409, "선택한 필름이 변경됐어요. 이전 촬영을 끝내고 다시 시작해 주세요.")
     try:
         module_rows, module_cols = window.film_module_shape()
         sr, sc, u, v = window.module_marker_placement(module_row, module_col)
@@ -125,9 +132,32 @@ def describe(row: CaptureMarkerSession, db: Session) -> dict:
     }
 
 
+def saved_capture_target(scene_id: str, db: Session) -> dict | None:
+    """Read the registration selection shared by desktop and phone, not local defaults."""
+    record = db.exec(select(UISpaceRecord).where(UISpaceRecord.scene_id == scene_id)).first()
+    if record is None:
+        return None
+    space = UISpace.model_validate_json(record.payload_json)
+    window = space.windowDimensions
+    if window is None or window.captureModule is None:
+        return None
+    return {
+        "window_id": canonical_id("window", space.id),
+        "module_row": window.captureModule.row,
+        "module_col": window.captureModule.col,
+    }
+
+
 @router.post("")
 def start_capture(scene_id: str, request: StartCapture, db: DB) -> dict:
     record = lock_scene(scene_id, db)
+    selected = saved_capture_target(scene_id, db)
+    if selected:
+        # Omitted fields use the persisted choice; explicit stale clients must not override it.
+        for field, value in selected.items():
+            if field in request.model_fields_set and getattr(request, field) != value:
+                raise HTTPException(409, "선택한 필름이 변경됐어요. 촬영 화면을 다시 열어 주세요.")
+        request = request.model_copy(update=selected)
     previous = db.get(CaptureMarkerSession, scene_id)
     token = str(request.request_id)
     if previous and previous.session_id == token:
@@ -238,7 +268,8 @@ def capture_targets(scene_id: str, db: DB) -> dict:
         except ValueError:
             continue
         windows.append({"window_id": window.window_id, "rows": rows, "cols": cols})
-    return {"windows": windows}
+    selected = saved_capture_target(scene_id, db)
+    return {"windows": windows, **({"selected_target": selected} if selected else {})}
 
 
 @router.get("/{session_id}")
