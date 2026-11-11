@@ -22,8 +22,8 @@ export default function FilmModulePicker({ rows, cols, row, col, onChange, readO
   );
 }
 
-/** Window film layout for the registration step: the 1 m modules the window is made of, nothing to pick yet. */
-export function FilmLayout({ space }: { space: Space }) {
+/** Persist the user-selected module with the window before camera handoff. */
+export function FilmLayout({ space, onChange }: { space: Space; onChange?: (row: number, col: number) => void }) {
   const win = resolveWindow(space);
   if (!win || validateWindow(space)) return null;
   const { cols, rows } = filmGrid(win);
@@ -32,8 +32,9 @@ export function FilmLayout({ space }: { space: Space }) {
     <section className="film-layout" aria-label="필름 구성">
       <h3>필름 구성</h3>
       {whole ? <>
-        <p className="muted small">1m 필름 {rows / 10}행 × {cols / 10}열이에요. 촬영할 때 한 장을 골라 마커를 띄워요.</p>
-        <FilmModulePicker rows={rows / 10} cols={cols / 10} readOnly />
+        <p className="muted small">1m 필름 {rows / 10}행 × {cols / 10}열이에요. 마커를 띄울 필름을 눌러 선택해 주세요.</p>
+        <FilmModulePicker rows={rows / 10} cols={cols / 10} row={win.captureModule?.row} col={win.captureModule?.col} onChange={onChange} readOnly={!onChange} />
+        {win.captureModule && <p role="status">선택한 필름: 위에서 {win.captureModule.row + 1}번째 · 왼쪽에서 {win.captureModule.col + 1}번째</p>}
         <p className="muted small">{walls[win.wall]} · {win.width} × {win.height} m · 안쪽에서 본 모습</p>
       </> : <p className="muted small">창문이 1m 단위(예: 3 × 2 m)여야 마커 촬영을 할 수 있어요. 지금은 {win.width} × {win.height} m예요.</p>}
     </section>

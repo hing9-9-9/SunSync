@@ -1390,9 +1390,9 @@ export function useSpaceApp() {
   function continueManually(form: HTMLFormElement | null) {
     if (checkRegistration(form, false)) setPage("review");
   }
-  function registerSubmit(e: FormEvent<HTMLFormElement>) {
+  async function registerSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (!draft || !checkRegistration(e.currentTarget, true)) return;
+    if (!draft || saving || !checkRegistration(e.currentTarget, true)) return;
     if (
       !draft.windowDimensions ||
       draft.windowDimensions.width <= 0 ||
@@ -1400,6 +1400,22 @@ export function useSpaceApp() {
     ) {
       setError("촬영 전 창문 가로와 높이를 입력해 주세요.");
       return;
+    }
+    if (isApp && !editorExample) {
+      // Persist the selected film before SpatialCapture reads the server's target.
+      setSaving(true);
+      setError("");
+      try {
+        const saved = await saveServerSpace(withWindowPosition(draft));
+        setDraft(saved);
+        setSpaces(current => upsertSpace(current, saved));
+        setActiveId(saved.id);
+      } catch (error) {
+        setError(saveErrorMessage(error, "선택한 필름 정보를 저장하지 못했어요. 다시 시도해 주세요."));
+        return;
+      } finally {
+        setSaving(false);
+      }
     }
     qrReturnPage.current = "review";
     setAddingByQr(false);
@@ -1477,6 +1493,8 @@ export function useSpaceApp() {
   function changeWindow(patch: Partial<NonNullable<Space["windowDimensions"]>>) {
     if (!draft) return;
     const next = { ...(draft.windowDimensions ?? { width: NaN, height: NaN }), ...patch };
+    // Resizing the grid requires an explicit new selection, never a silent fallback.
+    if (patch.width !== undefined || patch.height !== undefined) next.captureModule = null;
     // Capture sessions own marker placement; discard obsolete manual marker settings.
     const resolved = resolveWindow({ ...draft, windowDimensions: next }) ?? next;
     change({ windowDimensions: { ...resolved, marker: undefined } });

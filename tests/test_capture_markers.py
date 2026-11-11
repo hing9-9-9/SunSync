@@ -33,7 +33,12 @@ def client(database_engine: Engine) -> Iterator[TestClient]:
 
 
 def make_scene(
-    client: TestClient, wall: str, paired: bool = True, width: float = 1.0, height: float = 1.0
+    client: TestClient,
+    wall: str,
+    paired: bool = True,
+    width: float = 1.0,
+    height: float = 1.0,
+    module: dict | None = None,
 ) -> dict[str, Any]:
     space = {
         "id": "standard_film",
@@ -63,6 +68,8 @@ def make_scene(
         "furniture": [],
         "regions": [],
     }
+    if module is not None:
+        space["windowDimensions"]["captureModule"] = module
     created = client.post("/api/ui/spaces", json=space)
     assert created.status_code == 201, created.text
     scene_id = created.json()["serverSceneId"]
@@ -346,3 +353,65 @@ def test_capture_targets_excludes_partial_modules(client):
     response = client.get(f"/api/scenes/{scene['scene_id']}/capture-marker/targets")
     assert response.status_code == 200
     assert response.json() == {"windows": []}
+
+
+@pytest.mark.parametrize("wall", ["north", "south", "east", "west"])
+def test_registered_film_selection_reaches_session_and_survives_sync(client, wall):
+    scene = make_scene(client, wall, False, 3.0, 2.0, module={"row": 1, "col": 2})
+    base = f"/api/scenes/{scene['scene_id']}/capture-marker"
+    target = client.get(base + "/targets").json()["selected_target"]
+    assert target == {
+        "window_id": scene["windows"][0]["window_id"],
+        "module_row": 1,
+        "module_col": 2,
+    }
+    token = str(uuid4())
+    response = start(client, scene, token)
+    assert response.status_code == 200, response.text
+    data = response.json()
+    assert data["film_module"]["row"] == 1
+    assert data["film_module"]["col"] == 2
+    assert data["film_module"]["marker_center_uv_m"] == pytest.approx([2.5, 0.5])
+    assert data["marker"]["T_ENU_marker"][11] == pytest.approx(1.3)
+    assert data["marker"]["start_row"] == 12
+    assert data["marker"]["start_col"] == 22
+    assert data["board"]["marker_side_m"] == 0.6
+    assert start(client, scene, token, **target).json() == data
+    assert client.get(base + "/" + token).json() == data
+    saved = client.get("/api/ui/spaces/standard_film")
+    assert saved.status_code == 200, saved.text
+    assert saved.json()["windowDimensions"]["captureModule"] == {"row": 1, "col": 2}
+
+
+def test_stale_explicit_film_selection_is_rejected_before_pairing(client):
+    scene = make_scene(client, "north", False, 3.0, 2.0, module={"row": 1, "col": 2})
+    assert start(client, scene, module_row=0, module_col=0).status_code == 409
+    assert client.get(f"/api/scenes/{scene['scene_id']}").json() == scene
+
+
+def test_registered_selection_change_invalidates_active_capture(client):
+    scene = make_scene(client, "north", False, 3.0, 2.0, module={"row": 1, "col": 2})
+    data = start(client, scene).json()
+    space = client.get("/api/ui/spaces/standard_film").json()
+    space["windowDimensions"]["captureModule"] = {"row": 0, "col": 1}
+    space["revision"] += 1
+    updated = client.put("/api/ui/spaces/standard_film", json=space)
+    assert updated.status_code == 200, updated.text
+    base = f"/api/scenes/{scene['scene_id']}/capture-marker"
+    assert client.get(base + "/" + data["session_id"]).status_code == 409
+    assert client.post(base + "/" + data["session_id"] + "/end").status_code == 200
+    restarted = start(client, scene)
+    assert restarted.status_code == 200, restarted.text
+    assert restarted.json()["film_module"]["row"] == 0
+    assert restarted.json()["film_module"]["col"] == 1
+
+
+@pytest.mark.parametrize(
+    "module", [{"row": 2, "col": 0}, {"row": 0, "col": 3}, {"row": True, "col": 0}]
+)
+def test_invalid_registered_film_selection_is_not_saved(client, module):
+    make_scene(client, "north", False, 3.0, 2.0)
+    space = client.get("/api/ui/spaces/standard_film").json()
+    space["windowDimensions"]["captureModule"] = module
+    space["revision"] += 1
+    assert client.put("/api/ui/spaces/standard_film", json=space).status_code == 422

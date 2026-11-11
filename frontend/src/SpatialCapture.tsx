@@ -6,7 +6,7 @@ import { shapes, validPolygon, nextCapturePoint, photosPerPoint } from "./captur
 import type { Shape, CapturePoint } from "./capturePlan";
 import type { CapturedFurniture } from "./model";
 import { browserCaptureEnabled } from "./captureEnvironment";
-import { selectFrames, detectFrame, captureTargets, resumeCaptureMarker, cancelStoredCapture, startCaptureMarker, endCaptureMarker } from "./measureApi";
+import { selectFrames, detectFrame, captureSelection, resumeCaptureMarker, cancelStoredCapture, startCaptureMarker, endCaptureMarker } from "./measureApi";
 import FilmModulePicker from "./FilmModulePicker";
 import type { Camera, Frame, CaptureMarker, FilmTargetWindow } from "./measureApi";
 
@@ -43,12 +43,22 @@ function SessionSpatialCapture(props: { sceneId?: string; count: number; onFinis
   const [retry, setRetry] = useState(0);
   const [windows,setWindows]=useState<FilmTargetWindow[]>([]);
   const [windowId,setWindowId]=useState("");
+  const [savedSelection,setSavedSelection]=useState(false);
   const [row,setRow]=useState(0), [col,setCol]=useState(0);
   useEffect(() => {
     let live = true;
     if (!props.sceneId) return;
-    void Promise.all([resumeCaptureMarker(props.sceneId),captureTargets(props.sceneId)]).then(([value,targets]) => {
-      if (live) {setSession(value);setWindows(targets);setWindowId(targets[0]?.window_id ?? "");setRow(0);setCol(0);}
+    void Promise.all([resumeCaptureMarker(props.sceneId),captureSelection(props.sceneId)]).then(([value,targets]) => {
+      if (live) {
+        const selected = targets.selected_target;
+        if (value && selected && (value.window_id !== selected.window_id ||
+            value.film_module?.row !== selected.module_row || value.film_module?.col !== selected.module_col)) {
+          throw new Error("선택한 필름과 진행 중인 촬영이 달라요. 이전 촬영을 끝낸 뒤 다시 시작해 주세요.");
+        }
+        setSession(value);setWindows(targets.windows);setSavedSelection(!!selected);
+        setWindowId(selected?.window_id ?? targets.windows[0]?.window_id ?? "");
+        setRow(selected?.module_row ?? 0);setCol(selected?.module_col ?? 0);
+      }
     })
       .catch(e => { if (live) setError(e instanceof Error ? e.message : "촬영 마커를 준비하지 못했어요."); })
       .finally(() => { if (live) setBusy(false); });
@@ -73,15 +83,16 @@ function SessionSpatialCapture(props: { sceneId?: string; count: number; onFinis
   if (!session) {
     const win=windows.find(w=>w.window_id===windowId);
     return <section className="film-select">
-      <h3>마커를 띄울 필름 선택</h3>
+      <h3>{savedSelection ? "선택한 필름으로 촬영" : "마커를 띄울 필름 선택"}</h3>
       <p className="muted small">안쪽에서 창문을 본 모습이에요. 고른 칸 가운데에 마커(60cm)가 떠요.</p>
       {error && <p className="error" role="alert">{error}</p>}
       {!windows.length && <p className="muted small">촬영할 필름이 없어요. 창문 크기와 위치를 먼저 저장해 주세요.</p>}
-      {windows.length > 1 && <label className="field"><span>창문</span><select value={windowId} onChange={e=>{setWindowId(e.target.value);setRow(0);setCol(0);}}>
+      {!savedSelection && windows.length > 1 && <label className="field"><span>창문</span><select value={windowId} onChange={e=>{setWindowId(e.target.value);setRow(0);setCol(0);}}>
         {windows.map((w,i)=><option key={w.window_id} value={w.window_id}>창 {i+1}</option>)}
       </select></label>}
       {win && <>
-        <FilmModulePicker rows={win.rows} cols={win.cols} row={row} col={col} onChange={(r,c)=>{setRow(r);setCol(c);}} />
+        {!savedSelection && <FilmModulePicker rows={win.rows} cols={win.cols} row={row} col={col} onChange={(r,c)=>{setRow(r);setCol(c);}} />}
+        {savedSelection && <p>창문 입력 단계에서 선택한 필름 정보를 가져왔어요.</p>}
         <p className="film-select-choice" role="status">위에서 {row+1}번째 · 왼쪽에서 {col+1}번째 필름</p>
       </>}
       <button type="button" className="primary" disabled={!win} onClick={()=>void begin()}>촬영 시작</button>
