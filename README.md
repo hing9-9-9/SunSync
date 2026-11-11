@@ -28,7 +28,7 @@ Browser photo capture is an opt-in development test and is disabled in productio
 - [FR-06 space data](docs/fr06_design.md) and [JSON schema](docs/fr06_scene_schema.json)
 - FR-01 sunlight prediction: [FR-01.1 pvlib path design](docs/fr01_1_pvlib_design.md), [FR-01.4 KMA AI implementation guide](docs/fr01_4_README.md), [FR-01.4 Open-Meteo DNI design](docs/fr01_4_open_meteo_dni_design.md), [prediction errors (FR-01-7)](docs/fr01_7_prediction_error_implementation.md), [large spaces (FR-01-8)](docs/fr01_8_large_space_implementation.md), [API](docs/fr01_api.md), [FR-01 → FR-02 tile contract](docs/fr01_fr02_tile_contract.md), [mock test plan](docs/fr01_mock_test_plan.md)
 - FR-02 & FR-04 shading plan & adaptive control: [format](docs/fr02_schedule.md), [design](docs/fr02_design.md), [API](docs/fr02_api.md), [FR-04 uncertainty-aware adaptive control & LG SGF](docs/fr04_adaptive_control_lg_sgf.md)
-- FR-03 measurement: [single 60 cm marker](docs/fr03_single_marker.md), [measurement workflow](docs/fr03_measurement_workflow.md), [robust estimation](docs/fr03_robust_measurement.md)
+- FR-03 measurement: [single 60 cm marker](docs/fr03_single_marker.md), [measurement workflow](docs/fr03_measurement_workflow.md), [robust estimation](docs/fr03_robust_measurement.md), [selected film](docs/fr03_selected_film.md)
 - FR-03 & FR-06 Vision AI 3D furniture estimation: [ArUco-calibrated depth & 3D bounding box pipeline](docs/fr03_vision_ai_3d_estimation.md)
 - FR-05 film control: [protocol](docs/fr05_protocol.md)
 - [Database](docs/db.md): tables, migrations and persistence

@@ -49,7 +49,7 @@ flowchart TD
 | 내 공간 | 웹 (로그인 필요) · 앱 | `spaces` | 건물별 공간 목록, 측정 대기 작업 확인(3초 갱신), 임시 저장 이어하기, 공간 삭제 | FR-06.5, FR-06.1 | `GET /api/ui/spaces`, `DELETE /api/ui/spaces/{id}`, `GET /api/ui/measurements` |
 | 새 공간 등록 | 웹 (로그인 필요) · 앱 | `register` | 건물·층·공간·구역, 방 크기, 창문 규격·위치, 위치(위도·경도·시간대) 입력. 필름 QR 마커 위치 미리보기 | FR-06.1, FR-06.2 | `POST /api/ui/spaces`, `PUT /api/ui/spaces/{id}` |
 | QR 측정 | 웹 (로그인 필요) | `capture` | 휴대폰 측정 안내와 앱 연결 링크·QR 만들기. 웹에는 카메라 입력이 없다 | FR-03, FR-06.5 | `POST /api/ui/measurements`, `GET /api/ui/measurements/{token}` |
-| QR 측정 | 앱 | `capture` | 필름에 마커 표시 → 가구 이름·상판 형태 선택 → 지점마다 3장 촬영 → 품질 확인과 재촬영 안내 | FR-03, FR-05.2 | `POST /api/ui/measurements/{token}/connect`, `POST /api/scenes/{id}/capture-marker`, `GET /api/scenes/{id}/capture-marker/{session_id}`, `POST /api/scenes/{id}/capture-marker/{session_id}/end`, `POST /measure/v1/detect`, `POST /measure/v1/mobile/automatic-setup` |
+| QR 측정 | 앱 | `capture` | 필름에 마커 표시(창 입력에서 고른 필름) → 가구 이름·상판 형태 선택 → 지점마다 촬영 버튼 한 번(사진을 자동으로 여러 장 확보·선별) → 품질 확인과 재촬영 안내 | FR-03, FR-05.2 | `POST /api/ui/measurements/{token}/connect`, `POST /api/scenes/{id}/capture-marker`, `GET /api/scenes/{id}/capture-marker/{session_id}`, `POST /api/scenes/{id}/capture-marker/{session_id}/end`, `POST /measure/v1/detect`, `POST /measure/v1/mobile/automatic-setup` |
 | 공간 구성 | 웹·앱 | `processing` | 촬영 사진으로 가구 치수를 계산하고 공간에 등록. 완료되면 도면 확인으로 이동 | FR-03, FR-06.3 | `POST /measure/v1/measurements`, `POST /measure/v1/fr06`, `GET`·`PUT /api/scenes/{id}`, `POST /api/scenes/{id}/registrations`, `POST /api/ui/measurements/{token}/complete` |
 | 도면 확인 | 웹 (로그인 필요) · 앱 | `review` | 가구별 종류·치수·위치 수정, 2D 도면에서 끌어 옮기기, 가구 추가·삭제, 다시 측정 | FR-06.1, FR-06.3 | `PUT /api/ui/spaces/{id}` |
 | 도면과 보호 영역 | 웹 (로그인 필요) | `protect` | 가구 면 또는 독립 영역으로 보호 영역 설정, 높이, A~D 등급, 차단 시간. 앱은 조회만 한다 | FR-06.6, FR-02 | `PUT /api/ui/spaces/{id}`, `POST /api/scenes/{id}/sunpath-predictions`, `POST /api/scenes/{id}/shading-plans` |
@@ -116,7 +116,7 @@ npm run preview -- --host 0.0.0.0
 1. 첫 실행: 앱 모드는 Google 로그인을 마칠 때까지 로그인 화면만 보인다. PC 웹 첫 실행은 로그인과 관계없이 소개 홈을 표시한다. 웹 소개·가이드·둘러보기 예제는 공개이고, 내 공간·공간 상세·등록·편집·계정·촬영은 로그인 후 접근한다. 세션은 30분 미사용 또는 12시간 후 끝나며, 401이 오면 로그인 화면으로 돌아가고 작성 중인 초안은 유지한다. 인증 상세는 [Google 로그인](auth.md)을 참고한다.
 2. 홈/내 공간: 건물별 공간 목록 → 공간 선택 → 공간 현황.
 3. 공간 등록: 건물·층·공간·구역 이름과 방 크기 입력. 구역 추가/전환 가능. 창문 가로·높이, 창이 있는 벽, 창문 상하좌우 여백(왼쪽·아래가 저장값, 오른쪽·위는 환산), 필름 QR 마커 크기·위치 입력(필름 칸 미리보기). 위도·경도는 기기 현재 위치로 자동 입력하고 수정 가능.
-4. QR 측정(앱): 필름 중앙에 60cm ArUco 마커 하나를 표시하고(촬영 세션마다 마커 ID가 무작위) 가구 이름·상판 형태 선택 → 형태별 지점(P1~Pn)을 차례로 이동하며 지점마다 3장 촬영. 사진마다 흔들림·밝기를 기기에서 확인하고, 문제가 있으면 원인별 재촬영 안내. 촬영한 사진은 측정 서버(8001)로 보내 가구 치수를 계산하고 가구를 배치한다. 여러 가구를 이어서 촬영한 뒤 도면 생성. 직접 입력 경로도 제공.
+4. QR 측정(앱): 필름 중앙에 60cm ArUco 마커 하나를 표시하고(촬영 세션마다 마커 ID가 무작위) 가구 이름·상판 형태 선택 → 형태별 지점(P1~Pn)을 차례로 이동하며 지점마다 촬영 버튼을 한 번 누르면 사진을 자동으로 확보·선별한다(유효한 관측이 부족하면 같은 지점에서 재촬영, [fr03_robust_measurement.md](fr03_robust_measurement.md)). 사진마다 흔들림·밝기를 기기에서 확인하고, 문제가 있으면 원인별 재촬영 안내. 촬영한 사진은 측정 서버(8001)로 보내 가구 치수를 계산하고 가구를 배치한다. 여러 가구를 이어서 촬영한 뒤 도면 생성. 직접 입력 경로도 제공.
 5. 도면 확인: 가구별 선택, 종류·가로·세로·높이 및 위치 수정, 2D 도면에서 가구 끌어 옮기기, 가구 추가/삭제. 가구 종류별 평면 기호(책장 선반선, 책상 앞선, 수납장 X, 진열장 안쪽 테두리)와 실제 창 위치 표시.
 6. 보호 설정: 가구의 면 선택 또는 독립 영역 그리기. 보호 시작/끝 높이, A~D 등급 설정. 독립 영역 이동/크기 조절과 숫자 입력 지원.
 7. 저장: 입력 검사 후 건물·공간 목록으로 복귀. 동일 공간 편집은 덮어쓰고 다른 공간은 보존. 바뀐 내용이 없는 편집 화면(저장 후 뒤로 가기 포함)은 저장 확인 없이 닫힌다.

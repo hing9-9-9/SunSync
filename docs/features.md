@@ -53,7 +53,7 @@ The exact FR-01 → FR-02.1 tile contract is in [fr01_fr02_tile_contract.md](fr0
 ### FR-03 QR-Based Spatial Measurement
 - FR-03.1 Marker detection and image quality check in each photo
 - FR-03.2 Camera position from the known marker size and its four corners; photos without the whole marker are rejected
-- FR-03.3 Furniture output: the measured points of the chosen shape (4 for a rectangle or circle, 6 for an ellipse, 3 to 16 for a polygon) are estimated jointly from the selected observations and give a cuboid (width, depth, height, rotation, position relative to the window and walls); see [single marker](fr03_single_marker.md), [measurement workflow](fr03_measurement_workflow.md) and [robust estimation](fr03_robust_measurement.md)
+- FR-03.3 Furniture output: the measured points of the chosen shape (4 for a rectangle or circle, 6 for an ellipse, 3 to 16 for a polygon) are estimated jointly from the selected observations and give a cuboid (width, depth, height, rotation, position relative to the window and walls); see [single marker](fr03_single_marker.md), [measurement workflow](fr03_measurement_workflow.md) and [robust estimation](fr03_robust_measurement.md) and [selected film](fr03_selected_film.md)
 - FR-03.4 The marker is one 60 cm marker (6 x 6 cells of 10 cm in the centre of a 1 m film module) whose ID the server chooses for each capture session
 
 ### FR-04 Stable Control Against Temporary Changes
