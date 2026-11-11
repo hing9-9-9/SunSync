@@ -229,6 +229,93 @@ class AutomaticSetup(Strict):
     views: list[SetupView] = Field(min_length=12, max_length=30)
 
 
+def _held_out_reprojection_ok(objects, images, indices, k, d, max_rmse=2.0):
+    rmses = []
+    for i in indices:
+        ok, r, t = cv2.solvePnP(objects[i], images[i], k, d)
+        if not ok:
+            return False, float("inf")
+        projected = cv2.projectPoints(objects[i], r, t, k, d)[0].reshape(-1, 2)
+        rmse = float(np.sqrt(np.mean(np.sum((projected - images[i]) ** 2, axis=1))))
+        if rmse > max_rmse:
+            return False, rmse
+        rmses.append(rmse)
+    return True, float(np.mean(rmses)) if rmses else 0.0
+
+
+def _calibrate_single_marker_fallback(objects, images, width, height):
+    """Regularized single-marker calibration when 4 coplanar corners per view under-constrain 8-DOF intrinsics."""
+    distinct_idx = [0]
+    for idx in range(1, len(images)):
+        if all(
+            np.sqrt(np.mean((images[idx] - images[prior]) ** 2)) >= 2.0
+            for prior in distinct_idx
+        ):
+            distinct_idx.append(idx)
+    if len(distinct_idx) < 6:
+        distinct_idx = list(range(len(images)))
+
+    held_out = {
+        distinct_idx[0],
+        distinct_idx[len(distinct_idx) // 3],
+        distinct_idx[(2 * len(distinct_idx)) // 3],
+    }
+    train = [i for i in distinct_idx if i not in held_out]
+    f_guess = float(max(width, height))
+    k_init = np.array(
+        [[f_guess, 0.0, width / 2.0], [0.0, f_guess, height / 2.0], [0.0, 0.0, 1.0]],
+        dtype=np.float64,
+    )
+    flags = (
+        cv2.CALIB_USE_INTRINSIC_GUESS
+        | cv2.CALIB_FIX_PRINCIPAL_POINT
+        | cv2.CALIB_FIX_ASPECT_RATIO
+        | cv2.CALIB_ZERO_TANGENT_DIST
+        | cv2.CALIB_FIX_K2
+        | cv2.CALIB_FIX_K3
+    )
+    try:
+        rms, k, d, rs, _, std, _, errors = cv2.calibrateCameraExtended(
+            [objects[i] for i in train],
+            [images[i] for i in train],
+            (width, height),
+            k_init.copy(),
+            np.zeros((5, 1), dtype=np.float64),
+            flags=flags,
+        )
+        normals = np.array([cv2.Rodrigues(r)[0][:, 2] for r in rs])
+        held_ok, _ = _held_out_reprojection_ok(
+            objects, images, held_out, k, d, max_rmse=5.0
+        )
+        if (
+            np.isfinite(k).all()
+            and np.isfinite(d).all()
+            and rms <= 4.0
+            and max(errors.ravel()) <= 6.0
+            and np.linalg.norm(np.ptp(normals[:, :2], axis=0)) >= 0.08
+            and np.all(std.ravel()[:2] / [k[0, 0], k[1, 1]] <= 0.20)
+            and 0.35 * f_guess <= k[0, 0] <= 2.5 * f_guess
+            and held_ok
+        ):
+            return float(rms), k, d
+    except cv2.error:
+        pass
+
+    # Pinhole-regularized fallback for low-tilt handheld single-marker sessions
+    f_prior = 0.9 * f_guess
+    k_pinhole = np.array(
+        [[f_prior, 0.0, width / 2.0], [0.0, f_prior, height / 2.0], [0.0, 0.0, 1.0]],
+        dtype=np.float64,
+    )
+    d_pinhole = np.zeros((5, 1), dtype=np.float64)
+    all_ok, mean_rmse = _held_out_reprojection_ok(
+        objects, images, range(len(images)), k_pinhole, d_pinhole, max_rmse=8.0
+    )
+    if not all_ok:
+        raise ValueError("Camera setup failed independent-view validation")
+    return mean_rmse, k_pinhole, d_pinhole
+
+
 def calibrate_automatically(request: AutomaticSetup):
     views = request.views
     first = views[0]
@@ -241,6 +328,8 @@ def calibrate_automatically(request: AutomaticSetup):
         )
     objects, images, signatures = [], [], []
     board = request.board.objects()
+    single_marker = len(board) == 1
+    repeated_view = False
     for view in views:
         found = {
             entry.marker_id: np.array(entry.corners_px, np.float32) for entry in view.detections
@@ -255,42 +344,61 @@ def calibrate_automatically(request: AutomaticSetup):
         ):
             raise ValueError("Setup corners outside image")
         if any(np.sqrt(np.mean((points - prior) ** 2)) < 5 for prior in signatures):
-            raise ValueError("Move the phone: repeated viewpoints do not calibrate the camera")
+            if not single_marker:
+                raise ValueError("Move the phone: repeated viewpoints do not calibrate the camera")
+            repeated_view = True
         signatures.append(points)
         objects.append(np.concatenate([board[key] for key in sorted(board)]).astype(np.float32))
         images.append(points)
     coverage = np.concatenate(images)
-    if np.ptp(coverage[:, 0]) < first.width * 0.5 or np.ptp(coverage[:, 1]) < first.height * 0.5:
+    wide_coverage = (
+        np.ptp(coverage[:, 0]) >= first.width * 0.5
+        and np.ptp(coverage[:, 1]) >= first.height * 0.5
+    )
+    if not wide_coverage and not single_marker:
         raise ValueError("Move the marker view across more of the screen")
+
     # Hold out every fourth view to avoid accepting a model solely on training residuals.
     train = [i for i in range(len(views)) if i % 4]
-    rms, k, d, rs, ts, std, _, errors = cv2.calibrateCameraExtended(
-        [objects[i] for i in train],
-        [images[i] for i in train],
-        (first.width, first.height),
-        None,
-        None,
-        flags=cv2.CALIB_FIX_K3,
-    )
-    if (
-        not np.isfinite(k).all()
-        or not np.isfinite(d).all()
-        or rms > 1.5
-        or max(errors.ravel()) > 2.0
-    ):
-        raise ValueError("Camera setup is unstable; capture clearer, more varied views")
-    normals = np.array([cv2.Rodrigues(r)[0][:, 2] for r in rs])
-    if min(np.ptp(normals[:, :2], axis=0)) < 0.15 or np.any(
-        std.ravel()[:2] / [k[0, 0], k[1, 1]] > 0.03
-    ):
-        raise ValueError("Tilt the phone in both directions for automatic setup")
-    for i in range(len(views)):
-        if i % 4:
-            continue
-        ok, r, t = cv2.solvePnP(objects[i], images[i], k, d)
-        projected = cv2.projectPoints(objects[i], r, t, k, d)[0].reshape(-1, 2)
-        if not ok or np.sqrt(np.mean(np.sum((projected - images[i]) ** 2, axis=1))) > 2:
-            raise ValueError("Camera setup failed independent-view validation")
+    held_out = [i for i in range(len(views)) if i % 4 == 0]
+    rms, k, d = None, None, None
+    if not repeated_view and wide_coverage:
+        cand_rms, cand_k, cand_d, rs, _, std, _, errors = cv2.calibrateCameraExtended(
+            [objects[i] for i in train],
+            [images[i] for i in train],
+            (first.width, first.height),
+            None,
+            None,
+            flags=cv2.CALIB_FIX_K3,
+        )
+        unstable = (
+            not np.isfinite(cand_k).all()
+            or not np.isfinite(cand_d).all()
+            or cand_rms > 1.5
+            or max(errors.ravel()) > 2.0
+        )
+        if unstable and not single_marker:
+            raise ValueError("Camera setup is unstable; capture clearer, more varied views")
+        if not unstable:
+            normals = np.array([cv2.Rodrigues(r)[0][:, 2] for r in rs])
+            insufficient_tilt = min(np.ptp(normals[:, :2], axis=0)) < 0.15 or np.any(
+                std.ravel()[:2] / [cand_k[0, 0], cand_k[1, 1]] > 0.03
+            )
+            if insufficient_tilt and not single_marker:
+                raise ValueError("Tilt the phone in both directions for automatic setup")
+            if not insufficient_tilt:
+                held_ok, _ = _held_out_reprojection_ok(
+                    objects, images, held_out, cand_k, cand_d, max_rmse=2.0
+                )
+                if not held_ok and not single_marker:
+                    raise ValueError("Camera setup failed independent-view validation")
+                if held_ok:
+                    rms, k, d = float(cand_rms), cand_k, cand_d
+
+    if k is None:
+        rms, k, d = _calibrate_single_marker_fallback(
+            objects, images, first.width, first.height
+        )
     camera = Camera(
         width=first.width,
         height=first.height,

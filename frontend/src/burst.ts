@@ -35,12 +35,21 @@ export async function acquireBurst<T>(
 }
 
 
-/** Geometry relevant to calibration; frame rate and exposure are not camera geometry. */
+/** Geometry relevant to calibration; frame rate, exposure, and continuous autofocus are not camera geometry. */
 export function captureGeometry(settings: {
   deviceId?: string; facingMode?: string; resizeMode?: string; zoom?: number; focusDistance?: number;
 }, width: number, height: number): string {
+  const zoom = typeof settings.zoom === "number" ? Math.round(settings.zoom * 100) / 100 : null;
   return JSON.stringify([settings.deviceId ?? null, settings.facingMode ?? null,
-    settings.resizeMode ?? null, settings.zoom ?? null, settings.focusDistance ?? null, width, height]);
+    settings.resizeMode ?? null, zoom, width, height]);
+}
+
+/** Append a setup frame while keeping the bounded window of up to 30 frames. */
+export function appendSetupView<T extends { detections: { marker_id: number; corners_px: [number, number][] }[] }>(
+  views: T[],
+  candidate: T,
+): T[] {
+  return [...views, candidate].slice(-30);
 }
 
 /** Bind only once pixels are available; a real change resets the baseline for the next setup. */

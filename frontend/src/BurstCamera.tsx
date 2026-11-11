@@ -1,6 +1,6 @@
 import { createPortal } from "react-dom";
 import { useEffect, useRef, useState } from "react";
-import { acquireBurst, captureGeometry, CaptureGeometryGuard } from "./burst";
+import { acquireBurst, appendSetupView, captureGeometry, CaptureGeometryGuard } from "./burst";
 import { detectFrame, setupCamera } from "./measureApi";
 import type { Camera, CaptureMarker, Frame } from "./measureApi";
 
@@ -13,6 +13,7 @@ export default function BurstCamera({
   disabled,
   getTicket,
   onBusy,
+  onReady,
   onBatch,
 }: {
   session: CaptureMarker;
@@ -22,6 +23,7 @@ export default function BurstCamera({
   disabled: boolean;
   getTicket: () => number;
   onBusy: (busy: boolean) => void;
+  onReady?: (camera: Camera | null) => void;
   onBatch: (files: File[], camera: Camera, ticket: number) => Promise<void>;
 }) {
   const video = useRef<HTMLVideoElement>(null),
@@ -67,6 +69,7 @@ export default function BurstCamera({
       geometry.current.reset();
       setViews([]);
       setCamera(null);
+      onReady?.(null);
       setRunning(true);
       if (video.current) {
         video.current.srcObject = media;
@@ -76,6 +79,7 @@ export default function BurstCamera({
         if (stream.current !== media) return;
         stop();
         setCamera(null);
+        onReady?.(null);
         setRunning(false);
         setMessage("카메라 연결이 종료됐어요. 다시 준비해 주세요.");
       });
@@ -92,6 +96,7 @@ export default function BurstCamera({
       generation.current++;
       controller.current?.abort();
       setCamera(null);
+      onReady?.(null);
       setViews([]);
       const text = "카메라 크기나 렌즈 설정이 바뀌었어요. 현재 화면에서 카메라 준비 사진을 다시 촬영해 주세요.";
       setMessage(text);
@@ -130,6 +135,7 @@ export default function BurstCamera({
     setBusy(true);
     setMessage("");
     const version = generation.current;
+    let next: Frame[] | null = null;
     try {
       const file = await snapshot();
       const frame = await detectFrame(
@@ -141,13 +147,22 @@ export default function BurstCamera({
       if (version !== generation.current) return;
       if (frame.detections.length !== 1)
         throw new Error("마커 전체가 보이도록 각도를 조절해 주세요.");
-      const next = [...views, frame].slice(-30);
-      setViews(next);
+      next = appendSetupView(views, frame);
       if (next.length >= 12) {
         const profile = await setupCamera(next, session.board, false);
-        if (version === generation.current) setCamera(profile);
+        if (version === generation.current) {
+          setViews(next);
+          setCamera(profile);
+          onReady?.(profile);
+          setMessage(`카메라 준비가 완료됐어요. 이제 ${pointLabel} 지점에서 촬영해 주세요.`);
+        }
+      } else {
+        setViews(next);
       }
     } catch (e) {
+      if (next && next.length >= 12 && version === generation.current) {
+        setViews(next.slice(-11));
+      }
       setMessage(e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(false);
@@ -207,16 +222,16 @@ export default function BurstCamera({
   }
   const action = <button type="button" className="primary" disabled={busy || disabled}
     onClick={() => void (!running ? open() : !camera ? setup() : shoot())}>
-    {busy ? "촬영·확인 중…" : !running ? "카메라 열기" : !camera ? `카메라 준비 사진 촬영 (${views.length}/12)` : `${pointLabel} 촬영`}
+    {busy ? "촬영·확인 중…" : !running ? "카메라 열기" : !camera ? `카메라 준비 사진 촬영 (${Math.min(views.length, 11)}/12)` : `${pointLabel} 촬영`}
   </button>;
   return (
     <section className="point-camera" style={{display:active?undefined:"none",width:"100%"}}>
       <video ref={video} autoPlay muted playsInline style={{width:"100%",maxHeight:320,display:running?"block":"none"}} />
       {!running && <p>카메라를 열어 촬영을 준비해 주세요.</p>}
-      {running && !camera && <p>처음에는 마커 전체가 보이도록 위치와 기울기를 바꾸며 카메라를 준비해 주세요. ({views.length}/12 · 필요하면 추가 촬영)</p>}
+      {running && !camera && <p>처음에는 마커 전체가 보이도록 위치와 기울기를 바꾸며 카메라를 준비해 주세요. ({Math.min(views.length, 11)}/12)</p>}
       {active && actionTarget && createPortal(action,actionTarget)}
       {running && <button type="button" className="text-button" disabled={busy||disabled} onClick={()=>{
-        stop();setRunning(false);setCamera(null);setViews([]);
+        stop();setRunning(false);setCamera(null);onReady?.(null);setViews([]);
       }}>카메라 닫기</button>}
       {message && <p role="status">{message}</p>}
     </section>

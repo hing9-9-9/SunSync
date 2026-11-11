@@ -170,3 +170,51 @@ def test_guided_setup_rejects_mixed_and_repeated_frames(change):
         request["views"][1]["detections"] = request["views"][0]["detections"]
     with pytest.raises(ValueError):
         calibrate_automatically(AutomaticSetup.model_validate(request))
+
+
+def test_single_marker_handheld_12_views_calibrates_reliably():
+    """Realistic 12-photo mobile web setup with a single 60cm marker should not get stuck at 12/12."""
+    board = Board(board_id="window_board", marker_side_m=0.6)
+    k = np.array([[1400.0, 0, 540.0], [0, 1400.0, 960.0], [0, 0, 1.0]])
+    distortion = np.array([0.04, -0.05, 0.0, 0.0, 0.0])
+    rng = np.random.default_rng(42)
+    views = []
+    pts3d = board.objects()[0]
+    for i in range(12):
+        # Modest handheld tilt and screen movement on a 1080x1920 portrait phone stream,
+        # including two close consecutive shots (i == 3 and i == 4).
+        j = 3 if i == 4 else i
+        rotation = np.array(
+            [
+                0.10 * np.sin(j * 0.7),
+                0.10 * np.cos(j * 0.5),
+                0.03 * (j % 3 - 1),
+            ]
+        )
+        r = cv2.Rodrigues(rotation)[0]
+        translation = np.array(
+            [
+                0.12 * ((j % 4) - 1.5),
+                0.15 * ((j // 4) - 1.0),
+                2.1 + 0.04 * (j % 3),
+            ]
+        ) - r @ [0.3, 0.3, 0]
+        pixels = cv2.projectPoints(pts3d, rotation, translation, k, distortion)[0].reshape(-1, 2)
+        pixels += rng.normal(0, 0.6, pixels.shape)
+        views.append(
+            {
+                "capture_id": f"setup-{i}",
+                "stream_id": "web-rear",
+                "lens_id": "web-rear",
+                "width": 1080,
+                "height": 1920,
+                "detections": [{"marker_id": 0, "corners_px": pixels.tolist()}],
+            }
+        )
+    result = calibrate_automatically(
+        AutomaticSetup.model_validate({"board": board.model_dump(), "views": views})
+    )
+    assert result["status"] == "camera_ready"
+    assert 0.2 * 1080 < result["camera"]["fx"] < 5 * 1080
+    assert 0.2 * 1920 < result["camera"]["fy"] < 5 * 1920
+

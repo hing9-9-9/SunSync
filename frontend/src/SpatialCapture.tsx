@@ -198,8 +198,8 @@ function TestSpatialCapture({ count, onFinish, session }: { count: number; onFin
     </section>
     <figure className="capture-viewfinder" style={{display: confirmed ? undefined : "none"}}>
       <BurstCamera session={session} active={confirmed&&!complete} pointLabel={`P${corner+1}`} actionTarget={actionTarget}
-        disabled={checking} getTicket={()=>version.current} onBusy={setChecking} onBatch={takeBatch}/>
-      <figcaption>{complete ? "모든 지점 촬영 완료" : `P${corner+1} · 촬영 버튼을 한 번 눌러 주세요`}</figcaption>
+        disabled={checking} getTicket={()=>version.current} onBusy={setChecking} onReady={setCaptureCamera} onBatch={takeBatch}/>
+      <figcaption>{complete ? "모든 지점 촬영 완료" : !captureCamera ? "카메라 준비 · 마커가 보이도록 12장 촬영해 주세요" : `P${corner+1} · 촬영 버튼을 한 번 눌러 주세요`}</figcaption>
     </figure>
     {confirmed && <>
     {batchMessage&&<p role="status">{batchMessage}</p>}
@@ -211,7 +211,7 @@ function TestSpatialCapture({ count, onFinish, session }: { count: number; onFin
         </li>;
       })}
     </ol>
-    <p role="status" className="tracking-status">{checking?'촬영·사진 확인 중…':complete?'모든 지점 촬영 완료':`P${corner+1} 위치에서 촬영`}</p>
+    <p role="status" className="tracking-status">{checking?'촬영·사진 확인 중…':complete?'모든 지점 촬영 완료':!captureCamera?'카메라 준비 사진 촬영 단계 (완료 후 P1부터 시작)':`P${corner+1} 위치에서 촬영`}</p>
     {!complete && <p className="muted small">도면의 P{corner+1}에 렌즈를 맞추고 마커 전체가 보이도록 촬영 버튼을 한 번 눌러 주세요. 촬영이 끝날 때까지 위치를 유지해 주세요.</p>}
     <div className="actions">{points.map((_,i)=>(photos[i]??[]).some(Boolean)&&<button key={i} type="button" className="text-button" disabled={checking} onClick={()=>{
       version.current++;photos[i]?.forEach(p=>p&&URL.revokeObjectURL(p.url));
