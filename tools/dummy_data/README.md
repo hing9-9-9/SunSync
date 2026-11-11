@@ -20,12 +20,14 @@ python seed_dummy_spaces.py --suffix v1 --skip-heavy --check
 python seed_dummy_spaces.py --suffix v1 --delete
 ```
 
-배포 서버(Caddy 기본 인증)에 넣을 때: 로그인 정보는 환경변수로만 전달하고 저장소에 적지 않습니다.
+배포 서버는 구글 로그인을 쓴다. 넣을 때는 로그인한 브라우저의 세션 쿠키(이름=값, 예: `__Host-sunsync_session=...`)를 환경변수 `SUNSYNC_COOKIE`로만 전달하고 저장소, 이슈, 대화에 적지 않는다. 공간은 그 계정의 것이 된다. 세션은 30분 동안 쓰지 않으면 끝나므로 쿠키를 복사한 뒤 바로 실행한다.
 
 ```bash
-SUNSYNC_USER=... SUNSYNC_PASSWORD=... \
+SUNSYNC_COOKIE='__Host-sunsync_session=...' \
 python seed_dummy_spaces.py --base-url https://서버주소 --allow-remote --suffix v1 --skip-heavy
 ```
+
+로그인 전의 Caddy 기본 인증(`SUNSYNC_USER`, `SUNSYNC_PASSWORD`)도 두 값을 모두 주면 계속 보낸다. 지금 서버에는 그 잠금이 없다.
 
 로컬이 아닌 주소에는 `--allow-remote`가 없으면 거절합니다(모두가 보는 서버에 실수로 쓰지 않기 위함).
 
@@ -44,11 +46,11 @@ python seed_dummy_spaces.py --base-url https://서버주소 --allow-remote --suf
 | S8b | 구역 2개, 창 없음 | 없음, 차광 계획 없음 |
 | S9 | 겹치는 가구 | 저장 201, FR-01 422 |
 
-## 로그인(#105, #106) 이후
+## 로그인과 소유자 (#105, #106)
 
-- `scenarios.json`은 그대로 씁니다.
-- 바꿀 곳은 `auth_headers()`와 소유자 지정 방식입니다. 로그인이 붙으면 인증 없는 요청은 401이 되므로, 개발용 소유자 지정 경로가 필요합니다.
-- 로그인 전에 넣은 공간은 "소유자 없음"이 되어 어느 목록에도 안 보입니다. 옮기지 말고 새 `--suffix`로 다시 넣으세요.
+- `scenarios.json`은 그대로 쓴다.
+- 로그인이 켜진 서버에서는 쿠키 없는 요청이 401이다. 쿠키로 넣은 공간은 그 계정의 것이고, 다른 계정에는 보이지 않는다.
+- 로그인 전에 넣은 공간은 "소유자 없음"이 되어 어느 목록에도 안 보인다. 옮기지 말고 새 `--suffix`로 다시 넣는다. 한 계정에 한꺼번에 주려면 `python -m app.assign_owner` ([auth.md](../../docs/auth.md))를 쓴다.
 
 ## 알려진 한계
 

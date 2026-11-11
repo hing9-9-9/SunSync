@@ -39,6 +39,11 @@ between the neighbouring steps. Steps that follow each other become one segment.
 - The film is assumed to have two states, opaque and transparent. Dimming would add an `opacity` field
   (0 to 1) to the segments and raise `plan_version`.
 
+## How FR-04 and FR-05 treat `infeasible` and `unknown`
+
+- FR-05 applies both as opacity 1.0 (the most protective state) and records them in the log: `infeasible` as `target_unmet` ("목표 미달"), `unknown` as `unknown_intensity` ("조도 미상"); see [fr05_protocol.md](fr05_protocol.md).
+- FR-04 smoothing keeps both states when it fills a gap or holds a cell ([fr04_adaptive_control_lg_sgf.md](fr04_adaptive_control_lg_sgf.md), section 11).
+
 ## Open points
 
-- How FR-04 and FR-05 treat `infeasible` and `unknown` cells is still to be agreed with them.
+- Which plan the film receives by default, the FR-02 plan or the FR-04 plan, is not decided ([features.md](features.md)).

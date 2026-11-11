@@ -7,7 +7,7 @@ phone / PC --https--> Caddy (443)
                        |- /api/*      -> API (uvicorn, 127.0.0.1:8000) -- /var/lib/sunsync/sunsync.db
                        |- /measure/*  -> measurement server (uvicorn, 127.0.0.1:8001)
                        '- everything else -> built web app in /var/www/sunsync
-  every hour: forecast worker --> same database file
+  every hour: forecast worker; every 10 minutes: KMA worker, AI nowcast worker --> same database file
 ```
 
 Why https: phone browsers usually allow the camera only on `https`, and the QR code that opens the phone app from the PC is only shown for an `https` address that is not `localhost`. The phone app is a full client of its own: it can be opened directly at this address and used from login to measurement, and the QR code is only a shortcut that continues a space started on the PC.
@@ -51,7 +51,7 @@ The steps assume Ubuntu 24.04 (Python 3.12). The project needs Python 3.11 or ne
    sudo useradd --system --no-create-home --shell /usr/sbin/nologin sunsync
    sudo mkdir -p /etc/sunsync /var/lib/sunsync /var/www/sunsync
    sudo chown sunsync:sunsync /var/lib/sunsync
-   sudo git clone https://github.com/hing9-9-9/SunSync.git /opt/sunsync   # before the pull request is merged add: --branch feat/deploy-aws
+   sudo git clone https://github.com/hing9-9-9/SunSync.git /opt/sunsync
    sudo python3 -m venv /opt/sunsync/.venv
    ```
 
@@ -64,7 +64,6 @@ The steps assume Ubuntu 24.04 (Python 3.12). The project needs Python 3.11 or ne
    sudo systemctl daemon-reload
    sudo systemctl enable sunsync-api sunsync-measure sunsync-worker.timer sunsync-kma-worker.timer sunsync-ai-nowcast-worker.timer sunsync-backup.timer
    sudo /opt/sunsync/deploy/update.sh      # installs, builds the web app and starts the services
-   # before the pull request is merged: sudo env SUNSYNC_BRANCH=feat/deploy-aws /opt/sunsync/deploy/update.sh
    sudo systemctl start sunsync-worker.timer sunsync-kma-worker.timer sunsync-ai-nowcast-worker.timer sunsync-backup.timer
    ```
 
@@ -72,11 +71,12 @@ The steps assume Ubuntu 24.04 (Python 3.12). The project needs Python 3.11 or ne
 
    ```bash
    sudo cp /opt/sunsync/deploy/Caddyfile /etc/caddy/Caddyfile
-   caddy hash-password                      # prints the hash for YOUR_PASSWORD_HASH
-   sudo nano /etc/caddy/Caddyfile           # set YOUR_NAME, YOUR_USER, YOUR_PASSWORD_HASH
+   sudo nano /etc/caddy/Caddyfile           # set YOUR_NAME
    caddy validate --config /etc/caddy/Caddyfile
    sudo systemctl reload caddy
    ```
+
+   The template uses the Google login: the API checks the login itself and Caddy asks `/api/auth/check` for every `/measure` request (`import login`). Switch the login on first ([auth.md](auth.md)); `/api/auth/check` answers 401 while the login is off, so `/measure` stays closed until then. If the login is not ready yet, the commented `locked` block of the template is a temporary lock with a user name and password: run `caddy hash-password`, put the hash in, and add `import locked` to the `/api/*` and `/measure/*` blocks.
 
    While you are still trying things out, use the Let's Encrypt staging endpoint (see the Caddy docs) so that failed attempts do not use up the real rate limit.
 
@@ -105,7 +105,7 @@ sudo systemctl enable --now sunsync-autoupdate.timer
 - **Check:** `systemctl list-timers 'sunsync-*'`, `sudo journalctl -u sunsync-autoupdate -n 30 --no-pager`, and `cat /var/lib/sunsync/deployed-commit` for the commit that runs now.
 - **When a deployment fails:** the running services are not restarted, the commit is written to `/var/lib/sunsync/failed-commit` and it is not tried again. Fix the cause and then either merge a new commit or remove that file to try the same commit again.
 - A merged pull request is deployed within about 15 minutes, so merge only when the checks pass.
-- Turn the switch off while you try another branch on the server; otherwise the server is switched back to `main`.
+- Turn the switch off while you try another branch on the server (`sudo env SUNSYNC_BRANCH=<branch> /opt/sunsync/deploy/update.sh`); otherwise the server is switched back to `main`.
 - `/opt/sunsync` on the server must have no local changes.
 - **The update runs the code of the repository as root** (`update.sh`, `pip install`, `npm ci`). Whoever can merge into `main` controls the server. Keep the branch protection of `main` (required checks and a review) and the list of people with write access short.
 - The web build gets only `VITE_PUBLIC_URL` from `/etc/sunsync/sunsync.env` (a line `VITE_PUBLIC_URL=https://...` without quotes), so the Google secret is not visible to the packages that are installed there.
@@ -116,38 +116,41 @@ sudo systemctl enable --now sunsync-autoupdate.timer
 |---|---|
 | Services are running | `systemctl status sunsync-api sunsync-measure` |
 | Timers are set | `systemctl list-timers 'sunsync-*'` |
-| Landing page is public | Open `https://YOUR_NAME.duckdns.org` in a private window: the page opens without a password |
-| Data is locked | `curl -i https://YOUR_NAME.duckdns.org/api/health` returns 401 |
-| API answers | `curl -u USER:PASSWORD https://YOUR_NAME.duckdns.org/api/health` |
-| Measurement server answers | `curl -u USER:PASSWORD https://YOUR_NAME.duckdns.org/measure/health` |
+| Landing page is public | Open `https://YOUR_NAME.duckdns.org` in a private window: the page opens without a login |
+| Data is locked | `curl -i https://YOUR_NAME.duckdns.org/api/ui/spaces` returns 401 |
+| API answers | `curl -i https://YOUR_NAME.duckdns.org/api/health` returns 200 (the health check is open) |
+| Measurement server is locked | `curl -i https://YOUR_NAME.duckdns.org/measure/health` returns 401; with a login it is reached through the app |
+| Login works | In a private window go to "내 공간 열기", log in with a test-user account, and come back to the page ([auth.md](auth.md)) |
 | Forecast workers work | Run `sunsync-worker.service`, `sunsync-kma-worker.service`, then `sunsync-ai-nowcast-worker.service`; inspect each journal |
 | Backup works | `sudo systemctl start sunsync-backup.service && ls /var/lib/sunsync/backups` |
 | Survives a reboot | `sudo reboot`, then open the address again |
-| Phone, direct | Open the address on a phone and use the app from creating a space to the measurement result |
+| Phone, direct | Open the address on a phone, log in, and use the app from creating a space to the measurement result (taking photos needs the native app, see "Before a demo") |
 | Phone, QR | Create a space on the PC, press "Capture on phone" and scan the QR code |
 
 ## Before a demo
 
-- **Print the 4-marker board at its real size** (four markers, IDs 7 to 10, 24 cm markers with 4 cm gaps as the team currently uses; that is about 52 cm on each side, larger than A3, so confirm the size with whoever prints it) and stick it on the window. The measurement server accepts only this board.
-- **Prepare each phone camera once** in the app under "더보기" (about 12 photos of the board). The result is saved in that phone's browser for this address only, so it has to be repeated when the address changes, in another browser, in the installed app if it was done in the browser, or after the browser data is cleared.
+- **Use the single 60 cm marker** (a black outer square of 0.6 m x 0.6 m, 6 x 6 cells of 10 cm; [fr03_single_marker.md](fr03_single_marker.md)). Nothing else is printed. A marker that is printed or shown on a screen must have the size and the ID that the capture session reports, and the measurement server stops when the saved marker size is not 0.6 m. The film display is virtual in this term.
+- **Prepare each phone camera once.** The app prepares the camera from 12 to 30 different views of the whole marker. The result is saved on that phone for this address only, so it has to be repeated when the address changes, in another browser, or after the browser data is cleared.
+- **Taking photos in the browser is a development test and is off in production builds** ([README](../README.md)); a demo capture needs the native app ([mobile/README.md](../mobile/README.md)).
+- **Not verified on the server yet:** the capture with the single marker and the camera preparation (issue #112).
 - Allow the camera when the browser asks.
 - Do the whole flow once on every phone that will be used, with the real address, a day before the demo (code freeze: 11/19 and 12/10).
 
 ## How a teammate checks the deployment
 
 - **Needs nothing:** read the pull request, the code and the docs, look at the CI results, and open the landing page.
-- **Needs the temporary user name and password:** trying the app yourself, because every request for data (`/api`, `/measure`) is locked until the Google login ships. Ask the person who runs the server for the address and the password. Never write them in the repository, an issue or a pull request: the repository is public. The server key file (`.pem`) is never shared; someone who has to log in to the server sends the public part of their own SSH key instead (`id_ed25519.pub`), and the server owner adds it.
+- **Needs a Google account that is a test user of the app:** trying the app yourself, because every request for data (`/api`, `/measure`) needs the Google login. Send the e-mail address of your Google account to the person who runs the server; they add it under Test users in the Google console ([auth.md](auth.md)), and an account that is not on the list is refused. Never write passwords, keys or secrets in the repository, an issue or a pull request: the repository is public. The server key file (`.pem`) is never shared; someone who has to log in to the server sends the public part of their own SSH key instead (`id_ed25519.pub`), and the server owner adds it.
 
 Steps (use a private window on a PC and a phone):
 
-1. Open the address. The landing page opens without a password.
-2. Press "내 공간 열기". The browser asks for the user name and password once; after that the app shows its own account screen (not a real login yet, any name works).
+1. Open the address. The landing page opens without a login.
+2. Press "내 공간 열기". The app sends you to Google; log in with the account that was added as a test user, and you come back to the page.
 3. Create a space with the window size and the building location.
-4. Press "휴대폰에서 촬영". A QR code appears; scan it with a phone and the app opens on the capture screen.
+4. Press "휴대폰에서 촬영". A QR code appears; scan it with a phone and the app opens on the capture screen. The phone logs in on its own, so log in there with the same account.
 5. On the phone, open the address directly: the app layout appears and the camera asks for permission.
-6. The camera setup and the board capture need the printed 4-marker board (see "Before a demo").
+6. The camera setup and the capture need the 60 cm marker (see "Before a demo").
 
-With the Google login on, each account sees only its own spaces. Before the login is on, everyone who has the password sees the same spaces, so do not enter personal data.
+Each account sees only its own spaces ([auth.md](auth.md)); spaces made before the accounts existed are visible to nobody until they are given to an account.
 
 ## Backup and logs
 
@@ -159,10 +162,18 @@ The database and its copies hold e-mail addresses once the Google login is on, s
 ## Notes
 
 - **Photos are not stored.** The measurement server receives each photo as base64 inside the request, uses it in memory and returns only the detected markers; no code writes it to disk. Requests are limited to 16 MB by the server and 20 MB by Caddy.
-- **Forecast worker.** The API works without it (it falls back to the clear-sky value), but the forecast comparison needs it. It runs once an hour, only for the building locations saved in spaces, and calls Open-Meteo, so the server needs outbound internet access.
-- **Basic auth** in the `Caddyfile` locks only the data (`/api` and `/measure`) until the Google login ships. The web app files stay public, so the landing page opens without a password and the phone can load the manifest and install the app. The browser asks for the password when the app first requests data; whether the app handles that prompt cleanly has to be checked on the server. If it does not, move `import locked` to the whole site block. The Google login in [auth.md](auth.md) replaces it.
+- **Forecast workers.** The API works without them (it falls back to the clear-sky value), but the forecast comparison needs them. `sunsync-worker` runs once an hour, only for the building locations saved in spaces, and calls Open-Meteo. `sunsync-kma-worker` and then `sunsync-ai-nowcast-worker` run every 10 minutes for the AI nowcast; they need `KMA_API_KEY` and `FR01_AI_ROLLOUT_MODE` (`shadow` until the team has reviewed `active`) in `/etc/sunsync/sunsync.env`. All of them call external services, so the server needs outbound internet access.
+- **Login and locks.** With the Google login on, the API refuses every request without a session (except the health check and the login routes), and Caddy asks `/api/auth/check` for every `/measure` request. The web app files stay public, so the landing page opens and the phone can load the manifest and install the app. The basic auth block (`locked`) in the template is only a temporary lock for a server whose login is not on yet.
 - **Remove the server after the last demo (12/11)**: delete the instance and the public IP in the AWS console and download a last backup first. Set an AWS budget alert when you create the account.
 
-## Not verified yet
+## Verified and not verified
 
-These were written without a real server and have to be confirmed on it: the certificate for the free address, the server size (memory with OpenCV and pvlib together), that the OpenCV libraries are enough, and the phone camera over https.
+Confirmed on the server (the checked boxes of issues #104, #105 and #110): the https address with its certificate, direct use on a phone, the QR code, services that restart after a reboot, the Google login round trip, logout, removal of the temporary basic auth, `/measure` closed without a login, and the first automatic deployment with its backup.
+
+Not verified on the server yet:
+
+- the end of a session after 30 minutes without use and after 12 hours (#105: only checked with a controlled clock in the tests);
+- stopping the automatic update by removing the switch file, and what happens when a deployment fails (#110: only checked in the tests);
+- that a capture taken on the phone appears in the plan view on the PC (#104);
+- the capture with the single marker and the camera preparation (#112);
+- the memory of the server with OpenCV and pvlib at work: no problem has been reported, but it was not measured.

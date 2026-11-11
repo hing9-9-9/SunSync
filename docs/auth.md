@@ -78,6 +78,9 @@ account on the PC and on the phone sees the same spaces. One check in `backend/a
 looks at the `scene_id`, `space_id` or hand-off/measurement token of every request. The owner is
 stored in `scenes.owner_id`.
 
+The ids of deleted spaces are kept for the account that deleted them (`ui_deleted_spaces.owner_id`,
+migration 6), so another account does not see them either.
+
 Spaces made before the accounts existed have no owner and appear in no list. To give them to one
 account (that person must have logged in once), on the server:
 
@@ -105,20 +108,23 @@ The menu names change now and then; look for the same item.
 
 If the address of the site changes, change the redirect URI here and `SUNSYNC_PUBLIC_URL` too.
 
-## Switch it on at the server
+## Switch it on or off at the server
 
-Do this only after the screen change (issue #121) is deployed. With the old screen, the login on
-the server would lock everybody out.
+The login is on at the demo server (checked there: the Google round trip, logout, removal of the
+temporary basic auth and `/measure` closed without a login). The screens that use it (issue #121,
+pull request #126) are deployed. Not yet checked there with real time: the end of a session after 30 minutes and
+after 12 hours. The steps below are for a new server or after a reset.
 
 1. Add the four settings to `/etc/sunsync/sunsync.env` (see `deploy/env.example`), keep the mode `600`, and restart the API: `sudo systemctl restart sunsync-api`. Check `sudo journalctl -u sunsync-api -n 20 --no-pager` for a start without errors.
-2. In `/etc/caddy/Caddyfile` (the server copy is not updated by the automatic update) add the `(login)` block from `deploy/Caddyfile` next to the `(locked)` block. Then take the temporary password away: remove `import locked` from `/api/*`, and in `/measure/*` replace `import locked` with `import login`. Then `caddy validate --config /etc/caddy/Caddyfile` and `sudo systemctl reload caddy`.
+2. In `/etc/caddy/Caddyfile` (the server copy is not updated by the automatic update) make it match `deploy/Caddyfile`: no `import locked` on `/api/*`, and `import login` instead of `import locked` on `/measure/*`. A server that was set up with the old template (basic auth on both) needs exactly this change. Then `caddy validate --config /etc/caddy/Caddyfile` and `sudo systemctl reload caddy`.
 3. Check in a private window: the landing page opens; going into a space leads to Google; after the login the page opens again; after 30 minutes without use the login is asked again.
 4. Check with `curl -i https://YOUR_NAME.duckdns.org/api/ui/spaces` (401) and `curl -i https://YOUR_NAME.duckdns.org/measure/health` (401).
 
 Do step 1 before step 2. If a request that has the right session still gets 401 on `/measure`, look at the `uri` in the `(login)` block: it must be `/api/auth/check`.
 
 To go back: remove `SUNSYNC_AUTH` from the file, restart the API, and put `import locked` back in
-the `Caddyfile`.
+the `/api/*` and `/measure/*` blocks of the `Caddyfile` (the `locked` block of the template needs a
+user name and a password hash first).
 
 ## When something is wrong
 

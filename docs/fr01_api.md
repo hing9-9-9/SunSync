@@ -110,7 +110,7 @@ timestamp_count × sample_count × (window_count + occluder_count + room_corner_
 
 | HTTP | 조건 |
 |---:|---|
-| 404 | Scene이 없음 |
+| 404 | Scene이 없음. 로그인이 켜져 있으면 다른 계정의 Scene도 404이다 ([auth.md](auth.md)) |
 | 409 | `expected_scene_revision`이 현재 revision과 다름 |
 | 422 | request validation 실패, unknown/duplicate region, invalid stored Scene geometry, sample/resource limit 초과 |
 

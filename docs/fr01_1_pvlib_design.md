@@ -35,7 +35,7 @@ FR-06 geometry는 이미 ENU이므로 FR-01에서 별도 북쪽 보정이나 geo
 
 FR-01은 입력 시각을 UTC로 정규화하고 시작과 종료를 포함하는 deterministic grid를 만든다. 종료 시각이 interval grid에 맞지 않으면 종료 시각을 한 번 추가한다. 기본 요청은 2시간·5분 간격으로 25 timestamps를 평가한다. 최대 timestamp 수는 1,441개다.
 
-`protected_region_ids`를 생략하면 모든 region을 계산한다. 선택 sample point 수는 최대 10,000개이고, `timestamps × samples × (windows + occluders + room edges + 2)`가 5,000,000을 넘으면 요청을 거부한다.
+`detail_level`은 `summary`(기본, 집계만) 또는 `diagnostic`(모든 sample의 경로 정보 포함)이다. `protected_region_ids`를 생략하면 모든 region을 계산한다. 선택 sample point 수는 최대 10,000개이고, `timestamps × samples × (windows + occluders + room edges + 2)`가 5,000,000을 넘으면 요청을 거부한다.
 
 ## 태양 위치 계산
 
@@ -71,7 +71,7 @@ s = (cos(h) * sin(a), cos(h) * cos(a), sin(h))
 
 `predict_region_exposure()`는 선택된 region의 모든 5 cm 타일 중심점을 모든 timestamp에서 평가한다. 변의 길이가 5 cm의 배수가 아니면 마지막 행·열은 남은 폭을 사용하고, 그 부분 타일의 중심점을 사용한다. 타일은 row-major 순서이며 `sample_index`는 그 순서의 0-based 인덱스다. FR-01은 film cell을 계산하지 않는다.
 
-- `timeline[].samples[]`: timestamp별 모든 sample의 상태, reason, candidate path, blocker
+- `timeline[].samples[]`: `detail_level=diagnostic`일 때만 timestamp별 모든 sample의 상태, reason, candidate path, blocker를 담는다. 기본값 `summary`는 집계만 반환한다 ([fr01_api.md](fr01_api.md)). FR-02와 FR-04는 `diagnostic`으로 요청한다
 - `timeline[].exposed_sample_count`: `status="exposed"` sample 수
 - `timeline[].status`: 하나라도 노출되면 `exposed`인 `any_sample` 집계
 - `first_predicted_exposure_time`: timeline에서 처음 `exposed`인 **sampled timestamp**
@@ -86,7 +86,7 @@ s = (cos(h) * sin(a), cos(h) * cos(a), sin(h))
 
 - Scene 없음: `404`
 - `expected_scene_revision` 불일치: `409`
-- 잘못된 request, unknown/duplicate region, 저장된 invalid geometry, resource limit 초과: `422`
+- 잘못된 request, unknown/duplicate region, 저장된 invalid geometry, resource limit 초과: `422`. FR-01 도메인 422의 `detail`은 `code`, 한국어 `message`, 관련 대상과 `context`를 가진 객체다 ([fr01_api.md](fr01_api.md), [fr01_7](fr01_7_prediction_error_implementation.md))
 
 예측은 stored Scene JSON이나 revision을 수정하지 않는다.
 

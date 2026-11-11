@@ -6,8 +6,12 @@ Predicts future sunlight and switches only the needed cells of a smart film to p
 ```
 backend/   FastAPI + SQLModel + SQLite
 frontend/  React + Vite (TypeScript)
-engine/    sunlight calculation (FR-01)
-measure/   ArUco measurement (research)
+engine/    sunlight prediction (FR-01), shading plan (FR-02), stable control (FR-04), Vision AI
+measure/   ArUco measurement server (/measure) and its registration core
+mobile/    native camera adapters (Android, iOS)
+deploy/    server files: Caddy, systemd units, update, backup
+tools/     experiments, mock validation and dummy data scripts
+tests/     backend tests
 docs/      requirements, architecture, decisions, data contracts, reports
 ```
 
@@ -18,22 +22,26 @@ Native camera adapters and automatic camera setup: [mobile/README.md](mobile/REA
 Browser photo capture is an opt-in development test and is disabled in production builds.
 
 ## Documents
-- [Functional requirements](docs/features.md): FR-01 to FR-06, owners and sub-requirements
+- [Functional requirements](docs/features.md): FR-01 to FR-07, owners and sub-requirements
 - [Decisions](docs/decisions.md): one line per team decision
 - [Architecture](docs/architecture.md): modules and data flow
 - [FR-06 space data](docs/fr06_design.md) and [JSON schema](docs/fr06_scene_schema.json)
-- FR-01 sunlight prediction: [FR-01.1 pvlib path design](docs/fr01_1_pvlib_design.md), [FR-01.4 KMA AI implementation guide](docs/fr01_4_README.md), [FR-01.4 Open-Meteo DNI design](docs/fr01_4_open_meteo_dni_design.md), [API](docs/fr01_api.md), [FR-01 → FR-02 tile contract](docs/fr01_fr02_tile_contract.md), [mock test plan](docs/fr01_mock_test_plan.md)
+- FR-01 sunlight prediction: [FR-01.1 pvlib path design](docs/fr01_1_pvlib_design.md), [FR-01.4 KMA AI implementation guide](docs/fr01_4_README.md), [FR-01.4 Open-Meteo DNI design](docs/fr01_4_open_meteo_dni_design.md), [prediction errors (FR-01-7)](docs/fr01_7_prediction_error_implementation.md), [large spaces (FR-01-8)](docs/fr01_8_large_space_implementation.md), [API](docs/fr01_api.md), [FR-01 → FR-02 tile contract](docs/fr01_fr02_tile_contract.md), [mock test plan](docs/fr01_mock_test_plan.md)
 - FR-02 & FR-04 shading plan & adaptive control: [format](docs/fr02_schedule.md), [design](docs/fr02_design.md), [API](docs/fr02_api.md), [FR-04 uncertainty-aware adaptive control & LG SGF](docs/fr04_adaptive_control_lg_sgf.md)
+- FR-03 measurement: [single 60 cm marker](docs/fr03_single_marker.md), [measurement workflow](docs/fr03_measurement_workflow.md), [robust estimation](docs/fr03_robust_measurement.md), [selected film](docs/fr03_selected_film.md)
 - FR-03 & FR-06 Vision AI 3D furniture estimation: [ArUco-calibrated depth & 3D bounding box pipeline](docs/fr03_vision_ai_3d_estimation.md)
-- FR-05 film control: [protocol](docs/fr05_protocol.md) and [database persistence](docs/db.md)
+- FR-05 film control: [protocol](docs/fr05_protocol.md)
+- [Database](docs/db.md): tables, migrations and persistence
+- [UI flow](docs/ui-flow.md): screens, login and the APIs they call
 - [Deployment on one server](docs/deploy.md): https address, services, backup
 - [Google login](docs/auth.md): how it works, the settings, the Google console and how to switch it on
 - [AI & Applications Proposal](docs/ai_applications/README.md): Project proposal blog for ITE 351 (Task 1 & Task 3)
-- Requirement document: `docs/reports/SunSync_Requirements.pdf`
+- Requirement document: `docs/reports/SunSync_Requirements.pdf` (LaTeX source in `docs/reports/requirements`); specification report: `docs/reports/SunSync_Specification.pdf` (source in `docs/reports/specification`)
+- Records of past work (not kept up to date): [UI and FR-06 integration](docs/ui-fr06-integration.md) and [UI data integration](docs/ui-data-integration.md) (2026-11-01), [Award example integration](docs/award-integration.md) and [design specification](docs/design-spec-2026-10-23.md) (October), [hero image record](docs/hero-asset.md)
 - Meeting notes: shared Google document (not in the repository)
 
 ## Setup
-Requirements: Python 3.11+, Node.js LTS
+Requirements: Python 3.11+, Node.js 22 or newer (CI uses 24, the server 22)
 
 > **Python 3.11+ is required.** On macOS, the built-in `python3` is 3.9 and will fail (`int | None` syntax). Install 3.12 (`brew install python@3.12`) and create the venv with `python3.12 -m venv .venv`.
 
@@ -66,7 +74,7 @@ mypy backend/app
 PYTHONPATH=backend python -m app.scene_cli schema --check
 ```
 
-Frontend verification: `cd frontend && npm ci && npm run lint && npm run build`.
+Frontend verification: `cd frontend && npm ci && npm test && npm run lint && npm run build`.
 GitHub Actions runs the backend checks on Python 3.11/3.12 and the frontend checks.
 
 ### FR-01 future sunlight path prediction

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Deploys the latest main on the server. Run as root: sudo /opt/sunsync/deploy/update.sh
-# To try another branch before it is merged: sudo env SUNSYNC_BRANCH=feat/deploy-aws /opt/sunsync/deploy/update.sh
+# To try another branch before it is merged: sudo env SUNSYNC_BRANCH=<branch> /opt/sunsync/deploy/update.sh
 set -euo pipefail
 
 ROOT=/opt/sunsync

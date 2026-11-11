@@ -3,7 +3,7 @@
 FR-02 decides which film cells of a window are opaque and when. The result is one `ShadingPlan` per
 Scene (one room). FR-04 smooths it and FR-05 applies it to the film, so all three read the same format.
 
-- Model: `backend/app/schemas/shading_plan.py` (Pydantic, `plan_version` `0.1.0`, a draft until FR-04 and FR-05 use it)
+- Model: `backend/app/schemas/shading_plan.py` (Pydantic, `plan_version` `0.1.0`; FR-05 applies it and FR-04 smooths it, so a change of the format needs both to change)
 - JSON Schema: `docs/fr02_shading_plan_schema.json` (generated from the model)
 - Examples: `docs/examples/fr02/shading_plan_grade_a.json`, `docs/examples/fr02/shading_plan_infeasible_unknown.json`
 
