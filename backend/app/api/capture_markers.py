@@ -16,6 +16,7 @@ from app.db import get_session
 from app.models.film import FilmStateRecord
 from app.models.scene import SceneRecord
 from app.schemas.film import MarkerModeRequest, MarkerPairingRequest
+from app.schemas.scene import Window
 from app.services.film import generate_aruco_4x4_pattern, pair_marker_for_scene, set_marker_mode
 from app.services.stored_scene import load_stored_scene
 from app.ui_scene import UISpace, UISpaceRecord, canonical_id
@@ -83,7 +84,7 @@ def describe(row: CaptureMarkerSession, db: Session) -> dict:
     film = db.get(FilmStateRecord, f"{row.scene_id}:{row.window_id}")
     assert film is not None
     window = next(w for w in scene.windows if w.window_id == row.window_id)
-    module_row, module_col = marker["start_row"] // 10, marker["start_col"] // 10
+    module_row, module_col = window.marker_module_indices(marker["start_row"], marker["start_col"])
     selected = saved_capture_target(row.scene_id, db)
     if selected and (
         selected["window_id"] != row.window_id
@@ -143,7 +144,11 @@ def saved_capture_target(scene_id: str, db: Session) -> dict | None:
         return None
     return {
         "window_id": canonical_id("window", space.id),
-        "module_row": window.captureModule.row,
+        "module_row": (
+            window.captureModule.row
+            if window.captureModule.rowOrigin == "bottom"
+            else Window.full_module_count(window.height) - 1 - window.captureModule.row
+        ),
         "module_col": window.captureModule.col,
     }
 
@@ -163,13 +168,11 @@ def start_capture(scene_id: str, request: StartCapture, db: DB) -> dict:
     if previous and previous.session_id == token:
         if request.window_id is not None and request.window_id != previous.window_id:
             raise HTTPException(409, "Capture request is already bound to another window")
-        marker = json.loads(previous.marker_json)
-        if (request.module_row, request.module_col) != (
-            marker["start_row"] // 10,
-            marker["start_col"] // 10,
-        ):
+        current = describe(previous, db)
+        module = current["film_module"]
+        if (request.module_row, request.module_col) != (module["row"], module["col"]):
             raise HTTPException(409, "Capture request is already bound to another film module")
-        return describe(previous, db)
+        return current
     if (
         previous
         and previous.active
@@ -267,7 +270,12 @@ def capture_targets(scene_id: str, db: DB) -> dict:
             rows, cols = window.film_module_shape()
         except ValueError:
             continue
-        windows.append({"window_id": window.window_id, "rows": rows, "cols": cols})
+        target = {"window_id": window.window_id, "rows": rows, "cols": cols}
+        if window.height_m - rows > 1e-6:
+            target["top_remainder_m"] = window.height_m - rows
+        if window.width_m - cols > 1e-6:
+            target["right_remainder_m"] = window.width_m - cols
+        windows.append(target)
     selected = saved_capture_target(scene_id, db)
     return {"windows": windows, **({"selected_target": selected} if selected else {})}
 

@@ -813,7 +813,7 @@ function MobileApp() {
                               onChange={(sill) => changeWindow({ sill })}
                             />
                           </div>
-                          <FilmLayout space={draft} onChange={(row, col) => changeWindow({ captureModule: { row, col } })} />
+                          <FilmLayout space={draft} onChange={(row, col) => changeWindow({ captureModule: { row, col, rowOrigin: "bottom" } })} />
                         </>
                       )}
                       <div className="mini-room">

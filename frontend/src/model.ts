@@ -60,7 +60,7 @@ export type WindowSpec = {
   offset?: number;
   sill?: number;
   marker?: WindowMarker;
-  captureModule?: { row: number; col: number } | null;
+  captureModule?: { row: number; col: number; rowOrigin?: "top" | "bottom" } | null;
 };
 export type Space = {
   // The time range in which the user wants light blocked (saved with the space).
@@ -141,11 +141,16 @@ export function resolveWindow(s: Space): (Required<Omit<WindowSpec, "captureModu
     ...(w.captureModule ? { captureModule: w.captureModule } : {}),
   };
 }
-export function filmGrid(w: Pick<WindowSpec, "width" | "height">) {
-  return {
-    cols: Math.max(1, Math.round(w.width / CELL_SIZE)),
-    rows: Math.max(1, Math.round(w.height / CELL_SIZE)),
+export function filmGrid(w: Pick<WindowSpec, "width" | "height">, stored?: { rows: number; cols: number }) {
+  const count = (length: number, storedCount?: number) => {
+    const legacy = Math.max(1, Math.round(length / CELL_SIZE));
+    return storedCount === legacy ? legacy : Math.max(1, Math.ceil((length - 1e-6) / CELL_SIZE));
   };
+  return { cols: count(w.width, stored?.cols), rows: count(w.height, stored?.rows) };
+}
+/** Interior cell boundaries are 10cm from the left or bottom; the last cell ends at the frame. */
+export function filmCellEdges(length: number, count: number) {
+  return [...Array.from({ length: count }, (_, index) => index * CELL_SIZE), length];
 }
 export const faces: Face[] = [
   "남쪽 전면",

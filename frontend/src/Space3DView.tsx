@@ -71,17 +71,23 @@ export default function Space3DView({ space, hour, onHour, date, selected, onSel
   const win = resolveWindow(space);
   const serverDay = useMemo(() => (sunpath && film?.plan ? compactDay(sunpath, [film.plan], 0) : null), [sunpath, film]);
 
+  const storedRows = serverDay?.rows, storedCols = serverDay?.cols;
+  const grid = useMemo(() => {
+    if (!win) return null;
+    return filmGrid(win, storedRows && storedCols ? { rows: storedRows, cols: storedCols } : undefined);
+  }, [space, storedRows, storedCols]);
+
   useEffect(() => {
     const scene = createSpaceScene(host.current!, zoneSpace, {
       onSelect: id => id && onSelect(id),
-    }, viewRef.current);
+    }, viewRef.current, grid ?? undefined);
     api.current = scene;
     scene.select(selected);
     scene.setLevel(level);
     return () => scene.dispose();
     // onSelect is a fresh function each render; the scene keeps the first one, which only forwards ids.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [zoneSpace]);
+  }, [zoneSpace, grid]);
   useEffect(() => api.current?.setLevel(level), [level]);
   useEffect(() => api.current?.select(selected), [selected]);
 
@@ -89,8 +95,6 @@ export default function Space3DView({ space, hour, onHour, date, selected, onSel
   const from = timeToMinute(shading.start), to = timeToMinute(shading.end);
   const gated = (minute: number) => shading.enabled && from !== null && to !== null && minute >= from && minute < to;
   const gateOpen = gated(Math.floor(hour * 60));
-  // Keyed on the space: resolveWindow returns a new object every render.
-  const grid = useMemo(() => { const w = resolveWindow(space); return w ? filmGrid(w) : null; }, [space]);
   const moment = useMemo(() => {
     const d = serverDay;
     if (!d) return null;

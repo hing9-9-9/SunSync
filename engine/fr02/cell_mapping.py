@@ -7,6 +7,7 @@ validated Scene, and each `window_hit_m` is assumed to lie on its window plane, 
 
 from __future__ import annotations
 
+from bisect import bisect_left, bisect_right
 from collections import defaultdict
 from collections.abc import Iterable
 from datetime import datetime
@@ -37,6 +38,12 @@ def _cell_range(low: float, high: float, size: float, count: int) -> range:
     return range(max(first, 0), min(last, count - 1) + 1)
 
 
+def _edge_range(low: float, high: float, edges: tuple[float, ...]) -> range:
+    first = bisect_right(edges, low + EPSILON) - 1
+    stop = bisect_left(edges, high - EPSILON)
+    return range(max(first, 0), min(stop, len(edges) - 1))
+
+
 def cells_for_hit(window: FilmWindow, hit_m: Vector3) -> tuple[tuple[int, int], ...]:
     """Return the (row, col) of every cell that the hit point, widened to one tile, overlaps."""
 
@@ -45,7 +52,15 @@ def cells_for_hit(window: FilmWindow, hit_m: Vector3) -> tuple[tuple[int, int], 
     v_low, v_high = max(v - HALF_TILE_M, 0.0), min(v + HALF_TILE_M, window.height_m)
     if u_high - u_low <= EPSILON or v_high - v_low <= EPSILON:
         return ()
-    cols = _cell_range(u_low, u_high, window.width_m / window.film_cols, window.film_cols)
+    cols = (
+        _edge_range(u_low, u_high, window.u_edges_m)
+        if window.u_edges_m
+        else _cell_range(u_low, u_high, window.width_m / window.film_cols, window.film_cols)
+    )
+    if window.v_edges_m:
+        from_bottom = _edge_range(v_low, v_high, window.v_edges_m)
+        rows = range(window.film_rows - from_bottom.stop, window.film_rows - from_bottom.start)
+        return tuple((row, col) for row in rows for col in cols)
     # Rows count from the top edge, so the distance from the top is height - v.
     rows = _cell_range(
         window.height_m - v_high,

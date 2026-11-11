@@ -33,6 +33,13 @@ def _film_windows(scene: Scene) -> list[FilmWindow]:
             window.film_rows,
             window.film_cols,
             profiles[window.optical_profile_id].film_min_direct_transmittance,
+            u_edges_m=tuple(
+                [0.0] + [window.cell_to_uv_bounds(0, c)[0][1] for c in range(window.film_cols)]
+            ),
+            v_edges_m=tuple(
+                [0.0]
+                + [window.cell_to_uv_bounds(r, 0)[1][1] for r in reversed(range(window.film_rows))]
+            ),
         )
         for window in scene.windows
     ]

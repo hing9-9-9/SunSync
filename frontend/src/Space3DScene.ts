@@ -3,7 +3,7 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { CSS2DObject, CSS2DRenderer } from "three/examples/jsm/renderers/CSS2DRenderer.js";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
-import { filmGrid, isWidthWall, resolveWindow } from "./model.ts";
+import { CELL_SIZE, filmCellEdges, filmGrid, isWidthWall, resolveWindow } from "./model.ts";
 import type { Furniture, Region, Space, Wall } from "./model.ts";
 import { sunPosition } from "./sun3d.ts";
 import { createOffsetCache } from "./floorSun.ts";
@@ -33,7 +33,7 @@ const TYPE_COLOR: Record<string, string> = { bookcase: "#f2f0ea", desk: "#ececf0
 const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
 
-export function createSpaceScene(host: HTMLElement, space: Space, events: Events, startView: "3d" | "2d" = "3d"): SceneApi {
+export function createSpaceScene(host: HTMLElement, space: Space, events: Events, startView: "3d" | "2d" = "3d", storedFilm?: { rows: number; cols: number }): SceneApi {
   // T: wall thickness as drawn. Thin, like a plan line; the real wall depth is not measured.
   const W = space.width, D = space.depth, H = space.height, T = 0.04;
   // Plan coordinates: x east, y south from the north-west corner. Three.js: x east, y up, z south.
@@ -155,7 +155,11 @@ export function createSpaceScene(host: HTMLElement, space: Space, events: Events
 
   // Window: glass, accent frame, film-cell grid (step 3) and the cells themselves.
   const winFrame = { origin: new THREE.Vector3(), along: new THREE.Vector3(), inward: new THREE.Vector3(), outward: new THREE.Vector3() };
-  const film = win ? filmGrid(win) : { cols: 0, rows: 0 };
+  const film = win ? filmGrid(win, storedFilm) : { cols: 0, rows: 0 };
+  const flip = win?.wall === "south" || win?.wall === "west";
+  const uEdges = win ? filmCellEdges(win.width, film.cols) : [];
+  if (flip && win) uEdges.reverse().forEach((value, i) => { uEdges[i] = win.width - value; });
+  const vEdges = win ? filmCellEdges(win.height, film.rows) : [];
   const cellCount = film.cols * film.rows;
   const cellMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: "#ffffff", roughness: 0.6, transparent: true, opacity: 0.92 }), Math.max(1, cellCount));
   cellMesh.castShadow = true;
@@ -181,8 +185,8 @@ export function createSpaceScene(host: HTMLElement, space: Space, events: Events
     scene.add(frameLine);
     const lines: number[] = [];
     const p = (u: number, v: number) => winFrame.origin.clone().addScaledVector(winFrame.along, u).addScaledVector(winFrame.inward, 0.012).setY(win.sill + v).toArray();
-    for (let c = 1; c < film.cols; c++) lines.push(...p((c * win.width) / film.cols, 0), ...p((c * win.width) / film.cols, win.height));
-    for (let r = 1; r < film.rows; r++) lines.push(...p(0, (r * win.height) / film.rows), ...p(win.width, (r * win.height) / film.rows));
+    for (let c = 1; c < film.cols; c++) lines.push(...p(uEdges[c], 0), ...p(uEdges[c], win.height));
+    for (let r = 1; r < film.rows; r++) lines.push(...p(0, vEdges[r]), ...p(win.width, vEdges[r]));
     scene.add(new THREE.LineSegments(new THREE.BufferGeometry().setAttribute("position", new THREE.Float32BufferAttribute(lines, 3)), filmGridMat));
     const color = new THREE.Color("#ffffff");
     for (let i = 0; i < cellCount; i++) cellMesh.setColorAt(i, color);
@@ -190,12 +194,13 @@ export function createSpaceScene(host: HTMLElement, space: Space, events: Events
   }
   const cellCenter = (i: number) => {
     const c = i % film.cols, r = Math.floor(i / film.cols);
-    return winFrame.origin.clone().addScaledVector(winFrame.along, ((c + 0.5) * win!.width) / film.cols).addScaledVector(winFrame.inward, 0.02).setY(win!.sill + ((r + 0.5) * win!.height) / film.rows);
+    return winFrame.origin.clone().addScaledVector(winFrame.along, (uEdges[c] + uEdges[c + 1]) / 2).addScaledVector(winFrame.inward, 0.02).setY(win!.sill + (vEdges[r] + vEdges[r + 1]) / 2);
   };
   const cellMatrix = new THREE.Matrix4(), cellQuat = new THREE.Quaternion(), cellScale = new THREE.Vector3();
   const writeCell = (i: number) => {
     const s = cellNow[i];
-    const cw = win!.width / film.cols, ch = win!.height / film.rows;
+    const col = i % film.cols, row = Math.floor(i / film.cols);
+    const cw = uEdges[col + 1] - uEdges[col], ch = vEdges[row + 1] - vEdges[row];
     const wide = isWidthWall(win!.wall);
     cellScale.set(wide ? cw * 0.94 * s : 0.01 * s, ch * 0.94 * s, wide ? 0.01 * s : cw * 0.94 * s);
     cellMesh.setMatrixAt(i, cellMatrix.compose(cellCenter(i), cellQuat, cellScale));
@@ -439,9 +444,14 @@ export function createSpaceScene(host: HTMLElement, space: Space, events: Events
         raycaster.set(p, dir);
         if (raycaster.intersectObjects(occluders, false).some(h => h.object.userData.fid !== v.r.furnitureId)) continue;
         if (cells && win && raycaster.ray.intersectPlane(winPlane, q)) {
-          const c = Math.floor((q.clone().sub(winFrame.origin).dot(winFrame.along) / win.width) * film.cols);
-          const r = Math.floor(((q.y - win.sill) / win.height) * film.rows);
-          if (c >= 0 && r >= 0 && c < film.cols && r < film.rows && closes(cells[r * film.cols + c])) continue;
+          const along = q.clone().sub(winFrame.origin).dot(winFrame.along);
+          const height = q.y - win.sill;
+          if (along >= 0 && along <= win.width && height >= 0 && height <= win.height) {
+            const indoorCol = Math.min(film.cols - 1, Math.floor((flip ? win.width - along : along) / CELL_SIZE));
+            const c = flip ? film.cols - 1 - indoorCol : indoorCol;
+            const r = Math.min(film.rows - 1, Math.floor(height / CELL_SIZE));
+            if (closes(cells[r * film.cols + c])) continue;
+          }
         }
         sum++;
       }
@@ -453,7 +463,6 @@ export function createSpaceScene(host: HTMLElement, space: Space, events: Events
   let level: Level = "basic";
   let litNow: Lit = { open: {}, film: {}, blocked: 0, cells: cellCount };
   let sunUp = true;
-  const flip = win?.wall === "south" || win?.wall === "west";
   const setTime = (day: number, hour: number, server?: ServerMoment): Lit => {
     const e = server?.sun;
     const dir = e ? new THREE.Vector3(e[0], e[2], -e[1]).normalize() : sunDir(day, hour).dir;
