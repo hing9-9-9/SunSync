@@ -42,7 +42,10 @@ YOUR_NAME.duckdns.org {
 		root * /var/www/sunsync
 		# A new deployment must reach phones at once, so the app shell is never cached.
 		@shell path / /index.html /sw.js
-		header @shell Cache-Control "no-cache"
+		header @shell Cache-Control "no-store, no-cache, must-revalidate"
+		# Files with a fixed name may change at any time: ask the server before using a stored copy.
+		@fixed path /manifest.webmanifest /design/* /icons/*
+		header @fixed Cache-Control "no-cache"
 		try_files {path} /index.html
 		file_server
 	}

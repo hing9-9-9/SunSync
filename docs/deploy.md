@@ -152,6 +152,18 @@ Steps (use a private window on a PC and a phone):
 
 Each account sees only its own spaces ([auth.md](auth.md)); spaces made before the accounts existed are visible to nobody until they are given to an account.
 
+## When an old screen appears
+
+The web app is an installable page with a service worker (`/sw.js`, generated at build time). The worker keeps only the cache of the current build, takes over at once on a new build, and always asks the server first for the page, `manifest.webmanifest` and `/design/*`; the cache is used only when the server cannot be reached. A page that stays open shows a notice ("새 버전이 있어요") when a new build is ready. The account screen shows the running build as "버전 <commit>"; compare it with `cat /var/lib/sunsync/deployed-commit` on the server (first 7 characters).
+
+Check in this order:
+
+1. Server: `cat /var/lib/sunsync/deployed-commit` is the newest commit, `/var/lib/sunsync/failed-commit` does not exist, and `journalctl -u sunsync-autoupdate -n 50` shows no error. Delete `failed-commit` after the cause is fixed so the next run tries again.
+2. Server: the live Caddyfile is not updated by the deployment. Compare it with `deploy/Caddyfile` (`diff /etc/caddy/Caddyfile /opt/sunsync/deploy/Caddyfile`, only YOUR_NAME may differ). The page, `/sw.js` and `/index.html` must answer `Cache-Control: no-store, no-cache, must-revalidate`; `/manifest.webmanifest`, `/design/*` and `/icons/*` answer `no-cache`. After editing: `caddy validate --config /etc/caddy/Caddyfile`, then `sudo systemctl reload caddy`.
+3. Browser (F12, Application): Service Workers shows one active worker and Cache Storage holds one `sunsync-ui-<commit>` entry. Several entries mean a device still runs an old worker: use "Unregister" and "Clear site data" once, or close and re-add the installed app. Network with "Disable cache" off shows whether a file came from `(ServiceWorker)` or `(disk cache)`.
+
+Unit files: `update.sh` runs `deploy/install-units.sh`, which copies new or changed `deploy/*.service` and `*.timer` to `/etc/systemd/system/`, runs `daemon-reload`, and enables only timers that were not installed before. `sunsync-autoupdate.timer` stays under the switch file `/etc/sunsync/autoupdate`.
+
 ## Backup and logs
 
 The database and its copies hold e-mail addresses once the Google login is on, so they must not be readable by other users. The services now create their files private (`UMask=0077`; copy the unit files to `/etc/systemd/system/` and run `sudo systemctl daemon-reload` to apply this) and `backup.sh` writes private copies. One time, for the files that already exist: `sudo chmod -R go-rwx /var/lib/sunsync` (the owner keeps access, so the services keep working).

@@ -146,6 +146,6 @@ def test_a_failed_commit_is_not_tried_again_until_main_changes(server):
     assert server.calls().count("update") == 2
 
 
-@pytest.mark.parametrize("name", ["auto-update.sh", "update.sh", "backup.sh"])
+@pytest.mark.parametrize("name", ["auto-update.sh", "update.sh", "backup.sh", "install-units.sh"])
 def test_scripts_have_valid_bash_syntax(name):
     subprocess.run(["bash", "-n", str(DEPLOY / name)], check=True)

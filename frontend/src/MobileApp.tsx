@@ -9,6 +9,7 @@ import { DeviceHandoff } from "./DeviceHandoff";
 import { CaptureHelp } from "./CaptureHelp";
 import { FilmGrid, ShadingTimeControl, VirtualFilmControl } from "./ShadingPlan";
 import { SpaceMenu, SpaceMenuGlyph } from "./SpaceMenu";
+import { BUILD_LABEL } from "./buildLabel";
 import AdaptiveEffect from "./AdaptiveEffect.tsx";
 import { applyShadingTime, formatMinute } from "./sunlight";
 import SpatialCapture from "./SpatialCapture";
@@ -1561,6 +1562,7 @@ function MobileApp() {
                       <span>사용 가이드</span><svg className="account-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="m9 5 7 7-7 7" /></svg>
                     </button>
                   </nav>
+                  <p className="account-version">{BUILD_LABEL}</p>
                 </div>
               )}
             </main>
