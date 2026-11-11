@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { shapes, nextPhotoSlot, validPolygon } from './capturePlan.ts';
+import { shapes, nextCapturePoint, nextPhotoSlot, validPolygon } from './capturePlan.ts';
 test('documented plans use 4/6/3/6/4 points, three photos at every point',()=>{
  for(const [shape,n] of [['circle',4],['ellipse',6],['triangle',3],['l-shape',6],['rectangle',4]] as const){
   assert.equal(shapes[shape].points.length,n);
@@ -16,4 +16,20 @@ test('custom shape needs a non-crossing closed outline with distinct points',()=
  assert.equal(validPolygon([{x:10,y:10},{x:20,y:20}]),false);
  assert.equal(validPolygon([{x:10,y:10},{x:20,y:20},{x:30,y:30}]),false);
  assert.equal(validPolygon([{x:10,y:10},{x:90,y:90},{x:10,y:90},{x:90,y:10}]),false);
+});
+
+
+test('one accepted batch completes a point; rejected batches and retakes do not advance',()=>{
+ const accepted:boolean[][]=[[],[],[],[]];
+ assert.equal(nextCapturePoint(accepted),0);
+ accepted[0]=Array(8).fill(true);
+ assert.equal(nextCapturePoint(accepted),1);
+ accepted[1]=[true,false,true];
+ assert.equal(nextCapturePoint(accepted),1);
+ accepted[1]=[true,true,true];
+ accepted[2]=Array(5).fill(true);
+ accepted[3]=Array(4).fill(true);
+ assert.equal(nextCapturePoint(accepted),null);
+ accepted[1]=[];
+ assert.equal(nextCapturePoint(accepted),1);
 });

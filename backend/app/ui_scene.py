@@ -86,6 +86,11 @@ class UIWindowMarker(UIModel):
     y: Nonnegative
 
 
+class UIFilmModule(UIModel):
+    row: Annotated[int, Field(ge=0)]
+    col: Annotated[int, Field(ge=0)]
+
+
 class UIWindowDimensions(UIModel):
     width: Positive
     height: Positive
@@ -93,9 +98,18 @@ class UIWindowDimensions(UIModel):
     offset: Nonnegative | None = None
     sill: Nonnegative | None = None
     marker: UIWindowMarker | None = None
+    captureModule: UIFilmModule | None = None
 
     @model_validator(mode="after")
     def marker_inside(self) -> Self:
+        module = self.captureModule
+        if module and (
+            abs(self.width - round(self.width)) > 1e-6
+            or abs(self.height - round(self.height)) > 1e-6
+            or module.row >= round(self.height)
+            or module.col >= round(self.width)
+        ):
+            raise ValueError("선택한 필름이 창문 범위를 벗어났습니다. 필름을 다시 선택해 주세요.")
         m = self.marker
         if m and (
             m.x - m.size / 2 < -1e-6

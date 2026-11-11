@@ -564,7 +564,7 @@ export default function AwardPreview({
             {[
               {
                 title: "QR로 공간 인식",
-                text: "상판 형태에 맞춰 각 지점에서 창문 QR 마커를 3장씩 촬영합니다.",
+                text: "상판 형태에 맞춰 각 지점에서 창문 QR 마커를 보며 촬영 버튼을 한 번 누릅니다.",
                 art: "scan",
               },
               {

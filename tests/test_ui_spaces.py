@@ -175,7 +175,7 @@ def test_window_position_marker_and_furniture_type_round_trip(client, payload):
     response = client.post("/api/ui/spaces", json=payload)
     assert response.status_code == 201, response.text
     saved = client.get(f"/api/ui/spaces/{response.json()['id']}").json()
-    assert saved["windowDimensions"] == window
+    assert saved["windowDimensions"] == {**window, "captureModule": None}
     assert saved["furniture"][0]["type"] == "bookcase"
 
 

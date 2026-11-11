@@ -26,3 +26,10 @@ export function nextPhotoSlot(accepted: boolean[][]): { point: number; photo: nu
  for(let point=0;point<accepted.length;point++) for(let photo=0;photo<photosPerPoint;photo++) if(!accepted[point]?.[photo]) return {point,photo};
  return null;
 }
+
+
+// A shutter commits a whole selected batch. Insufficient batches stay on the same point.
+export function nextCapturePoint(accepted: boolean[][]): number | null {
+ const point = accepted.findIndex(frames => frames.filter(Boolean).length < photosPerPoint);
+ return point < 0 ? null : point;
+}
