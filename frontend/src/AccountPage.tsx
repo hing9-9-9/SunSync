@@ -4,6 +4,7 @@ import { gradeCounts, grades } from "./model";
 import { Arrow, Scribble, SunMark } from "./AwardPreview";
 import { AuthLead } from "./AuthNotice";
 import { GoogleButton } from "./GoogleMark";
+import { BUILD_LABEL } from "./buildLabel";
 
 const gradeOrder: Grade[] = ["A", "B", "C", "D"];
 
@@ -174,6 +175,7 @@ export function AuthPanel({ hidden, brand, notice, onLogin }: { hidden: boolean;
           </div>
         </dl>
       </div>
+      <p className="acct-version">{BUILD_LABEL}</p>
     </main>
   );
 }
