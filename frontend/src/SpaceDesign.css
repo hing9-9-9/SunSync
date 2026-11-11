@@ -79,7 +79,6 @@
 .app.award-app.mode-web:is(.page-detail,.page-review,.page-protect) .row.selected { background:var(--space-ui-selected); border-radius:8px; }
 .app.award-app.mode-web:is(.page-detail,.page-review,.page-protect) .row small { font-size:13px; line-height:1.7; color:var(--space-ui-text); }
 .app.award-app.mode-web:is(.page-detail,.page-review,.page-protect) .grade-summary { font-size:13px; line-height:1.6; color:var(--space-ui-text); }
-.app.award-app.mode-web:is(.page-detail,.page-review,.page-protect) .detail-actions { margin-top:var(--space-6); gap:var(--space-3); }
 .app.award-app.mode-web:is(.page-detail,.page-review,.page-protect) .detail-secondary { gap:var(--space-3); }
 .app.award-app.mode-web:is(.page-detail,.page-review,.page-protect,.page-register) .field > span { font-size:14px; line-height:1.5; font-weight:500; color:var(--space-ui-text); }
 .app.award-app.mode-web:is(.page-detail,.page-review,.page-protect,.page-register) :is(.field input:not([type=range]):not([type=checkbox]),.field select,.field textarea) { min-width:0; min-height:44px; border:1px solid var(--space-ui-line); border-radius:8px; background-color:var(--space-ui-paper); color:var(--space-ui-ink); font-size:16px; box-shadow:none; }
@@ -93,7 +92,7 @@
 .app.award-app.mode-web:is(.page-review,.page-protect) .editing-help { margin:0 0 var(--space-5); font-size:14px; line-height:1.7; color:var(--space-ui-text); }
 /* Flex gaps own the vertical rhythm; nested margins must not add a second gap. */
 .app.award-app.mode-web:is(.page-detail,.page-review,.page-protect) .workspace-main > :is(.zone-tabs,.item-tabs,.card) { margin-top:0; margin-bottom:0; }
-.app.award-app.mode-web:is(.page-detail,.page-review,.page-protect) .inspector > :is(h2,p,.summary-box,.row,.divider,.detail-actions) { margin-top:0; margin-bottom:0; }
+.app.award-app.mode-web:is(.page-detail,.page-review,.page-protect) .inspector > :is(h2,p,.summary-box,.row,.divider) { margin-top:0; margin-bottom:0; }
 .app.award-app.mode-web:is(.page-detail,.page-review,.page-protect) .inspector > h3 { margin-top:var(--space-3); margin-bottom:0; }
 .app.award-app.mode-web:is(.page-detail,.page-review,.page-protect,.page-register) .field { padding:0; border:0; border-radius:0; background:transparent; box-shadow:none; gap:var(--space-2); }
 .app.award-app.mode-web:is(.page-detail,.page-review,.page-protect,.page-register) :is(.field input:not([type=range]):not([type=checkbox]),.field select,.field textarea) { padding:var(--space-ui-10) var(--space-3); }

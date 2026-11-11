@@ -1880,20 +1880,6 @@ dialog p {
 .app .detail-info .row small { margin: 0; }
 .app .detail-info h2, .app .detail-info h3, .app .detail-info p { margin: 0; }
 
-.app .detail-info .detail-actions {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  width: 100%;
-}
-.app .detail-info .detail-actions > button {
-  width: 100%;
-  margin: 0;
-}
-@media (min-width: 761px) {
-  .app:where(:not(.mode-app)) .detail-info .detail-actions > button { border: 1pt solid var(--c-a9acb6); }
-}
-
 /* Mobile hierarchy: readable content, quiet surfaces and one clear primary action. */
 @media (max-width: 760px) {
   .app { font-size: var(--text-base); }
@@ -1918,9 +1904,6 @@ dialog p {
   .app .primary { background: var(--accent); color: var(--c-white); border: 1px solid var(--accent); }
   .app .primary:not(:disabled):active { background: var(--accent-hover); }
   .app .secondary:not(:disabled):active { border-color: var(--accent); }
-  .app .detail-actions > .primary { background: var(--accent); border-color: var(--accent); color: var(--c-white); }
-  .app .detail-actions > .secondary { color: var(--c-414958); border-color: var(--c-bfc5d0); }
-  .app .detail-actions { gap: var(--space-2); }
   .app .card { border-radius: 16px; }
   .app .room-card { border: 1px solid var(--c-d0d5df); border-radius: 14px; padding: var(--space-4); min-height: 94px; }
   .app .room-card strong { font-size: var(--text-lg); line-height: 1.5; }
@@ -1984,9 +1967,6 @@ dialog p {
   .app:where(.mode-app) .primary { background: var(--accent); color: var(--c-white); border: 1px solid var(--accent); }
   .app:where(.mode-app) .primary:not(:disabled):active { background: var(--accent-hover); }
   .app:where(.mode-app) .secondary:not(:disabled):active { border-color: var(--accent); }
-  .app:where(.mode-app) .detail-actions > .primary { background: var(--accent); border-color: var(--accent); color: var(--c-white); }
-  .app:where(.mode-app) .detail-actions > .secondary { color: var(--c-414958); border-color: var(--c-bfc5d0); }
-  .app:where(.mode-app) .detail-actions { gap: var(--space-2); }
   .app:where(.mode-app) .card { border-radius: 16px; }
   .app:where(.mode-app) .room-card { border: 1px solid var(--c-d0d5df); border-radius: 14px; padding: var(--space-4); min-height: 94px; }
   .app:where(.mode-app) .room-card strong { font-size: var(--text-lg); line-height: 1.5; }
@@ -2054,10 +2034,10 @@ dialog p {
   .app .field, .app .room-card, .app .guide-card,
   .app .row, .app .row.selected { border-width: 1px; }
   .app .secondary,
-  .app .detail-actions > .secondary,
-  .app .field, .app .room-card, .app .guide-card,
+  .app .field,
+  .app .room-card,
+  .app .guide-card,
   .app .item-tabs button:not(.active) { border-color: var(--c-d2d6df); }
-  .app .detail-actions { gap: var(--space-2); }
   .app .inspector .furniture-actions button { min-height: 44px; padding: var(--space-2) var(--space-3); }
   .app .plan [data-furniture], .app .plan [data-region] { stroke-width: 1px; }
 }
@@ -2080,8 +2060,7 @@ dialog p {
   .app:where(.mode-app) details > summary { padding: var(--space-3) 0; }
   .app:where(.mode-app) input[type="range"] { height: 44px; margin: var(--space-2) 0 var(--space-1); }
   .app:where(.mode-app) .field, .app:where(.mode-app) .room-card, .app:where(.mode-app) .guide-card, .app:where(.mode-app) .row, .app:where(.mode-app) .row.selected { border-width: 1px; }
-  .app:where(.mode-app) .secondary, .app:where(.mode-app) .detail-actions > .secondary, .app:where(.mode-app) .field, .app:where(.mode-app) .room-card, .app:where(.mode-app) .guide-card, .app:where(.mode-app) .item-tabs button:not(.active) { border-color: var(--c-d2d6df); }
-  .app:where(.mode-app) .detail-actions { gap: var(--space-2); }
+  .app:where(.mode-app) .secondary, .app:where(.mode-app) .field, .app:where(.mode-app) .room-card, .app:where(.mode-app) .guide-card, .app:where(.mode-app) .item-tabs button:not(.active) { border-color: var(--c-d2d6df); }
   .app:where(.mode-app) .inspector .furniture-actions button { min-height: 44px; padding: var(--space-2) var(--space-3); }
   .app:where(.mode-app) .plan [data-furniture], .app:where(.mode-app) .plan [data-region] { stroke-width: 1px; }
 
@@ -2167,6 +2146,8 @@ dialog p {
 /* Film cells (MAR5.3, WAR4.3) and predicted blocking times (WAR4.2). */
 .film-grid { --film-marker: var(--c-272b40); margin: var(--space-3) 0 0; }
 .film-grid svg { display: block; width: 100%; height: auto; max-height: 240px; }
+/* While the plan is computed, keep the grid's place so the card does not jump when the result arrives. */
+.film-grid-skeleton { width: 100%; max-height: 240px; margin-bottom: var(--space-2); border-radius: 4px; background: var(--c-hairline); }
 .film-grid .cell { fill: var(--paper); }
 .film-grid .cell.shaded { fill: var(--data); }
 .film-grid .marker { fill: var(--film-marker); }
@@ -2357,9 +2338,7 @@ dialog[open]::backdrop {
 /* Web space detail (2026-11-05): the 2D/3D stage, then one row for the blocking time and space actions. */
 .app .detail-3d { display: grid; gap: 16px; }
 .app .detail-3d .s3 { margin-bottom: 0; }
-.app .detail-settings { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(280px, 1fr); gap: 16px; align-items: start; margin-bottom: 40px; }
-.app .detail-manage h3 { margin: 0 0 6px; }
-.app .detail-manage .detail-actions { margin-top: 16px; }
+.app .detail-settings { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(280px, 1fr); gap: 16px; align-items: start; margin-bottom: 40px; }
 /* Film card: what is covered now, one button, and the unmet times only when there are any. */
 .app .film-card { display: grid; gap: var(--space-3); }
 .app .film-card h3 { margin: 0; }
@@ -2371,8 +2350,8 @@ dialog[open]::backdrop {
 .app .film-unmet { display: grid; gap: var(--space-1); }
 .app .film-unmet-list { list-style: none; margin: 0; padding: 0; font-variant-numeric: tabular-nums; }
 @media (min-width: 901px) {
-  .app .detail-settings .detail-film { grid-column: 1; }
-  .app .detail-settings .detail-manage { grid-column: 2; grid-row: 1 / span 2; }
+  .app .detail-settings .detail-shading { grid-column: 1; grid-row: 1; }
+  .app .detail-settings .detail-film { grid-column: 2; grid-row: 1; }
 }
 /* Rotation: the angle field, then two quarter-turn buttons in the usual two-column row. */
 .app .rotate-field { margin-bottom: var(--space-4); }
@@ -2405,3 +2384,19 @@ dialog[open]::backdrop {
 .app .notice.overlap-notice { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-3); }
 .app .notice.overlap-notice .text-button { min-height: 32px; padding: 0; }
 @media (max-width: 900px) { .app .detail-settings { grid-template-columns: 1fr; } }
+
+/* AI film control effect badges */
+.app .effect-card { display: grid; gap: var(--space-3); }
+.app .effect-card h4, .app .effect-card p { margin: 0; }
+.app .effect-card { padding-top: var(--space-3); border-top: 1px solid #e9e9e9; }
+.app .effect-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.app .effect-refresh { display: inline-grid; place-items: center; width: 36px; height: 36px; padding: 0; border: 1px solid #e9e9e9; border-radius: 999px; background: #fff; color: #1d1c22; cursor: pointer; box-shadow: none; }
+.app .effect-refresh:disabled { opacity: .4; cursor: default; }
+.app .effect-refresh:focus-visible { outline: 2px solid #6660e5; outline-offset: 2px; }
+@media (hover: hover) { .app .effect-refresh:not(:disabled):hover { background: #f4f4f6; } }
+.app .effect-badges { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
+.app .effect-badge { display: grid; gap: 4px; padding: var(--space-3) var(--space-4); border: 1px solid #e9e9e9; background: #fff; }
+.app .effect-badge span { font-size: 13px; color: var(--muted); }
+.app .effect-badge strong { font-size: 16px; font-weight: 600; color: #1d1c22; }
+.app .effect-badge.better { background: #efeefd; border-color: #efeefd; }
+.app .effect-badge.better strong { color: #554ed0; }

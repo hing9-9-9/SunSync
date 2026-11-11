@@ -244,20 +244,4 @@
 /* The plan fills the width of its caption line (size · north); its height only stops at 70% of the window. */
 .actual-workspace svg.plan { max-height:70vh; }
 
-/* Web space detail 공간 관리: grouped row list + grey destructive button (2026-11-06). */
-.app.mode-web .detail-manage .detail-actions { display: grid; margin: 16px 0 0; gap: 0; border-block: 1px solid var(--c-hairline); } /* one containment layer: rows sit in the card between hairlines */
-.app.mode-web .detail-manage .manage-row { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 56px; margin: 0; padding: 0 4px; border: 0; border-radius: 0; box-shadow: none; background: transparent; color: var(--c-ink); font-size: 16px; font-weight: 400; text-align: left; cursor: pointer; transition: background-color .18s ease; }
-.app.mode-web .detail-manage .manage-row svg { flex: none; width: 22px; height: 22px; }
-.app.mode-web .detail-manage .manage-row span { flex: 1; }
-.app.mode-web .detail-manage .manage-row svg.manage-chevron { width: 16px; height: 16px; color: var(--c-muted); }
-.app.mode-web .detail-manage .manage-row + .manage-row { position: relative; }
-.app.mode-web .detail-manage .manage-row + .manage-row::before { content: ""; position: absolute; top: 0; left: 38px; right: 0; border-top: 1px solid var(--c-hairline); }
-.app.mode-web .detail-manage .manage-delete { display: block; width: auto; min-height: 44px; margin: 16px 0 0; padding: 0 20px; border: 0; border-radius: 999px; background: var(--c-block); color: var(--c-danger); font-size: 15px; cursor: pointer; transition: background-color .18s ease, transform .18s ease; }
-.app.mode-web .detail-manage .manage-row:focus-visible { outline: 2px solid var(--c-action); outline-offset: -2px; }
-.app.mode-web .detail-manage .manage-row:active { background: var(--c-pressed); }
-.app.mode-web .detail-manage .manage-delete:active { background: color-mix(in srgb, var(--c-block) 92%, var(--c-ink)); transform: none; }
-@media (hover: hover) {
-  .app.mode-web .detail-manage .manage-row:hover { background: var(--c-pressed); }
-  .app.mode-web .detail-manage .manage-delete:hover { background: color-mix(in srgb, var(--c-block) 96%, var(--c-ink)); transform: translateY(-1px); }
-}
-@media (prefers-reduced-motion: reduce) { .app.mode-web .detail-manage .manage-row, .app.mode-web .detail-manage .manage-delete { transition: none; transform: none; } }
+/* Web space detail 공간 관리: grouped row list + grey destructive button (2026-11-06). */ /* one containment layer: rows sit in the card between hairlines */

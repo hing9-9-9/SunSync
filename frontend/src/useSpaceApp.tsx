@@ -780,6 +780,14 @@ export function useSpaceApp() {
     if (authStatus === "out" && authNotice === LOGIN_FAILED_MESSAGE && !isApp && (page === "home" || page === "guide")) setModal("login");
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only when the session answer arrives
   }, [authStatus]);
+  // Web, signed out on a private page (session expired, or a deep link): show the public home with the login dialog, and come back to this page after signing in.
+  useEffect(() => {
+    if (authStatus !== "out" || isApp || editorExample || page === "home" || page === "guide") return;
+    loginNext.current = currentPath();
+    setPage("home");
+    setModal("login");
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only when the session answer arrives or the page changes while signed out
+  }, [authStatus, page]);
   // Once the session answer arrives, the address (a deep link) is resolved again with the real spaces.
   useEffect(() => {
     if (authStatus !== "in" || editorExample) return;

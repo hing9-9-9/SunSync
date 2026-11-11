@@ -9,6 +9,8 @@ import "./WorkspaceDesign.css";
 import { DeviceHandoff } from "./DeviceHandoff";
 import { CaptureHelp } from "./CaptureHelp";
 import { ShadingTimeControl, VirtualFilmControl } from "./ShadingPlan";
+import { SpaceMenu, SpaceMenuGlyph } from "./SpaceMenu";
+import AdaptiveEffect from "./AdaptiveEffect.tsx";
 import SpatialCapture from "./SpatialCapture";
 import {
   defaultShadingTime,
@@ -122,6 +124,7 @@ function App() {
     selectSpace,
     saveShadingTime,
     editSpace,
+    setActiveId,
     change,
     changeFurniture,
     chooseFurniture,
@@ -255,6 +258,19 @@ function App() {
                     ＋
                   </button>
                 )}
+                {page === "detail" && active && (
+                  <div className="heading-actions">
+                    <button type="button" className="secondary" onClick={() => editSpace(active)}><SpaceMenuGlyph name="layout" />배치 편집</button>
+                    <SpaceMenu
+                      label="공간 더보기"
+                      items={[
+                        { label: "공간 정보 수정", icon: "info", onSelect: () => editSpace(active, "register") },
+                        { label: "공간 삭제", icon: "trash", danger: true, onSelect: () => setModal("delete-space") },
+                        ...(isApp ? [{ label: "웹 페이지 이동", icon: "external" as const, onSelect: () => { window.open(`${location.origin}/?mode=web#/detail/${active.id}`, "_blank", "noopener"); } }] : []),
+                      ]}
+                    />
+                  </div>
+                )}
               </div>
               )}
               {storageError && (
@@ -299,7 +315,7 @@ function App() {
                     <p className="notice" role="status">
                       {serverError} 기존 브라우저 자료는 유지됩니다.
                     </p>
-                  )}</>} spaces={spaces} jobs={measurementJobs} syncFailed={syncFailed} onRetrySync={retryUpload} onSelect={selectSpace} onStart={begin} onMeasurement={job=>{const s=spaces.find(s=>s.id===job.space_id);if(isApp && job.status!=="completed")joinMeasurement(job);else if(s){selectSpace(s);if(job.status!=="completed"){setDraft(structuredClone(s));setPage("capture");}}}}/>}
+                  )}</>} spaces={spaces} jobs={measurementJobs} syncFailed={syncFailed} onRetrySync={retryUpload} onSelect={selectSpace} onEdit={(s, at) => editSpace(s, at)} onDelete={(s) => { setActiveId(s.id); setModal("delete-space"); }} onStart={begin} onMeasurement={job=>{const s=spaces.find(s=>s.id===job.space_id);if(isApp && job.status!=="completed")joinMeasurement(job);else if(s){selectSpace(s);if(job.status!=="completed"){setDraft(structuredClone(s));setPage("capture");}}}}/>}
                   {page === "spaces" && tempDrafts.length > 0 && (
                     <section className="temp-drafts" aria-labelledby="temp-drafts-title">
                       <h2 id="temp-drafts-title">작성 중인 공간</h2>
@@ -1121,30 +1137,9 @@ function App() {
                       />
                     </Card>
                     <Card className="detail-film">
-                      <VirtualFilmControl space={active} prediction={filmPrediction} hour={hour} />
-                    </Card>
-                    <Card className="detail-manage">
-                      <h3>공간 관리</h3>
-                      <p className="muted small">가구 위치, 도면, 보호 영역을 바꾸거나 공간 정보를 고쳐요.</p>
-                      <div className="detail-actions">
-                        {!isApp && (
-                          <button className="manage-row" onClick={() => editSpace(active)}>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4ZM13.5 6.5l4 4" /></svg><span>가구·도면·보호 영역 수정</span><svg className="manage-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="m9 5 7 7-7 7" /></svg>
-                          </button>
-                        )}
-                        <button className="manage-row" onClick={() => editSpace(active, "register")}>
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="M12 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6M17.5 3.5a2.1 2.1 0 0 1 3 3L13 14l-4 1 1-4 7.5-7.5Z" /></svg><span>공간 정보 수정</span><svg className="manage-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="m9 5 7 7-7 7" /></svg>
-                        </button>
-                        {isApp && (
-                          <button
-                            className="manage-row"
-                            onClick={() => { window.open(`${location.origin}/?mode=web#/detail/${active.id}`, "_blank", "noopener"); }}
-                          >
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5H5V6h5" /></svg><span>웹 페이지 이동</span><svg className="manage-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="m9 5 7 7-7 7" /></svg>
-                          </button>
-                        )}
-                      </div>
-                      <button className="manage-delete" onClick={() => setModal("delete-space")}>공간 삭제</button>
+                      <VirtualFilmControl space={active} prediction={filmPrediction} hour={hour}>
+                        {filmPrediction?.plan && <AdaptiveEffect space={active} start={filmPrediction.plan.start_time} />}
+                      </VirtualFilmControl>
                     </Card>
                   </div>
                 </div>

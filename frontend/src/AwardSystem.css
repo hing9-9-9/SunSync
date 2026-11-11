@@ -684,7 +684,6 @@
   font-size: var(--fs-label);
   margin: 0;
 }
-.app.award-app .detail-actions,
 .app.award-app .inspector > .actions {
   display: flex;
   flex-direction: column;
@@ -692,7 +691,6 @@
   margin-top: 26px;
   padding: 0;
 }
-.app.award-app .detail-actions > button,
 .app.award-app .inspector > .actions > button {
   width: 100%;
   margin: 0;
@@ -1738,17 +1736,6 @@
 .app.award-app .inspector > h3 {
   margin: 22px 0 var(--space-3);
 }
-.app.award-app .inspector .detail-actions {
-  margin-top: var(--space-6);
-  gap: 10px;
-}
-.app.award-app .inspector .detail-actions > .primary,
-.app.award-app .inspector .detail-actions > .secondary {
-  min-height: 44px;
-  font-size: var(--fs-small);
-  padding: 11px 15px;
-  border-radius: 24px;
-}
 .app.award-app .primary,
 .app.award-app .secondary {
   font-size: var(--fs-small);
@@ -1928,6 +1915,17 @@
 .ap .ap-small-cta:hover {
   background: var(--c-action-ink);
   border-color: var(--c-action-ink);
+}
+/* Editing screens: the header link is only a way out, so it stays grey and "저장" is the one filled button. */
+.app.award-app .ap-header .ap-small-cta {
+  background: var(--c-block);
+  border-color: var(--c-block);
+  color: var(--c-ink);
+}
+.app.award-app .ap-header .ap-small-cta:hover {
+  background: var(--c-block);
+  border-color: var(--c-block);
+  filter: var(--hover-dim);
 }
 /* The round link is the page's primary button: a filled accent pill with a white arrow disc. */
 .ap .ap-round-link {

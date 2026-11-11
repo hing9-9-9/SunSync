@@ -54,11 +54,9 @@
 .app.award-mobile .inspector h2 { font-size: var(--fs-h2); font-weight: 700; }
 .app.award-mobile .inspector h3, .app.award-mobile .blocking-schedule h3 { font-size: var(--fs-body); font-weight: 700; }
 .app.award-mobile .primary, .app.award-mobile .secondary { min-height: 44px; font-size: var(--fs-small); }
-.app.award-mobile .detail-actions { gap: 10px; }
 .app.award-mobile .mobile-nav button { min-height: 52px; font-size: var(--fs-small); color: var(--c-625d6c); font-weight: 500; }
 .app.award-mobile .mobile-nav button.active { color: var(--c-554dca); font-weight: 500; background: var(--c-efedfb); }
 .app.award-mobile .mobile-nav svg { width: 22px; height: 22px; }
-.app.award-mobile .main > :not(.page-heading) { animation: none; }
 .app.award-mobile .app-action-bar .primary { min-height: 46px; }
 .app.award-mobile button:active:not(:disabled) { transform: none; filter: var(--press-dim); }
 .app.award-mobile .row:active, .app.award-mobile .room-card:active { transform: none; }

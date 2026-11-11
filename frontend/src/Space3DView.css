@@ -73,7 +73,7 @@
 .s3 .s3-steps .n {
   font-size: 11px;
   font-variant-numeric: tabular-nums;
-  color: #9a97a6;
+  color: var(--c-muted);
 }
 .s3 .s3-steps button.on {
   background: #fff;
@@ -131,7 +131,7 @@
   color: #fff;
   transition: background-color 0.25s ease, color 0.25s ease;
 }
-.s3 .s3-chip.g-B { background: #8580ec; }
+.s3 .s3-chip.g-B { background: var(--c-grade-b); color: var(--c-grade-b-ink); }
 .s3 .s3-chip.g-C { background: var(--c-protect); color: var(--c-action-ink); }
 .s3 .s3-chip.g-D { background: #fff; color: var(--c-muted); box-shadow: inset 0 0 0 1px #c9c7d1; }
 .s3 .s3-chip.lit { background: var(--c-sun); color: #fff; box-shadow: none; }
@@ -324,7 +324,7 @@
   background: var(--c-action);
   color: #fff;
 }
-.s3 .s3-grade.g-B { background: #8580ec; }
+.s3 .s3-grade.g-B { background: var(--c-grade-b); color: var(--c-grade-b-ink); }
 .s3 .s3-grade.g-C { background: var(--c-protect); color: var(--c-action-ink); }
 .s3 .s3-grade.g-D { background: #fff; color: var(--c-muted); box-shadow: inset 0 0 0 1px #c9c7d1; }
 .s3 .s3-rname {
