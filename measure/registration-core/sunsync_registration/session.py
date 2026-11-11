@@ -1,8 +1,10 @@
 """Capture-time tickets prevent stale asynchronous responses from changing steps."""
 
 from threading import RLock
-from .models import PlanRequest, Board, Camera, Capture, MeasureRequest
+
 from .core import plan
+from .models import Board, Camera, Capture, MeasureRequest, PlanRequest, SelectRequest
+from .selection import select_observations
 
 
 class CaptureSession:
@@ -75,6 +77,36 @@ class CaptureSession:
             self.captures.append(capture)
             return True
 
+    def accept_burst(self, captures: list[Capture]):
+        """Atomically select a burst using previously issued shutter tickets.
+
+        Tickets are issued with begin_capture before any result is accepted, so all
+        frames stay attached to the same point even when responses arrive late.
+        """
+        with self._lock:
+            step = self.current_step
+            if step is None or not captures:
+                raise ValueError("No active burst point")
+            for capture in captures:
+                if (
+                    self._pending.get(capture.capture_id) != step["point_id"]
+                    or capture.point_id != step["point_id"]
+                    or capture.captured_at != self._capture_times.get(capture.capture_id)
+                ):
+                    raise ValueError("Stale or mismatched burst ticket")
+            result = select_observations(
+                SelectRequest(
+                    board=self.board, captures=captures, required_samples=step["required_samples"]
+                )
+            )
+            for capture in captures:
+                self._pending.pop(capture.capture_id, None)
+                self._capture_times.pop(capture.capture_id, None)
+            if result["status"] == "ok":
+                ids = set(result["selected_capture_ids"])
+                self.captures.extend(c for c in captures if c.capture_id in ids)
+            return result
+
     def retake(self, point_id):
         with self._lock:
             if point_id not in {s["point_id"] for s in self.guide["steps"]}:
@@ -88,8 +120,5 @@ class CaptureSession:
             if self.current_step is not None:
                 raise ValueError("Capture all steps first")
             return MeasureRequest(
-                plan=self.request,
-                board=self.board,
-                captures=list(self.captures),
-                **reference
+                plan=self.request, board=self.board, captures=list(self.captures), **reference
             )

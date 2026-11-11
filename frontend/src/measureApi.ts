@@ -29,7 +29,7 @@ export type Camera = {
   pixel_space: "raw_opencv" | "rectified"; distortion: number[]; source: string; lens_id: string;
 };
 export type Detection = { marker_id: number; corners_px: [number, number][] };
-export type Frame = { marker_session_id?: string; capture_id: string; captured_at: string; width: number; height: number; base64: string; detections: Detection[] };
+export type Frame = { pose_status?: string; image_sha256?: string; marker_session_id?: string; capture_id: string; captured_at: string; width: number; height: number; base64: string; detections: Detection[] };
 export type MeasuredPoint = { id: string; frames: Frame[] };
 
 const LENS = "web-rear";
@@ -125,13 +125,16 @@ const detectionCamera = (width: number, height: number): Camera => ({
 });
 
 /** Prepare a photo and find the board markers in it. */
-export async function detectFrame(file: File, board: Board = BOARD, session?: CaptureMarker): Promise<Frame> {
+export async function detectFrame(file: File, board: Board = BOARD, session?: CaptureMarker, capturedAt?: string, calibratedCamera?:Camera): Promise<Frame> {
   if (session) await checkCaptureMarker(session);
   const image = await prepare(file);
-  const result = await post<{ detections: Detection[] }>("/measure/v1/detect", {
-    camera: detectionCamera(image.width, image.height), board, image_base64: image.base64,
+  if(calibratedCamera&&(image.width!==calibratedCamera.width||image.height!==calibratedCamera.height))throw new MeasureError("촬영 영상 크기가 카메라 설정과 달라요. 다시 준비해 주세요.");
+  const result = await post<{ detections: Detection[]; pose?:{status:string} }>("/measure/v1/detect", {
+    camera: calibratedCamera ?? detectionCamera(image.width, image.height), board, image_base64: image.base64,
   });
-  return { ...image, marker_session_id: session?.session_id, capture_id: crypto.randomUUID(), captured_at: new Date().toISOString(), detections: result.detections };
+  const digest = await crypto.subtle.digest("SHA-256", await file.arrayBuffer());
+  const image_sha256 = Array.from(new Uint8Array(digest),v=>v.toString(16).padStart(2,"0")).join("");
+  return { ...image, pose_status:calibratedCamera?result.pose?.status:undefined, image_sha256, marker_session_id: session?.session_id, capture_id: crypto.randomUUID(), captured_at: capturedAt ?? new Date(file.lastModified).toISOString(), detections: result.detections };
 }
 
 // WEB APP TEST ONLY: intrinsics from the guided setup, per phone browser.
@@ -145,12 +148,12 @@ export function savedCamera(): Camera | null {
 }
 
 /** WEB APP TEST ONLY: 12–30 views of the whole board → intrinsics for this phone camera, kept on this device. */
-export async function setupCamera(frames: Frame[], board: Board = BOARD): Promise<Camera> {
+export async function setupCamera(frames: Frame[], board: Board = BOARD, persist = true): Promise<Camera> {
   const result = await post<{ camera: Camera }>("/measure/v1/mobile/automatic-setup", {
     board,
     views: frames.map((f) => ({ capture_id: f.capture_id, stream_id: LENS, lens_id: LENS, width: f.width, height: f.height, detections: f.detections })),
   });
-  try { localStorage.setItem(CAMERA_KEY, JSON.stringify(result.camera)); } catch { /* used for this session only */ }
+  try { if(persist) localStorage.setItem(CAMERA_KEY, JSON.stringify(result.camera)); } catch { /* used for this session only */ }
   return result.camera;
 }
 
@@ -246,7 +249,7 @@ export async function measureAndRegister(space: Space, camera: Camera, item: {
     board,
     ...pose,
     captures: item.points.flatMap((point) => point.frames.map((f) => ({
-      capture_id: f.capture_id, point_id: point.id, captured_at: f.captured_at, camera, detections: f.detections,
+      capture_id: f.capture_id, point_id: point.id, captured_at: f.captured_at, image_sha256:f.image_sha256, camera, detections: f.detections,
     }))),
   }));
   const fragment = await post<{ calibration_id: string; markers: unknown[]; occluders: { name: string }[] } & Record<string, unknown>>(
@@ -338,4 +341,14 @@ export async function cancelStoredCapture(sceneId:string):Promise<void> {
   const id=sessionStorage.getItem(markerKey(sceneId));
   if(id) await post(`${markerUrl(sceneId)}/${id}/end`,{});
   sessionStorage.removeItem(markerKey(sceneId));
+}
+
+
+export type Selection = {status:"ok"|"retake";raw_samples:number;selected_samples:number;
+  selected_capture_ids:string[];quality:{uncertainty_m?:number;reason:string}};
+export async function selectFrames(frames:Frame[],camera:Camera,board:Board,pointId:string):Promise<Selection> {
+  return post("/measure/v1/observations/select",{board,captures:frames.map(f=>({
+    capture_id:f.capture_id,point_id:pointId,captured_at:f.captured_at,image_sha256:f.image_sha256,
+    camera,detections:f.detections,
+  }))});
 }

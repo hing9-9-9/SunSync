@@ -1,9 +1,11 @@
 import base64
 from io import BytesIO
+
 import cv2
 import numpy as np
 from PIL import Image
-from .models import DetectRequest, Camera, Board, Detection
+
+from .models import Board, Camera, Detection, DetectRequest
 
 
 def detect(request: DetectRequest):
@@ -87,9 +89,7 @@ def estimate(board: Board, camera: Camera, detections: list[Detection], max_rmse
         if np.min((obj @ rot.T + t.reshape(3))[:, 2]) <= 0:
             continue
         projected, _ = cv2.projectPoints(obj, r, t, k, d)
-        error = float(
-            np.sqrt(np.mean(np.sum((projected.reshape(-1, 2) - pixels) ** 2, axis=1)))
-        )
+        error = float(np.sqrt(np.mean(np.sum((projected.reshape(-1, 2) - pixels) ** 2, axis=1))))
         candidates.append((error, r, t, rot))
     candidates.sort(key=lambda a: a[0])
     if not candidates:
@@ -97,28 +97,22 @@ def estimate(board: Board, camera: Camera, detections: list[Detection], max_rmse
     initial = [v[0] for v in candidates]
     if len(candidates) > 1 and initial[1] - initial[0] < 0.05:
         angle = np.degrees(
-            np.arccos(
-                np.clip(
-                    (np.trace(candidates[0][3].T @ candidates[1][3]) - 1) / 2, -1, 1
-                )
-            )
+            np.arccos(np.clip((np.trace(candidates[0][3].T @ candidates[1][3]) - 1) / 2, -1, 1))
         )
         if angle > 3:
             return {"status": "planar_pose_ambiguous", "candidate_rmse_px": initial}
-    r, t = cv2.solvePnPRefineLM(
-        obj, pixels, k, d, candidates[0][1].copy(), candidates[0][2].copy()
-    )
+    r, t = cv2.solvePnPRefineLM(obj, pixels, k, d, candidates[0][1].copy(), candidates[0][2].copy())
     rot, _ = cv2.Rodrigues(r)
     projected, _ = cv2.projectPoints(obj, r, t, k, d)
-    rmse = float(
-        np.sqrt(np.mean(np.sum((projected.reshape(-1, 2) - pixels) ** 2, axis=1)))
-    )
+    rmse = float(np.sqrt(np.mean(np.sum((projected.reshape(-1, 2) - pixels) ** 2, axis=1))))
     if np.min((obj @ rot.T + t.reshape(3))[:, 2]) <= 0 or rmse > max_rmse:
         return {"status": "reprojection_error", "reprojection_rmse_px": rmse}
     transform = np.eye(4)
     transform[:3, :3] = rot.T
     transform[:3, 3] = -rot.T @ t.reshape(3)
+    uncertainty = pose_uncertainty(obj, r, t, k, d, max(0.5, rmse))
     return {
+        **uncertainty,
         "status": "ok",
         "T_board_camera": transform.ravel().tolist(),
         "camera_position_board_m": transform[:3, 3].tolist(),
@@ -126,3 +120,46 @@ def estimate(board: Board, camera: Camera, detections: list[Detection], max_rmse
         "candidate_rmse_px": initial,
         "detected_ids": ids,
     }
+
+
+def pose_uncertainty(obj, r, t, k, d, sigma_px):
+    """Local pixel-noise covariance, conditional on calibrated optics and marker size.
+
+    This is not an accuracy guarantee: calibration, scale and hand placement bias
+    are not observable from repeated views of a single fixed marker.
+    """
+    _, jac = cv2.projectPoints(obj, r, t, k, d)
+    j = jac[:, :6]
+    _, singular, vt = np.linalg.svd(j, full_matrices=False)
+    if singular[-1] <= singular[0] * 1e-10:
+        return {"pose_covariance": None, "pixel_sigma_px": float(sigma_px), "pose_condition": None}
+    covariance = (vt.T * (sigma_px / singular) ** 2) @ vt
+    return {
+        "pose_covariance": covariance.tolist(),
+        "pixel_sigma_px": float(sigma_px),
+        "pose_condition": float(singular[0] / singular[-1]),
+    }
+
+
+def point_covariance(result, offset):
+    """Propagate rvec/tvec covariance to the camera-attached measuring point."""
+    if result.get("pose_covariance") is None:
+        return None
+    transform = np.asarray(result["T_board_camera"]).reshape(4, 4)
+    rotation = transform[:3, :3].T
+    r = cv2.Rodrigues(rotation)[0].ravel()
+    t = -rotation @ transform[:3, 3]
+    x = np.r_[r, t]
+
+    def point(v):
+        return cv2.Rodrigues(v[:3])[0].T @ (np.asarray(offset) - v[3:])
+
+    step = 1e-6
+    j = np.column_stack(
+        [
+            (point(x + np.eye(6)[i] * step) - point(x - np.eye(6)[i] * step)) / (2 * step)
+            for i in range(6)
+        ]
+    )
+    covariance = j @ np.asarray(result["pose_covariance"]) @ j.T
+    return (covariance + covariance.T) / 2

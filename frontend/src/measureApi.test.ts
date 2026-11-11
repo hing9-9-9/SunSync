@@ -156,3 +156,20 @@ test("capture selection lists modules, resumes without changing ID, and clears a
     else Reflect.deleteProperty(globalThis,"sessionStorage");
   }
 });
+
+
+test("live video setup cannot overwrite the still-photo calibration",async t=>{
+  const original=Object.getOwnPropertyDescriptor(globalThis,"localStorage");
+  let writes=0;
+  Object.defineProperty(globalThis,"localStorage",{configurable:true,value:{setItem:()=>writes++}});
+  t.mock.method(globalThis,"fetch",async()=>Response.json({camera:{width:1920,height:1080}}));
+  try{
+    await setupCamera([],BOARD,false);
+    assert.equal(writes,0);
+    await setupCamera([],BOARD);
+    assert.equal(writes,1);
+  }finally{
+    if(original)Object.defineProperty(globalThis,"localStorage",original);
+    else Reflect.deleteProperty(globalThis,"localStorage");
+  }
+});

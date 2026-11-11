@@ -1,5 +1,6 @@
-from typing import Annotated, Literal
 from datetime import datetime
+from typing import Annotated, Literal
+
 import numpy as np
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, model_validator
 
@@ -173,6 +174,7 @@ class Capture(Strict):
     captured_at: str | None = None
     camera: Camera
     detections: list[Detection] = Field(max_length=100)
+    image_sha256: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
     # OpenCV camera axes: right, down, forward. Optical centre -> contact point.
     camera_to_point_m: Vec3 = (0, 0, 0)
 
@@ -188,12 +190,36 @@ class Capture(Strict):
 class MeasureRequest(Strict):
     plan: PlanRequest
     board: Board
-    captures: list[Capture] = Field(min_length=1, max_length=85)
+    captures: list[Capture] = Field(min_length=1, max_length=340)
     floor: Floor | None = None
     alignment: Alignment | None = None
+    estimation_mode: Literal["legacy", "weighted", "robust_joint"] = "robust_joint"
+    max_point_uncertainty_m: float = Field(default=0.15, gt=0, le=0.5)
+    placement_sigma_m: float = Field(default=0.01, ge=0.003, le=0.03)
+    max_selected_per_point: int = Field(default=8, ge=3, le=12)
     max_repeat_spread_m: float = Field(default=0.03, gt=0, le=0.1)
     max_surface_residual_m: float = Field(default=0.03, gt=0, le=0.1)
     max_reprojection_rmse_px: float = Field(default=2, gt=0, le=5)
+
+    @model_validator(mode="after")
+    def bounded_points(self):
+        counts = {}
+        for capture in self.captures:
+            counts[capture.point_id] = counts.get(capture.point_id, 0) + 1
+        if any(count > 20 for count in counts.values()):
+            raise ValueError("At most 20 raw captures per point")
+        return self
+
+
+class SelectRequest(Strict):
+    board: Board
+    captures: list[Capture] = Field(min_length=1, max_length=20)
+    required_samples: int = Field(default=3, ge=1, le=5)
+    max_selected: int = Field(default=8, ge=3, le=12)
+    max_repeat_spread_m: float = Field(default=0.03, gt=0, le=0.1)
+    max_reprojection_rmse_px: float = Field(default=2, gt=0, le=5)
+    max_point_uncertainty_m: float = Field(default=0.15, gt=0, le=0.5)
+    placement_sigma_m: float = Field(default=0.01, ge=0.003, le=0.03)
 
 
 class DetectRequest(Strict):
