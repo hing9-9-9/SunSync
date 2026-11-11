@@ -1,14 +1,14 @@
 import BurstCamera from "./BurstCamera";
 import { useEffect, useRef, useState } from "react";
-import { measurePixels, photoIssue, retakeMessages } from "./captureCheck";
+import { measurePixels, photoIssue } from "./captureCheck";
 import type { PhotoIssue } from "./captureCheck";
-import { shapes, validPolygon, nextPhotoSlot, photosPerPoint } from "./capturePlan";
+import { shapes, validPolygon, nextCapturePoint, photosPerPoint } from "./capturePlan";
 import type { Shape, CapturePoint } from "./capturePlan";
 import type { CapturedFurniture } from "./model";
 import { browserCaptureEnabled } from "./captureEnvironment";
-import { BOARD, selectFrames, MeasureError, detectFrame, savedCamera, setupCamera, captureTargets, resumeCaptureMarker, cancelStoredCapture, startCaptureMarker, endCaptureMarker } from "./measureApi";
+import { selectFrames, detectFrame, captureTargets, resumeCaptureMarker, cancelStoredCapture, startCaptureMarker, endCaptureMarker } from "./measureApi";
 import FilmModulePicker from "./FilmModulePicker";
-import type { Camera, Frame, Board, CaptureMarker, FilmTargetWindow } from "./measureApi";
+import type { Camera, Frame, CaptureMarker, FilmTargetWindow } from "./measureApi";
 
 type Photo = { file: File; url: string; issue: PhotoIssue | null; metrics: { brightness: number; sharpness: number }; frame?: Frame };
 
@@ -38,11 +38,9 @@ export default function SpatialCapture(props: { sceneId?: string; count: number;
 
 function SessionSpatialCapture(props: { sceneId?: string; count: number; onFinish: (items: CapturedFurniture[]) => void }) {
   const [session, setSession] = useState<CaptureMarker | null>(null);
-  const [camera, setCamera] = useState<Camera | null>(() => savedCamera());
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(true);
   const [retry, setRetry] = useState(0);
-  const [liveMode,setLiveMode]=useState(false);
   const [windows,setWindows]=useState<FilmTargetWindow[]>([]);
   const [windowId,setWindowId]=useState("");
   const [row,setRow]=useState(0), [col,setCol]=useState(0);
@@ -99,19 +97,15 @@ function SessionSpatialCapture(props: { sceneId?: string; count: number; onFinis
       <p>가상 필름에 촬영용 마커를 표시했어요. 실제 필름 장치는 아직 연결되지 않았어요.</p>
     </details>
     {error && <p role="alert">{error}</p>}
-    {camera || liveMode ? <TestSpatialCapture {...props} session={session} camera={camera} /> : <>
-      <button type="button" onClick={()=>setLiveMode(true)}>연사 카메라로 준비하고 측정하기</button>
-      <CameraSetup board={session.board} session={session} onReady={setCamera}/>
-    </>}
+    <TestSpatialCapture key={session.session_id} {...props} session={session} />
     <button type="button" onClick={() => void cancel()}>촬영 취소 · 마커 표시 종료</button>
   </section>;
 }
 
-function TestSpatialCapture({ count, onFinish, session, camera }: { count: number; onFinish: (items: CapturedFurniture[]) => void; session: CaptureMarker; camera: Camera|null }) {
-  // WEB APP TEST ONLY: intrinsics come from the camera setup in 더보기 (see CameraSetup below).
+function TestSpatialCapture({ count, onFinish, session }: { count: number; onFinish: (items: CapturedFurniture[]) => void; session: CaptureMarker }) {
   const [items, setItems] = useState<CapturedFurniture[]>([]);
-  const [burstMode,setBurstMode]=useState(!camera);
-  const [captureCamera,setCaptureCamera]=useState(camera);
+  const [captureCamera,setCaptureCamera]=useState<Camera|null>(null);
+  const [actionTarget,setActionTarget]=useState<HTMLDivElement|null>(null);
   const [rawFrames,setRawFrames]=useState<Record<number,Frame[]>>({});
   const [batchMessage,setBatchMessage]=useState("");
   const version=useRef(0);
@@ -127,37 +121,14 @@ function TestSpatialCapture({ count, onFinish, session, camera }: { count: numbe
   const latest = useRef(photos);
   useEffect(() => { latest.current = photos; }, [photos]);
   useEffect(() => () => latest.current.flat().forEach(p => p && URL.revokeObjectURL(p.url)), []);
-  const slot = nextPhotoSlot(points.map((_,i) => Array.from({length:photosPerPoint},(_,j)=>!!photos[i]?.[j] && !photos[i][j]!.issue)));
-  const corner = slot?.point ?? points.length - 1;
-  const current = slot ? photos[slot.point]?.[slot.photo] : photos.at(-1)?.at(-1);
-  const complete = confirmed && !slot;
+  const pendingPoint = nextCapturePoint(points.map((_,i)=>(photos[i]??[]).map(p=>!!p&&!p.issue)));
+  const corner = pendingPoint ?? points.length - 1;
+  const complete = confirmed && pendingPoint === null;
   function reset() { version.current++;setRawFrames({});setBatchMessage(""); photos.flat().forEach(p=>p&&URL.revokeObjectURL(p.url)); setPhotos([]); setError(''); }
 
-  async function take(file: File | undefined) {
-    if (!file || !slot || !confirmed || checking || !camera) return;
-    if (!file.type.startsWith("image/")) { setError("사진 파일을 선택해 주세요."); return; }
-    setError(""); setChecking(true);
-    const ticket=version.current;
-    try {
-      const metrics = await analyse(file);
-      // The configured single marker supplies all four pose corners.
-      const frame = camera ? await detectFrame(file, session.board, session) : undefined;
-      const found = frame?.detections.length ?? 1;
-      const url = URL.createObjectURL(file);
-      const photo = { file, url, metrics, frame, issue: photoIssue({ ...metrics, marker: found === 1 ? "visible" : found ? "partial" : "missing" }) };
-      if(ticket!==version.current){URL.revokeObjectURL(url);return;}
-      const replaced = photos[slot.point]?.[slot.photo];
-      if (replaced) URL.revokeObjectURL(replaced.url);
-      setPhotos(all => points.map((_,i)=>Array.from({length:photosPerPoint},(_,j)=>i===slot.point&&j===slot.photo ? photo : all[i]?.[j] ?? null)));
-    } catch (e) {
-      setError(e instanceof MeasureError ? e.message : "사진을 읽지 못했어요. 다시 찍어 주세요.");
-    } finally {
-      setChecking(false);
-    }
-  }
   async function takeBatch(files:File[],profile:Camera,ticket:number) {
-    if(!slot||!confirmed||ticket!==version.current)return;
-    const target=slot.point;
+    if(pendingPoint===null||!confirmed||ticket!==version.current)return;
+    const target=pendingPoint;
     if(JSON.stringify(profile)!==JSON.stringify(captureCamera)&&photos.some(row=>row.some(Boolean))) {
       reset();setCaptureCamera(profile);setError("카메라 설정이 바뀌어 이전 사진을 비웠어요. P1부터 다시 촬영해 주세요.");return;
     }
@@ -175,8 +146,8 @@ function TestSpatialCapture({ count, onFinish, session, camera }: { count: numbe
       if(!candidates.length)throw new Error("사용할 수 있는 사진이 없어요. 밝기와 흔들림을 확인해 주세요.");
       const result=await selectFrames(candidates.map(p=>p.frame!),profile,session.board,`P${target+1}`);
       if(ticket!==version.current)return;
-      setBatchMessage(`확보 ${files.length}장 · 품질·자세 검사 후 채택 ${result.selected_samples}장`);
       if(result.status!=="ok")throw new Error("같은 지점의 관측이 부족하거나 위치가 불안정해요. 지점 위치를 유지하고 마커가 크게 보이도록 각도를 조절해 다시 촬영해 주세요.");
+      setBatchMessage(`P${target+1} 촬영을 완료했어요.`);
       const ids=new Set(result.selected_capture_ids);
       const selected=candidates.filter(p=>ids.has(p.frame!.capture_id)).map(p=>({...p,url:URL.createObjectURL(p.file)}));
       photos[target]?.forEach(p=>p&&URL.revokeObjectURL(p.url));
@@ -208,57 +179,39 @@ function TestSpatialCapture({ count, onFinish, session, camera }: { count: numbe
         {shape==='circle'?<circle cx="50" cy="50" r="35" className="shape-outline"/>:shape==='ellipse'?<ellipse cx="50" cy="50" rx="40" ry="25" className="shape-outline"/>:<polygon points={points.map(p=>`${p.x},${p.y}`).join(' ')} className="shape-outline"/>}
         {points.map((p,i)=><g key={i}><circle cx={p.x} cy={p.y} r="3" className={confirmed&&!complete&&i===corner?'point-current':'point'}/><text x={p.x} y={p.y-5} textAnchor="middle">P{i+1}</text></g>)}
       </svg>
-      <p>{shape==='polygon'&&!confirmed?'꼭짓점을 순서대로 눌러 모양 구성':`${points.length}개 지점 · 지점마다 사진 3장`}</p>
+      <p>{shape==='polygon'&&!confirmed?'꼭짓점을 순서대로 눌러 모양 구성':`${points.length}개 지점 · 지점마다 촬영 버튼 한 번`}</p>
       {!confirmed ? <div className="actions">
         {shape==='polygon'&&<button type="button" className="secondary" disabled={!custom.length} onClick={()=>setCustom(p=>p.slice(0,-1))}>마지막 점 취소</button>}
         <button type="button" className="primary" disabled={shape==='polygon'&&!validPolygon(custom)} onClick={()=>{setConfirmed(true);setError('');}}>형태 확정 · 촬영 시작</button>
       </div>:<button type="button" className="text-button" disabled={checking} onClick={()=>{reset();setConfirmed(false);}}>형태 다시 선택</button>}
     </section>
-    {confirmed && <>
-    <label><input type="checkbox" checked={burstMode} disabled={!camera||checking||photos.some(row=>row.some(Boolean))} onChange={e=>{reset();setBurstMode(e.target.checked);setCaptureCamera(camera);}}/>한 번 눌러 연사하기 · 웹앱 테스트</label>
-    {burstMode&&<BurstCamera session={session} disabled={checking||complete} getTicket={()=>version.current} onBusy={setChecking} onBatch={takeBatch}/>}
-    {batchMessage&&<p role="status">{batchMessage}</p>}
-    {/* Viewfinder: the corner being shot now, or its photo when it needs a retake. */}
-    <figure className={`capture-viewfinder ${current?.issue ? "retake" : ""}`}>
-      <div className="viewfinder-frame" aria-hidden="true">
-        <svg className="viewfinder-brackets" viewBox="0 0 100 100" preserveAspectRatio="none">
-          <path d="M2 18V2h16M82 2h16v16M98 82v16H82M18 98H2V82" fill="none" stroke="currentColor" strokeWidth="3" vectorEffect="non-scaling-stroke" />
-        </svg>
-        {current?.url ? <img src={current.url} alt="" /> : complete && photos.at(-1)?.at(-1) ? <img src={photos.at(-1)!.at(-1)!.url} alt="" /> : (
-          <svg viewBox="0 0 40 40" className="viewfinder-marker">
-            <path d="M4 4h12v12H4zM24 4h12v12H24zM4 24h12v12H4z" fill="none" stroke="currentColor" strokeWidth="3" />
-            <path d="M24 24h5v5h-5zM31 31h5v5h-5zM31 24h5v3M24 31h3v5" fill="currentColor" />
-          </svg>
-        )}
-      </div>
-      <figcaption>
-        {complete
-          ? "모든 지점 촬영 완료"
-          : current?.issue
-            ? `P${corner + 1} · 사진 ${(slot?.photo ?? 0)+1} 재촬영`
-            : `P${corner + 1} · 사진 ${(slot?.photo ?? 0)+1} / 3`}
-      </figcaption>
+    <figure className="capture-viewfinder" style={{display: confirmed ? undefined : "none"}}>
+      <BurstCamera session={session} active={confirmed&&!complete} pointLabel={`P${corner+1}`} actionTarget={actionTarget}
+        disabled={checking} getTicket={()=>version.current} onBusy={setChecking} onBatch={takeBatch}/>
+      <figcaption>{complete ? "모든 지점 촬영 완료" : `P${corner+1} · 촬영 버튼을 한 번 눌러 주세요`}</figcaption>
     </figure>
+    {confirmed && <>
+    {batchMessage&&<p role="status">{batchMessage}</p>}
     <ol className="corner-steps" aria-label="지점 촬영 상태">
       {points.map((_,i) => {
         const n=(photos[i]??[]).filter(p=>p&&!p.issue).length;
-        return <li key={i} className={n===3?'done':i===corner?'current':'waiting'} aria-current={i===corner?'step':undefined}>
-          <span className="corner-number">P{i+1}</span><small>{n} / 3장</small>
+        return <li key={i} className={n>=photosPerPoint?'done':i===corner?'current':'waiting'} aria-current={i===corner?'step':undefined}>
+          <span className="corner-number">P{i+1}</span><small>{n>=photosPerPoint?"완료":"대기"}</small>
         </li>;
       })}
     </ol>
-    <p role="status" className="tracking-status">{checking?'사진 확인 중…':complete?'모든 지점 촬영 완료':`P${corner+1} 위치에서 사진 ${(slot?.photo??0)+1} / 3 촬영`}</p>
-    {current?.issue ? <p className="error" role="alert">{retakeMessages[current.issue]}</p> : !complete && <p className="muted small">도면의 P{corner+1}에 렌즈를 맞추고 창문 마커 전체 촬영. 같은 위치에서 3장 촬영 후 다음 지점 이동.</p>}
-    <div className="point-photos">{(photos[corner]??[]).map((p,j)=>p&&<div key={j}><img src={p.url} alt={`P${corner+1} 사진 ${j+1}`}/><button type="button" className="text-button" disabled={checking} onClick={()=>{URL.revokeObjectURL(p.url);setRawFrames(all=>{const next={...all};delete next[corner];return next;});setPhotos(all=>all.map((row,i)=>i===corner?row.map((p,k)=>k===j?null:p):row));}}>사진 {j+1} 재촬영</button></div>)}</div>
+    <p role="status" className="tracking-status">{checking?'촬영·사진 확인 중…':complete?'모든 지점 촬영 완료':`P${corner+1} 위치에서 촬영`}</p>
+    {!complete && <p className="muted small">도면의 P{corner+1}에 렌즈를 맞추고 마커 전체가 보이도록 촬영 버튼을 한 번 눌러 주세요. 촬영이 끝날 때까지 위치를 유지해 주세요.</p>}
+    <div className="actions">{points.map((_,i)=>(photos[i]??[]).some(Boolean)&&<button key={i} type="button" className="text-button" disabled={checking} onClick={()=>{
+      version.current++;photos[i]?.forEach(p=>p&&URL.revokeObjectURL(p.url));
+      setRawFrames(all=>{const next={...all};delete next[i];return next;});
+      setPhotos(all=>all.map((row,j)=>j===i?[]:row));setBatchMessage("");setError("");
+    }}>P{i+1} 다시 촬영</button>)}</div>
     {error && <p role="alert" className="error">{error}</p>}
     {/* The screen's one primary action; the app pins this bar above the bottom nav. */}
-    <div className="capture-action">
-      {!complete && !burstMode ? <label className={`file-button ${checking ? "disabled" : ""}`}>
-        {checking ? "사진 확인 중…" : current?.issue ? `P${corner + 1} 사진 ${(slot?.photo??0)+1} 재촬영` : `P${corner + 1} 사진 ${(slot?.photo??0)+1} 촬영`}
-        <input type="file" accept="image/*" capture="environment" disabled={checking} onChange={(e) => { void take(e.target.files?.[0]); e.target.value = ""; }} />
-      </label> : complete ? <button type="button" className="primary" onClick={() => onFinish(nextFurniture())}>촬영 마치고 도면 만들기 ({items.length + 1}개)</button> : null}
+    <div className="capture-action" ref={setActionTarget}>
+      {complete && <button type="button" className="primary" onClick={() => onFinish(nextFurniture())}>촬영 마치고 도면 만들기 ({items.length + 1}개)</button>}
     </div>
-    {!complete && !burstMode && <label className="file-button secondary photo-library">사진 파일 선택<input type="file" accept="image/*" disabled={checking} onChange={e=>{void take(e.target.files?.[0]);e.target.value='';}} /></label>}
     {complete && <div className="actions">
       <button type="button" className="secondary" onClick={nextFurniture}>이 가구 저장 · 다음 가구 촬영</button>
     </div>}
@@ -266,50 +219,4 @@ function TestSpatialCapture({ count, onFinish, session, camera }: { count: numbe
     </>}
     <p className="muted small">측정한 가구의 위치와 치수를 확인해 주세요.</p>
   </div>;
-}
-
-const SETUP_MIN = 12, SETUP_MAX = 30;
-
-/**
- * WEB APP TEST ONLY — camera setup for phones testing through the browser.
- * A native app reads the lens intrinsics from the OS camera (mobile/ android·ios adapters) and
- * skips this, except on devices that report none. Browsers expose no intrinsics, so the installed
- * board photographed from many positions and angles lets the measurement server estimate them
- * (/v1/mobile/automatic-setup). Lives in 더보기 › 카메라 준비; the result is kept on this phone.
- * Remove this screen (and savedCamera use) once capture moves to the native app.
- */
-export function CameraSetup({ onReady, board = BOARD, session }: { onReady: (camera: Camera) => void; board?: Board; session?: CaptureMarker }) {
-  const [frames, setFrames] = useState<Frame[]>([]);
-  const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState("");
-  async function add(file: File | undefined) {
-    if (!file || busy) return;
-    setBusy(true); setMessage("");
-    try {
-      const frame = await detectFrame(file, board, session);
-      if (frame.detections.length !== 1) setMessage("마커의 검정 테두리와 네 모서리가 모두 보이게 다시 찍어 주세요.");
-      else if (frames.length && (frame.width !== frames[0].width || frame.height !== frames[0].height)) setMessage("같은 카메라·같은 방향으로 찍어 주세요.");
-      else setFrames((all) => [...all, frame].slice(0, SETUP_MAX));
-    } catch (e) {
-      setMessage(e instanceof MeasureError ? e.message : "사진을 읽지 못했어요. 다시 찍어 주세요.");
-    } finally { setBusy(false); }
-  }
-  async function finish() {
-    setBusy(true); setMessage("");
-    try { onReady(await setupCamera(frames, board)); }
-    catch (e) { setMessage(e instanceof MeasureError ? e.message : "카메라를 준비하지 못했어요."); }
-    finally { setBusy(false); }
-  }
-  return <section className="spatial-capture camera-setup" aria-labelledby="camera-setup-title">
-    <h3 id="camera-setup-title">카메라 준비 · 웹앱 테스트용</h3>
-    <p className="muted small">창문의 마커 보드({board.ids_by_row.flat().length}개 마커) 전체가 보이게, 휴대폰 위치와 기울기를 바꿔 가며 {SETUP_MIN}장 이상 찍어 주세요. 보드가 화면 가운데·가장자리에 골고루 오도록 찍으면 정확해져요.</p>
-    <p role="status" className="tracking-status">{busy ? "확인 중…" : `${frames.length} / ${SETUP_MIN}장`}</p>
-    {message && <p role="alert" className="error">{message}</p>}
-    <div className="camera-setup-action">
-      {frames.length < SETUP_MIN
-        ? <label className={`file-button ${busy ? "disabled" : ""}`}>{busy ? "확인 중…" : `보드 사진 ${frames.length + 1} 촬영`}<input type="file" accept="image/*" capture="environment" disabled={busy} onChange={(e) => { void add(e.target.files?.[0]); e.target.value = ""; }} /></label>
-        : <button type="button" className="primary" disabled={busy} onClick={() => void finish()}>{busy ? "준비 중…" : "카메라 준비 완료"}</button>}
-    </div>
-    {frames.length >= SETUP_MIN && frames.length < SETUP_MAX && <label className="file-button secondary">한 장 더 찍기<input type="file" accept="image/*" capture="environment" disabled={busy} onChange={(e) => { void add(e.target.files?.[0]); e.target.value = ""; }} /></label>}
-  </section>;
 }

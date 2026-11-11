@@ -44,3 +44,28 @@ test("burst size is bounded and camera failure cannot produce a completed burst"
     /camera changed/,
   );
 });
+
+
+test("capture geometry ignores frame-rate and exposure fluctuations", async () => {
+  const { captureGeometry, CaptureGeometryGuard } = await import("./burst.ts");
+  const guard = new CaptureGeometryGuard();
+  const initial = {deviceId:"rear",facingMode:"environment",frameRate:30,exposureTime:10};
+  assert.equal(guard.accept(captureGeometry(initial,1920,1080)),true);
+  assert.equal(guard.accept(captureGeometry({...initial,frameRate:29.97,exposureTime:20},1920,1080)),true);
+});
+
+test("actual geometry changes invalidate once and allow setup again", async () => {
+  const { captureGeometry, CaptureGeometryGuard } = await import("./burst.ts");
+  for (const changed of [
+    captureGeometry({deviceId:"front"},1920,1080),
+    captureGeometry({deviceId:"rear"},1080,1920),
+    captureGeometry({deviceId:"rear",zoom:2},1920,1080),
+  ]) {
+    const guard = new CaptureGeometryGuard();
+    assert.equal(guard.accept(captureGeometry({deviceId:"rear"},1920,1080)),true);
+    assert.equal(guard.accept(changed),false);
+    assert.equal(guard.accept(changed),true);
+    guard.reset();
+    assert.equal(guard.accept(captureGeometry({deviceId:"rear"},1920,1080)),true);
+  }
+});

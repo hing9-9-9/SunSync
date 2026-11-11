@@ -11,8 +11,7 @@ import { FilmGrid, ShadingTimeControl, VirtualFilmControl } from "./ShadingPlan"
 import { SpaceMenu, SpaceMenuGlyph } from "./SpaceMenu";
 import AdaptiveEffect from "./AdaptiveEffect.tsx";
 import { applyShadingTime, formatMinute } from "./sunlight";
-import SpatialCapture, { CameraSetup } from "./SpatialCapture";
-import { savedCamera } from "./measureApi";
+import SpatialCapture from "./SpatialCapture";
 
 import {
   defaultShadingTime,
@@ -168,7 +167,6 @@ function MobileApp() {
     continueManually,
     deleteSpace,
     deleting,
-    setToast,
   } = useSpaceApp();
   const [settings, setSettings] = useState({ page, open: false });
   if (settings.page !== page) setSettings({ page, open: false });
@@ -176,10 +174,7 @@ function MobileApp() {
   const openSettings = () => setSettings({ page, open: true });
   const closeSettings = () => setSettings({ page, open: false });
   const editorPointer = useRef<{x:number;y:number;furnitureId:string|null;regionId:string|null} | null>(null);
-  const cameraTools = import.meta.env.DEV && new URLSearchParams(location.search).get("tools") === "camera";
   // WEB APP TEST ONLY: camera setup state for 더보기 › 카메라 준비.
-  const [cameraSetupOpen, setCameraSetupOpen] = useState(false);
-  const [cameraReady, setCameraReady] = useState(() => !!savedCamera());
   // Home shows whether blocking is on right now, so the clock ticks once a minute.
   const [clock, setClock] = useState(() => Date.now());
   useEffect(() => {
@@ -943,7 +938,7 @@ function MobileApp() {
                   <ol className="instruction-list">
                     <li>창문 규격·위치 입력 후 필름에 QR 마커 표시</li>
                     <li>앱에서 가구 이름과 상판 형태 선택</li>
-                    <li>형태별 촬영 지점에서 창문 QR 마커를 지점마다 3장 촬영</li>
+                    <li>형태별 촬영 지점에서 창문 QR 마커를 지점마다 촬영 버튼을 한 번 누르기</li>
                     <li>마커가 다 보이지 않거나 흔들리면 앱이 재촬영 안내</li>
                     <li>촬영이 끝나면 웹에서 도면 확인 후 가구·보호 영역 편집</li>
                   </ol>
@@ -1027,7 +1022,7 @@ function MobileApp() {
                     <ol className="instruction-list">
                       <li>창문 규격 확인 및 필름의 QR 마커 표시</li>
                       <li>촬영할 가구의 이름과 상판 형태 선택</li>
-                      <li>형태 도면의 P1부터 순서대로 이동하며 지점마다 3장 촬영</li>
+                      <li>형태 도면의 P1부터 순서대로 이동하며 지점마다 촬영 버튼을 한 번 누르기</li>
                       <li>재촬영 안내가 나오면 안내대로 같은 지점에서 다시 촬영</li>
                       <li>모든 가구 촬영 후 도면과 가로·세로·높이 확인</li>
                     </ol>
@@ -1539,29 +1534,7 @@ function MobileApp() {
                       );
                     })}
                   </Card>
-                  {cameraTools && <>
-                  {/* WEB APP TEST ONLY: phones testing in the browser need a one-time camera setup
-                      (see CameraSetup in SpatialCapture.tsx). Remove with the native app. */}
-                  <h2 className="section-label">웹앱 테스트</h2>
-                  <Card>
-                    <button className="row" aria-expanded={cameraSetupOpen} onClick={() => setCameraSetupOpen((open) => !open)}>
-                      <span>
-                        카메라 준비
-                        <small>{cameraReady ? "이 휴대폰은 준비 완료" : "촬영 전에 한 번 필요해요"}</small>
-                      </span>
-                      <span>{cameraSetupOpen ? "닫기" : cameraReady ? "다시 준비 ›" : "준비하기 ›"}</span>
-                    </button>
-                  </Card>
-                  {cameraSetupOpen && (
-                    <CameraSetup
-                      onReady={() => {
-                        setCameraReady(true);
-                        setCameraSetupOpen(false);
-                        setToast("카메라 준비 완료 · 이제 사진으로 가구를 측정해요");
-                      }}
-                    />
-                  )}
-                  </>}
+
                 </div>
               )}
               {page === "account" && (
