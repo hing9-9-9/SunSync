@@ -46,12 +46,12 @@ test("burst size is bounded and camera failure cannot produce a completed burst"
 });
 
 
-test("capture geometry ignores frame-rate and exposure fluctuations", async () => {
+test("capture geometry ignores frame-rate, exposure, and continuous autofocus fluctuations", async () => {
   const { captureGeometry, CaptureGeometryGuard } = await import("./burst.ts");
   const guard = new CaptureGeometryGuard();
-  const initial = {deviceId:"rear",facingMode:"environment",frameRate:30,exposureTime:10};
+  const initial = {deviceId:"rear",facingMode:"environment",frameRate:30,exposureTime:10,focusDistance:0.8,zoom:1.0};
   assert.equal(guard.accept(captureGeometry(initial,1920,1080)),true);
-  assert.equal(guard.accept(captureGeometry({...initial,frameRate:29.97,exposureTime:20},1920,1080)),true);
+  assert.equal(guard.accept(captureGeometry({...initial,frameRate:29.97,exposureTime:20,focusDistance:1.45,zoom:1.002},1920,1080)),true);
 });
 
 test("actual geometry changes invalidate once and allow setup again", async () => {
