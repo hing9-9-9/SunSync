@@ -44,3 +44,18 @@ export function measurePixels(rgba: Uint8ClampedArray, width: number, height: nu
   mean = n ? mean / n : 0;
   return { brightness: grey.length ? sum / grey.length : 0, sharpness: n ? square / n - mean * mean : 0 };
 }
+
+// Reads a downscaled copy so the check stays fast on phones; the photo never leaves the device.
+export async function analyseImage(file: File) {
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, 320 / Math.max(bitmap.width, bitmap.height));
+  const width = Math.max(3, Math.round(bitmap.width * scale)), height = Math.max(3, Math.round(bitmap.height * scale));
+  const canvas = document.createElement("canvas");
+  canvas.width = width; canvas.height = height;
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("사진을 확인할 수 없습니다.");
+  context.drawImage(bitmap, 0, 0, width, height);
+  bitmap.close();
+  return measurePixels(context.getImageData(0, 0, width, height).data, width, height);
+}
+

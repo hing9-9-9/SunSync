@@ -2,6 +2,9 @@ import { createPortal } from "react-dom";
 import { useEffect, useRef, useState } from "react";
 import { acquireBurst, appendSetupView, captureGeometry, CaptureGeometryGuard } from "./burst";
 import { detectFrame, setupCamera } from "./measureApi";
+import { analyseImage } from "./captureCheck";
+import { liveHint } from "./captureGuide";
+import type { Hint } from "./captureGuide";
 import type { Camera, CaptureMarker, Frame } from "./measureApi";
 
 /** Test-only video stream. Its calibration is deliberately separate from still-photo profiles. */
@@ -33,6 +36,7 @@ export default function BurstCamera({
   const [running, setRunning] = useState(false),
     [busy, setBusy] = useState(false),
     [message, setMessage] = useState("");
+  const [hint, setHint] = useState<Hint | null>(null);
   const [views, setViews] = useState<Frame[]>([]),
     [camera, setCamera] = useState<Camera | null>(null);
   const geometry = useRef(new CaptureGeometryGuard());
@@ -168,30 +172,24 @@ export default function BurstCamera({
       setBusy(false);
     }
   }
+  // Live check while the camera is open (setup shots and point shots alike): say what is wrong with
+  // the marker now, so the person fixes it before pressing the shutter.
   useEffect(() => {
-    if (!active || !running || !camera || busy || disabled) return;
+    if (!active || !running || busy || disabled) { setHint(null); return; }
     let live = true;
     let timer: ReturnType<typeof setTimeout>;
     async function inspect() {
       try {
         const file = await snapshot();
-        const frame = await detectFrame(
-          file,
-          session.board,
-          session,
-          new Date(file.lastModified).toISOString(),
-          camera!,
-        );
-        if (live)
-          setMessage(
-            frame.pose_status === "ok"
-              ? "마커가 보여요. 현재 지점에서 촬영해 주세요."
-              : "마커 관측이 불안정해요. 지점 위치를 유지하고 마커 전체가 크게 보이도록 각도를 조절해 주세요.",
-          );
+        const [frame, metrics] = await Promise.all([
+          detectFrame(file, session.board, session, new Date(file.lastModified).toISOString(), camera ?? undefined),
+          analyseImage(file),
+        ]);
+        if (live) setHint(liveHint(frame, metrics));
       } catch (e) {
-        if (live) setMessage(e instanceof Error ? e.message : String(e));
+        if (live) setHint({ tone: "warn", text: e instanceof Error ? e.message : String(e) });
       }
-      if (live) timer = setTimeout(() => void inspect(), 1500);
+      if (live) timer = setTimeout(() => void inspect(), 1200);
     }
     timer = setTimeout(() => void inspect(), 500);
     return () => {
@@ -220,7 +218,7 @@ export default function BurstCamera({
       onBusy(false);
     }
   }
-  const action = <button type="button" className="primary" disabled={busy || disabled}
+  const action = <button type="button" className="primary" disabled={busy || disabled || (running && hint?.tone === "stop")}
     onClick={() => void (!running ? open() : !camera ? setup() : shoot())}>
     {busy ? "촬영·확인 중…" : !running ? "카메라 열기" : !camera ? `카메라 준비 사진 촬영 (${Math.min(views.length, 11)}/12)` : `${pointLabel} 촬영`}
   </button>;
@@ -233,6 +231,7 @@ export default function BurstCamera({
       {running && <button type="button" className="text-button" disabled={busy||disabled} onClick={()=>{
         stop();setRunning(false);setCamera(null);onReady?.(null);setViews([]);
       }}>카메라 닫기</button>}
+      {running && hint && <p role="status" className={`capture-hint ${hint.tone}`}>{hint.text}</p>}
       {message && <p role="status">{message}</p>}
     </section>
   );
