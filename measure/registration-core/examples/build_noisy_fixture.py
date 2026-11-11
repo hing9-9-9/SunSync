@@ -13,7 +13,9 @@ example = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(example)
 
 
-def noisy_fixture(seed=701, noise=0.12, count=8, outlier=False, kind="rectangle"):
+def noisy_fixture(
+    seed=701, noise=0.12, count=8, outlier=False, kind="rectangle", point_offsets=None
+):
     request = example.fixture(single=True).model_dump()
     if kind == "rectangle":
         xy = np.array([[-0.3, 0.225], [0.3, 0.225], [0.3, -0.225], [-0.3, -0.225]])
@@ -35,7 +37,8 @@ def noisy_fixture(seed=701, noise=0.12, count=8, outlier=False, kind="rectangle"
     k, d = camera.matrices()
     rng = np.random.default_rng(seed)
     captures = []
-    for index, position in enumerate(truth):
+    positions = truth if point_offsets is None else truth + np.asarray(point_offsets)
+    for index, position in enumerate(positions):
         for sample in range(count):
             pos = position + rng.normal(0, 0.002, 3)
             if outlier and sample == count - 1:

@@ -147,13 +147,33 @@ def shape_parameters(kind, points, up):
     return initial, decode
 
 
-def refine(kind, points, samples, board, up, placement_sigma, tolerance, max_rmse):
+def refine(
+    kind,
+    points,
+    samples,
+    board,
+    up,
+    placement_sigma,
+    tolerance,
+    max_rmse,
+    *,
+    rectangle_correction=None,
+):
     """Jointly fit constrained shape, per-frame pose and lens-to-point offsets.
 
     Pixel noise is estimated from each original PnP; hand placement is a finite
     nuisance residual, never an assumption that every lens was exactly on a corner.
     """
+    if rectangle_correction is not None:
+        # Keep the shot order: crossed corners cannot describe the same tabletop boundary.
+        _, _, axes = np.linalg.svd(np.asarray(up).reshape(1, 3), full_matrices=True)
+        validate_polygon((points - points.mean(axis=0)) @ axes[1:].T)
     initial, decode = shape_parameters(kind, points, up)
+    correction_limit = tolerance
+    if rectangle_correction is not None:
+        # Limit relative correction for small tabletops as well as absolute movement.
+        shorter_side = float(np.exp(initial[4:6]).min())
+        correction_limit = min(rectangle_correction, max(tolerance, 0.2 * shorter_side))
     size = len(initial)
     objects = board.objects()
     frames = []
@@ -222,7 +242,7 @@ def refine(kind, points, samples, board, up, placement_sigma, tolerance, max_rms
     movement = np.linalg.norm(shaped - points, axis=1)
     if not solution.success or not np.isfinite(shaped).all():
         raise ValueError("joint_optimizer_did_not_converge")
-    if movement.max() > tolerance:
+    if movement.max() > correction_limit:
         raise ValueError("joint_shape_correction_exceeds_tolerance")
     rmses = []
     for i, (_, sample, _, obj, pixels, (k, d)) in enumerate(frames):

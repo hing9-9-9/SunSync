@@ -108,7 +108,7 @@ export function serverMessage(detail: string): string {
  *  points are retaken. An empty list means the measurement is usable. */
 export type PointProblem = { point?: string; message: string };
 export function measurementProblems(text: string): PointProblem[] {
-  let m: { status?: string; points?: Record<string, { status?: string }> };
+  let m: { status?: string; required_actions?: string[]; points?: Record<string, { status?: string }> };
   try { m = JSON.parse(text); } catch { return []; }
   if (m.status !== "incomplete" && m.status !== "invalid_surface") return [];
   const found: PointProblem[] = Object.entries(m.points ?? {}).filter(([, p]) => p.status !== "ok").map(([point, p]) => ({
@@ -117,7 +117,18 @@ export function measurementProblems(text: string): PointProblem[] {
       ? `${point} · 같은 지점 사진끼리 위치가 크게 어긋나요(3cm 넘게). 폰을 그 지점에 고정하고 다시 찍어 주세요.`
       : `${point} · 마커가 또렷하게 잡힌 사진이 부족해요. 마커 전체가 보이게, 너무 멀거나 비스듬하지 않게 다시 찍어 주세요.`,
   }));
-  if (!found.length && m.status === "invalid_surface") found.push({ message: "찍은 꼭짓점들이 고른 상판 모양으로 이어지지 않아요. 꼭짓점 순서와 위치를 확인하고 다시 찍어 주세요." });
+  if (!found.length && m.status === "invalid_surface") {
+    const actions = m.required_actions ?? [];
+    if (actions.includes("joint_shape_correction_exceeds_tolerance")) {
+      found.push({ message: "직사각형으로 보정하기에는 촬영 위치 차이가 커요. 렌즈를 상판 꼭짓점에 더 가까이 맞춰 다시 찍어 주세요." });
+    } else if (actions.includes("joint_optimizer_did_not_converge") || actions.includes("joint_reprojection_error")) {
+      found.push({ message: "촬영 사진에서 상판 위치를 안정적으로 계산하기 어려워요. 마커 전체가 선명하게 보이도록 다시 찍어 주세요." });
+    } else if (actions.includes("surface_not_horizontal_or_below_floor")) {
+      found.push({ message: "상판 높이를 계산하기 어려워요. 창문 아래 높이 설정과 꼭짓점 촬영 높이를 확인해 주세요." });
+    } else {
+      found.push({ message: "찍은 꼭짓점들이 고른 상판 모양으로 이어지지 않아요. 꼭짓점 순서와 위치를 확인하고 다시 찍어 주세요." });
+    }
+  }
   return found;
 }
 export const measurementProblem = (text: string): string | null => {
@@ -268,6 +279,7 @@ async function measureRaw(sceneId: string, camera: Camera, item: MeasureItem) {
     plan,
     board,
     ...pose,
+    ...(kind === "rectangle" ? { max_rectangle_correction_m: 0.08 } : {}),
     captures: item.points.flatMap((point) => point.frames.map((f) => ({
       capture_id: f.capture_id, point_id: point.id, captured_at: f.captured_at, image_sha256:f.image_sha256, camera, detections: f.detections,
     }))),

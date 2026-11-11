@@ -199,6 +199,7 @@ class MeasureRequest(Strict):
     max_selected_per_point: int = Field(default=8, ge=3, le=12)
     max_repeat_spread_m: float = Field(default=0.03, gt=0, le=0.1)
     max_surface_residual_m: float = Field(default=0.03, gt=0, le=0.1)
+    max_rectangle_correction_m: float | None = Field(default=None, gt=0, le=0.1)
     max_reprojection_rmse_px: float = Field(default=2, gt=0, le=5)
 
     @model_validator(mode="after")
