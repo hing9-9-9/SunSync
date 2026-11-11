@@ -1,3 +1,5 @@
+> 2026-11-01 작업 기록이다. 아래의 작업 폴더, 브랜치, 실행 명령은 한 개발자의 로컬 환경 기준이며 지금은 쓰지 않는다. 현재 상태는 [ui-flow.md](ui-flow.md), [db.md](db.md), [fr01_4_README.md](fr01_4_README.md)를 따른다.
+
 # UI data integration (2026-11-01)
 
 Working copy: `/Users/ldi/Documents/Codex/SunSync-integration`, branch `feature/ui-integration`.

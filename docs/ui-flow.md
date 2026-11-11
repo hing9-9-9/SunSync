@@ -45,7 +45,7 @@ flowchart TD
 | 화면 | 웹/앱 | 페이지 키 | 하는 일 | FR·이슈 | API |
 | --- | --- | --- | --- | --- | --- |
 | 소개 | 웹 (공개) | `home` | 서비스 소개, 로그인·회원가입 진입, 핵심 가이드 4개. `?example=editor`는 서버를 읽거나 쓰지 않는 예제 공간 둘러보기 | UI-2 (#48) | `GET /api/auth/session` |
-| 홈 | 웹 (로그인 필요) · 앱 | `home` | 웹: 내 공간 요약과 새 공간 시작. 앱: 공간 현황 요약 | FR-06 | `GET /api/ui/spaces` |
+| 홈 | 웹 (로그인 필요) · 앱 | `home` | 웹: 내 공간 요약과 새 공간 시작. 앱: 오늘 차단 시각 카드와 보호 설정 현황 띠(모두 / 일부 / 없음) | FR-06 | `GET /api/ui/spaces` |
 | 내 공간 | 웹 (로그인 필요) · 앱 | `spaces` | 건물별 공간 목록, 측정 대기 작업 확인(3초 갱신), 임시 저장 이어하기, 공간 삭제 | FR-06.5, FR-06.1 | `GET /api/ui/spaces`, `DELETE /api/ui/spaces/{id}`, `GET /api/ui/measurements` |
 | 새 공간 등록 | 웹 (로그인 필요) · 앱 | `register` | 건물·층·공간·구역, 방 크기, 창문 규격·위치, 위치(위도·경도·시간대) 입력. 필름 QR 마커 위치 미리보기 | FR-06.1, FR-06.2 | `POST /api/ui/spaces`, `PUT /api/ui/spaces/{id}` |
 | QR 측정 | 웹 (로그인 필요) | `capture` | 휴대폰 측정 안내와 앱 연결 링크·QR 만들기. 웹에는 카메라 입력이 없다 | FR-03, FR-06.5 | `POST /api/ui/measurements`, `GET /api/ui/measurements/{token}` |
@@ -53,14 +53,23 @@ flowchart TD
 | 공간 구성 | 웹·앱 | `processing` | 촬영 사진으로 가구 치수를 계산하고 공간에 등록. 완료되면 도면 확인으로 이동 | FR-03, FR-06.3 | `POST /measure/v1/measurements`, `POST /measure/v1/fr06`, `GET`·`PUT /api/scenes/{id}`, `POST /api/scenes/{id}/registrations`, `POST /api/ui/measurements/{token}/complete` |
 | 도면 확인 | 웹 (로그인 필요) · 앱 | `review` | 가구별 종류·치수·위치 수정, 2D 도면에서 끌어 옮기기, 가구 추가·삭제, 다시 측정 | FR-06.1, FR-06.3 | `PUT /api/ui/spaces/{id}` |
 | 도면과 보호 영역 | 웹 (로그인 필요) | `protect` | 가구 면 또는 독립 영역으로 보호 영역 설정, 높이, A~D 등급, 차단 시간. 앱은 조회만 한다 | FR-06.6, FR-02 | `PUT /api/ui/spaces/{id}`, `POST /api/scenes/{id}/sunpath-predictions`, `POST /api/scenes/{id}/shading-plans` |
-| 공간 현황 | 웹 (로그인 필요) · 앱 | `detail` | 구역 선택, 시간 슬라이더, 햇빛 영역, 필름 칸 격자, 차단 시간 설정, 가상 필름 제어·적용 로그 조회, KMA·Open-Meteo 일사량 예측 상세 비교. 웹은 2D/3D 전환(앱은 2D) | FR-01, FR-02, FR-05, #60, #61, #62, #85, #102, #115, #116 | `GET /api/ui/spaces/{id}`, `POST /api/scenes/{id}/sunpath-predictions`, `POST /api/scenes/{id}/shading-plans`, `GET /api/scenes/{id}/nowcast-comparison`, `GET /api/scenes/{id}/ai-nowcast/latest`, `POST /api/scenes/{id}/film-schedule-apply`, `GET /api/scenes/{id}/film-state`, `GET /api/scenes/{id}/film-logs` |
+| 공간 현황 | 웹 (로그인 필요) · 앱 | `detail` | 구역 선택, 시간 슬라이더, 햇빛 영역, 필름 칸 격자, 차단 시간 설정, 가상 필름 제어·적용 로그 조회, KMA·Open-Meteo 일사량 예측 상세 비교, AI 제어 효과 배지(깜빡임, 자연 채광). 웹은 2D/3D 전환(앱은 2D) | FR-01, FR-02, FR-05, #60, #61, #62, #85, #102, #115, #116 | `GET /api/ui/spaces/{id}`, `POST /api/scenes/{id}/sunpath-predictions`, `POST /api/scenes/{id}/shading-plans`, `GET /api/scenes/{id}/nowcast-comparison`, `GET /api/scenes/{id}/ai-nowcast/latest`, `POST /api/scenes/{id}/film-schedule-apply`, `GET /api/scenes/{id}/film-state`, `GET /api/scenes/{id}/film-logs`, `POST /api/scenes/{id}/adaptive-shading-plan` |
 | 사용 가이드 | 웹 (공개) · 앱 | `guide` | 목록 → 단계별 설명(6단계). 가이드에서 측정·편집을 실행하지 않는다 | UI-2 (#48) | 없음 |
-| 더보기 | 앱 | `more` | 공간·구역·보호 정보 바로가기, 내 계정, 도움말. 개발용 웹앱 테스트(카메라 준비) | FR-06 | 없음 |
+| 더보기 | 앱 | `more` | 계정 카드와 등급 기준 목록(정사각형 칩). 개발용 웹앱 테스트(카메라 준비) | FR-06 | 없음 |
 | 내 계정 | 웹 (로그인 필요) · 앱 | `account` | 연결 계정 확인, 로그아웃 | #121, #105 | `GET /api/auth/session`, `POST /api/auth/logout` |
 | 로그인 | 웹·앱 | (페이지 키 없음) | 소개·가이드·예제를 뺀 화면에서 로그인하지 않았으면 표시. 로그인 후 원래 주소로 돌아간다 | #121, #105 | `GET /api/auth/google/login?next=`, `GET /api/auth/session` |
 
 - 로그인 화면은 별도 페이지 키가 아니라 `home` 위에 겹쳐 보이는 단계다.
 - 공간 현황(`detail`)에서는 가상 필름 제어(`/api/scenes/{id}/film-*`)와 일사량 예측 불확실성(q10~q90)·KMA 비교 차트 상세 보기를 제공한다.
+- 공간 목록의 각 공간에는 `⋯` 메뉴(`SpaceMenu`)가 있어 배치, 정보 수정, 삭제 같은 동작을 연다.
+
+## AI 제어 효과 배지
+
+공간 현황에서 차광 계획이 있을 때 그 옆에 "AI 제어 효과" 카드가 나온다(`AdaptiveEffect.tsx`, 웹과 앱 모두). 이슈 #89.
+
+- 저장된 공간의 버전마다 한 번 `POST /api/scenes/{id}/adaptive-shading-plan`을 호출한다 (기본 모드, 필름 종류 선택은 없다). 계산에 몇 초 걸리며 "계산하는 중이에요"를 보여 주고, 새로고침 버튼으로 다시 계산한다. 실패하면 오류 문구를 보여 준다.
+- 배지 두 개: **깜빡임**은 `metrics.total_change_reduction_pct`, **자연 채광**은 `metrics.daylight_gain_pct`. 기준(FR-02 계획)과 비교한 오늘 하루치다. 깜빡임은 줄면 "N% 줄어요", 늘면 "N% 늘어요"로, 자연 채광은 늘면 "N% 늘어요", 줄면 "N% 줄어요"로 표시하며 나빠진 값을 0으로 바꾸지 않는다. 변화가 없으면 "변화 없음", 기준 계획이 하루 종일 바뀌지 않는데 결과가 바뀌면 "기본 계획보다 늘어요"를 보여 준다.
+- 규칙은 `frontend/src/adaptiveEffect.ts`와 그 시험에 있고, 값의 뜻은 [FR-04](fr04_adaptive_control_lg_sgf.md) 7절과 11절에 있다.
 
 ## 인증과 세션
 
@@ -112,7 +121,7 @@ npm run preview -- --host 0.0.0.0
 6. 보호 설정: 가구의 면 선택 또는 독립 영역 그리기. 보호 시작/끝 높이, A~D 등급 설정. 독립 영역 이동/크기 조절과 숫자 입력 지원.
 7. 저장: 입력 검사 후 건물·공간 목록으로 복귀. 동일 공간 편집은 덮어쓰고 다른 공간은 보존. 바뀐 내용이 없는 편집 화면(저장 후 뒤로 가기 포함)은 저장 확인 없이 닫힌다.
 8. 공간 현황: 웹은 2D/3D 전환(앱은 2D). 구역 선택, 가구/보호면 확인, 시간 슬라이더. 선택 시각에 가려질 필름 칸 격자(10cm 칸). 차단 시간 설정: 사용자가 켬/끔과 시작·종료 시간(10분 단위, 시작 < 종료)을 정해 공간과 함께 저장(`shadingSchedule`). 필름 칸은 설정한 시간 안에서 햇빛이 보호영역에 닿을 때만 가린다. 보호영역별 햇빛 닿는 시간은 간이 계산 참고값으로만 표시. 도면·보호구역 편집 화면에서도 같은 설정을 바꿀 수 있다. D 등급은 차단하지 않음.
-9. 더보기: 계정·공간·구역·보호 정보. 내 계정 → 연결 계정 정보 → 로그아웃 확인(`POST /api/auth/logout`). 로그아웃 후 서버 공간은 그대로 있고, 이 기기의 로컬 캐시만 남는다.
+9. 더보기: 계정 카드와 등급 기준. 내 계정 → 연결 계정 정보 → 로그아웃 확인(`POST /api/auth/logout`). 로그아웃 후 서버 공간은 그대로 있고, 이 기기의 로컬 캐시만 남는다.
 10. 사용 가이드: 목록 → 단계별 설명 → 이전/다음 단계. 가이드에서 촬영·측정·편집을 실행하지 않는다. 작업 중 도움말을 닫으면 해당 작업으로 복귀한다.
 
 Figma의 전용 문자/숫자 키패드는 제거했다. 실제 input/select, 모바일 숫자 키보드와 기본 사진 선택기를 사용한다.

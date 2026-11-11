@@ -1,22 +1,22 @@
-# Copy to /etc/caddy/Caddyfile and replace YOUR_NAME, YOUR_USER and YOUR_PASSWORD_HASH.
-# Create the hash with: caddy hash-password
+# Copy to /etc/caddy/Caddyfile and replace YOUR_NAME (see docs/deploy.md).
 
-# Keeps the data closed until the Google login (#105) ships; remove "import locked" then.
-# Only /api and /measure are locked. The web app files stay public (they are public on GitHub
+# The Google login is the lock (docs/auth.md). The API checks the login itself. /measure is a
+# separate program, so Caddy asks the API who is logged in before a request reaches it.
+# /api/auth/check answers 401 also when the login is off, so a server whose login is not switched
+# on yet keeps /measure closed instead of open.
+(login) {
+	forward_auth 127.0.0.1:8000 {
+		uri /api/auth/check
+	}
+}
+
+# Temporary lock for a server whose Google login is not ready yet: run "caddy hash-password",
+# replace YOUR_USER and YOUR_PASSWORD_HASH, and add "import locked" to the /api/* and /measure/*
+# blocks below. Only the data is locked; the web app files stay public (they are public on GitHub
 # too), so the landing page opens and the phone can load the manifest and install the app.
 (locked) {
 	basic_auth {
 		YOUR_USER YOUR_PASSWORD_HASH
-	}
-}
-
-# Use this instead of "import locked" on /measure once the Google login is switched on
-# (see docs/auth.md). The app then checks /api by itself, and /measure asks the app who is
-# logged in before the request reaches the measurement server. /api/auth/check answers 401 also
-# when the login is off, so a switch made too early closes /measure instead of opening it.
-(login) {
-	forward_auth 127.0.0.1:8000 {
-		uri /api/auth/check
 	}
 }
 
@@ -29,13 +29,12 @@ YOUR_NAME.duckdns.org {
 	}
 
 	handle /api/* {
-		import locked
 		reverse_proxy 127.0.0.1:8000
 	}
 
 	# The prefix is removed: the measurement server serves /v1/... and /health.
 	handle_path /measure/* {
-		import locked
+		import login
 		reverse_proxy 127.0.0.1:8001
 	}
 

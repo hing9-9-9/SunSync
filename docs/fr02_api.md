@@ -13,6 +13,8 @@ Result format: [fr02_schedule.md](fr02_schedule.md). Decision rules: [fr02_desig
 | `interval_seconds` | Time step, 1 to 3600, default 300 |
 | `expected_scene_revision` | Optional; a different stored revision gives 409 |
 
+With the Google login on, a Scene of another account answers 404, like a missing one ([auth.md](auth.md)).
+
 All protected areas are planned; there is no area filter, because a plan for some areas would leave the others
 unprotected. Errors: 404 (no such Scene), 409 (revision differs), 422 (invalid input, or a Scene without
 protected areas). The endpoint runs the FR-01 prediction with the same limits and applies the FR-02 rules to
