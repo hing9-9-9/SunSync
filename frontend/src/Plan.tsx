@@ -344,6 +344,13 @@ export default function Plan({
                 fontSize={textSize}
                 fill="var(--c-52596a)"
                 pointerEvents="none"
+                // The label follows the piece but is never upside down, and sits below pieces too small to hold it over their drawing.
+                transform={(() => {
+                  const turn = ((((-(f.yaw ?? 0) + 180) % 360) + 360) % 360) - 180; // the piece's rotation, in (-180, 180]
+                  const flip = Math.abs(turn) > 90 ? `rotate(180 ${left + f.x + f.width / 2} ${top + f.y + f.depth / 2})` : "";
+                  const below = turn === 0 && f.width <= 1 ? `translate(0 ${f.depth / 2 + textSize * 0.95})` : "";
+                  return flip + below || undefined;
+                })()}
               >
                 {String(i + 1).padStart(2, "0")}
               </text>

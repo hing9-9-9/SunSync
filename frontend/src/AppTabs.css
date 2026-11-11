@@ -35,12 +35,13 @@
     filter var(--at-release),
     background-color var(--at-release);
 }
+/* The only add action stays easy to find without shouting: a white circle with a purple plus, like the 배치 편집 and ⋯ buttons. */
 .app.award-mobile.mode-app:is(.page-home, .page-spaces) .icon-button.plus {
-  background: var(--at-accent);
-  color: var(--c-white);
+  background: var(--c-white);
+  color: var(--at-accent);
   border: 0;
   border-radius: 999px;
-  box-shadow: var(--shadow-action);
+  box-shadow: var(--shadow-card);
 }
 /* The labelled add button repeats the header "+", so it steps down to a white card-weight button (gray read as disabled on the gradient). */
 .app.award-mobile.mode-app:is(.page-home, .page-spaces) .add-space {
@@ -419,70 +420,144 @@
   color: var(--at-accent-ink);
 }
 
-/* Home: one statement leads (are my spaces set up?), one task, then a quiet short list. */
+/* Home: today's blocking window leads, then the protection status and a quiet short list of spaces. */
 .app.award-mobile.mode-app.page-home .home-dashboard {
   display: grid;
   gap: 12px;
 }
-.app.award-mobile.mode-app.page-home .home-hero {
+/* Home top card: today's blocking window first, then the protection status sits with the space list, smaller. */
+.app.award-mobile.mode-app.page-home .home-today {
   display: grid;
-  gap: 16px;
-  padding: 24px 20px 20px;
+  gap: 8px;
+  padding: 20px;
   border-radius: var(--radius-card, 12px);
   background: var(--c-white);
   box-shadow: var(--at-card-shadow);
 }
-.app.award-mobile.mode-app.page-home .home-hero h2 {
+.app.award-mobile.mode-app.page-home .home-today-label {
   margin: 0;
-  font-size: 24px;
-  font-weight: 700;
-  line-height: 1.35;
-  letter-spacing: -0.03em;
-  color: var(--at-ink);
-  word-break: keep-all;
-}
-.app.award-mobile.mode-app.page-home .home-hero-bar {
-  display: block;
-  height: 6px;
-  border-radius: 3px;
-  background: var(--at-gray);
-  overflow: hidden;
-}
-.app.award-mobile.mode-app.page-home .home-hero-bar b {
-  display: block;
-  height: 100%;
-  border-radius: 3px;
-  background: var(--at-accent);
-}
-.app.award-mobile.mode-app.page-home .home-task {
-  display: grid;
-  gap: 12px;
-  padding-top: 16px;
-  border-top: 1px solid var(--c-hairline);
-}
-.app.award-mobile.mode-app.page-home .home-task > span {
-  display: grid;
-  gap: 4px;
   font-size: 13px;
+  font-weight: 500;
   color: var(--at-muted);
 }
-.app.award-mobile.mode-app.page-home .home-task strong {
+.app.award-mobile.mode-app.page-home .home-today-time {
+  margin: 0;
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  color: var(--at-ink);
+}
+.app.award-mobile.mode-app.page-home .home-today-empty {
+  margin: 0;
+  font-size: 15px;
+  color: var(--at-muted);
+}
+.app.award-mobile.mode-app.page-home .home-today .primary {
+  min-height: 44px;
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 500;
+}
+.app.award-mobile.mode-app.page-home .home-today-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.app.award-mobile.mode-app.page-home .home-today-list li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 15px;
+  color: var(--at-ink);
+}
+.app.award-mobile.mode-app.page-home .home-today-list strong {
   font-size: 17px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.app.award-mobile.mode-app.page-home .home-today-chip {
+  justify-self: start;
+  margin-top: 4px;
+  padding: 4px 12px;
+  border-radius: var(--radius-pill);
+  background: var(--at-gray);
+  font-size: 13px;
   font-weight: 500;
   color: var(--at-ink);
 }
-.app.award-mobile.mode-app.page-home .home-task .primary {
-  min-height: 50px;
-  border-radius: 999px;
+.app.award-mobile.mode-app.page-home .home-today-chip.on {
+  background: var(--c-protect);
+  color: var(--c-protect-text);
+}
+/* Protection status: a purple band when every space is protected (clear of the page gradient), grey with one action when not. */
+.app.award-mobile.mode-app.page-home .home-status {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: var(--radius-card, 12px);
+  background: var(--c-protect-strong);
+  box-shadow: var(--at-card-shadow);
+}
+.app.award-mobile.mode-app.page-home .home-status.todo {
+  background: var(--at-gray);
+}
+.app.award-mobile.mode-app.page-home .home-status-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--c-white);
+  color: var(--c-protect-text);
+}
+.app.award-mobile.mode-app.page-home .home-status.todo .home-status-icon {
+  color: var(--at-muted);
+}
+.app.award-mobile.mode-app.page-home .home-status-text {
+  display: grid;
+  flex: 1;
+  gap: 2px;
+  min-width: 0;
+}
+.app.award-mobile.mode-app.page-home .home-status-text strong {
   font-size: 16px;
+  font-weight: 700;
+  line-height: 1.35;
+  word-break: keep-all;
+  color: var(--at-ink);
+}
+.app.award-mobile.mode-app.page-home .home-status-text small {
+  font-size: 13px;
+  color: var(--c-protect-text);
+}
+.app.award-mobile.mode-app.page-home .home-status.todo .home-status-text small {
+  color: var(--at-muted);
+}
+.app.award-mobile.mode-app.page-home .home-status .primary {
+  position: relative;
+  flex: none;
+  width: auto;
+  min-height: 36px;
+  padding: 0 16px;
+  border-radius: 999px;
+  font-size: 14px;
   font-weight: 500;
 }
-.app.award-mobile.mode-app.page-home .home-task .primary:active {
-  transform: scale(0.97);
-  filter: brightness(0.95);
-  transition:
-    transform var(--at-press),
-    filter var(--at-press);
+.app.award-mobile.mode-app.page-home .home-status .primary::before {
+  content: "";
+  position: absolute;
+  inset: -4px; /* keeps the touch target at 44px */
+}
+.app.award-mobile.mode-app .effect-refresh {
+  width: 44px;
+  height: 44px;
 }
 .app.award-mobile.mode-app.page-home .home-preview-head {
   display: flex;
@@ -648,7 +723,7 @@
   justify-content: center;
   gap: 2px;
   padding: 0;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
   line-height: 14px;
   letter-spacing: -0.01em;
@@ -678,7 +753,7 @@
   padding: 0;
   overflow: hidden;
 }
-.app.award-mobile.mode-app.page-more .more-content section.card > button.row {
+.app.award-mobile.mode-app.page-more .more-content section.card > :is(button.row, div.row) {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -696,7 +771,7 @@
   position: relative;
   transition: background-color 0.18s ease;
 }
-.app.award-mobile.mode-app.page-more .more-content section.card > button.row + button.row::before {
+.app.award-mobile.mode-app.page-more .more-content section.card > :is(button.row, div.row) + :is(button.row, div.row)::before {
   content: "";
   position: absolute;
   top: 0;
@@ -705,26 +780,40 @@
   height: 1px;
   background: var(--c-hairline);
 }
-.app.award-mobile.mode-app.page-more .more-icon {
-  width: 22px;
-  height: 22px;
-  flex: none;
-  color: var(--c-ink);
-  opacity: 0.8;
-}
-.app.award-mobile.mode-app.page-more .more-value {
-  margin-left: auto;
-  font-size: 14px;
-  color: var(--c-muted);
-}
 .app.award-mobile.mode-app.page-more .more-chevron {
   width: 16px;
   height: 16px;
   flex: none;
   color: var(--c-muted);
 }
-.app.award-mobile.mode-app.page-more .more-icon + span:not(.more-value) { flex: 1; }
-.app.award-mobile.mode-app.page-more .more-value + .more-chevron { margin-left: -6px; } /* the chevron path sits right in its box; keep ~10px visible gap */
+/* Plain information rows (grade meanings): no press state and no chevron, because nothing opens. */
+.app.award-mobile.mode-app.page-more .info-row { cursor: default; }
+.app.award-mobile.mode-app.page-more .info-row > .furniture-grade {
+  flex: none;
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 700;
+}
+.app.award-mobile.mode-app.page-more .info-row > .furniture-grade + span {
+  display: grid;
+  flex: 1;
+  gap: 2px;
+  padding-block: 12px;
+}
+.app.award-mobile.mode-app.page-more .info-row > .furniture-grade + span strong {
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.3;
+}
+.app.award-mobile.mode-app.page-more .info-row > .furniture-grade + span small {
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--c-muted);
+} /* the chevron path sits right in its box; keep ~10px visible gap */
 .app.award-mobile.mode-app.page-more .more-content > .account-row .more-chevron { margin-left: auto; }
 .app.award-mobile.mode-app.page-more .account-row {
   gap: 12px;

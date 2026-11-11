@@ -53,7 +53,7 @@
 .home-switch-track i { display:block; width:20px; height:20px; border-radius:50%; background:var(--c-white); transition:transform 180ms var(--home-ease); }
 .ap-photo-tag[aria-checked='true'] .home-switch-track { background:var(--c-action); }
 .ap-photo-tag[aria-checked='true'] .home-switch-track i { transform:translateX(16px); }
-.app.award-app .home-design .home-photo-caption { color:var(--c-59565e); font-size:var(--fs-label); line-height:var(--lh-label); letter-spacing:0; text-transform:none; }
+.app.award-app .home-design .home-photo-caption { color:var(--c-59565e); font-size:var(--fs-small); line-height:var(--lh-small); letter-spacing:0; text-transform:none; }
 /* Open numbered rows; their illustration follows pointer and keyboard focus. */
 .app.award-app .home-design .ap-process { max-width:1560px; margin:auto; padding:18px 4% 100px; display:grid; grid-template-columns:.9fr 1.1fr; gap:72px; border:0; border-radius:0; background:var(--c-white); min-height:0; }
 .app.award-app .home-design .ap-process-heading h2 { font-size:var(--fs-h1); font-weight:500; letter-spacing:-.055em; line-height:var(--lh-h1); margin:0; }

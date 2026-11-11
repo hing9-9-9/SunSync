@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import MobileEditorSheet from "./MobileEditorSheet";
 import MobileFurnitureList from "./MobileFurnitureList";
 import NumberField from "./NumberField";
@@ -8,6 +8,8 @@ import { WorkspaceNavigation, WorkspaceHome, WorkspaceCards } from "./WorkspaceD
 import { DeviceHandoff } from "./DeviceHandoff";
 import { CaptureHelp } from "./CaptureHelp";
 import { FilmGrid, ShadingTimeControl, VirtualFilmControl } from "./ShadingPlan";
+import { SpaceMenu, SpaceMenuGlyph } from "./SpaceMenu";
+import AdaptiveEffect from "./AdaptiveEffect.tsx";
 import { applyShadingTime, formatMinute } from "./sunlight";
 import SpatialCapture, { CameraSetup } from "./SpatialCapture";
 import { savedCamera } from "./measureApi";
@@ -15,13 +17,13 @@ import { savedCamera } from "./measureApi";
 import {
   defaultShadingTime,
   furnitureTypes,
-  gradeCounts,
   grades,
   isWidthWall,
   margin,
   wallLength,
   upsertSpace,
   resolveWindow,
+  timeToMinute,
   walls,
 } from "./model";
 import type {
@@ -137,6 +139,7 @@ function MobileApp() {
     selectSpace,
     saveShadingTime,
     editSpace,
+    setActiveId,
     change,
     changeFurniture,
     chooseFurniture,
@@ -177,6 +180,12 @@ function MobileApp() {
   // WEB APP TEST ONLY: camera setup state for 더보기 › 카메라 준비.
   const [cameraSetupOpen, setCameraSetupOpen] = useState(false);
   const [cameraReady, setCameraReady] = useState(() => !!savedCamera());
+  // Home shows whether blocking is on right now, so the clock ticks once a minute.
+  const [clock, setClock] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setClock(Date.now()), 60_000);
+    return () => clearInterval(timer);
+  }, []);
   function websiteNavigate(next: WebsiteDestination) {
     if (next === "home" || next === "guide") {
       navigate(next);
@@ -189,46 +198,55 @@ function MobileApp() {
     setGuideIndex(index);
     navigate("guide");
   }
-  // App home answers one question first: are my spaces set up? Then the one next task, then a short list.
+  // App home shows today's blocking window first, then whether the spaces are set up, then a short list.
   // 공간 추가 lives in the 공간 tab; the guide keeps a quiet shortcut under the list.
   const protectedSpaces = spaces.filter((s) => s.regions.some((r) => r.grade !== "D"));
   const needsSetup = spaces.find((s) => !s.regions.some((r) => r.grade !== "D"));
+  const protectedRegionCount = spaces.reduce((n, s) => n + s.regions.filter((r) => r.grade !== "D").length, 0);
+  // Today's blocking times lead the home screen: one big window when every space shares it, else one row per space.
+  const scheduled = spaces.flatMap((s) => (s.shadingSchedule?.enabled ? [{ id: s.id, name: s.name, ...s.shadingSchedule }] : []));
+  const sharedWindow = scheduled.length > 0 && scheduled.every((s) => s.start === scheduled[0].start && s.end === scheduled[0].end);
+  const nowDate = new Date(clock);
+  const nowMinute = nowDate.getHours() * 60 + nowDate.getMinutes();
+  const blockingNow = scheduled.some((s) => {
+    const a = timeToMinute(s.start);
+    const b = timeToMinute(s.end);
+    if (a === null || b === null) return false;
+    return a <= b ? nowMinute >= a && nowMinute < b : nowMinute >= a || nowMinute < b;
+  });
   const homeDashboard = !spaces.length ? null : (
     <div className="home-dashboard">
-      <section className="home-hero" aria-label="보호 설정 현황">
-        <h2>
-          {protectedSpaces.length === spaces.length ? (
-            <>
-              공간 {spaces.length}곳 모두
-              <br />
-              보호 설정을 마쳤어요
-            </>
-          ) : protectedSpaces.length === 0 ? (
-            <>
-              아직 보호 설정을
-              <br />
-              마친 공간이 없어요
-            </>
-          ) : (
-            <>
-              {spaces.length}곳 중 {protectedSpaces.length}곳의
-              <br />
-              보호 설정을 마쳤어요
-            </>
-          )}
-        </h2>
-        <i className="home-hero-bar" aria-hidden="true">
-          <b style={{ width: `${(protectedSpaces.length / spaces.length) * 100}%` }} />
-        </i>
-        {needsSetup && (
-          <div className="home-task">
-            <span>
-              다음 할 일<strong>{needsSetup.name}</strong>
-            </span>
-            <button className="primary" onClick={() => selectSpace(needsSetup)}>
-              보호 영역 설정하기
+      <section className="home-today" aria-label="오늘 차단 시각">
+        <h2 className="home-today-label">오늘 차단 시각</h2>
+        {scheduled.length === 0 ? (
+          <>
+            <p className="home-today-empty">아직 차단 시간을 정한 공간이 없어요</p>
+            <button className="primary" onClick={() => selectSpace(spaces[0])}>
+              차단 시간 정하기
             </button>
-          </div>
+          </>
+        ) : (
+          <>
+            {sharedWindow ? (
+              <p className="home-today-time">
+                {scheduled[0].start} – {scheduled[0].end}
+              </p>
+            ) : (
+              <ul className="home-today-list">
+                {scheduled.slice(0, 3).map((s) => (
+                  <li key={s.id}>
+                    <span>{s.name}</span>
+                    <strong>
+                      {s.start} – {s.end}
+                    </strong>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <span className={`home-today-chip${blockingNow ? " on" : ""}`} role="status">
+              {blockingNow ? "지금 차단 중" : "지금은 차단 시간이 아니에요"}
+            </span>
+          </>
         )}
       </section>
       <div className="home-preview-head">
@@ -237,6 +255,27 @@ function MobileApp() {
           전체 보기
         </button>
       </div>
+      <section className={`home-status${needsSetup ? " todo" : ""}`} aria-label="보호 설정 현황">
+        <span className="home-status-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6l7-3z" />
+            {!needsSetup && <path d="M9 12l2 2 4-4" />}
+          </svg>
+        </span>
+        <span className="home-status-text">
+          <strong>
+            {!needsSetup
+              ? `공간 ${spaces.length}곳 모두 보호 중`
+              : `${spaces.length}곳 중 ${protectedSpaces.length}곳 보호 중`}
+          </strong>
+          <small>{needsSetup ? `${needsSetup.name} 설정 전` : `보호 영역 ${protectedRegionCount}개 설정됨`}</small>
+        </span>
+        {needsSetup && (
+          <button className="primary" aria-label="보호 영역 설정하기" onClick={() => selectSpace(needsSetup)}>
+            설정하기
+          </button>
+        )}
+      </section>
       <div className="home-preview">
         {spaces.slice(0, 3).map((s) => (
           <button key={s.id} onClick={() => selectSpace(s)}>
@@ -279,6 +318,11 @@ function MobileApp() {
                   .filter((s) => s.building === building)
                   .map((s) => (
                     <div className="room-entry" key={s.id}>
+                      <SpaceMenu label={`${s.name} 더보기`} items={[
+                        { label: "배치 편집", icon: "layout", onSelect: () => editSpace(s) },
+                        { label: "공간 정보 수정", icon: "info", onSelect: () => editSpace(s, "register") },
+                        { label: "공간 삭제", icon: "trash", danger: true, onSelect: () => { setActiveId(s.id); setModal("delete-space"); } },
+                      ]} />
                       <button
                         className="room-card"
                         onClick={() => selectSpace(s)}
@@ -315,7 +359,7 @@ function MobileApp() {
           ))}
         </div>
       )}
-      {spaces.length > 0 && (
+      {!isApp && spaces.length > 0 && (
         <button className="secondary add-space" onClick={begin}>
           ＋ 공간 추가
         </button>
@@ -499,6 +543,19 @@ function MobileApp() {
                     ＋
                   </button>
                 )}
+                {page === "detail" && active && (
+                  <div className="heading-actions">
+                    <button type="button" className="secondary" onClick={() => editSpace(active)}><SpaceMenuGlyph name="layout" />배치 편집</button>
+                    <SpaceMenu
+                      label="공간 더보기"
+                      items={[
+                        { label: "공간 정보 수정", icon: "info", onSelect: () => editSpace(active, "register") },
+                        { label: "공간 삭제", icon: "trash", danger: true, onSelect: () => setModal("delete-space") },
+                        ...(isApp ? [{ label: "웹에서 크게 보기", icon: "external" as const, onSelect: () => { window.open(`${location.origin}/?mode=web#/detail/${active.id}`, "_blank", "noopener"); } }] : []),
+                      ]}
+                    />
+                  </div>
+                )}
               </div>
               )}
               {storageError && (
@@ -573,7 +630,7 @@ function MobileApp() {
                       {serverError} 기존 브라우저 자료는 유지됩니다.
                     </p>
                   )}
-                  {!isApp ? <WorkspaceCards spaces={spaces} selectSpace={selectSpace} onStart={begin} /> : page === "home" ? null : spaceList}
+                  {!isApp ? <WorkspaceCards spaces={spaces} selectSpace={selectSpace} onStart={begin} onEdit={(s, at) => editSpace(s, at)} onDelete={(s) => { setActiveId(s.id); setModal("delete-space"); }} /> : page === "home" ? null : spaceList}
                   {page === "spaces" && tempDrafts.length > 0 && (
                     <section className="temp-drafts" aria-labelledby="temp-drafts-title">
                       <h2 id="temp-drafts-title">작성 중인 공간</h2>
@@ -1303,7 +1360,7 @@ function MobileApp() {
               {page === "detail" && active && (
                 <div className="workspace">
                   <div className="workspace-main">
-                    {zoneTabs}
+                    {active.zones.length > 1 && zoneTabs}
                     <Card className="status-card">
                       <span
                         className={`status-dot ${activeRegionCount ? "" : "pending"}`}
@@ -1388,22 +1445,9 @@ function MobileApp() {
                     {sunSource?.note}
                     </Card>
                     <Card className="detail-film">
-                      <VirtualFilmControl space={active} prediction={filmPrediction} hour={hour} />
-                    </Card>
-                    <Card className="detail-management-card">
-                      <h3>공간 관리</h3>
-                      <div className="detail-management-actions">
-                        <button className="manage-row" onClick={() => editSpace(active)}>
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4ZM13.5 6.5l4 4" /></svg><span>가구·도면·보호 영역 수정</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="m9 5 7 7-7 7" /></svg>
-                        </button>
-                        <button className="manage-row" onClick={() => editSpace(active, "register")}>
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="M12 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6M17.5 3.5a2.1 2.1 0 0 1 3 3L13 14l-4 1 1-4 7.5-7.5Z" /></svg><span>공간 정보 수정</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="m9 5 7 7-7 7" /></svg>
-                        </button>
-                        <button className="manage-row" onClick={() => { window.open(`${location.origin}/?mode=web#/detail/${active.id}`, "_blank", "noopener"); }}>
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5H5V6h5" /></svg><span>웹에서 크게 보기</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="m9 5 7 7-7 7" /></svg>
-                        </button>
-                      </div>
-                      <button className="manage-delete" onClick={() => setModal("delete-space")}>공간 삭제</button>
+                      <VirtualFilmControl space={active} prediction={filmPrediction} hour={hour}>
+                        {filmPrediction?.plan && <AdaptiveEffect space={active} start={filmPrediction.plan.start_time} />}
+                      </VirtualFilmControl>
                     </Card>
                   </div>
                 </div>
@@ -1480,67 +1524,20 @@ function MobileApp() {
                     </span>
                     <svg className="more-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m9 5 7 7-7 7" /></svg>
                   </button>
-                  <h2 className="section-label">공간</h2>
+                  <h2 className="section-label">등급 기준</h2>
                   <Card>
-                    <button className="row" onClick={() => setPage("spaces")}>
-                      <svg className="more-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 4h16v16H4zM4 12h16M12 4v16" /></svg>
-                      <span>내 공간</span>
-                      <span className="more-value">{spaces.length}개</span>
-                      <svg className="more-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m9 5 7 7-7 7" /></svg>
-                    </button>
-                    <button
-                      className="row"
-                      onClick={() =>
-                        active ? selectSpace(active) : setPage("spaces")
-                      }
-                    >
-                      <svg className="more-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 7l8-4 8 4-8 4-8-4Zm0 5 8 4 8-4M4 17l8 4 8-4" /></svg>
-                      <span>구역 정보</span>
-                      <span className="more-value">
-                        {spaces.reduce((n, s) => n + s.zones.length, 0)}개
-                      </span>
-                      <svg className="more-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m9 5 7 7-7 7" /></svg>
-                    </button>
-                  </Card>
-                  <h2 className="section-label">보호 정보</h2>
-                  <Card>
-                    <button
-                      className="row"
-                      onClick={() =>
-                        active ? selectSpace(active) : setPage("spaces")
-                      }
-                    >
-                      <svg className="more-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3 5 6v5c0 4.5 3 8 7 10 4-2 7-5.5 7-10V6l-7-3Z" /></svg>
-                      <span>보호 영역</span>
-                      <span className="more-value">
-                        {spaces.reduce((n, s) => n + s.regions.filter(r => r.grade !== "D").length, 0)}개
-                      </span>
-                      <svg className="more-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m9 5 7 7-7 7" /></svg>
-                    </button>
-                    <button
-                      className="row"
-                      onClick={() => (active ? editSpace(active) : begin())}
-                    >
-                      <svg className="more-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.3 6.8 19.1l1-5.8L3.5 9.2l5.9-.9L12 3Z" /></svg>
-                      <span>보호 등급</span>
-                      <span className="more-value">
-                        {active
-                          ? (Object.entries(gradeCounts(active)) as [Grade, number][])
-                              .filter(([, n]) => n)
-                              .map(([g]) => g)
-                              .join(", ") || "없음"
-                          : "미지정"}
-                      </span>
-                      <svg className="more-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m9 5 7 7-7 7" /></svg>
-                    </button>
-                  </Card>
-                  <h2 className="section-label">도움말</h2>
-                  <Card>
-                    <button className="row" onClick={() => navigate("guide")}>
-                      <svg className="more-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 6c-3-2-6-2-9-1v15c3-1 6-1 9 1 3-2 6-2 9-1V5c-3-1-6-1-9 1Zm0 0v15" /></svg>
-                      <span>사용 가이드</span>
-                      <svg className="more-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m9 5 7 7-7 7" /></svg>
-                    </button>
+                    {(Object.entries(grades) as [Grade, string][]).map(([g, text]) => {
+                      const [rate, how] = text.split(" · ");
+                      return (
+                        <div className="row info-row" key={g}>
+                          <span className={`furniture-grade grade-${g}`}>{g}</span>
+                          <span>
+                            <strong>{rate}</strong>
+                            <small>{how}</small>
+                          </span>
+                        </div>
+                      );
+                    })}
                   </Card>
                   {cameraTools && <>
                   {/* WEB APP TEST ONLY: phones testing in the browser need a one-time camera setup

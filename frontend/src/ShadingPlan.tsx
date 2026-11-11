@@ -21,7 +21,10 @@ export function FilmGrid({ space, schedule, hour, marker = false, prediction, se
   const problem = validateWindow(space);
   if (problem) return <p className="muted small">{problem}</p>;
   const { cols, rows } = filmGrid(win);
-  if (prediction && !prediction.plan) return <figure className="film-grid"><p className={prediction.error ? "error" : "muted small"} role={prediction.error ? "alert" : "status"}>{prediction.error ?? (prediction.empty ? "아직 이 공간의 차광 계획이 없습니다." : "차광 계획을 계산하는 중…")}</p></figure>;
+  if (prediction && !prediction.plan) {
+    const loading = !prediction.error && !prediction.empty;
+    return <figure className="film-grid">{loading && <div className="film-grid-skeleton" style={{ aspectRatio: `${cols} / ${rows}` }} aria-hidden="true" />}<p className={prediction.error ? "error" : "muted small"} role={prediction.error ? "alert" : "status"}>{prediction.error ?? (prediction.empty ? "아직 이 공간의 차광 계획이 없습니다." : "차광 계획을 계산하는 중…")}</p></figure>;
+  }
   const serverWindow = prediction?.plan?.windows[0];
   if (serverWindow && (serverWindow.film_cols !== cols || serverWindow.film_rows !== rows))
     return <p className="error" role="alert">저장된 창문 규격과 차광 계획이 다릅니다. 최신 공간 정보를 불러와 주세요.</p>;
@@ -78,7 +81,7 @@ export function FilmGrid({ space, schedule, hour, marker = false, prediction, se
 
 // WAR4.2: the user chooses when light may be blocked. The 24-hour bar shows that range and the
 // time picked on the slider; the simplified sun times stay as small reference text only.
-export function ShadingTimeControl({ space, value, onChange, sunSchedule, hour, onSave, dirty = false, saving = false, sunSource, compact = false }: {
+export function ShadingTimeControl({ space, value, onChange, sunSchedule, hour, onSave, dirty = false, saving = false, sunSource, compact = false, hideNote = false }: {
   space: Space;
   value: ShadingTime;
   onChange: (time: ShadingTime) => void;
@@ -90,6 +93,8 @@ export function ShadingTimeControl({ space, value, onChange, sunSchedule, hour, 
   // Where the sun times come from; without it they are the simplified preview calculation.
   sunSource?: { label: string; note?: ReactNode };
   compact?: boolean;
+  // The forecast notes are shown elsewhere (below the settings) when set.
+  hideNote?: boolean;
 }) {
   const minute = Math.round(hour * 60);
   const regions = protectedRegions(space);
@@ -127,8 +132,8 @@ export function ShadingTimeControl({ space, value, onChange, sunSchedule, hour, 
     <div className="blocking-axis" aria-hidden="true">
       {[0, 6, 12, 18, 24].map((h) => <span key={h} style={{ left: pct(h * 60) }}>{String(h).padStart(2, "0")}</span>)}
     </div>
-    {!compact && <p className="blocking-status" role="status">
-      {active ? `${value.start} ~ ${value.end} 차단 · 지금 선택한 ${formatMinute(minute)}은 ${minute >= start && minute < end ? "차단 시간" : "차단 시간 밖"}` : "차단 시간이 설정되지 않음"}
+    {!compact && active && <p className="blocking-status" role="status">
+      {`${value.start} ~ ${value.end} 차단 · 지금 선택한 ${formatMinute(minute)}은 ${minute >= start && minute < end ? "차단 시간" : "차단 시간 밖"}`}
     </p>}
     {!compact && (regions.length > 0 ? (sunSource?.note ? null : <ul className="sun-reference muted small">
       {regions.map((r) => {
@@ -142,7 +147,7 @@ export function ShadingTimeControl({ space, value, onChange, sunSchedule, hour, 
       {saving ? "저장 중…" : "차단 시간 저장"}
     </button>}
     {/* The forecast notes come after the save button so they do not split the form. */}
-    {!compact && regions.length > 0 && sunSource?.note}
+    {!compact && !hideNote && regions.length > 0 && sunSource?.note}
   </section>;
 }
 
@@ -160,7 +165,7 @@ function unmetByTime(logs: FilmApplicationLogEntry[], timezone?: string) {
  * The film as its own card: what is covered at the chosen time, and one button that sends the plan on.
  * The unmet-times list appears only when the film could not reach the wanted cover.
  */
-export function VirtualFilmControl({ space, prediction, hour }: { space: Space; prediction?: ShadingResult; hour: number }) {
+export function VirtualFilmControl({ space, prediction, hour, children }: { space: Space; prediction?: ShadingResult; hour: number; children?: ReactNode }) {
   const sceneId = space.serverSceneId;
   const win = resolveWindow(space);
   const [busy, setBusy] = useState(false);
@@ -215,6 +220,7 @@ export function VirtualFilmControl({ space, prediction, hour }: { space: Space; 
             </>
           : <p className="muted small">{!plan ? "아직 계산된 차단 계획이 없어요." : busy ? "불러오는 중…" : "필름 상태를 불러오지 못했어요."}</p>}
       </div>
+      {children}
       <button type="button" className="secondary" disabled={!plan || busy} onClick={() => void load(true)}>
         {busy ? "적용 중…" : "필름에 적용"}
       </button>
