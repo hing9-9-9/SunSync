@@ -51,3 +51,18 @@ test("the offset is looked up once per zone and day, not once per minute", () =>
   assert.equal(offsetFor("Asia/Seoul", 2026, 15), 9); // another zone too
   assert.equal(calls, 3);
 });
+
+
+test("rotated shelves choose the window-facing long side in world coordinates", () => {
+  for(const width of [1,2]) for(const yaw of [15,30,90,180,215,270]) {
+    const furniture={id:"s",name:"s",zone:"z",x:1,y:1,width,depth:1.5,height:2,yaw};
+    const angle=yaw*Math.PI/180,c=Math.cos(angle),s=Math.sin(angle);
+    for(const wall of ["south","north","east","west"] as const) {
+      const front=shelfFront(wall,furniture);
+      const world=[c*front.dx+s*front.dz,-s*front.dx+c*front.dz];
+      const target=toThree(OUTWARD[wall]);
+      assert.ok(world[0]*target[0]+world[1]*target[1]>=-1e-10);
+      assert.equal(width>=furniture.depth ? front.dx : front.dz,0);
+    }
+  }
+});

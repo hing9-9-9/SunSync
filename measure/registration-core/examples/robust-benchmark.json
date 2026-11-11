@@ -1,0 +1,293 @@
+{
+  "scope": "synthetic_only",
+  "pixel_noise_sigma_px": 0.3,
+  "placement_jitter_sigma_m": 0.002,
+  "outlier_translation_m": 0.09,
+  "frames_per_point": 8,
+  "seeds": [
+    800,
+    819
+  ],
+  "results": [
+    {
+      "shape": "rectangle",
+      "outlier": false,
+      "scope": "Dataset comparison; not a guarantee of real-device accuracy",
+      "summary": {
+        "legacy": {
+          "total": 20,
+          "accepted": 20,
+          "rejected": 0,
+          "mean_absolute_error_m": [
+            0.0012507736280770898,
+            0.0008007160444764266,
+            0.0006487470003398998
+          ]
+        },
+        "weighted": {
+          "total": 20,
+          "accepted": 20,
+          "rejected": 0,
+          "mean_absolute_error_m": [
+            0.0010491836108177054,
+            0.0006688940848391777,
+            0.0005244971424871403
+          ]
+        },
+        "robust_joint": {
+          "total": 20,
+          "accepted": 20,
+          "rejected": 0,
+          "mean_absolute_error_m": [
+            0.000951848495779567,
+            0.000610087063137224,
+            0.0004547495948608149
+          ]
+        }
+      }
+    },
+    {
+      "shape": "rectangle",
+      "outlier": true,
+      "scope": "Dataset comparison; not a guarantee of real-device accuracy",
+      "summary": {
+        "legacy": {
+          "total": 20,
+          "accepted": 0,
+          "rejected": 20,
+          "mean_absolute_error_m": null
+        },
+        "weighted": {
+          "total": 20,
+          "accepted": 20,
+          "rejected": 0,
+          "mean_absolute_error_m": [
+            0.0013232244798288217,
+            0.0007281826735786506,
+            0.0006075341771707543
+          ]
+        },
+        "robust_joint": {
+          "total": 20,
+          "accepted": 20,
+          "rejected": 0,
+          "mean_absolute_error_m": [
+            0.0011225072893086274,
+            0.0006734887009798213,
+            0.0005304280359680668
+          ]
+        }
+      }
+    },
+    {
+      "shape": "circle",
+      "outlier": false,
+      "scope": "Dataset comparison; not a guarantee of real-device accuracy",
+      "summary": {
+        "legacy": {
+          "total": 20,
+          "accepted": 20,
+          "rejected": 0,
+          "mean_absolute_error_m": [
+            0.0010908211728018647,
+            0.0010908211728018647,
+            0.0006556932991389819
+          ]
+        },
+        "weighted": {
+          "total": 20,
+          "accepted": 20,
+          "rejected": 0,
+          "mean_absolute_error_m": [
+            0.0010377096111554296,
+            0.0010377096111554296,
+            0.0005531322224762936
+          ]
+        },
+        "robust_joint": {
+          "total": 20,
+          "accepted": 20,
+          "rejected": 0,
+          "mean_absolute_error_m": [
+            0.0009767487835029398,
+            0.0009767487835029398,
+            0.0004775136608710873
+          ]
+        }
+      }
+    },
+    {
+      "shape": "circle",
+      "outlier": true,
+      "scope": "Dataset comparison; not a guarantee of real-device accuracy",
+      "summary": {
+        "legacy": {
+          "total": 20,
+          "accepted": 0,
+          "rejected": 20,
+          "mean_absolute_error_m": null
+        },
+        "weighted": {
+          "total": 20,
+          "accepted": 20,
+          "rejected": 0,
+          "mean_absolute_error_m": [
+            0.0011105928922300833,
+            0.0011105928922300833,
+            0.0006534704294104743
+          ]
+        },
+        "robust_joint": {
+          "total": 20,
+          "accepted": 20,
+          "rejected": 0,
+          "mean_absolute_error_m": [
+            0.0010482840741533384,
+            0.0010482840741533384,
+            0.0005760592514690744
+          ]
+        }
+      }
+    },
+    {
+      "shape": "ellipse",
+      "outlier": false,
+      "scope": "Dataset comparison; not a guarantee of real-device accuracy",
+      "summary": {
+        "legacy": {
+          "total": 20,
+          "accepted": 20,
+          "rejected": 0,
+          "mean_absolute_error_m": [
+            0.001649341583251962,
+            0.0012856340408325174,
+            0.0004605786530864686
+          ]
+        },
+        "weighted": {
+          "total": 20,
+          "accepted": 20,
+          "rejected": 0,
+          "mean_absolute_error_m": [
+            0.001520354151725778,
+            0.0011756467819213912,
+            0.0003919190199486444
+          ]
+        },
+        "robust_joint": {
+          "total": 20,
+          "accepted": 20,
+          "rejected": 0,
+          "mean_absolute_error_m": [
+            0.0015074288845062344,
+            0.001155081689357762,
+            0.0003506735437979469
+          ]
+        }
+      }
+    },
+    {
+      "shape": "ellipse",
+      "outlier": true,
+      "scope": "Dataset comparison; not a guarantee of real-device accuracy",
+      "summary": {
+        "legacy": {
+          "total": 20,
+          "accepted": 0,
+          "rejected": 20,
+          "mean_absolute_error_m": null
+        },
+        "weighted": {
+          "total": 20,
+          "accepted": 20,
+          "rejected": 0,
+          "mean_absolute_error_m": [
+            0.0015058070421218983,
+            0.0010402604937553405,
+            0.000405447096648065
+          ]
+        },
+        "robust_joint": {
+          "total": 20,
+          "accepted": 20,
+          "rejected": 0,
+          "mean_absolute_error_m": [
+            0.0015197134017944426,
+            0.0010264360904693626,
+            0.0003675389846931998
+          ]
+        }
+      }
+    },
+    {
+      "shape": "polygon",
+      "outlier": false,
+      "scope": "Dataset comparison; not a guarantee of real-device accuracy",
+      "summary": {
+        "legacy": {
+          "total": 20,
+          "accepted": 20,
+          "rejected": 0,
+          "mean_absolute_error_m": [
+            0.00200701966551049,
+            0.0010632859479087265,
+            0.0004891389236809762
+          ]
+        },
+        "weighted": {
+          "total": 20,
+          "accepted": 20,
+          "rejected": 0,
+          "mean_absolute_error_m": [
+            0.0018886940225497418,
+            0.0008527803483658752,
+            0.0004544008534054622
+          ]
+        },
+        "robust_joint": {
+          "total": 20,
+          "accepted": 20,
+          "rejected": 0,
+          "mean_absolute_error_m": [
+            0.0018865582788669955,
+            0.0008376155691361464,
+            0.00041319681864837034
+          ]
+        }
+      }
+    },
+    {
+      "shape": "polygon",
+      "outlier": true,
+      "scope": "Dataset comparison; not a guarantee of real-device accuracy",
+      "summary": {
+        "legacy": {
+          "total": 20,
+          "accepted": 0,
+          "rejected": 20,
+          "mean_absolute_error_m": null
+        },
+        "weighted": {
+          "total": 20,
+          "accepted": 20,
+          "rejected": 0,
+          "mean_absolute_error_m": [
+            0.001950468608666256,
+            0.0008813263389137266,
+            0.00043081085382754014
+          ]
+        },
+        "robust_joint": {
+          "total": 20,
+          "accepted": 20,
+          "rejected": 0,
+          "mean_absolute_error_m": [
+            0.001961886069394919,
+            0.0008745076926833739,
+            0.0004058804250224979
+          ]
+        }
+      }
+    }
+  ]
+}

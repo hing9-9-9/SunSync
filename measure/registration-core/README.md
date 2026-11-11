@@ -140,3 +140,8 @@ integration/   모바일 연동 계약
 GitHub에는 이 폴더의 코드·예제·테스트만 올리면 됩니다. 개인 실험 사진, 기존 카메라 보정 파일, `.venv`, 자격 증명은 포함하지 않았습니다.
 
 공용 필름 규격과 좌표계 연결은 [단일 마커 계약](../../docs/fr03_single_marker.md)을 참고합니다. `python tools/generate_film_marker.py output`으로 1m 필름 기준 이미지와 규격 JSON을 생성할 수 있습니다.
+
+
+### 관측 선별·공동 최적화
+
+기본 측정 모드는 `robust_joint`입니다. `legacy`, `weighted`와 같은 입력으로 비교할 수 있으며, `/v1/observations/select`로 지점별 연사 관측을 먼저 선별할 수 있습니다. 원본은 지점당 최대 20개, 기본 채택 상한은 8개입니다. 구현·출력 필드·합성 검증과 실제 테스트 절차는 [관측 선별과 도형 공동 최적화](../../docs/fr03_robust_measurement.md)를 참고하세요.

@@ -240,7 +240,7 @@ def test_offset_correction_and_highest_point_and_manual_height():
     req["plan"]["samples_per_point"] = 1
     req["captures"] = [req["captures"][i] for i in [0, 3, 6, 9]]
     result = measure(MeasureRequest.model_validate(req))
-    assert np.allclose(result["points"]["P1"]["point_board_m"], expected)
+    assert np.allclose(result["points"]["P1"]["raw_point_board_m"], expected)
     req = example.fixture().model_dump()
     req["plan"].update(height_mode="manual", manual_height_m=0.9)
     assert (

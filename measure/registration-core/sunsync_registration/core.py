@@ -1,19 +1,22 @@
 import hashlib
 import json
 from datetime import datetime
+
 import numpy as np
+
+from .geometry import fit_surface
 from .models import (
     Alignment,
     Board,
     Floor,
+    MeasureRequest,
     ModelPlacement,
     PlanRequest,
-    MeasureRequest,
     Shape,
     rigid,
 )
-from .pose import estimate
-from .geometry import fit_surface
+from .pose import estimate, point_covariance
+from .robust import fuse, refine
 
 
 def digest(value):
@@ -35,11 +38,11 @@ def plan(request: PlanRequest):
         points = [list(v) for v in request.shape.vertices]
     steps = [
         {
-            "point_id": f"P{i+1}",
+            "point_id": f"P{i + 1}",
             "role": "surface",
             "guide_xy": p,
             "required_samples": request.samples_per_point,
-            "instruction_ko": f"P{i+1} 지점에 렌즈를 맞추고 고정 마커 보드를 촬영하세요.",
+            "instruction_ko": f"P{i + 1} 지점에 렌즈를 맞추고 고정 마커 보드를 촬영하세요.",
         }
         for i, p in enumerate(points)
     ]
@@ -67,6 +70,9 @@ def measure(request: MeasureRequest):
     steps = {s["point_id"]: s for s in instructions["steps"]}
     grouped = {key: [] for key in steps}
     diagnostics = []
+    observations = {key: [] for key in steps}
+    selected = {}
+    seen_images = set()
     accepted_times = []
     ids = [c.capture_id for c in request.captures]
     if len(set(ids)) != len(ids):
@@ -81,9 +87,7 @@ def measure(request: MeasureRequest):
         explicit_up = np.array(request.floor.up_board)
         if up is not None and (
             not np.allclose(up, explicit_up, atol=1e-6)
-            or not np.isclose(
-                origin_height, request.floor.board_origin_height_m, atol=1e-4
-            )
+            or not np.isclose(origin_height, request.floor.board_origin_height_m, atol=1e-4)
         ):
             raise ValueError("Floor reference disagrees with ENU transform")
         up = explicit_up
@@ -91,6 +95,17 @@ def measure(request: MeasureRequest):
     for capture in request.captures:
         if capture.point_id not in grouped:
             raise ValueError("Unknown point_id; use the active plan step")
+        if capture.image_sha256 and capture.image_sha256 in seen_images:
+            diagnostics.append(
+                {
+                    "capture_id": capture.capture_id,
+                    "point_id": capture.point_id,
+                    "status": "duplicate_image",
+                }
+            )
+            continue
+        if capture.image_sha256:
+            seen_images.add(capture.image_sha256)
         result = estimate(
             request.board,
             capture.camera,
@@ -104,11 +119,35 @@ def measure(request: MeasureRequest):
             accepted_times.append(capture.captured_at)
             t = rigid(result["T_board_camera"])
             point = t[:3, :3] @ capture.camera_to_point_m + t[:3, 3]
+            covariance = point_covariance(result, capture.camera_to_point_m)
+            if request.estimation_mode != "legacy" and (
+                covariance is None
+                or np.sqrt(np.linalg.eigvalsh(covariance)[-1]) > request.max_point_uncertainty_m
+            ):
+                diagnostics[-1]["status"] = "pose_uncertainty_too_large"
+                continue
             grouped[capture.point_id].append(point)
+            observations[capture.point_id].append(
+                {
+                    "point": point,
+                    "covariance": covariance,
+                    "transform": t,
+                    "capture": capture,
+                    "pixel_sigma": result["pixel_sigma_px"],
+                    "signature": np.array(
+                        [
+                            d.corners_px
+                            for d in sorted(capture.detections, key=lambda d: d.marker_id)
+                        ]
+                    ).ravel(),
+                }
+            )
     points = {}
     actions = []
     for key, values in grouped.items():
         status = {
+            "raw_samples": sum(c.point_id == key for c in request.captures),
+            "selected_samples": 0,
             "valid_samples": len(values),
             "required_samples": steps[key]["required_samples"],
             "uncertainty_m": None,
@@ -117,6 +156,29 @@ def measure(request: MeasureRequest):
         if len(values) < steps[key]["required_samples"]:
             points[key] = {**status, "status": "insufficient_samples"}
             actions.append(f"recapture:{key}")
+            continue
+        if request.estimation_mode != "legacy":
+            fused, kept, info = fuse(
+                observations[key],
+                steps[key]["required_samples"],
+                request.max_repeat_spread_m,
+                request.max_selected_per_point,
+                request.placement_sigma_m,
+            )
+            points[key] = {
+                **status,
+                **info,
+                "raw_samples": sum(c.point_id == key for c in request.captures),
+                "selected_samples": len(kept),
+                "status": info["reason"],
+            }
+            if fused is None:
+                actions.append(f"recapture:{key}")
+                continue
+            selected[key] = kept
+            points[key]["point_board_m"] = fused.tolist()
+            if enu is not None:
+                points[key]["point_enu_m"] = (enu[:3, :3] @ fused + enu[:3, 3]).tolist()
             continue
         array = np.asarray(values)
         median = np.median(array, axis=0)
@@ -132,11 +194,21 @@ def measure(request: MeasureRequest):
         points[key] = {
             **status,
             "status": "ok",
+            "selected_samples": len(values),
             "point_board_m": median.tolist(),
             "repeat_spread_m": spread if len(values) > 1 else None,
         }
         if enu is not None:
             points[key]["point_enu_m"] = (enu[:3, :3] @ median + enu[:3, 3]).tolist()
+    if request.estimation_mode != "legacy":
+        accepted_times = [s["capture"].captured_at for group in selected.values() for s in group]
+    kept_ids = {s["capture"].capture_id for group in selected.values() for s in group}
+    for diagnostic in diagnostics:
+        diagnostic["selected"] = (
+            diagnostic["status"] == "ok"
+            if request.estimation_mode == "legacy"
+            else diagnostic["capture_id"] in kept_ids
+        )
     reference = {
         "space_id": request.plan.space_id,
         "board": request.board.model_dump(),
@@ -155,6 +227,8 @@ def measure(request: MeasureRequest):
         "shape": request.plan.shape.model_dump(),
         "points": points,
         "capture_diagnostics": diagnostics,
+        "estimation_mode": request.estimation_mode,
+        "optimization": None,
         "surface": None,
         "model": None,
         "status": "incomplete",
@@ -174,16 +248,33 @@ def measure(request: MeasureRequest):
         "surface_tolerance_m": request.max_surface_residual_m,
         "measurement_note": "Repeat spread and reprojection residual do not prove metric accuracy.",
     }
-    surface_keys = [
-        s["point_id"] for s in instructions["steps"] if s["role"] == "surface"
-    ]
+    surface_keys = [s["point_id"] for s in instructions["steps"] if s["role"] == "surface"]
     if any(points[k]["status"] != "ok" for k in surface_keys):
         return response
     surface_points = np.array([points[k]["point_board_m"] for k in surface_keys])
     try:
-        fit = fit_surface(
-            request.plan.shape.kind, surface_points, request.max_surface_residual_m
-        )
+        fit_surface(request.plan.shape.kind, surface_points, request.max_surface_residual_m)
+        if request.estimation_mode == "robust_joint" and up is not None:
+            optimized, info = refine(
+                request.plan.shape.kind,
+                surface_points,
+                [selected[k] for k in surface_keys],
+                request.board,
+                up,
+                request.placement_sigma_m,
+                request.max_surface_residual_m,
+                request.max_reprojection_rmse_px,
+            )
+            response["optimization"] = info
+            for key, raw, point in zip(surface_keys, surface_points, optimized):
+                points[key]["raw_point_board_m"] = raw.tolist()
+                points[key]["point_board_m"] = point.tolist()
+                if enu is not None:
+                    points[key]["point_enu_m"] = (enu[:3, :3] @ point + enu[:3, 3]).tolist()
+            surface_points = optimized
+        elif request.estimation_mode == "robust_joint":
+            response["optimization"] = {"status": "requires_floor_reference"}
+        fit = fit_surface(request.plan.shape.kind, surface_points, request.max_surface_residual_m)
     except ValueError as error:
         response["status"] = "invalid_surface"
         actions.append(str(error))
@@ -194,9 +285,15 @@ def measure(request: MeasureRequest):
         "depth_m": fit["depth"],
         "center_board_m": centre.tolist(),
         "kind": request.plan.shape.kind,
-        "outline_board_m": surface_points.tolist() if request.plan.shape.kind == "polygon" else None,
-        "bounding_box": {"width_m": fit["width"], "depth_m": fit["depth"],
-                         "center_board_m": centre.tolist(), "width_axis_board": fit["axis"].tolist()},
+        "outline_board_m": surface_points.tolist()
+        if request.plan.shape.kind == "polygon"
+        else None,
+        "bounding_box": {
+            "width_m": fit["width"],
+            "depth_m": fit["depth"],
+            "center_board_m": centre.tolist(),
+            "width_axis_board": fit["axis"].tolist(),
+        },
         "max_residual_m": fit["max_residual_m"],
         "height_above_floor_m": None,
     }
@@ -230,9 +327,7 @@ def measure(request: MeasureRequest):
     if height <= 0:
         actions.append("height_must_be_positive")
         return response
-    base_height = (
-        0 if request.plan.floor_supported else request.plan.manual_base_height_m
-    )
+    base_height = 0 if request.plan.floor_supported else request.plan.manual_base_height_m
     if mode == "manual" and (
         surface_height < base_height - request.max_surface_residual_m
         or surface_height > base_height + height + request.max_surface_residual_m
@@ -274,10 +369,7 @@ def measure(request: MeasureRequest):
 
 def canonical_model(value: dict):
     """Rebuild placement from validated transforms, never caller-derived fields."""
-    if (
-        value.get("schema_version") != "sunsync.registration/1"
-        or value.get("units") != "m"
-    ):
+    if value.get("schema_version") != "sunsync.registration/1" or value.get("units") != "m":
         raise ValueError("Unsupported measurement contract")
     if value.get("status") != "model_ready_unreviewed":
         raise ValueError("Only complete model placements can enter a scene")
@@ -329,24 +421,18 @@ def canonical_model(value: dict):
     if not np.allclose(tm[:3, 2], up, atol=1e-6):
         raise ValueError("Model up axis disagrees with floor reference")
     shape = Shape.model_validate(value["shape"])
-    count = {"rectangle": 4, "circle": 4, "ellipse": 6}.get(
-        shape.kind, len(shape.vertices)
-    )
+    count = {"rectangle": 4, "circle": 4, "ellipse": 6}.get(shape.kind, len(shape.vertices))
     points = value["points"]
-    if any(points[f"P{i+1}"]["status"] != "ok" for i in range(count)):
+    if any(points[f"P{i + 1}"]["status"] != "ok" for i in range(count)):
         raise ValueError("Model requires complete measured surface points")
-    surface_points = np.array(
-        [points[f"P{i+1}"]["point_board_m"] for i in range(count)], float
-    )
+    surface_points = np.array([points[f"P{i + 1}"]["point_board_m"] for i in range(count)], float)
     if not np.isfinite(surface_points).all():
         raise ValueError("Non-finite measured points")
     tolerance = float(value["surface_tolerance_m"])
     if not 0 < tolerance <= 0.1:
         raise ValueError("Invalid surface tolerance")
     fit = fit_surface(shape.kind, surface_points, tolerance)
-    origin_height = (
-        float(te_b[2, 3]) if alignment is not None else floor.board_origin_height_m
-    )
+    origin_height = float(te_b[2, 3]) if alignment is not None else floor.board_origin_height_m
     heights = surface_points @ up + origin_height
     if min(heights) < 0 or max(abs(heights - heights.mean())) > tolerance:
         raise ValueError("Measured surface must be horizontal and above the floor")
@@ -369,12 +455,8 @@ def canonical_model(value: dict):
     if not np.allclose(
         model["dimensions_m"], [fit["width"], fit["depth"], height], atol=1e-6, rtol=0
     ):
-        raise ValueError(
-            "Model dimensions disagree with measured points and height source"
-        )
-    return ModelPlacement.model_validate(data).model_dump(
-        mode="json", exclude_none=True
-    )
+        raise ValueError("Model dimensions disagree with measured points and height source")
+    return ModelPlacement.model_validate(data).model_dump(mode="json", exclude_none=True)
 
 
 def compose_scene(measurements: list[dict]):
@@ -407,13 +489,9 @@ def compose_scene(measurements: list[dict]):
                 or not np.allclose(up, first_up, atol=1e-6, rtol=0)
                 or not np.isclose(height, first_alignment[2, 3], atol=1e-6, rtol=0)
             ):
-                raise ValueError(
-                    "Different ENU alignments/floor references cannot be merged"
-                )
+                raise ValueError("Different ENU alignments/floor references cannot be merged")
     if not enu and len({v["reference_id"] for v in measurements}) != 1:
-        raise ValueError(
-            "Different board references require ENU alignment before merging"
-        )
+        raise ValueError("Different board references require ENU alignment before merging")
     return {
         "schema_version": "sunsync.scene/1",
         "space_id": next(iter(space_ids)),

@@ -94,6 +94,42 @@
         }
       }
     },
+    "/v1/observations/select": {
+      "post": {
+        "summary": "Select Burst",
+        "operationId": "select_burst_v1_observations_select_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SelectRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/measurements": {
       "post": {
         "summary": "Make Measurement",
@@ -805,6 +841,18 @@
             "maxItems": 100,
             "title": "Detections"
           },
+          "image_sha256": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Sha256"
+          },
           "camera_to_point_m": {
             "prefixItems": [
               {
@@ -1450,7 +1498,7 @@
               "$ref": "#/components/schemas/Capture"
             },
             "type": "array",
-            "maxItems": 85,
+            "maxItems": 340,
             "minItems": 1,
             "title": "Captures"
           },
@@ -1473,6 +1521,37 @@
                 "type": "null"
               }
             ]
+          },
+          "estimation_mode": {
+            "type": "string",
+            "enum": [
+              "legacy",
+              "weighted",
+              "robust_joint"
+            ],
+            "title": "Estimation Mode",
+            "default": "robust_joint"
+          },
+          "max_point_uncertainty_m": {
+            "type": "number",
+            "maximum": 0.5,
+            "exclusiveMinimum": 0.0,
+            "title": "Max Point Uncertainty M",
+            "default": 0.15
+          },
+          "placement_sigma_m": {
+            "type": "number",
+            "maximum": 0.03,
+            "minimum": 0.003,
+            "title": "Placement Sigma M",
+            "default": 0.01
+          },
+          "max_selected_per_point": {
+            "type": "integer",
+            "maximum": 12.0,
+            "minimum": 3.0,
+            "title": "Max Selected Per Point",
+            "default": 8
           },
           "max_repeat_spread_m": {
             "type": "number",
@@ -1718,6 +1797,71 @@
           "measurements"
         ],
         "title": "SceneRequest"
+      },
+      "SelectRequest": {
+        "properties": {
+          "board": {
+            "$ref": "#/components/schemas/Board"
+          },
+          "captures": {
+            "items": {
+              "$ref": "#/components/schemas/Capture"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "minItems": 1,
+            "title": "Captures"
+          },
+          "required_samples": {
+            "type": "integer",
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Required Samples",
+            "default": 3
+          },
+          "max_selected": {
+            "type": "integer",
+            "maximum": 12.0,
+            "minimum": 3.0,
+            "title": "Max Selected",
+            "default": 8
+          },
+          "max_repeat_spread_m": {
+            "type": "number",
+            "maximum": 0.1,
+            "exclusiveMinimum": 0.0,
+            "title": "Max Repeat Spread M",
+            "default": 0.03
+          },
+          "max_reprojection_rmse_px": {
+            "type": "number",
+            "maximum": 5.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Max Reprojection Rmse Px",
+            "default": 2
+          },
+          "max_point_uncertainty_m": {
+            "type": "number",
+            "maximum": 0.5,
+            "exclusiveMinimum": 0.0,
+            "title": "Max Point Uncertainty M",
+            "default": 0.15
+          },
+          "placement_sigma_m": {
+            "type": "number",
+            "maximum": 0.03,
+            "minimum": 0.003,
+            "title": "Placement Sigma M",
+            "default": 0.01
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "board",
+          "captures"
+        ],
+        "title": "SelectRequest"
       },
       "SetupView": {
         "properties": {
