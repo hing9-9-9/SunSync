@@ -36,7 +36,8 @@ Browser photo capture is an opt-in development test and is disabled in productio
 - [Deployment on one server](docs/deploy.md): https address, services, backup
 - [Google login](docs/auth.md): how it works, the settings, the Google console and how to switch it on
 - [AI & Applications Proposal](docs/ai_applications/README.md): Project proposal blog for ITE 351 (Task 1 & Task 3)
-- Requirement document: `docs/reports/SunSync_Requirements.pdf`
+- Requirement document: `docs/reports/SunSync_Requirements.pdf` (LaTeX source in `docs/reports/requirements`); specification report: `docs/reports/SunSync_Specification.pdf` (source in `docs/reports/specification`)
+- Records of past work (not kept up to date): [UI and FR-06 integration](docs/ui-fr06-integration.md) and [UI data integration](docs/ui-data-integration.md) (2026-11-01), [Award example integration](docs/award-integration.md) and [design specification](docs/design-spec-2026-10-23.md) (October), [hero image record](docs/hero-asset.md)
 - Meeting notes: shared Google document (not in the repository)
 
 ## Setup

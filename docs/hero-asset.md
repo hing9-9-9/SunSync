@@ -1,3 +1,5 @@
+> 작업 기록이다. 아래 원본 경로는 한 개발자의 로컬 컴퓨터 경로이며 저장소에 없다. 최종 이미지는 `frontend/public/design/library-protection-hero.webp`다.
+
 # SunSync 소개 이미지 생성 기록
 
 - 용도: 웹 첫 화면의 프로젝트 소개 띠.

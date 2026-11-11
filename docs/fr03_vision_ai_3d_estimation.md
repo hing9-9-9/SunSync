@@ -198,7 +198,7 @@ Output:
 
 ### Running with Real-World Photographs
 1. **Camera Calibration**: Note your camera's resolution and intrinsics ($f_x, f_y, c_x, c_y$).
-2. **Affix Window Marker**: Print and affix a standard `6×6` ArUco `DICT_4X4_50` marker ($s = 0.6\,\text{m}$) on the target window.
+2. **Window Marker**: Use the one `6×6` ArUco `DICT_4X4_50` marker ($s = 0.6\,\text{m}$) that the server shows on the selected film during a capture session (see [fr03_single_marker.md](fr03_single_marker.md)); the request's `marker_anchor` must be that marker.
 3. **Capture Image**: Take an indoor photo where both the window marker and indoor furniture are visible.
 4. **Detect Furniture with YOLOv8**:
    ```python
@@ -213,3 +213,15 @@ Output:
    depth_map = depth_adapter.estimate_relative_depth(image_rgb, width=1280, height=720)
    ```
 6. **Execute Pipeline**: Pass the detected boxes and ArUco marker pixel corners to `VisionRegistrationPipeline.run()` or send a request to `POST /api/scenes/{scene_id}/vision-furniture-estimate`.
+
+## Where the anchor comes from on the server (checked 2026-11-11)
+
+`POST /api/scenes/{scene_id}/vision-furniture-estimate` takes the marker transform in this order:
+
+1. the stored Scene marker whose `marker_id` equals `marker_anchor.marker_id`, if one is given, then the one whose `code_id` equals `marker_anchor.code_id`;
+2. otherwise the first window marker of the Scene;
+3. otherwise, if the Scene has windows: the centre of the first window, but only for a Scene with exactly one 1 m x 1 m window. Any other window layout (for example several film modules) answers 422 `Select and pair a film module before vision measurement.`, because the window centre is not the centre of the selected film;
+4. otherwise, if the Scene has no windows and the request has `T_ENU_camera`, an identity marker transform is used;
+5. otherwise 422 `Scene has no window or ArUco marker to anchor camera pose.`
+
+Pair the selected film first (`POST /api/scenes/{scene_id}/marker-pairing` or a capture session).

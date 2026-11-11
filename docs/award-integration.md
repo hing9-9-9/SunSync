@@ -1,8 +1,10 @@
+> 2026-10-24 작업 기록이다. 현재 화면은 [ui-flow.md](ui-flow.md)를 따른다. 이 문서가 말하는 `scripts/verify-award-parity.mjs`, `App.original.tsx.txt`, 원본 보관 자료는 지금 저장소에 없고, 당시의 데모 로그인은 구글 로그인으로 바뀌었다.
+
 # SunSync Award 예시 — 원본 기능 통합 대조표
 
 ## 접속과 구현 방식
 
-- 웹(Award 디자인): `http://localhost:5173/?mode=web#/`. 웹 화면은 이제 Award 디자인만 씁니다. 통합 전 원본 웹 화면은 실행 경로가 없고 [원본 보관 자료](reference-original-2026-10-22/README.md)로만 남아 있습니다.
+- 웹(Award 디자인): `http://localhost:5173/?mode=web#/`. 웹 화면은 이제 Award 디자인만 씁니다. 통합 전 원본 웹 화면은 실행 경로가 없고 원본 보관 자료(저장소에 없음)로만 남아 있습니다.
 - 앱(휴대폰 화면): `http://localhost:5173/?mode=app#/`. `main.tsx`가 앱 모드(또는 좁은 화면)에서 `MobileApp.tsx`를 띄웁니다.
 - 서버를 건드리지 않는 둘러보기: 웹 `?mode=web&example=editor`, 앱 `?mode=app&example=editor`. 예시 공간으로 편집기를 열고, 저장·위치·서버 목록·휴대폰 연결은 서버에 요청하지 않습니다.
 - 이전 Reference 시안(`?example=reference`)은 없어졌고 `ReferencePreview.tsx`도 삭제했습니다. `ReferencePreview.css`는 App과 WorkspaceDesign이 계속 사용합니다.
@@ -36,7 +38,7 @@ JSON의 originalLine은 보관한 App.original.tsx.txt의 행 번호입니다. �
 |---|---|---|
 | 소개 랜딩 | 로고·소개. 흰 배경, 공간 일러스트, 빛/부분 차단 조작 | 브라우저 |
 | 로그인 전 접근 제한 | 내 공간·계정·공간 등록 → requireAccount → 로그인 → 원래 요청한 화면 | 로그인 전 진입·취소, 상태/탐색 테스트 |
-| 로그인·회원가입 | 이름·이메일 필수 입력, 이메일 형식, 취소, 세션 저장 | 브라우저 진입, 기존 테스트 |
+| 로그인·회원가입 (당시 데모, 지금은 구글 로그인: [auth.md](auth.md)) | 이름·이메일 필수 입력, 이메일 형식, 취소, 세션 저장 | 브라우저 진입, 기존 테스트 |
 | 자동 로그인 유지 | localStorage 상태 복원 | 상태 테스트 |
 | 계정·로그아웃 | 상단 계정. 연결 정보·체험 계정 표시·로그아웃 확인/취소·공간 유지 | 브라우저·상태 테스트 |
 | 더보기 정보 | 계정 → 공간·보호 정보 모아보기. 공간·구역·보호구역·등급·가이드 진입 | 브라우저 |

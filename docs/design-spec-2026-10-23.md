@@ -1,3 +1,5 @@
+> 2026-10-23 작업 지시서다. 현재 화면은 [ui-flow.md](ui-flow.md)를 따른다. 마지막 항목의 `docs/spec-pass-2026-10-23/`(화면 캡처 폴더)는 저장소에 없다.
+
 # SunSync 화면 설계 명세 (수상작 레퍼런스 기반) — 2026-10-23
 
 대상: Mac의 Codex (`~/Documents/Codex/SunSync-ui/frontend`)

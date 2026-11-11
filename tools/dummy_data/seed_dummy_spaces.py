@@ -8,12 +8,12 @@ Uses only the standard library. Scenario data lives in scenarios.json next to th
   python seed_dummy_spaces.py --suffix v1 --only S1,S3 --check
   python seed_dummy_spaces.py --suffix v1 --delete           # remove (the server remembers deleted IDs)
 
-Deployed server: put the Caddy basic-auth login in the environment, never in this file or the repository.
+Deployed server: put the session cookie of a logged-in browser in SUNSYNC_COOKIE (see auth_headers), never in this file or the repository.
 
-  SUNSYNC_USER=... SUNSYNC_PASSWORD=... python seed_dummy_spaces.py --base-url https://HOST --allow-remote --suffix v1
+  SUNSYNC_COOKIE='__Host-sunsync_session=...' python seed_dummy_spaces.py --base-url https://HOST --allow-remote --suffix v1
 
-After the Google login ships (#105, #106) every request needs a signed-in account; only
-auth_headers() and the owner handling below have to change, not scenarios.json.
+With the Google login on, every request needs a signed-in account and the spaces belong to it
+(#105, #106); spaces put in before the accounts existed have no owner and stay hidden.
 """
 
 from __future__ import annotations
@@ -36,12 +36,23 @@ LOCAL_HOSTS = {"127.0.0.1", "localhost", "::1"}
 
 
 def auth_headers() -> dict[str, str]:
-    """Basic auth for the deployed server (Caddy). Replace when the account login exists."""
+    """Headers that log the tool in on a deployed server.
+
+    The server uses the Google login: copy the session cookie of a logged-in browser (name and
+    value, for example `__Host-sunsync_session=...`) into SUNSYNC_COOKIE. The spaces then belong to
+    that account. A session ends after 30 minutes without use, so run the tool soon after copying.
+    SUNSYNC_USER and SUNSYNC_PASSWORD (the Caddy basic auth used before the login) are still sent
+    when they are set, for a server that has that lock.
+    """
+    headers: dict[str, str] = {}
+    cookie = os.environ.get("SUNSYNC_COOKIE")
+    if cookie:
+        headers["Cookie"] = cookie
     user, password = os.environ.get("SUNSYNC_USER"), os.environ.get("SUNSYNC_PASSWORD")
-    if not user or not password:
-        return {}
-    token = base64.b64encode(f"{user}:{password}".encode()).decode()
-    return {"Authorization": f"Basic {token}"}
+    if user and password:
+        token = base64.b64encode(f"{user}:{password}".encode()).decode()
+        headers["Authorization"] = f"Basic {token}"
+    return headers
 
 
 def call(base: str, method: str, path: str, body: dict | None = None, timeout: int = 120):
