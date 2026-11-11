@@ -111,8 +111,8 @@
 .app.award-app.mode-web .acct-grade { display:inline-grid; grid-template-columns:10px 10px minmax(10px,1fr); align-items:center; gap:6px; white-space:nowrap; opacity:1; }
 .app.award-app.mode-web .acct-grade i { display:block; width:10px; height:10px; border-radius:2px; }
 .app.award-app.mode-web .acct-grade.grade-A i { background:var(--c-action); }
-.app.award-app.mode-web .acct-grade.grade-B i { background:var(--c-8c87ec); }
-.app.award-app.mode-web .acct-grade.grade-C i { background:var(--c-bdbaf4); }
+.app.award-app.mode-web .acct-grade.grade-B i { background:var(--c-grade-b); }
+.app.award-app.mode-web .acct-grade.grade-C i { background:var(--c-protect); box-shadow:inset 0 0 0 1px var(--c-grade-b); }
 .app.award-app.mode-web .acct-grade.grade-D i { background:transparent; border:1px solid var(--account-accent); }
 .app.award-app.mode-web .acct-grade-count { color:var(--account-text); font-variant-numeric:tabular-nums; }
 /* The same borderless white surfaces, radius and elevation as the app's other cards. */

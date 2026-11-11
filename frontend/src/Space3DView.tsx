@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { filmGrid, furnitureTypes, grades, resolveWindow, timeToMinute, walls } from "./model.ts";
-import type { Region, ShadingTime, Space } from "./model.ts";
+import type { Grade, Region, ShadingTime, Space } from "./model.ts";
 import { createSpaceScene } from "./Space3DScene.ts";
 import type { Level, Lit, SceneApi } from "./Space3DScene.ts";
 import { dayOfYear, sunPosition } from "./sun3d.ts";
@@ -222,35 +222,44 @@ export default function Space3DView({ space, hour, onHour, date, selected, onSel
           {level !== "basic" && source && <p className="s3-source" role="status">{source}</p>}
           <h2>가구별 보호 등급</h2>
           <ul className="s3-regions">
-            {space.regions.map((r, i) => {
-              if (r.zone !== space.zone) return null;
-              const [text, tone] = rowValue(r, i), bars = level === "basic" ? null : rowBars(i);
-              return (
-                <li key={r.id}>
-                  <button className={selected === r.furnitureId ? "on" : ""} onClick={() => r.furnitureId && onSelect(r.furnitureId)}>
-                    <span className={`s3-grade g-${r.grade}`}>{r.grade}</span>
-                    <span className="s3-rname">{r.name}<small>{grades[r.grade].split(" · ")[0]}</small></span>
-                    <span className={`s3-rval ${level === "basic" ? "" : tone}`}>{level === "basic" ? `높이 ${r.bottom}~${r.top} m` : text}</span>
-                    {bars && (
-                      <span className="s3-strip" aria-hidden="true" style={{ gridTemplateColumns: `repeat(${bars.length}, 1fr)` }}>
-                        {bars.map((b, j) => <i key={j} className={b.film ? "film" : b.value > 0 ? "" : "none"} style={b.value > 0 ? { opacity: 0.2 + b.value * 0.8 } : undefined} />)}
-                        <b style={{ left: `${((time - 6) / 12) * 100}%` }} />
-                      </span>
-                    )}
-                  </button>
-                </li>
-              );
-            })}
-            {/* Furniture with no protection area is grade D: listed too, with nothing to plan for it. */}
-            {space.furniture.filter(f => f.zone === space.zone && !space.regions.some(r => r.furnitureId === f.id)).map(f => (
-              <li key={f.id}>
-                <button className={selected === f.id ? "on" : ""} onClick={() => onSelect(f.id)}>
-                  <span className="s3-grade g-D">D</span>
-                  <span className="s3-rname">{f.name}<small>{grades.D.split(" · ")[0]}</small></span>
-                  <span className="s3-rval">보호 안 함</span>
-                </button>
-              </li>
-            ))}
+            {/* A → D, then by name (same order as the app's furniture list); unassigned furniture counts as D. */}
+            {[
+              ...space.regions.flatMap((r, i) => (r.zone === space.zone ? [{ key: r.id, grade: r.grade as Grade, name: r.name, r, i, f: undefined }] : [])),
+              ...space.furniture
+                .filter(f => f.zone === space.zone && !space.regions.some(r => r.furnitureId === f.id))
+                .map(f => ({ key: f.id, grade: "D" as Grade, name: f.name, r: undefined, i: -1, f })),
+            ]
+              .sort((x, y) => "ABCD".indexOf(x.grade) - "ABCD".indexOf(y.grade) || x.name.localeCompare(y.name, "ko", { numeric: true }))
+              .map(({ key, r, i, f }) => {
+                if (f) {
+                  return (
+                    <li key={key}>
+                      <button className={selected === f.id ? "on" : ""} onClick={() => onSelect(f.id)}>
+                        <span className="s3-grade g-D">D</span>
+                        <span className="s3-rname">{f.name}<small>{grades.D.split(" · ")[0]}</small></span>
+                        <span className="s3-rval">보호 안 함</span>
+                      </button>
+                    </li>
+                  );
+                }
+                if (!r) return null;
+                const [text, tone] = rowValue(r, i), bars = level === "basic" ? null : rowBars(i);
+                return (
+                  <li key={key}>
+                    <button className={selected === r.furnitureId ? "on" : ""} onClick={() => r.furnitureId && onSelect(r.furnitureId)}>
+                      <span className={`s3-grade g-${r.grade}`}>{r.grade}</span>
+                      <span className="s3-rname">{r.name}<small>{grades[r.grade].split(" · ")[0]}</small></span>
+                      <span className={`s3-rval ${level === "basic" ? "" : tone}`}>{level === "basic" ? `높이 ${r.bottom}~${r.top} m` : text}</span>
+                      {bars && (
+                        <span className="s3-strip" aria-hidden="true" style={{ gridTemplateColumns: `repeat(${bars.length}, 1fr)` }}>
+                          {bars.map((b, j) => <i key={j} className={b.film ? "film" : b.value > 0 ? "" : "none"} style={b.value > 0 ? { opacity: 0.2 + b.value * 0.8 } : undefined} />)}
+                          <b style={{ left: `${((time - 6) / 12) * 100}%` }} />
+                        </span>
+                      )}
+                    </button>
+                  </li>
+                );
+              })}
           </ul>
           {level !== "basic" && series && <p className="s3-axis"><span>6시</span><span>9</span><span>12</span><span>15</span><span>18시</span></p>}
 

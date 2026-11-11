@@ -94,14 +94,14 @@ export function userMessage(error: unknown, fallback: string) {
   console.warn("SunSync", error);
   return fallback;
 }
-async function request<T>(url: string, init?: RequestInit): Promise<T> {
+async function request<T>(url: string, init?: RequestInit, timeoutMs = 15000): Promise<T> {
   let response: Response;
   try {
     response = await fetch(url, {
       ...init,
       signal: init?.signal
-        ? AbortSignal.any([init.signal, AbortSignal.timeout(15000)])
-        : AbortSignal.timeout(15000),
+        ? AbortSignal.any([init.signal, AbortSignal.timeout(timeoutMs)])
+        : AbortSignal.timeout(timeoutMs),
       headers: { "Content-Type": "application/json", ...init?.headers },
     });
   } catch (error) {
@@ -519,4 +519,19 @@ export function formatTimeLabel(iso: string, timezone?: string): string {
   } catch {
     return iso.slice(11, 16);
   }
+}
+
+/** FR-04: what smoothing the FR-02 plan changes over one day (signed percentages: positive is better than the baseline). */
+export type AdaptiveMetrics = {
+  baseline_total_change: number;
+  adaptive_total_change: number;
+  total_change_reduction_pct: number;
+  daylight_gain_pct: number;
+};
+export function planAdaptiveShading(sceneId: string, startTime: string, signal?: AbortSignal) {
+  return request<{ scene_revision: number; metrics: AdaptiveMetrics }>(
+    `/api/scenes/${encodeURIComponent(sceneId)}/adaptive-shading-plan`,
+    { method: "POST", signal, body: JSON.stringify({ start_time: startTime, duration_minutes: 1440, interval_seconds: 1800 }) },
+    45000,
+  );
 }
