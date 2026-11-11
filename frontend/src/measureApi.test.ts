@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { BOARD, captureSelection, captureTargets, resumeCaptureMarker, cancelStoredCapture, boardAlignment, filmBoardAlignment, serverMessage, startCaptureMarker, checkCaptureMarker, endCaptureMarker, measureAndRegister, setupCamera } from "./measureApi.ts";
+import { BOARD, captureSelection, captureTargets, resumeCaptureMarker, cancelStoredCapture, boardAlignment, filmBoardAlignment, serverMessage, startCaptureMarker, checkCaptureMarker, endCaptureMarker, measureAndRegister, measurementProblem, measurementProblems, setupCamera } from "./measureApi.ts";
 import { blankSpace } from "./model.ts";
 
 const space = (wall: "south" | "north" | "east" | "west") => ({
@@ -110,6 +110,18 @@ test("setup and final measurement use the server-selected ID; mixed session phot
   recorded.length=0;
   await assert.rejects(measureAndRegister(room,camera,{...item,points:[{id:"P1",frames:[{...frame,marker_session_id:"old"}]}]}),/섞였어요/);
   assert.equal(recorded.some(r=>r.url.endsWith("/v1/measurements")),false);
+});
+
+test("an incomplete measurement names each failed point and the reason instead of a generic error", () => {
+  const bad = (status: string, points: Record<string, { status: string }>) => JSON.stringify({ status, points });
+  const two = measurementProblems(bad("incomplete", { P1: { status: "ok" }, P2: { status: "insufficient_samples" }, P3: { status: "inconsistent_samples" } }));
+  assert.deepEqual(two.map((p) => p.point), ["P2", "P3"]);
+  assert.match(two[0].message, /^P2 · .*마커/);
+  assert.match(two[1].message, /^P3 · .*3cm/);
+  assert.equal(measurementProblems(bad("invalid_surface", { P1: { status: "ok" } }))[0].point, undefined);
+  assert.match(measurementProblem(bad("incomplete", { P4: { status: "retake" } }))!, /^P4 · /);
+  assert.deepEqual(measurementProblems(bad("model_ready_unreviewed", {})), []);
+  assert.deepEqual(measurementProblems('{"test_measurement":true}'), []);
 });
 
 test("a 401 with a non-JSON body becomes the expired message and notifies", async (t) => {

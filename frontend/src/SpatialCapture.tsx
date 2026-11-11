@@ -1,30 +1,17 @@
 import BurstCamera from "./BurstCamera";
 import { useEffect, useRef, useState } from "react";
-import { measurePixels, photoIssue } from "./captureCheck";
+import { analyseImage, photoIssue } from "./captureCheck";
+import { pointFailure } from "./captureGuide";
 import type { PhotoIssue } from "./captureCheck";
 import { shapes, validPolygon, nextCapturePoint, photosPerPoint } from "./capturePlan";
 import type { Shape, CapturePoint } from "./capturePlan";
 import type { CapturedFurniture } from "./model";
 import { browserCaptureEnabled } from "./captureEnvironment";
-import { selectFrames, detectFrame, captureSelection, resumeCaptureMarker, cancelStoredCapture, startCaptureMarker, endCaptureMarker } from "./measureApi";
+import { checkMeasurement, selectFrames, detectFrame, captureSelection, resumeCaptureMarker, cancelStoredCapture, startCaptureMarker, endCaptureMarker } from "./measureApi";
 import FilmModulePicker from "./FilmModulePicker";
 import type { Camera, Frame, CaptureMarker, FilmTargetWindow } from "./measureApi";
 
 type Photo = { file: File; url: string; issue: PhotoIssue | null; metrics: { brightness: number; sharpness: number }; frame?: Frame };
-
-// Reads a downscaled copy so the check stays fast on phones; the photo never leaves the device.
-async function analyse(file: File) {
-  const bitmap = await createImageBitmap(file);
-  const scale = Math.min(1, 320 / Math.max(bitmap.width, bitmap.height));
-  const width = Math.max(3, Math.round(bitmap.width * scale)), height = Math.max(3, Math.round(bitmap.height * scale));
-  const canvas = document.createElement("canvas");
-  canvas.width = width; canvas.height = height;
-  const context = canvas.getContext("2d");
-  if (!context) throw new Error("사진을 확인할 수 없습니다.");
-  context.drawImage(bitmap, 0, 0, width, height);
-  bitmap.close();
-  return measurePixels(context.getImageData(0, 0, width, height).data, width, height);
-}
 
 // MAR3.2: stand at each of the four corners of one piece of furniture and photograph the window marker.
 export default function SpatialCapture(props: { sceneId?: string; count: number; onFinish: (items: CapturedFurniture[]) => void }) {
@@ -128,6 +115,11 @@ function TestSpatialCapture({ count, onFinish, session }: { count: number; onFin
   const [photos, setPhotos] = useState<(Photo | null)[][]>([]);
   const [checking, setChecking] = useState(false);
   const [error, setError] = useState("");
+  // Points that must be retaken, with the reason; only those points are cleared and shot again.
+  const [problems, setProblems] = useState<Record<number,string>>({});
+  const [verifying, setVerifying] = useState(false);
+  const [checkedKey, setCheckedKey] = useState("");
+  const [surfaceProblem, setSurfaceProblem] = useState("");
   useEffect(()=>()=>{version.current++;},[]);
   const latest = useRef(photos);
   useEffect(() => { latest.current = photos; }, [photos]);
@@ -135,7 +127,7 @@ function TestSpatialCapture({ count, onFinish, session }: { count: number; onFin
   const pendingPoint = nextCapturePoint(points.map((_,i)=>(photos[i]??[]).map(p=>!!p&&!p.issue)));
   const corner = pendingPoint ?? points.length - 1;
   const complete = confirmed && pendingPoint === null;
-  function reset() { version.current++;setRawFrames({});setBatchMessage(""); photos.flat().forEach(p=>p&&URL.revokeObjectURL(p.url)); setPhotos([]); setError(''); }
+  function reset() { version.current++;setProblems({});setCheckedKey("");setSurfaceProblem("");setRawFrames({});setBatchMessage(""); photos.flat().forEach(p=>p&&URL.revokeObjectURL(p.url)); setPhotos([]); setError(''); }
 
   async function takeBatch(files:File[],profile:Camera,ticket:number) {
     if(pendingPoint===null||!confirmed||ticket!==version.current)return;
@@ -148,7 +140,7 @@ function TestSpatialCapture({ count, onFinish, session }: { count: number; onFin
     try {
       for(const file of files.slice(0,20)) {
         if(ticket!==version.current)return;
-        const metrics=await analyse(file);
+        const metrics=await analyseImage(file);
         if(photoIssue({...metrics,marker:"visible"}))continue;
         const frame=await detectFrame(file,session.board,session,new Date(file.lastModified).toISOString());
         if(frame.width!==profile.width||frame.height!==profile.height)throw new Error("카메라 준비 때와 영상 크기가 달라요. 다시 준비해 주세요.");
@@ -157,7 +149,8 @@ function TestSpatialCapture({ count, onFinish, session }: { count: number; onFin
       if(!candidates.length)throw new Error("사용할 수 있는 사진이 없어요. 밝기와 흔들림을 확인해 주세요.");
       const result=await selectFrames(candidates.map(p=>p.frame!),profile,session.board,`P${target+1}`);
       if(ticket!==version.current)return;
-      if(result.status!=="ok")throw new Error("같은 지점의 관측이 부족하거나 위치가 불안정해요. 지점 위치를 유지하고 마커가 크게 보이도록 각도를 조절해 다시 촬영해 주세요.");
+      if(result.status!=="ok"){const why=pointFailure(`P${target+1}`,result);setProblems(all=>({...all,[target]:why}));throw new Error(why);}
+      setProblems(all=>{const next={...all};delete next[target];return next;});
       setBatchMessage(`P${target+1} 촬영을 완료했어요.`);
       const ids=new Set(result.selected_capture_ids);
       const selected=candidates.filter(p=>ids.has(p.frame!.capture_id)).map(p=>({...p,url:URL.createObjectURL(p.file)}));
@@ -167,6 +160,29 @@ function TestSpatialCapture({ count, onFinish, session }: { count: number; onFin
     }catch(e){if(ticket===version.current)setError(e instanceof Error?e.message:String(e));}
     finally{setChecking(false);}
   }
+  // Once every point is shot, check them together (the server judges the whole set) so a bad point
+  // is found here, while only that point needs retaking, not after the plan is made.
+  const photoKey = points.map((_,i)=>(photos[i]??[]).map(p=>p?.frame?.capture_id).join(",")).join("|");
+  useEffect(() => {
+    if (!complete || !captureCamera || verifying || checkedKey === photoKey) return;
+    const ticket = version.current, key = photoKey;
+    setVerifying(true); setError(""); setSurfaceProblem("");
+    checkMeasurement(session.scene_id, captureCamera, { session, shape, vertices: points, points: points.map((_,i)=>({ id:`P${i+1}`, frames:(photos[i]??[]).map(p=>p!.frame!) })) })
+      .then(found => {
+        if (ticket !== version.current) return;
+        const failed = found.filter(f => f.point);
+        if (failed.length) {
+          const bad = new Set(failed.map(f => Number(f.point!.slice(1)) - 1));
+          bad.forEach(i => photos[i]?.forEach(p => p && URL.revokeObjectURL(p.url)));
+          setPhotos(all => points.map((_,i) => bad.has(i) ? [] : all[i] ?? []));
+          setProblems(all => ({ ...all, ...Object.fromEntries(failed.map(f => [Number(f.point!.slice(1)) - 1, f.message])) }));
+          setError(`${[...bad].map(i=>`P${i+1}`).join(", ")} 지점만 다시 찍어 주세요. 나머지 지점 사진은 그대로 남아 있어요.`);
+        } else if (found.length) setSurfaceProblem(found[0].message);
+        setCheckedKey(key);
+      })
+      .catch(e => { if (ticket === version.current) { setError(e instanceof Error ? e.message : String(e)); setCheckedKey(key); } })
+      .finally(() => { if (ticket === version.current) setVerifying(false); });
+  }, [complete, captureCamera, verifying, checkedKey, photoKey]);
   function nextFurniture() {
     const captured: CapturedFurniture[] = [...items, { name: name.trim() || `가구 ${count + items.length + 1}`, type: "other", capture: {session, camera:captureCamera!, shape, points: points.map((p,i)=>({id:`P${i+1}`,position:p,photos:photos[i].map(p=>p!.file),frames:rawFrames[i]??(photos[i].every(p=>p?.frame)?photos[i].map(p=>p!.frame!):undefined)}))} }];
     setItems(captured);
@@ -206,25 +222,27 @@ function TestSpatialCapture({ count, onFinish, session }: { count: number; onFin
     <ol className="corner-steps" aria-label="지점 촬영 상태">
       {points.map((_,i) => {
         const n=(photos[i]??[]).filter(p=>p&&!p.issue).length;
-        return <li key={i} className={n>=photosPerPoint?'done':i===corner?'current':'waiting'} aria-current={i===corner?'step':undefined}>
-          <span className="corner-number">P{i+1}</span><small>{n>=photosPerPoint?"완료":"대기"}</small>
+        return <li key={i} className={problems[i]?'retake':n>=photosPerPoint?'done':i===corner?'current':'waiting'} aria-current={i===corner?'step':undefined}>
+          <span className="corner-number">P{i+1}</span><small>{problems[i]?"다시 촬영":n>=photosPerPoint?"완료":"대기"}</small>
         </li>;
       })}
     </ol>
-    <p role="status" className="tracking-status">{checking?'촬영·사진 확인 중…':complete?'모든 지점 촬영 완료':!captureCamera?'카메라 준비 사진 촬영 단계 (완료 후 P1부터 시작)':`P${corner+1} 위치에서 촬영`}</p>
+    <p role="status" className="tracking-status">{checking?'촬영·사진 확인 중…':verifying?'지점별 측정 확인 중…':complete?'모든 지점 촬영 완료':!captureCamera?'카메라 준비 사진 촬영 단계 (완료 후 P1부터 시작)':`P${corner+1} 위치에서 촬영`}</p>
+    {Object.entries(problems).sort(([a],[b])=>Number(a)-Number(b)).map(([i,why])=><p key={i} className="point-problem">{why}</p>)}
+    {surfaceProblem && <p role="alert" className="error">{surfaceProblem}</p>}
     {!complete && <p className="muted small">도면의 P{corner+1}에 렌즈를 맞추고 마커 전체가 보이도록 촬영 버튼을 한 번 눌러 주세요. 촬영이 끝날 때까지 위치를 유지해 주세요.</p>}
     <div className="actions">{points.map((_,i)=>(photos[i]??[]).some(Boolean)&&<button key={i} type="button" className="text-button" disabled={checking} onClick={()=>{
       version.current++;photos[i]?.forEach(p=>p&&URL.revokeObjectURL(p.url));
-      setRawFrames(all=>{const next={...all};delete next[i];return next;});
+      setRawFrames(all=>{const next={...all};delete next[i];return next;});setProblems(all=>{const next={...all};delete next[i];return next;});setSurfaceProblem("");
       setPhotos(all=>all.map((row,j)=>j===i?[]:row));setBatchMessage("");setError("");
     }}>P{i+1} 다시 촬영</button>)}</div>
-    {error && <p role="alert" className="error">{error}</p>}
+    {error && !Object.values(problems).includes(error) && <p role="alert" className="error">{error}</p>}
     {/* The screen's one primary action; the app pins this bar above the bottom nav. */}
     <div className="capture-action" ref={setActionTarget}>
-      {complete && <button type="button" className="primary" onClick={() => onFinish(nextFurniture())}>촬영 마치고 도면 만들기 ({items.length + 1}개)</button>}
+      {complete && <button type="button" className="primary" disabled={verifying||!!surfaceProblem||checkedKey!==photoKey} onClick={() => onFinish(nextFurniture())}>촬영 마치고 도면 만들기 ({items.length + 1}개)</button>}
     </div>
     {complete && <div className="actions">
-      <button type="button" className="secondary" onClick={nextFurniture}>이 가구 저장 · 다음 가구 촬영</button>
+      <button type="button" className="secondary" disabled={verifying||!!surfaceProblem||checkedKey!==photoKey} onClick={nextFurniture}>이 가구 저장 · 다음 가구 촬영</button>
     </div>}
     {!complete && items.length > 0 && <button type="button" className="secondary" onClick={() => onFinish(items)}>촬영 마치고 도면 만들기 ({items.length}개)</button>}
     </>}

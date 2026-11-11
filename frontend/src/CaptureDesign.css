@@ -77,3 +77,12 @@
 .app.award-mobile.mode-app.page-capture .spatial-capture > .two-fields > .field > span { margin:0; }
 .app.award-mobile.mode-app.page-capture .spatial-capture > p.muted.small:last-child { margin:0; padding:16px 0; }
 .app.award-mobile.mode-app.page-capture .capture-layout { gap:0; }
+
+/* Live marker guidance and per-point retake notes (capture). Approved colours only. */
+.capture-hint { margin: var(--space-2) 0; padding: 10px 12px; border-radius: 8px; font-size: 14px; line-height: 1.5; font-weight: 500; }
+.capture-hint.ok { background: #EFEEFD; color: #554ED0; }
+.capture-hint.warn { background: #fff; color: #C2520F; box-shadow: inset 0 0 0 1px #FF7426; }
+.capture-hint.stop { background: #E9E9E9; color: #111; }
+.point-problem { margin: var(--space-1) 0; font-size: 13px; line-height: 1.5; color: #C2520F; }
+.app.award-mobile.mode-app.page-capture .corner-steps .retake { background: #fff; box-shadow: inset 0 0 0 1px #FF7426; }
+.app.award-mobile.mode-app.page-capture .corner-steps .retake small { color: #C2520F; font-weight: 500; }
