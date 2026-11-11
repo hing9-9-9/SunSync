@@ -254,12 +254,8 @@ def measure(request: MeasureRequest):
     surface_points = np.array([points[k]["point_board_m"] for k in surface_keys])
     try:
         fit_jointly = request.estimation_mode == "robust_joint" and up is not None
-        rectangle_correction = (
-            request.max_rectangle_correction_m
-            if fit_jointly and request.plan.shape.kind == "rectangle"
-            else None
-        )
-        if rectangle_correction is None:
+        shape_correction = request.max_shape_correction_m if fit_jointly else None
+        if shape_correction is None:
             fit_surface(request.plan.shape.kind, surface_points, request.max_surface_residual_m)
         if fit_jointly:
             optimized, info = refine(
@@ -271,7 +267,8 @@ def measure(request: MeasureRequest):
                 request.placement_sigma_m,
                 request.max_surface_residual_m,
                 request.max_reprojection_rmse_px,
-                rectangle_correction=rectangle_correction,
+                shape_correction=shape_correction,
+                sketch=request.plan.shape.vertices if shape_correction is not None else None,
             )
             response["optimization"] = info
             for key, raw, point in zip(surface_keys, surface_points, optimized):

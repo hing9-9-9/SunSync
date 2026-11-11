@@ -171,7 +171,7 @@ def test_handheld_rectangle_fits_before_rejecting_raw_corner_error():
     data, _ = noisy_fixture(point_offsets=[[0, 0, 0], [0, 0, 0], [0.09, 0.04, 0], [0, 0, 0]])
     strict = measure(MeasureRequest.model_validate(data))
     assert strict["status"] == "invalid_surface"
-    result = measure(MeasureRequest.model_validate({**data, "max_rectangle_correction_m": 0.08}))
+    result = measure(MeasureRequest.model_validate({**data, "max_shape_correction_m": 0.08}))
     assert result["status"] == "model_ready_unreviewed", result["required_actions"]
     assert 0.03 < result["optimization"]["max_point_correction_m"] <= 0.08
     export_fragment(result)
@@ -186,6 +186,38 @@ def test_handheld_rectangle_rejects_crossed_order_or_excessive_correction(crosse
             capture["point_id"] = {"P2": "P3", "P3": "P2"}.get(
                 capture["point_id"], capture["point_id"]
             )
-    result = measure(MeasureRequest.model_validate({**data, "max_rectangle_correction_m": 0.08}))
+    result = measure(MeasureRequest.model_validate({**data, "max_shape_correction_m": 0.08}))
     assert result["status"] == "invalid_surface", result["required_actions"]
     assert result["model"] is None
+
+
+@pytest.mark.parametrize("kind,count", [("circle", 4), ("ellipse", 6), ("polygon", 6)])
+def test_handheld_shapes_correct_corner_height_before_surface_check(kind, count):
+    offsets = [[0, 0.045 if i % 2 else -0.045, 0] for i in range(count)]
+    data, _ = noisy_fixture(kind=kind, point_offsets=offsets)
+    strict = measure(MeasureRequest.model_validate(data))
+    assert strict["status"] == "invalid_surface"
+    result = measure(MeasureRequest.model_validate({**data, "max_shape_correction_m": 0.08}))
+    assert result["status"] == "model_ready_unreviewed", result["required_actions"]
+    assert 0.03 < result["optimization"]["max_point_correction_m"] <= 0.08
+    export_fragment(result)
+
+
+def test_polygon_sketch_guides_fit_without_imposing_dimensions():
+    offsets = [[0, 0, 0]] * 6
+    offsets[3] = [0.04, 0, 0.035]
+    data, truth = noisy_fixture(kind="polygon", point_offsets=offsets)
+    baseline = measure(MeasureRequest.model_validate(data))
+    assert baseline["model"] is not None, baseline["required_actions"]
+    data["plan"]["shape"]["vertices"] = [
+        [x * 4 + 10, -y * 4 - 3] for x, y in data["plan"]["shape"]["vertices"]
+    ]
+    guided = measure(MeasureRequest.model_validate({**data, "max_shape_correction_m": 0.08}))
+    assert guided["model"] is not None, guided["required_actions"]
+
+    def error(result):
+        outline = np.asarray(result["surface"]["outline_board_m"])
+        return np.linalg.norm(outline - truth)
+
+    assert error(guided) < error(baseline)
+    export_fragment(guided)

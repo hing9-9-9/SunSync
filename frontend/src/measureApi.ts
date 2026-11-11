@@ -120,7 +120,7 @@ export function measurementProblems(text: string): PointProblem[] {
   if (!found.length && m.status === "invalid_surface") {
     const actions = m.required_actions ?? [];
     if (actions.includes("joint_shape_correction_exceeds_tolerance")) {
-      found.push({ message: "직사각형으로 보정하기에는 촬영 위치 차이가 커요. 렌즈를 상판 꼭짓점에 더 가까이 맞춰 다시 찍어 주세요." });
+      found.push({ message: "선택한 상판 모양으로 보정하기에는 촬영 위치 차이가 커요. 렌즈를 안내된 지점에 더 가까이 맞춰 다시 찍어 주세요." });
     } else if (actions.includes("joint_optimizer_did_not_converge") || actions.includes("joint_reprojection_error")) {
       found.push({ message: "촬영 사진에서 상판 위치를 안정적으로 계산하기 어려워요. 마커 전체가 선명하게 보이도록 다시 찍어 주세요." });
     } else if (actions.includes("surface_not_horizontal_or_below_floor")) {
@@ -279,7 +279,7 @@ async function measureRaw(sceneId: string, camera: Camera, item: MeasureItem) {
     plan,
     board,
     ...pose,
-    ...(kind === "rectangle" ? { max_rectangle_correction_m: 0.08 } : {}),
+    max_shape_correction_m: 0.08,
     captures: item.points.flatMap((point) => point.frames.map((f) => ({
       capture_id: f.capture_id, point_id: point.id, captured_at: f.captured_at, image_sha256:f.image_sha256, camera, detections: f.detections,
     }))),
