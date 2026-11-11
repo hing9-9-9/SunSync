@@ -7,6 +7,8 @@ import { liveHint } from "./captureGuide";
 import type { Hint } from "./captureGuide";
 import type { Camera, CaptureMarker, Frame } from "./measureApi";
 
+export type CapturePhase = "idle" | "capturing" | "analyzing";
+
 /** Test-only video stream. Its calibration is deliberately separate from still-photo profiles. */
 export default function BurstCamera({
   session,
@@ -15,7 +17,8 @@ export default function BurstCamera({
   actionTarget,
   disabled,
   getTicket,
-  onBusy,
+  phase,
+  onPhaseChange,
   onReady,
   onBatch,
 }: {
@@ -25,7 +28,8 @@ export default function BurstCamera({
   actionTarget: HTMLElement | null;
   disabled: boolean;
   getTicket: () => number;
-  onBusy: (busy: boolean) => void;
+  phase: CapturePhase;
+  onPhaseChange: (phase: CapturePhase) => void;
   onReady?: (camera: Camera | null) => void;
   onBatch: (files: File[], camera: Camera, ticket: number) => Promise<void>;
 }) {
@@ -200,7 +204,7 @@ export default function BurstCamera({
   async function shoot() {
     if (!active || !camera || busy || disabled) return;
     setBusy(true);
-    onBusy(true);
+    onPhaseChange("capturing");
     setMessage("");
     const version = generation.current;
     const ticket = getTicket();
@@ -209,18 +213,21 @@ export default function BurstCamera({
       const files = await acquireBurst(snapshot, {
         signal: controller.current.signal,
       });
-      if (version === generation.current) await onBatch(files, camera, ticket);
+      if (version === generation.current) {
+        onPhaseChange("analyzing");
+        await onBatch(files, camera, ticket);
+      }
     } catch (e) {
       if (version === generation.current)
         setMessage(e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(false);
-      onBusy(false);
+      onPhaseChange("idle");
     }
   }
   const action = <button type="button" className="primary" disabled={busy || disabled || (running && hint?.tone === "stop")}
     onClick={() => void (!running ? open() : !camera ? setup() : shoot())}>
-    {busy ? "촬영·확인 중…" : !running ? "카메라 열기" : !camera ? `카메라 준비 사진 촬영 (${Math.min(views.length, 11)}/12)` : `${pointLabel} 촬영`}
+    {phase === "analyzing" ? "촬영 완료! 사진 분석 중…" : phase === "capturing" ? "촬영 중…" : busy ? "카메라 준비 중…" : !running ? "카메라 열기" : !camera ? `카메라 준비 사진 촬영 (${Math.min(views.length, 11)}/12)` : `${pointLabel} 촬영`}
   </button>;
   return (
     <section className="point-camera" style={{display:active?undefined:"none",width:"100%"}}>
