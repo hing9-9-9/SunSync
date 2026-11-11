@@ -486,7 +486,7 @@ function App() {
                               onChange={(sill) => changeWindow({ sill })}
                             />
                           </div>
-                          <FilmLayout space={draft} />
+                          <FilmLayout space={draft} onChange={(row, col) => changeWindow({ captureModule: { row, col } })} />
                         </>
                       )}
                       <div className="mini-room">

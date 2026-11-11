@@ -60,6 +60,7 @@ export type WindowSpec = {
   offset?: number;
   sill?: number;
   marker?: WindowMarker;
+  captureModule?: { row: number; col: number } | null;
 };
 export type Space = {
   // The time range in which the user wants light blocked (saved with the space).
@@ -125,7 +126,7 @@ export const wallLength = (s: Pick<Space, "width" | "depth">, wall: Wall) =>
 // Derived window margins are rounded to the millimetre so float noise never reaches the inputs.
 export const margin = (m: number) => Math.round(m * 1000) / 1000;
 // Fills the optional fields of spaces saved before window position existed.
-export function resolveWindow(s: Space): Required<WindowSpec> | null {
+export function resolveWindow(s: Space): (Required<Omit<WindowSpec, "captureModule">> & Pick<WindowSpec, "captureModule">) | null {
   const w = s.windowDimensions;
   if (!w || !(w.width > 0) || !(w.height > 0)) return null;
   const wall = w.wall ?? "south";
@@ -137,6 +138,7 @@ export function resolveWindow(s: Space): Required<WindowSpec> | null {
     offset: w.offset ?? Math.max(0, (wallLength(s, wall) - w.width) / 2),
     sill: w.sill ?? 0,
     marker: w.marker ?? { size, x: w.width / 2, y: w.height / 2 },
+    ...(w.captureModule ? { captureModule: w.captureModule } : {}),
   };
 }
 export function filmGrid(w: Pick<WindowSpec, "width" | "height">) {

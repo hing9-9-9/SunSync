@@ -84,6 +84,7 @@ async function get<T>(url: string): Promise<T> {
 // The server answers in English; the person sees what to do next.
 export function serverMessage(detail: string): string {
   const rules: [RegExp, string][] = [
+    [/선택한 필름이 변경됐어요/, "선택한 필름이 변경됐어요. 이전 촬영을 끝내고 촬영 화면을 다시 열어 주세요."],
     [/complete 1m film modules/i, "창의 필름 배치를 확인해 주세요. 1m 필름 여러 장과 10cm 셀을 기준으로 측정해요."],
     [/Film module outside/i, "선택한 필름이 창의 배치 범위를 벗어났어요."],
     [/Another capture session/i, "이 공간에서 다른 촬영이 진행 중이에요. 먼저 완료하거나 취소해 주세요."],
@@ -311,7 +312,8 @@ export async function startCaptureMarker(sceneId: string, target: CaptureTarget 
 }
 export async function checkCaptureMarker(session: CaptureMarker): Promise<CaptureMarker> {
   const current = await get<CaptureMarker>(`${markerUrl(session.scene_id)}/${session.session_id}`);
-  if (current.session_id !== session.session_id || JSON.stringify(current.board) !== JSON.stringify(session.board) ||
+  if (current.session_id !== session.session_id || current.scene_id !== session.scene_id ||
+      current.window_id !== session.window_id || JSON.stringify(current.film_module) !== JSON.stringify(session.film_module) || JSON.stringify(current.board) !== JSON.stringify(session.board) ||
       JSON.stringify(current.marker.T_ENU_marker) !== JSON.stringify(session.marker.T_ENU_marker)) {
     throw new MeasureError("촬영 마커 정보가 바뀌었어요. 다시 촬영해 주세요.");
   }
@@ -323,8 +325,12 @@ export async function endCaptureMarker(session: CaptureMarker): Promise<void> {
 }
 
 export type FilmTargetWindow = {window_id:string; rows:number; cols:number};
+export type CaptureTargets = { windows: FilmTargetWindow[]; selected_target?: CaptureTarget };
+export async function captureSelection(sceneId:string):Promise<CaptureTargets> {
+  return get<CaptureTargets>(`${markerUrl(sceneId)}/targets`);
+}
 export async function captureTargets(sceneId:string):Promise<FilmTargetWindow[]> {
-  return (await get<{windows:FilmTargetWindow[]}>(`${markerUrl(sceneId)}/targets`)).windows;
+  return (await captureSelection(sceneId)).windows;
 }
 export async function resumeCaptureMarker(sceneId:string):Promise<CaptureMarker|null> {
   const id=sessionStorage.getItem(markerKey(sceneId));
