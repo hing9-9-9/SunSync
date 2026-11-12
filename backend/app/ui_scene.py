@@ -14,7 +14,7 @@ from sqlmodel import Field as SQLField
 from sqlmodel import Session, SQLModel, select
 
 from app.schemas.geometry import cuboid_footprint
-from app.schemas.scene import Occluder, Scene
+from app.schemas.scene import Occluder, Scene, Window
 
 Number = Annotated[float, Field(allow_inf_nan=False)]
 Positive = Annotated[Number, Field(gt=0)]
@@ -89,6 +89,7 @@ class UIWindowMarker(UIModel):
 class UIFilmModule(UIModel):
     row: Annotated[int, Field(ge=0)]
     col: Annotated[int, Field(ge=0)]
+    rowOrigin: Literal["top", "bottom"] = "top"
 
 
 class UIWindowDimensions(UIModel):
@@ -104,10 +105,8 @@ class UIWindowDimensions(UIModel):
     def marker_inside(self) -> Self:
         module = self.captureModule
         if module and (
-            abs(self.width - round(self.width)) > 1e-6
-            or abs(self.height - round(self.height)) > 1e-6
-            or module.row >= round(self.height)
-            or module.col >= round(self.width)
+            module.row >= Window.full_module_count(self.height)
+            or module.col >= Window.full_module_count(self.width)
         ):
             raise ValueError("선택한 필름이 창문 범위를 벗어났습니다. 필름을 다시 선택해 주세요.")
         m = self.marker
@@ -454,8 +453,8 @@ def to_scene(space: UISpace, revision: int, created_at: str | None = None) -> Sc
                 "azimuth_deg_true": azimuth,
                 "optical_profile_id": optics_id,
                 "initial_film_direct_transmittance": 1,
-                "film_rows": max(1, math.floor(height / 0.1 + 0.5)),
-                "film_cols": max(1, math.floor(width / 0.1 + 0.5)),
+                "film_rows": Window.physical_cell_count(height),
+                "film_cols": Window.physical_cell_count(width),
                 "quality": quality,
             }
         )

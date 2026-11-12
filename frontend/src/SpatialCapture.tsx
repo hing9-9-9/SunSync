@@ -79,16 +79,16 @@ function SessionSpatialCapture(props: { sceneId?: string; count: number; onFinis
         {windows.map((w,i)=><option key={w.window_id} value={w.window_id}>창 {i+1}</option>)}
       </select></label>}
       {win && <>
-        {!savedSelection && <FilmModulePicker rows={win.rows} cols={win.cols} row={row} col={col} onChange={(r,c)=>{setRow(r);setCol(c);}} />}
+        {!savedSelection && <FilmModulePicker rows={win.rows} cols={win.cols} topRemainder={win.top_remainder_m} rightRemainder={win.right_remainder_m} row={row} col={col} onChange={(r,c)=>{setRow(r);setCol(c);}} />}
         {savedSelection && <p>창문 입력 단계에서 선택한 필름 정보를 가져왔어요.</p>}
-        <p className="film-select-choice" role="status">위에서 {row+1}번째 · 왼쪽에서 {col+1}번째 필름</p>
+        <p className="film-select-choice" role="status">아래에서 {row+1}번째 · 왼쪽에서 {col+1}번째 필름</p>
       </>}
       <button type="button" className="primary" disabled={!win} onClick={()=>void begin()}>촬영 시작</button>
       <button type="button" className="text-button" onClick={()=>{if(!props.sceneId)return;setBusy(true);void cancelStoredCapture(props.sceneId).then(()=>setRetry(n=>n+1)).catch(e=>{setError(String(e));setBusy(false);});}}>이전 촬영 끝내기</button>
     </section>;
   }
   return <section>
-    <p>선택한 필름: 위에서 {(session.film_module?.row ?? 0)+1}번째, 왼쪽에서 {(session.film_module?.col ?? 0)+1}번째 · 마커 60cm</p>
+    <p>선택한 필름: 아래에서 {(session.film_module?.row ?? 0)+1}번째, 왼쪽에서 {(session.film_module?.col ?? 0)+1}번째 · 마커 60cm</p>
     <details><summary>가상 필름 표시 확인 · 테스트용</summary>
       <svg viewBox={`0 0 ${session.film_cells[0]?.length ?? 10} ${session.film_cells.length || 10}`} width="200" height="200" role="img" aria-label="이번 촬영의 가상 필름 마커" shapeRendering="crispEdges">
         {session.film_cells.flatMap((row, y) => row.map((opacity, x) => <rect key={`${x}:${y}`} x={x} y={y} width="1" height="1" fill={opacity >= 0.5 ? "black" : "white"} />))}

@@ -1493,8 +1493,17 @@ export function useSpaceApp() {
   function changeWindow(patch: Partial<NonNullable<Space["windowDimensions"]>>) {
     if (!draft) return;
     const next = { ...(draft.windowDimensions ?? { width: NaN, height: NaN }), ...patch };
-    // Resizing the grid requires an explicit new selection, never a silent fallback.
-    if (patch.width !== undefined || patch.height !== undefined) next.captureModule = null;
+    const previous = draft.windowDimensions;
+    if (previous?.captureModule && (patch.width !== undefined || patch.height !== undefined)) {
+      const selection = previous.captureModule;
+      const row = selection.rowOrigin === "bottom"
+        ? selection.row
+        : Math.floor(previous.height + 1e-6) - 1 - selection.row;
+      next.captureModule = row >= 0 && row < Math.floor(next.height + 1e-6)
+        && selection.col < Math.floor(next.width + 1e-6)
+        ? { row, col: selection.col, rowOrigin: "bottom" }
+        : null;
+    }
     // Capture sessions own marker placement; discard obsolete manual marker settings.
     const resolved = resolveWindow({ ...draft, windowDimensions: next }) ?? next;
     change({ windowDimensions: { ...resolved, marker: undefined } });

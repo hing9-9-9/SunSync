@@ -85,7 +85,7 @@ async function get<T>(url: string): Promise<T> {
 export function serverMessage(detail: string): string {
   const rules: [RegExp, string][] = [
     [/선택한 필름이 변경됐어요/, "선택한 필름이 변경됐어요. 이전 촬영을 끝내고 촬영 화면을 다시 열어 주세요."],
-    [/complete 1m film modules/i, "창의 필름 배치를 확인해 주세요. 1m 필름 여러 장과 10cm 셀을 기준으로 측정해요."],
+    [/complete 1m film module/i, "마커를 표시하려면 창문에 가로·높이 1m인 필름이 한 장 이상 있어야 해요."],
     [/Film module outside/i, "선택한 필름이 창의 배치 범위를 벗어났어요."],
     [/Another capture session/i, "이 공간에서 다른 촬영이 진행 중이에요. 먼저 완료하거나 취소해 주세요."],
     [/Capture marker|Capture request/i, "촬영 마커가 바뀌었거나 시간이 만료됐어요. 촬영을 다시 시작해 주세요."],
@@ -359,7 +359,7 @@ export async function endCaptureMarker(session: CaptureMarker): Promise<void> {
   if (sessionStorage.getItem(markerKey(session.scene_id)) === session.session_id) sessionStorage.removeItem(markerKey(session.scene_id));
 }
 
-export type FilmTargetWindow = {window_id:string; rows:number; cols:number};
+export type FilmTargetWindow = {window_id:string; rows:number; cols:number; top_remainder_m?:number; right_remainder_m?:number};
 export type CaptureTargets = { windows: FilmTargetWindow[]; selected_target?: CaptureTarget };
 export async function captureSelection(sceneId:string):Promise<CaptureTargets> {
   return get<CaptureTargets>(`${markerUrl(sceneId)}/targets`);

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { filmStatesAt } from "./shading";
 import type { ShadingResult } from "./shading";
-import { filmGrid, resolveWindow, timeToMinute, validateShadingTime, validateWindow, walls } from "./model";
+import { CELL_SIZE, filmCellEdges, filmGrid, resolveWindow, timeToMinute, validateShadingTime, validateWindow, walls } from "./model";
 import { defaultShadingTime } from "./model";
 import type { ShadingTime, Space } from "./model";
 import { DAY_MINUTES, formatMinute, protectedRegions, shadedCells } from "./sunlight";
@@ -20,12 +20,14 @@ export function FilmGrid({ space, schedule, hour, marker = false, prediction, se
   // Older saved windows skip validation on load; don't draw a grid from sizes the form would reject.
   const problem = validateWindow(space);
   if (problem) return <p className="muted small">{problem}</p>;
-  const { cols, rows } = filmGrid(win);
+  const serverWindow = prediction?.plan?.windows[0];
+  const { cols, rows } = filmGrid(win, serverWindow && {
+    rows: serverWindow.film_rows, cols: serverWindow.film_cols,
+  });
   if (prediction && !prediction.plan) {
     const loading = !prediction.error && !prediction.empty;
     return <figure className="film-grid">{loading && <div className="film-grid-skeleton" style={{ aspectRatio: `${cols} / ${rows}` }} aria-hidden="true" />}<p className={prediction.error ? "error" : "muted small"} role={prediction.error ? "alert" : "status"}>{prediction.error ?? (prediction.empty ? "아직 이 공간의 차광 계획이 없습니다." : "차광 계획을 계산하는 중…")}</p></figure>;
   }
-  const serverWindow = prediction?.plan?.windows[0];
   if (serverWindow && (serverWindow.film_cols !== cols || serverWindow.film_rows !== rows))
     return <p className="error" role="alert">저장된 창문 규격과 차광 계획이 다릅니다. 최신 공간 정보를 불러와 주세요.</p>;
   let states: ReturnType<typeof filmStatesAt> | undefined;
@@ -43,8 +45,9 @@ export function FilmGrid({ space, schedule, hour, marker = false, prediction, se
     ? new Set([...states].filter(([, c]) => c.state === "opaque").map(([i]) => i))
     : showShading ? shadedCells(space, schedule, hour) : new Set<number>();
   const m = win.marker;
-  // Cells are rounded to whole 10 cm units, so scale real metres onto the drawn grid.
-  const sx = cols / win.width, sy = rows / win.height;
+  const sx = 1 / CELL_SIZE, sy = sx;
+  const uEdges = filmCellEdges(win.width, cols);
+  const vEdges = filmCellEdges(win.height, rows);
   const markerBox = marker && {
     x: (m.x - m.size / 2) * sx,
     y: (win.height - m.y - m.size / 2) * sy,
@@ -52,13 +55,16 @@ export function FilmGrid({ space, schedule, hour, marker = false, prediction, se
     height: m.size * sy,
   };
   return <figure className="film-grid">
-    <svg viewBox={`${-GAP} ${-GAP} ${cols + GAP * 2} ${rows + GAP * 2}`} role="img" aria-label={`${walls[win.wall]} 창문 필름 ${cols}×${rows}칸${showShading ? `, 가림 ${shaded.size}칸` : ""}`}>
+    <svg viewBox={`${-GAP} ${-GAP} ${win.width * sx + GAP * 2} ${win.height * sy + GAP * 2}`} role="img" aria-label={`${walls[win.wall]} 창문 필름 ${cols}×${rows}칸${showShading ? `, 가림 ${shaded.size}칸` : ""}`}>
       {Array.from({ length: cols * rows }, (_, i) => {
+        const col = i % cols, fromBottom = rows - 1 - Math.floor(i / cols);
+        const width = (uEdges[col + 1] - uEdges[col]) * sx;
+        const height = (vEdges[fromBottom + 1] - vEdges[fromBottom]) * sy;
         const on = shaded.has(i);
         const state = states?.get(i);
         const warning = state?.state === "infeasible" || state?.state === "unknown";
         const label = state?.state === "infeasible" ? "보호 조건 충족 불가" : state?.state === "unknown" ? "판단 불가" : on ? "가림" : "열림";
-        return <rect aria-hidden="true" key={i} className={on ? "cell shaded" : "cell"} style={warning ? { fill: state?.state === "infeasible" ? "var(--c-f8d7da)" : "var(--c-e2e5e9)", stroke: state?.state === "infeasible" ? "var(--c-a32b38)" : "var(--c-616b78)", strokeWidth: .06, strokeDasharray: state?.state === "unknown" ? ".12 .08" : undefined } : undefined} x={(i % cols) + GAP / 2} y={Math.floor(i / cols) + GAP / 2} width={1 - GAP} height={1 - GAP} rx=".14">
+        return <rect aria-hidden="true" key={i} className={on ? "cell shaded" : "cell"} style={warning ? { fill: state?.state === "infeasible" ? "var(--c-f8d7da)" : "var(--c-e2e5e9)", stroke: state?.state === "infeasible" ? "var(--c-a32b38)" : "var(--c-616b78)", strokeWidth: .06, strokeDasharray: state?.state === "unknown" ? ".12 .08" : undefined } : undefined} x={uEdges[col] * sx + width * GAP / 2} y={(win.height - vEdges[fromBottom + 1]) * sy + height * GAP / 2} width={width * (1 - GAP)} height={height * (1 - GAP)} rx=".14">
           <title>{`${Math.floor(i / cols) + 1}행 ${(i % cols) + 1}열 · ${label}${state?.reasons.length ? ` · ${state.reasons.join(", ")}` : ""}`}</title>
         </rect>;
       })}

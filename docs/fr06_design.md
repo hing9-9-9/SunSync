@@ -33,7 +33,7 @@ ArUco 검출, UI 화면 개발은 각 담당 모듈의 후속 작업이다.
 - 단위 m, 오른손 ENU: x 동쪽, y 북쪽, z 위쪽. 방 바닥은 z=0.
 - `Room`: 선택적 층수 `floor_level` (정수 -100~1000층, 기본값 `null`). 건물 내 층수 정보를 기록하며 하위 호환성을 위해 생략 가능하다.
 - `Window`: 필름 칸 배치 `film_rows`, `film_cols` (기본값 10×10, 0.1m 칸 기준 다중 모듈 확장 지원). 실내 기준 좌측 상단 `(row 0, col 0)` 좌표계와 창 면 `(u, v) ↔ (row, col)` 변환 함수를 제공한다.
-- 물리 필름은 1m × 1m 모듈(10×10셀)들을 빈틈없이 배치한다. 창 전체의 크기를 1m로 제한하지 않는다. 촬영·pairing은 `module_row`, `module_col`(실내 좌상단 0 기준)로 필름을 선택하며 시작 셀은 `(10×module_row+2, 10×module_col+2)`다. 모듈 배치와 벽→창 여백의 좌표식은 [단일 마커 연결 계약](fr03_single_marker.md#다중-필름-선택과-벽-기준-위치)을 따른다.
+- 물리 필름은 1m × 1m 모듈(10×10셀)들을 빈틈없이 배치한다. 창 왼쪽 아래부터 완전한 모듈을 배치하고, 오른쪽과 위의 자투리 필름은 마커 선택에서 제외한다. 촬영·pairing은 `module_row`, `module_col`(실내에서 바라본 좌하단 0 기준)로 필름을 선택하며 시작 셀은 `(film_rows - 10×(module_row+1) + 2, 10×module_col+2)`다. 모듈 배치와 벽→창 여백의 좌표식은 [단일 마커 연결 계약](fr03_single_marker.md#다중-필름-선택과-벽-기준-위치)을 따른다.
 - `Occluder`: 가구 종류 `type` (`bookshelf`, `desk`, `chair`, `other`, 기본값 `other`). 기하 형상 `kind: cuboid`와 구분하여 용도와 의미론적 특성을 보존한다.
 - `Marker`: 평면 `plane` (`"floor"` 또는 `"window"`). 창 마커의 경우 `window_id`, `start_row`, `start_col` (기본 `(2, 2)`), `marker_rows=6`, `marker_cols=6` (ArUco 4×4 테두리 포함 6×6칸 = 0.6m)를 지정하며, 마커가 창 범위를 벗어나지 않도록 검증한다.
 - 창 방위각은 **실외 법선** 기준 진북 0°, 시계방향이며 가림물 yaw와 다르다.

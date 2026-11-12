@@ -7,7 +7,7 @@ The schema describes structure; model validators also enforce geometry and refer
 from __future__ import annotations
 
 from datetime import datetime
-from math import atan2, degrees, floor
+from math import atan2, ceil, degrees, floor
 from typing import Annotated, Literal, Self
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -147,25 +147,41 @@ class Window(Model):
     def cell_height_m(self) -> float:
         return self.height_m / self.film_rows
 
-    def film_module_shape(self) -> tuple[int, int]:
-        """Installed 1m modules, tiled without gaps; indices start at indoor top-left.
+    @staticmethod
+    def physical_cell_count(length_m: float) -> int:
+        return max(1, ceil((length_m - EPS) / 0.1))
 
-        Legacy simulation grids remain readable, but cannot be used as a physical
-        measurement reference unless they describe complete 10x10 modules.
-        """
+    @staticmethod
+    def full_module_count(length_m: float) -> int:
+        return floor(length_m + EPS)
+
+    @staticmethod
+    def _uses_physical_cells(length_m: float, count: int) -> bool:
+        # Keep saved UI grids with the old rounded count readable. An outer
+        # cell can absorb their sub-cell remainder without moving the marker.
+        legacy_count = max(1, floor(length_m / 0.1 + 0.5))
+        return count in (Window.physical_cell_count(length_m), legacy_count)
+
+    def film_module_shape(self) -> tuple[int, int]:
+        """Selectable 1m modules counted from the indoor bottom-left."""
+        rows = self.full_module_count(self.height_m)
+        cols = self.full_module_count(self.width_m)
         require(
-            self.film_rows % 10 == 0
-            and self.film_cols % 10 == 0
-            and abs(self.cell_width_m - 0.1) <= EPS
-            and abs(self.cell_height_m - 0.1) <= EPS,
-            "Capture requires complete 1m film modules with 10cm cells",
+            rows > 0
+            and cols > 0
+            and self._uses_physical_cells(self.height_m, self.film_rows)
+            and self._uses_physical_cells(self.width_m, self.film_cols),
+            "Capture requires at least one complete 1m film module with 10cm cells",
         )
-        return self.film_rows // 10, self.film_cols // 10
+        return rows, cols
 
     def module_marker_placement(self, row: int, col: int) -> tuple[int, int, float, float]:
         rows, cols = self.film_module_shape()
         require(0 <= row < rows and 0 <= col < cols, "Film module outside window layout")
-        return row * 10 + 2, col * 10 + 2, col + 0.5, self.height_m - row - 0.5
+        return self.film_rows - (row + 1) * 10 + 2, col * 10 + 2, col + 0.5, row + 0.5
+
+    def marker_module_indices(self, start_row: int, start_col: int) -> tuple[int, int]:
+        return (self.film_rows - start_row + 2) // 10 - 1, start_col // 10
 
     def grid_from_cell_size(self, cell_size_m: float = 0.1) -> tuple[int, int]:
         require(cell_size_m > 0, "cell_size_m must be positive")
@@ -188,20 +204,18 @@ class Window(Model):
         )
         u_clamped = min(max(u_m, 0.0), self.width_m)
         v_clamped = min(max(v_m, 0.0), self.height_m)
-        if u_clamped >= self.width_m - EPS:
-            col = self.film_cols - 1
+        if self._uses_physical_cells(self.width_m, self.film_cols):
+            col = min(floor((u_clamped + EPS) / 0.1), self.film_cols - 1)
         else:
-            col_idx = floor((u_clamped + EPS) / self.cell_width_m)
-            col = min(max(col_idx, 0), self.film_cols - 1)
+            col = min(floor((u_clamped + EPS) / self.cell_width_m), self.film_cols - 1)
 
-        top_dist = self.height_m - v_clamped
-        if top_dist >= self.height_m - EPS:
-            row = self.film_rows - 1
-        elif top_dist <= EPS:
-            row = 0
+        if self._uses_physical_cells(self.height_m, self.film_rows):
+            # At a shared edge, keep assigning the point to the cell below it.
+            from_bottom = min(max(ceil((v_clamped - EPS) / 0.1) - 1, 0), self.film_rows - 1)
+            row = self.film_rows - 1 - from_bottom
         else:
-            row_idx = floor((top_dist + EPS) / self.cell_height_m)
-            row = min(max(row_idx, 0), self.film_rows - 1)
+            top_dist = self.height_m - v_clamped
+            row = min(floor((top_dist + EPS) / self.cell_height_m), self.film_rows - 1)
 
         return (row, col)
 
@@ -216,10 +230,18 @@ class Window(Model):
             0 <= row < self.film_rows and 0 <= col < self.film_cols,
             "cell row/col outside window film grid",
         )
-        u_min = col * self.cell_width_m
-        u_max = (col + 1) * self.cell_width_m
-        v_max = self.height_m - row * self.cell_height_m
-        v_min = self.height_m - (row + 1) * self.cell_height_m
+        if self._uses_physical_cells(self.width_m, self.film_cols):
+            u_min = col * 0.1
+            u_max = self.width_m if col == self.film_cols - 1 else (col + 1) * 0.1
+        else:
+            u_min, u_max = col * self.cell_width_m, (col + 1) * self.cell_width_m
+        if self._uses_physical_cells(self.height_m, self.film_rows):
+            from_bottom = self.film_rows - 1 - row
+            v_min = from_bottom * 0.1
+            v_max = self.height_m if row == 0 else (from_bottom + 1) * 0.1
+        else:
+            v_min = self.height_m - (row + 1) * self.cell_height_m
+            v_max = self.height_m - row * self.cell_height_m
         return ((u_min, u_max), (v_min, v_max))
 
     def cell_to_uv(self, row: int, col: int) -> tuple[float, float]:
@@ -959,8 +981,15 @@ class Scene(Model):
                     and marker.start_col + marker.marker_cols <= window.film_cols,
                     f"{marker.marker_id}: marker cells exceed window film grid",
                 )
-                expected_w = marker.marker_cols * window.cell_width_m
-                expected_h = marker.marker_rows * window.cell_height_m
+                (u_min, _), (_, v_max) = window.cell_to_uv_bounds(
+                    marker.start_row, marker.start_col
+                )
+                (_, u_max), (v_min, _) = window.cell_to_uv_bounds(
+                    marker.start_row + marker.marker_rows - 1,
+                    marker.start_col + marker.marker_cols - 1,
+                )
+                expected_w = u_max - u_min
+                expected_h = v_max - v_min
                 require(
                     abs(marker.side_length_m - expected_w) <= EPS
                     and abs(marker.side_length_m - expected_h) <= EPS,

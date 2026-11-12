@@ -27,6 +27,8 @@ class FilmWindow:
     film_rows: int
     film_cols: int
     film_min_transmittance: float
+    u_edges_m: tuple[float, ...] = ()
+    v_edges_m: tuple[float, ...] = ()
 
     def __post_init__(self) -> None:
         if not self.window_id:
