@@ -147,12 +147,48 @@ def shape_parameters(kind, points, up):
     return initial, decode
 
 
-def refine(kind, points, samples, board, up, placement_sigma, tolerance, max_rmse):
+def refine(
+    kind,
+    points,
+    samples,
+    board,
+    up,
+    placement_sigma,
+    tolerance,
+    max_rmse,
+    *,
+    shape_correction=None,
+    sketch=None,
+):
     """Jointly fit constrained shape, per-frame pose and lens-to-point offsets.
 
     Pixel noise is estimated from each original PnP; hand placement is a finite
     nuisance residual, never an assumption that every lens was exactly on a corner.
     """
+    correction_limit = tolerance
+    sketch_basis = None
+    if shape_correction is not None:
+        _, _, axes = np.linalg.svd(np.asarray(up).reshape(1, 3), full_matrices=True)
+        plane = axes[1:].T
+        projected = (points - points.mean(axis=0)) @ plane
+        if kind in ("rectangle", "polygon"):
+            validate_polygon(projected)
+        fit = fit_surface(kind, points, np.inf)
+        shorter_side = min(fit["width"], fit["depth"])
+        correction_limit = min(shape_correction, max(tolerance, 0.2 * shorter_side))
+        if kind == "polygon" and sketch is not None:
+            template = np.asarray(sketch, dtype=float).copy()
+            template -= template.mean(axis=0)
+
+            def signed_area(vertices):
+                x, y = vertices.T
+                return np.dot(x, np.roll(y, -1)) - np.dot(y, np.roll(x, -1))
+
+            # Screen coordinates and the measurement plane can have opposite handedness.
+            if signed_area(template) * signed_area(projected) < 0:
+                template[:, 1] *= -1
+            rotated = np.column_stack([-template[:, 1], template[:, 0]])
+            sketch_basis = np.linalg.qr(np.column_stack([template.ravel(), rotated.ravel()]))[0]
     initial, decode = shape_parameters(kind, points, up)
     size = len(initial)
     objects = board.objects()
@@ -196,15 +232,24 @@ def refine(kind, points, samples, board, up, placement_sigma, tolerance, max_rms
             rotation = cv2.Rodrigues(r)[0]
             contact = rotation.T @ (np.asarray(sample["capture"].camera_to_point_m) - t)
             res.extend((contact - shaped[index]) / placement_sigma * weight)
+        if sketch_basis is not None:
+            # Compare to the closest translated, rotated and uniformly scaled sketch.
+            outline = ((shaped - shaped.mean(axis=0)) @ plane).ravel()
+            deviation = outline - sketch_basis @ (sketch_basis.T @ outline)
+            res.extend(deviation / (3 * placement_sigma))
         return np.asarray(res)
 
-    sparsity = lil_matrix((sum(2 * len(f[3]) + 3 for f in frames), len(start)), dtype=int)
+    frame_rows = sum(2 * len(f[3]) + 3 for f in frames)
+    sketch_rows = 2 * len(points) if sketch_basis is not None else 0
+    sparsity = lil_matrix((frame_rows + sketch_rows, len(start)), dtype=int)
     row = 0
     for i, frame in enumerate(frames):
         pixel_count = 2 * len(frame[3])
         sparsity[row : row + pixel_count + 3, size + i * 6 : size + (i + 1) * 6] = 1
         sparsity[row + pixel_count : row + pixel_count + 3, :size] = 1
         row += pixel_count + 3
+    if sketch_rows:
+        sparsity[frame_rows:, :size] = 1
     solution = least_squares(
         residual,
         start,
@@ -222,7 +267,7 @@ def refine(kind, points, samples, board, up, placement_sigma, tolerance, max_rms
     movement = np.linalg.norm(shaped - points, axis=1)
     if not solution.success or not np.isfinite(shaped).all():
         raise ValueError("joint_optimizer_did_not_converge")
-    if movement.max() > tolerance:
+    if movement.max() > correction_limit:
         raise ValueError("joint_shape_correction_exceeds_tolerance")
     rmses = []
     for i, (_, sample, _, obj, pixels, (k, d)) in enumerate(frames):

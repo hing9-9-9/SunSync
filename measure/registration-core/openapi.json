@@ -1567,6 +1567,19 @@
             "title": "Max Surface Residual M",
             "default": 0.03
           },
+          "max_shape_correction_m": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 0.1,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Shape Correction M"
+          },
           "max_reprojection_rmse_px": {
             "type": "number",
             "maximum": 5.0,

@@ -168,7 +168,7 @@ function TestSpatialCapture({ count, onFinish, session }: { count: number; onFin
     if (!complete || !captureCamera || verifying || checkedKey === photoKey) return;
     const ticket = version.current, key = photoKey;
     setVerifying(true); setError(""); setSurfaceProblem("");
-    checkMeasurement(session.scene_id, captureCamera, { session, shape, vertices: points, points: points.map((_,i)=>({ id:`P${i+1}`, frames:(photos[i]??[]).map(p=>p!.frame!) })) })
+    checkMeasurement(session.scene_id, captureCamera, { session, shape, vertices: points, points: points.map((_,i)=>({ id:`P${i+1}`, frames:rawFrames[i] ?? (photos[i]??[]).map(p=>p!.frame!) })) })
       .then(found => {
         if (ticket !== version.current) return;
         const failed = found.filter(f => f.point);
@@ -176,6 +176,11 @@ function TestSpatialCapture({ count, onFinish, session }: { count: number; onFin
           const bad = new Set(failed.map(f => Number(f.point!.slice(1)) - 1));
           bad.forEach(i => photos[i]?.forEach(p => p && URL.revokeObjectURL(p.url)));
           setPhotos(all => points.map((_,i) => bad.has(i) ? [] : all[i] ?? []));
+          setRawFrames(all => {
+            const remaining = { ...all };
+            bad.forEach(i => delete remaining[i]);
+            return remaining;
+          });
           setProblems(all => ({ ...all, ...Object.fromEntries(failed.map(f => [Number(f.point!.slice(1)) - 1, f.message])) }));
           setError(`${[...bad].map(i=>`P${i+1}`).join(", ")} 지점만 다시 찍어 주세요. 나머지 지점 사진은 그대로 남아 있어요.`);
         } else if (found.length) setSurfaceProblem(found[0].message);
