@@ -1247,7 +1247,6 @@ export function useSpaceApp() {
   // Real measurement when every photo was checked by the measurement server and this phone's
   // camera is set up; otherwise the default-size placement below.
   async function measureCaptured(space: Space, items: CapturedFurniture[]) {
-    const camera = items[0]?.capture?.camera ?? savedCamera();
     measuring.current = true;
     setProgress(10);
     setPage("processing");
@@ -1255,7 +1254,10 @@ export function useSpaceApp() {
       let current = space;
       for (const [i, item] of items.entries()) {
         if (!item.capture?.session) throw new MeasureError("촬영 세션을 다시 시작해 주세요.");
-        current = await measureAndRegister(current, camera!, {
+        const camera = item.capture.camera ?? savedCamera();
+        if (!camera) throw new MeasureError("카메라 준비를 완료해 주세요.");
+        current = await measureAndRegister(current, camera, {
+          checkedMeasurement: item.capture.checkedMeasurement,
           session: item.capture.session,
           name: item.name,
           shape: item.capture!.shape,

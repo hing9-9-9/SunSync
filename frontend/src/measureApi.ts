@@ -7,6 +7,7 @@
 // from the OS camera instead; drop savedCamera/setupCamera/prepare's fixed size when it ships.
 import { resolveWindow } from "./model.ts";
 import type { Space } from "./model.ts";
+import { pointFailure } from "./captureGuide.ts";
 import { EXPIRED_MESSAGE, notifyUnauthorized } from "./auth.ts";
 
 // 1m film, 10x10 cells: the central 6x6 cells form one 60cm ArUco marker.
@@ -47,16 +48,17 @@ function unauthorized() {
   return new MeasureError(EXPIRED_MESSAGE, 401);
 }
 
-async function post<T>(url: string, body: unknown): Promise<T> {
-  return JSON.parse(await postRaw(url, typeof body === "string" ? body : JSON.stringify(body))) as T;
+async function post<T>(url: string, body: unknown, signal?: AbortSignal): Promise<T> {
+  return JSON.parse(await postRaw(url, typeof body === "string" ? body : JSON.stringify(body), signal)) as T;
 }
 // Returns the body text untouched: the measurement's reference_id is a digest of its JSON, and a
 // parse/stringify round trip in JS (1.0 → 1) would break it before /v1/fr06 checks it.
-async function postRaw(url: string, body: string): Promise<string> {
+async function postRaw(url: string, body: string, signal?: AbortSignal): Promise<string> {
   let response: Response;
   try {
-    response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body });
+    response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body, signal });
   } catch {
+    signal?.throwIfAborted();
     throw new MeasureError("측정 서버에 연결하지 못했어요. 네트워크를 확인해 주세요.");
   }
   if (response.status === 401) throw unauthorized();
@@ -70,8 +72,9 @@ async function postRaw(url: string, body: string): Promise<string> {
   }
   return text;
 }
-async function get<T>(url: string): Promise<T> {
-  const response = await fetch(url).catch(() => null);
+async function get<T>(url: string, signal?: AbortSignal): Promise<T> {
+  const response = await (signal ? fetch(url, { signal }) : fetch(url)).catch(() => null);
+  signal?.throwIfAborted();
   if (!response) throw new MeasureError("서버의 공간 정보를 읽지 못했어요.");
   if (response.status === 401) throw unauthorized();
   if (!response.ok) {
@@ -106,19 +109,48 @@ export function serverMessage(detail: string): string {
 /** The measurement server answers 200 even when the photos do not add up (the failure only surfaces
  *  later, from /v1/fr06, as an unreadable error). Name each point that failed and why, so only those
  *  points are retaken. An empty list means the measurement is usable. */
-export type PointProblem = { point?: string; message: string };
+export type PointProblem = { point?: string; message: string; retryable?: boolean };
+const unreadableMeasurement = (): PointProblem[] => [{
+  message: "측정 결과를 확인하지 못했어요. 사진을 유지한 채 다시 확인해 주세요.",
+  retryable: true,
+}];
 export function measurementProblems(text: string): PointProblem[] {
-  let m: { status?: string; required_actions?: string[]; points?: Record<string, { status?: string }> };
-  try { m = JSON.parse(text); } catch { return []; }
-  if (m.status !== "incomplete" && m.status !== "invalid_surface") return [];
-  const found: PointProblem[] = Object.entries(m.points ?? {}).filter(([, p]) => p.status !== "ok").map(([point, p]) => ({
+  let m: {
+    status?: string;
+    model?: { dimensions_m?: unknown };
+    required_actions?: string[];
+    points?: Record<string, { status?: string }>;
+    capture_diagnostics?: { point_id: string; status: string }[];
+  };
+  try { m = JSON.parse(text); } catch { return unreadableMeasurement(); }
+  if (!m || typeof m !== "object") return unreadableMeasurement();
+  if (m.status === "model_ready_unreviewed") {
+    const dimensions = m.model?.dimensions_m;
+    return Array.isArray(dimensions) && dimensions.length === 3
+      && dimensions.every(n => typeof n === "number" && Number.isFinite(n) && n > 0)
+      ? [] : unreadableMeasurement();
+  }
+  if (m.status !== "incomplete" && m.status !== "invalid_surface" && m.status !== "surface_measured") {
+    return unreadableMeasurement();
+  }
+  const entries = Object.entries(m.points ?? {});
+  if (entries.some(([point, p]) => !/^(P[1-9]\d*|H1)$/.test(point) || typeof p?.status !== "string")) {
+    return unreadableMeasurement();
+  }
+  const diagnostics = Array.isArray(m.capture_diagnostics) ? m.capture_diagnostics : [];
+  const found: PointProblem[] = entries.filter(([, p]) => p.status !== "ok").map(([point, p]) => ({
     point,
-    message: p.status === "inconsistent_samples"
-      ? `${point} · 같은 지점 사진끼리 위치가 크게 어긋나요(3cm 넘게). 폰을 그 지점에 고정하고 다시 찍어 주세요.`
-      : `${point} · 마커가 또렷하게 잡힌 사진이 부족해요. 마커 전체가 보이게, 너무 멀거나 비스듬하지 않게 다시 찍어 주세요.`,
+    message: pointFailure(point, {
+      quality: { reason: p.status! },
+      diagnostics: diagnostics.filter(d => d?.point_id === point),
+    }),
   }));
+  if (!found.length && m.status === "incomplete") return unreadableMeasurement();
+  if (!found.length && m.status === "surface_measured") {
+    return [{ message: "상판은 측정했지만 가구 높이를 확정하지 못했어요. 바닥 기준과 촬영 높이를 확인해 주세요." }];
+  }
   if (!found.length && m.status === "invalid_surface") {
-    const actions = m.required_actions ?? [];
+    const actions = Array.isArray(m.required_actions) ? m.required_actions : [];
     if (actions.includes("joint_shape_correction_exceeds_tolerance")) {
       found.push({ message: "선택한 상판 모양으로 보정하기에는 촬영 위치 차이가 커요. 렌즈를 안내된 지점에 더 가까이 맞춰 다시 찍어 주세요." });
     } else if (actions.includes("joint_optimizer_did_not_converge") || actions.includes("joint_reprojection_error")) {
@@ -159,13 +191,15 @@ const detectionCamera = (width: number, height: number): Camera => ({
 });
 
 /** Prepare a photo and find the board markers in it. */
-export async function detectFrame(file: File, board: Board = BOARD, session?: CaptureMarker, capturedAt?: string, calibratedCamera?:Camera): Promise<Frame> {
-  if (session) await checkCaptureMarker(session);
+export async function detectFrame(file: File, board: Board = BOARD, session?: CaptureMarker, capturedAt?: string, calibratedCamera?: Camera, signal?: AbortSignal): Promise<Frame> {
+  if (session) await checkCaptureMarker(session, signal);
   const image = await prepare(file);
+  signal?.throwIfAborted();
   if(calibratedCamera&&(image.width!==calibratedCamera.width||image.height!==calibratedCamera.height))throw new MeasureError("촬영 영상 크기가 카메라 설정과 달라요. 다시 준비해 주세요.");
   const result = await post<{ detections: Detection[]; pose?:{status:string} }>("/measure/v1/detect", {
     camera: calibratedCamera ?? detectionCamera(image.width, image.height), board, image_base64: image.base64,
-  });
+  }, signal);
+  signal?.throwIfAborted();
   const digest = await crypto.subtle.digest("SHA-256", await file.arrayBuffer());
   const image_sha256 = Array.from(new Uint8Array(digest),v=>v.toString(16).padStart(2,"0")).join("");
   return { ...image, pose_status:calibratedCamera?result.pose?.status:undefined, image_sha256, marker_session_id: session?.session_id, capture_id: crypto.randomUUID(), captured_at: capturedAt ?? new Date(file.lastModified).toISOString(), detections: result.detections };
@@ -246,7 +280,24 @@ const SERVER_SHAPES: Record<string, string> = { rectangle: "rectangle", circle: 
 
 type MeasureItem = { session: CaptureMarker; shape: string; vertices: { x: number; y: number }[]; points: MeasuredPoint[] };
 
-/** Run the measurement for one piece of furniture: raw server text plus what registration needs. */
+export type CheckedMeasurement = { sceneId: string; roomId: string; sessionId: string; text: string };
+
+function readMeasurementScene(sceneId: string) {
+  return get<{ revision: number; room: { room_id: string }; registration_calibration: { calibration_id: string } | null } & Record<string, unknown>>(
+    `/api/scenes/${encodeURIComponent(sceneId)}`,
+  );
+}
+
+function measurementAlignment(scene: Awaited<ReturnType<typeof readMeasurementScene>>, session: CaptureMarker) {
+  const board = session.board;
+  const filmMarkers = ((scene.markers ?? []) as FilmMarker[]).filter(m => m.plane === "window");
+  const filmMarker = filmMarkers.find(m => m.code_id === board.ids_by_row[0][0]);
+  if (!filmMarker || JSON.stringify(filmMarker.T_ENU_marker) !== JSON.stringify(session.marker.T_ENU_marker)) {
+    throw new MeasureError("촬영 중 마커 위치가 바뀌었어요. 다시 촬영해 주세요.");
+  }
+  return filmBoardAlignment(filmMarker, board);
+}
+
 async function measureRaw(sceneId: string, camera: Camera, item: MeasureItem) {
   if (item.session.scene_id !== sceneId) throw new MeasureError("촬영한 공간과 측정할 공간이 달라요.");
   const session = await checkCaptureMarker(item.session);
@@ -257,15 +308,8 @@ async function measureRaw(sceneId: string, camera: Camera, item: MeasureItem) {
       throw new MeasureError("다른 촬영 세션 또는 마커의 사진이 섞였어요. 다시 촬영해 주세요.");
     }
   }
-  const scene = await get<{ revision: number; room: { room_id: string }; registration_calibration: { calibration_id: string } | null } & Record<string, unknown>>(
-    `/api/scenes/${encodeURIComponent(sceneId)}`,
-  );
-  const filmMarkers = ((scene.markers ?? []) as FilmMarker[]).filter(m => m.plane === "window");
-  const filmMarker = filmMarkers.find(m => m.code_id === board.ids_by_row[0][0]);
-  if (!filmMarker || JSON.stringify(filmMarker.T_ENU_marker) !== JSON.stringify(session.marker.T_ENU_marker)) {
-    throw new MeasureError("촬영 중 마커 위치가 바뀌었어요. 다시 촬영해 주세요.");
-  }
-  const pose = filmBoardAlignment(filmMarker, board);
+  const scene = await readMeasurementScene(sceneId);
+  const pose = measurementAlignment(scene, session);
   const kind = SERVER_SHAPES[item.shape] ?? "polygon";
   const plan = {
     space_id: scene.room.room_id,
@@ -284,19 +328,40 @@ async function measureRaw(sceneId: string, camera: Camera, item: MeasureItem) {
       capture_id: f.capture_id, point_id: point.id, captured_at: f.captured_at, image_sha256:f.image_sha256, camera, detections: f.detections,
     }))),
   }));
-  return { session, scene, measurement };
+  const checked: CheckedMeasurement = {
+    sceneId, roomId: scene.room.room_id, sessionId: session.session_id, text: measurement,
+  };
+  return { checked, session, scene };
 }
 
 /** Pre-check a finished set of points before leaving the capture screen: which points must be retaken. */
-export async function checkMeasurement(sceneId: string, camera: Camera, item: MeasureItem): Promise<PointProblem[]> {
-  return measurementProblems((await measureRaw(sceneId, camera, item)).measurement);
+export async function checkMeasurement(sceneId: string, camera: Camera, item: MeasureItem) {
+  const { checked } = await measureRaw(sceneId, camera, item);
+  const problems = measurementProblems(checked.text);
+  return { problems, checked: problems.length ? undefined : checked };
 }
 
-/** Measure one captured piece of furniture and register it in the space's scene. Returns the
- *  updated UI space (the backend adds the measured furniture to it). */
-export async function measureAndRegister(space: Space, camera: Camera, item: MeasureItem & { name: string }): Promise<Space> {
+/** Register the result already checked on the capture screen against the latest scene revision. */
+export async function measureAndRegister(space: Space, camera: Camera, item: MeasureItem & {
+  name: string; checkedMeasurement?: CheckedMeasurement;
+}): Promise<Space> {
   if (!space.serverSceneId) throw new MeasureError("공간을 먼저 서버에 저장해 주세요.");
-  const { session, scene, measurement } = await measureRaw(space.serverSceneId, camera, item);
+  if (!space.site?.northConfirmed) throw new MeasureError("공간 정보에서 도면의 북쪽을 확인해 주세요.");
+  const sceneId = space.serverSceneId;
+  if (item.session.scene_id !== sceneId) throw new MeasureError("촬영한 공간과 측정할 공간이 달라요.");
+  const result = item.checkedMeasurement
+    ? {
+        checked: item.checkedMeasurement,
+        session: await checkCaptureMarker(item.session),
+        scene: await readMeasurementScene(sceneId),
+      }
+    : await measureRaw(sceneId, camera, item);
+  const { checked, session, scene } = result;
+  if (checked.sceneId !== sceneId || checked.sessionId !== session.session_id || checked.roomId !== scene.room.room_id) {
+    throw new MeasureError("촬영 기준이 바뀌었어요. 다시 촬영해 주세요.");
+  }
+  if (item.checkedMeasurement) measurementAlignment(scene, session);
+  const measurement = checked.text;
   const problem = measurementProblem(measurement);
   if (problem) throw new MeasureError(problem);
   const fragment = await post<{ calibration_id: string; markers: unknown[]; occluders: { name: string }[] } & Record<string, unknown>>(
@@ -356,8 +421,8 @@ export async function startCaptureMarker(sceneId: string, target: CaptureTarget 
     throw e;
   }
 }
-export async function checkCaptureMarker(session: CaptureMarker): Promise<CaptureMarker> {
-  const current = await get<CaptureMarker>(`${markerUrl(session.scene_id)}/${session.session_id}`);
+export async function checkCaptureMarker(session: CaptureMarker, signal?: AbortSignal): Promise<CaptureMarker> {
+  const current = await get<CaptureMarker>(`${markerUrl(session.scene_id)}/${session.session_id}`, signal);
   if (current.session_id !== session.session_id || current.scene_id !== session.scene_id ||
       current.window_id !== session.window_id || JSON.stringify(current.film_module) !== JSON.stringify(session.film_module) || JSON.stringify(current.board) !== JSON.stringify(session.board) ||
       JSON.stringify(current.marker.T_ENU_marker) !== JSON.stringify(session.marker.T_ENU_marker)) {
