@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { NowcastComparisonResponse, SunpathPrediction } from "./spaceApi.ts";
 import { fetchNowcastComparison } from "./spaceApi.ts";
+import { regionOwners } from "./model.ts";
 import type { Space } from "./model.ts";
 import NowcastComparisonChart from "./NowcastComparisonChart.tsx";
 
@@ -48,6 +49,7 @@ export default function PredictionSummary({
   }, [space.serverSceneId, startTime]);
 
   const comparison = serverComparison;
+  const owners = result ? regionOwners(space, result.regions.length) ?? result.regions.map((_, i) => i) : [];
 
   return (
     <div className="sun-reference muted small">
@@ -76,11 +78,14 @@ export default function PredictionSummary({
               .join(" · ")}
           </p>
           <ul>
-            {result.regions.map((r, index) => {
-              const first = r.timeline.find((t) => t.status === "exposed");
-              const values = r.timeline.flatMap(
+            {[...new Set(owners)].map((index) => {
+              // The furniture's top is a second server area of the same furniture: the first exposure is the earlier of the two.
+              const group = result.regions.filter((_, j) => owners[j] === index);
+              const r = group[0];
+              const first = group.flatMap((g) => g.timeline.filter((t) => t.status === "exposed").slice(0, 1)).sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp))[0];
+              const values = group.flatMap((g) => g.timeline.flatMap(
                 (t) => t.samples?.map((s) => s.direct_irradiance_W_m2) ?? [],
-              );
+              ));
               return (
                 <li key={r.region_id}>
                   {space.regions[index]?.name ?? r.region_id}:{" "}

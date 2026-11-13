@@ -96,7 +96,7 @@ export function serverMessage(detail: string): string {
     [/All configured board markers/i, "마커의 검정 테두리와 네 모서리가 모두 보이게 찍어 주세요."],
     [/optical range/i, "이 카메라는 자동 준비를 지원하지 않아요. 다른 카메라(기본 1배)로 찍어 주세요."],
     [/Duplicate target marker/i, "같은 마커가 두 번 보여요. 다른 보드나 화면을 가려 주세요."],
-    [/calibration|Register and confirm/i, "측정 기준을 저장하지 못했어요. 창문 위치와 북쪽 확인을 다시 저장해 주세요."],
+    [/calibration|Register and confirm/i, "측정 기준을 저장하지 못했어요. 창문 위치를 다시 저장해 주세요."],
     [/Revision conflict|409/i, "다른 곳에서 공간이 바뀌었어요. 목록을 새로고침한 뒤 다시 시도해 주세요."],
     [/repeat|spread|residual|reprojection|insufficient|not enough/i, "같은 지점 사진끼리 위치가 많이 달라요. 지점에 렌즈를 정확히 맞추고 다시 찍어 주세요."],
   ];
@@ -296,7 +296,6 @@ export async function checkMeasurement(sceneId: string, camera: Camera, item: Me
  *  updated UI space (the backend adds the measured furniture to it). */
 export async function measureAndRegister(space: Space, camera: Camera, item: MeasureItem & { name: string }): Promise<Space> {
   if (!space.serverSceneId) throw new MeasureError("공간을 먼저 서버에 저장해 주세요.");
-  if (!space.site?.northConfirmed) throw new MeasureError("공간 정보에서 도면의 북쪽을 확인해 주세요.");
   const { session, scene, measurement } = await measureRaw(space.serverSceneId, camera, item);
   const problem = measurementProblem(measurement);
   if (problem) throw new MeasureError(problem);

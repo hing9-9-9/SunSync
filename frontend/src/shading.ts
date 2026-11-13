@@ -1,4 +1,4 @@
-import { timeToMinute } from "./model.ts";
+import { withinShading } from "./model.ts";
 import type { ShadingTime } from "./model.ts";
 
 export type CellState = "opaque" | "transparent" | "infeasible" | "unknown";
@@ -44,19 +44,22 @@ export function validateShadingPlan(plan: ShadingPlan, sceneId: string, revision
   }
   return plan;
 }
-/** Keep the user's existing on/off and time gate. FR02 segments are [start, end). */
-export function filmStatesAt(plan: ShadingPlan, hour: number, setting: ShadingTime) {
-  const start = timeToMinute(setting.start), end = timeToMinute(setting.end);
+/** Keep the user's existing on/off and time gate. FR02 segments are [start, end).
+ *  A cell stays closed while at least one region that asked for it is inside its own time: the
+ *  region's own setting when `regionTime` returns one, the space's `setting` otherwise. */
+export function filmStatesAt(plan: ShadingPlan, hour: number, setting: ShadingTime, regionTime?: (regionId: string) => ShadingTime | undefined) {
   const minute = hour * 60;
   const time = Date.parse(plan.start_time) + minute * 60000;
   if (!Number.isFinite(time) || time < Date.parse(plan.start_time) || time >= Date.parse(plan.end_time))
     throw new Error("선택 시각이 차광 계획 범위 밖입니다.");
   const states = new Map<number, { state: CellState; reasons: string[] }>();
-  if (!setting.enabled || start === null || end === null || start >= end || minute < start || minute >= end) return states;
   const w = plan.windows[0];
   for (const c of w?.cells ?? []) {
     const s = c.segments.find(s => time >= Date.parse(s.start_time) && time < Date.parse(s.end_time));
-    if (s) states.set(c.row * w.film_cols + c.col, { state: s.state, reasons: s.reasons.map(r => `${r.grade} 등급`) });
+    if (!s) continue;
+    const active = s.reasons.filter(r => withinShading(regionTime?.(r.region_id) ?? setting, minute));
+    if (s.reasons.length ? !active.length : !withinShading(setting, minute)) continue;
+    states.set(c.row * w.film_cols + c.col, { state: s.state, reasons: active.map(r => `${r.grade} 등급`) });
   }
   return states;
 }

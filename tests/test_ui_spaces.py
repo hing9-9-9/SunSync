@@ -323,6 +323,24 @@ def test_invalid_shading_schedule_is_rejected(client, payload, start, end):
     assert client.post("/api/ui/spaces", json=payload).status_code == 422
 
 
+def test_region_own_shading_time_round_trip(client, payload):
+    payload["shadingSchedule"] = {"enabled": True, "start": "12:00", "end": "15:00"}
+    payload["regions"][0]["shadingSchedule"] = {"enabled": True, "start": "11:00", "end": "16:00"}
+    assert client.post("/api/ui/spaces", json=payload).status_code == 201
+    saved = client.get("/api/ui/spaces/test-space").json()
+    assert saved["regions"][0]["shadingSchedule"] == {"enabled": True, "start": "11:00", "end": "16:00"}
+    del saved["regions"][0]["shadingSchedule"]
+    saved["revision"] += 1
+    updated = client.put("/api/ui/spaces/test-space", json=saved)
+    assert updated.status_code == 200, updated.text
+    assert "shadingSchedule" not in updated.json()["regions"][0] or updated.json()["regions"][0]["shadingSchedule"] is None
+
+
+def test_invalid_region_shading_time_is_rejected(client, payload):
+    payload["regions"][0]["shadingSchedule"] = {"enabled": True, "start": "09:00", "end": "09:00"}
+    assert client.post("/api/ui/spaces", json=payload).status_code == 422
+
+
 def test_delete_removes_space_and_blocks_reupload(client, payload):
     assert client.post("/api/ui/spaces", json=payload).status_code == 201
     assert client.delete("/api/ui/spaces/test-space").status_code == 204
@@ -733,6 +751,43 @@ def test_rotated_host_near_wall_uses_physical_bounds(client, payload):
     payload["regions"][0].update(x=-0.7, y=2, width=2, depth=0.2, face="상단")
     result = client.post("/api/ui/spaces", json=payload)
     assert result.status_code == 201, result.text
+
+
+def test_furniture_top_is_protected_with_the_side_facing_the_window(client, payload):
+    payload["windowDimensions"] = {"width": 2, "height": 1.5, "wall": "east", "offset": 0.5, "sill": 0.6}
+    response = client.post("/api/ui/spaces", json=payload)
+    assert response.status_code == 201, response.text
+    scene = client.get(f"/api/scenes/{response.json()['serverSceneId']}").json()
+    side, top = scene["protected_regions"]
+    assert side["receiving_normal"] == [1, 0, 0]
+    assert top["receiving_normal"] == [0, 0, 1]
+    assert {v[2] for v in top["vertices_m"]} == {2}, "the top lies at the furniture height"
+    assert top["grade"] == side["grade"] == "B"
+    assert top["host_occluder_id"] == side["host_occluder_id"]
+    assert top["region_id"] != side["region_id"]
+    assert top["name"] == "보호면 윗면"
+
+
+def test_grade_d_and_top_regions_get_no_second_top(client, payload):
+    payload["regions"][0]["grade"] = "D"
+    response = client.post("/api/ui/spaces", json=payload)
+    assert response.status_code == 201, response.text
+    scene = client.get(f"/api/scenes/{response.json()['serverSceneId']}").json()
+    assert len(scene["protected_regions"]) == 1
+    payload["id"] = "top-space"
+    payload["regions"][0].update({"id": "r2", "face": "상단", "bottom": 1.9, "top": 2, "grade": "A"})
+    response = client.post("/api/ui/spaces", json=payload)
+    assert response.status_code == 201, response.text
+    scene = client.get(f"/api/scenes/{response.json()['serverSceneId']}").json()
+    assert len(scene["protected_regions"]) == 1
+
+
+def test_region_without_furniture_has_no_top(client, payload):
+    payload["regions"][0]["furnitureId"] = None
+    response = client.post("/api/ui/spaces", json=payload)
+    assert response.status_code == 201, response.text
+    scene = client.get(f"/api/scenes/{response.json()['serverSceneId']}").json()
+    assert len(scene["protected_regions"]) == 1
 
 
 @pytest.mark.parametrize("wall", ["south", "east", "north", "west"])

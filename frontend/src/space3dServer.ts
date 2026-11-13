@@ -14,15 +14,21 @@ export type ServerDay = {
 };
 export const STATE_CODE: Record<CellState, number> = { transparent: 0, opaque: 1, infeasible: 2, unknown: 3 };
 
-export function compactDay(sunpath: SunpathPrediction, plans: ShadingPlan[], flicker: number): ServerDay {
+export function compactDay(sunpath: SunpathPrediction, plans: ShadingPlan[], flicker: number, owners?: number[] | null): ServerDay {
   const regionIds = sunpath.regions.map(r => r.region_id);
+  // `owners[j]` is the space region that server area j belongs to (a furniture's top counts for its furniture's region).
+  const own = (j: number) => owners?.[j] ?? j;
+  const groups = Array.from({ length: Math.max(-1, ...sunpath.regions.map((_, j) => own(j))) + 1 }, (_, i) => sunpath.regions.filter((_, j) => own(j) === i));
   const win = plans[0]?.windows[0];
   return {
     times: (sunpath.solar_positions ?? []).map(p => Date.parse(p.timestamp)),
     sun: (sunpath.solar_positions ?? []).map(p => p.sun_direction_enu),
-    exposure: sunpath.regions.map(r => ({
-      share: r.timeline.map(t => t.sample_count ? t.exposed_sample_count / t.sample_count : 0),
-      maxW: r.timeline.map(t => t.max_direct_irradiance_W_m2),
+    exposure: groups.map(group => ({
+      share: group[0].timeline.map((_, k) => Math.max(...group.map(r => { const t = r.timeline[k]; return t?.sample_count ? t.exposed_sample_count / t.sample_count : 0; }))),
+      maxW: group[0].timeline.map((_, k) => {
+        const values = group.map(r => r.timeline[k]?.max_direct_irradiance_W_m2).filter((v): v is number => typeof v === "number");
+        return values.length ? Math.max(...values) : null;
+      }),
     })),
     rows: win?.film_rows ?? 0,
     cols: win?.film_cols ?? 0,
@@ -33,20 +39,24 @@ export function compactDay(sunpath: SunpathPrediction, plans: ShadingPlan[], fli
         from: Date.parse(s.start_time),
         to: Date.parse(s.end_time),
         state: s.state,
-        regions: s.reasons.map(r => regionIds.indexOf(r.region_id)).filter(i => i >= 0),
+        // A cell asked for by both the side and the top of one furniture counts once for it.
+        regions: [...new Set(s.reasons.map(r => regionIds.indexOf(r.region_id)).filter(i => i >= 0).map(own))],
       })))),
     flicker,
   };
 }
 
 /** Cell states at one moment (server indexing) and how many closed cells each region asked for. */
-export function cellsAt(day: ServerDay, at: number, regionCount: number) {
+export function cellsAt(day: ServerDay, at: number, regionCount: number, gate?: (region: number) => boolean, fallback = true) {
   const states = new Uint8Array(day.rows * day.cols);
   const byRegion = new Array<number>(regionCount).fill(0);
   for (const s of day.segments) {
     if (at < s.from || at >= s.to) continue;
+    // With a gate, only the regions inside their own time keep a cell closed; a segment without regions follows `fallback`.
+    const regions = gate ? s.regions.filter(gate) : s.regions;
+    if (gate && (s.regions.length ? !regions.length : !fallback)) continue;
     states[s.cell] = Math.max(states[s.cell], STATE_CODE[s.state]);
-    for (const r of s.regions) byRegion[r]++;
+    for (const r of regions) byRegion[r]++;
   }
   return { states, byRegion };
 }

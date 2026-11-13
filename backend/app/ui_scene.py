@@ -63,6 +63,18 @@ class UIFurniture(UIModel):
     baseHeight: Nonnegative = 0.0
 
 
+class UIShadingSchedule(UIModel):
+    enabled: bool
+    start: Annotated[str, Field(pattern=r"^(?:[01][0-9]|2[0-3]):[0-5][0-9]$")]
+    end: Annotated[str, Field(pattern=r"^(?:[01][0-9]|2[0-3]):[0-5][0-9]$")]
+
+    @model_validator(mode="after")
+    def check_interval(self) -> Self:
+        if self.enabled and self.start == self.end:
+            raise ValueError("차단 시작과 종료 시간을 다르게 설정해 주세요.")
+        return self
+
+
 class UIRegion(UIModel):
     id: Identifier
     name: Name
@@ -76,6 +88,8 @@ class UIRegion(UIModel):
     bottom: Nonnegative
     top: Positive
     grade: Literal["A", "B", "C", "D"]
+    # Only when this furniture's protected time differs from the space's.
+    shadingSchedule: UIShadingSchedule | None = None
 
 
 class UIWindowMarker(UIModel):
@@ -117,18 +131,6 @@ class UIWindowDimensions(UIModel):
             or m.y + m.size / 2 > self.height + 1e-6
         ):
             raise ValueError("QR 마커는 창문 안에 있어야 합니다.")
-        return self
-
-
-class UIShadingSchedule(UIModel):
-    enabled: bool
-    start: Annotated[str, Field(pattern=r"^(?:[01][0-9]|2[0-3]):[0-5][0-9]$")]
-    end: Annotated[str, Field(pattern=r"^(?:[01][0-9]|2[0-3]):[0-5][0-9]$")]
-
-    @model_validator(mode="after")
-    def check_interval(self) -> Self:
-        if self.enabled and self.start == self.end:
-            raise ValueError("차단 시작과 종료 시간을 다르게 설정해 주세요.")
         return self
 
 
@@ -353,6 +355,21 @@ def furniture_overlap_message(space: UISpace) -> str | None:
     )
 
 
+def top_companions(space: UISpace) -> list[UIRegion]:
+    """Regions whose furniture also protects its top (decided 2026-11-13).
+
+    A protection area on furniture guards the side that looks at the window and the furniture's top.
+    Same rule as topCompanions in frontend/src/model.ts: grade A to C, the face is not already the
+    top, and the furniture exists. The tops follow the regular areas, in region order.
+    """
+    hosts = {f.id for f in space.furniture}
+    return [
+        r
+        for r in space.regions
+        if r.furnitureId in hosts and r.face != "상단" and r.grade != "D"
+    ]
+
+
 def to_scene(space: UISpace, revision: int, created_at: str | None = None) -> Scene:
     overlap = furniture_overlap_message(space)
     if overlap is not None:
@@ -375,6 +392,24 @@ def to_scene(space: UISpace, revision: int, created_at: str | None = None) -> Sc
                 "host_occluder_id": furniture_ids[region.furnitureId]
                 if region.furnitureId
                 else None,
+                "vertices_m": vertices,
+                "receiving_normal": normal,
+                "grade": region.grade,
+                "policy_id": policy_id,
+                "quality": quality,
+            }
+        )
+    hosts = {f.id: f for f in space.furniture}
+    for region in top_companions(space):
+        host = hosts[region.furnitureId]
+        top = region.model_copy(update={"face": "상단", "bottom": 0.0, "top": host.height})
+        vertices, normal = region_surface(space, top)
+        protected.append(
+            {
+                "region_id": canonical_id("region", f"{region.id}:top"),
+                "room_id": room_id,
+                "name": f"{region.name} 윗면",
+                "host_occluder_id": furniture_ids[region.furnitureId],
                 "vertices_m": vertices,
                 "receiving_normal": normal,
                 "grade": region.grade,

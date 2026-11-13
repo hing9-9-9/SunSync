@@ -87,17 +87,20 @@ function SessionSpatialCapture(props: { sceneId?: string; count: number; onFinis
       <button type="button" className="text-button" onClick={()=>{if(!props.sceneId)return;setBusy(true);void cancelStoredCapture(props.sceneId).then(()=>setRetry(n=>n+1)).catch(e=>{setError(String(e));setBusy(false);});}}>이전 촬영 끝내기</button>
     </section>;
   }
-  return <section>
-    <p>선택한 필름: 아래에서 {(session.film_module?.row ?? 0)+1}번째, 왼쪽에서 {(session.film_module?.col ?? 0)+1}번째 · 마커 60cm</p>
-    <details><summary>가상 필름 표시 확인 · 테스트용</summary>
+  return <section className="capture-session">
+    <p className="capture-film-line">선택한 필름 · 아래에서 {(session.film_module?.row ?? 0)+1}번째, 왼쪽에서 {(session.film_module?.col ?? 0)+1}번째 (마커 60cm)</p>
+    <details className="capture-test-details"><summary>가상 필름 표시 확인 · 테스트용</summary>
       <svg viewBox={`0 0 ${session.film_cells[0]?.length ?? 10} ${session.film_cells.length || 10}`} width="200" height="200" role="img" aria-label="이번 촬영의 가상 필름 마커" shapeRendering="crispEdges">
         {session.film_cells.flatMap((row, y) => row.map((opacity, x) => <rect key={`${x}:${y}`} x={x} y={y} width="1" height="1" fill={opacity >= 0.5 ? "black" : "white"} />))}
       </svg>
       <p>가상 필름에 촬영용 마커를 표시했어요. 실제 필름 장치는 아직 연결되지 않았어요.</p>
     </details>
-    {error && <p role="alert">{error}</p>}
+    {error && <p className="error" role="alert">{error}</p>}
     <TestSpatialCapture key={session.session_id} {...props} session={session} />
-    <button type="button" onClick={() => void cancel()}>촬영 취소 · 마커 표시 종료</button>
+    <div className="capture-end">
+      <button type="button" className="secondary" onClick={() => void cancel()}>촬영 취소</button>
+      <p className="muted small">창문 필름에 띄운 마커도 함께 꺼져요.</p>
+    </div>
   </section>;
 }
 

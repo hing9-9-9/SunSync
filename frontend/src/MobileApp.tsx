@@ -7,11 +7,11 @@ import { FilmLayout } from "./FilmModulePicker";
 import { WorkspaceNavigation, WorkspaceHome, WorkspaceCards } from "./WorkspaceDesign";
 import { DeviceHandoff } from "./DeviceHandoff";
 import { CaptureHelp } from "./CaptureHelp";
-import { FilmGrid, ShadingTimeControl, VirtualFilmControl } from "./ShadingPlan";
+import { FilmGrid, RegionTimeField, ShadingTimeControl, VirtualFilmControl } from "./ShadingPlan";
 import { SpaceMenu, SpaceMenuGlyph } from "./SpaceMenu";
 import { BUILD_LABEL } from "./buildLabel";
 import AdaptiveEffect from "./AdaptiveEffect.tsx";
-import { applyShadingTime, formatMinute } from "./sunlight";
+import { applyRegionShading, formatMinute } from "./sunlight";
 import SpatialCapture from "./SpatialCapture";
 
 import {
@@ -816,15 +816,6 @@ function MobileApp() {
                           <FilmLayout space={draft} onChange={(row, col) => changeWindow({ captureModule: { row, col, rowOrigin: "bottom" } })} />
                         </>
                       )}
-                      <div className="mini-room">
-                        <span>
-                          {draft.width || "—"} × {draft.depth || "—"} m
-                        </span>
-                        <span>창</span>
-                      </div>
-                      <p className="muted small">
-                        공간 크기는 직접 입력 후 도면에서 확인
-                      </p>
                       <div className="divider" />
                       <div className="section-row location-heading">
                         <h3>건물 위치</h3>
@@ -879,21 +870,6 @@ function MobileApp() {
                             })
                           }
                         />
-                      </label>
-                      <label className="checkbox-row">
-                        <input
-                          type="checkbox"
-                          checked={draftSite.northConfirmed}
-                          onChange={(e) =>
-                            change({
-                              site: {
-                                ...draftSite,
-                                northConfirmed: e.target.checked,
-                              },
-                            })
-                          }
-                        />
-                        <span>도면의 위쪽이 북쪽임을 확인</span>
                       </label>
                     </Card>
                   </div>
@@ -1324,6 +1300,13 @@ function MobileApp() {
                           <p className="grade-description" aria-live="polite">
                             {grades[region.grade]}
                           </p>
+                          {region.grade !== "D" && (
+                            <RegionTimeField
+                              base={draft.shadingSchedule ?? defaultShadingTime}
+                              value={region.shadingSchedule}
+                              onChange={(shadingSchedule) => patchRegion({ shadingSchedule })}
+                            />
+                          )}
                           <div className="furniture-actions">
                             <button
                               className="text-button furniture-delete region-delete"
@@ -1411,7 +1394,7 @@ function MobileApp() {
                       <div className="detail-film-preview">
                         <h4>필름 차광 모습</h4>
                       {resolveWindow(active) ? (
-                        <FilmGrid space={active} schedule={applyShadingTime(sunSchedule, detailShading)} hour={hour} prediction={filmPrediction} setting={detailShading} />
+                        <FilmGrid space={active} schedule={applyRegionShading(sunSchedule, active, detailShading)} hour={hour} prediction={filmPrediction} setting={detailShading} />
                       ) : (
                         <p className="muted small">
                           창문 규격을 입력하면 시각별로 가려질 필름 칸을 볼 수 있습니다.

@@ -286,3 +286,10 @@
 .app.award-app.mode-web .home-design .ap-round-link > b svg,
 .app.award-app.mode-web .home-design .ap-round-link:is(:hover,:active,:focus-visible) > b svg { transform:none; translate:none; scale:1; rotate:none; animation:none; transition:none; }
 @media(prefers-reduced-motion:reduce) { .app.award-app.mode-web .home-design .ap-round-link { transition:none; } }
+
+/* The selected-object label sits over the plan's corner. No blur behind it, and where the plan gets
+   narrow enough for it to touch the "6.0 m" dimension it is hidden instead of moving around. */
+.app.award-app .home-design .ap-object-label { backdrop-filter:none; -webkit-backdrop-filter:none; }
+@media(max-width:840px) {
+ .app.award-app .home-design .ap-object-label { display:none; }
+}

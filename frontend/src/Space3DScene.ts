@@ -1,4 +1,4 @@
-import {localFrontFace} from "./model.ts";
+import {localFrontFace, topCompanions} from "./model.ts";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { CSS2DObject, CSS2DRenderer } from "three/examples/jsm/renderers/CSS2DRenderer.js";
@@ -329,18 +329,24 @@ export function createSpaceScene(host: HTMLElement, space: Space, events: Events
     const { x, y, width: w, depth: d, bottom: lo, top: hi } = r;
     const host = space.furniture.find(f => f.id === r.furnitureId);
     // corner, then the two edge vectors (u along the face, v up or southwards) and the outward normal.
-    const [corner, u, v, normal] = {
-      "남쪽 전면": [at(x, y + d, lo), new THREE.Vector3(w, 0, 0), new THREE.Vector3(0, hi - lo, 0), new THREE.Vector3(0, 0, 1)],
-      "북쪽 후면": [at(x, y, lo), new THREE.Vector3(w, 0, 0), new THREE.Vector3(0, hi - lo, 0), new THREE.Vector3(0, 0, -1)],
-      "동쪽 측면": [at(x + w, y, lo), new THREE.Vector3(0, 0, d), new THREE.Vector3(0, hi - lo, 0), new THREE.Vector3(1, 0, 0)],
-      "서쪽 측면": [at(x, y, lo), new THREE.Vector3(0, 0, d), new THREE.Vector3(0, hi - lo, 0), new THREE.Vector3(-1, 0, 0)],
-      "상단": [at(x, y, hi), new THREE.Vector3(w, 0, 0), new THREE.Vector3(0, 0, d), new THREE.Vector3(0, 1, 0)],
-    }[host && r.face !== "상단" && win ? localFrontFace(host,win.wall) : r.face];
-    if(host) {
-      const centre=at(host.x+host.width/2,host.y+host.depth/2),axis=new THREE.Vector3(0,1,0),angle=(host.yaw ?? 0)*Math.PI/180;
-      corner.sub(centre).applyAxisAngle(axis,angle).add(centre);corner.y+=host.baseHeight ?? 0;
-      u.applyAxisAngle(axis,angle);v.applyAxisAngle(axis,angle);normal.applyAxisAngle(axis,angle);
-    }
+    const surfaceOf = (face: Region["face"], lo: number, hi: number) => {
+      const [corner, u, v, normal] = {
+        "남쪽 전면": [at(x, y + d, lo), new THREE.Vector3(w, 0, 0), new THREE.Vector3(0, hi - lo, 0), new THREE.Vector3(0, 0, 1)],
+        "북쪽 후면": [at(x, y, lo), new THREE.Vector3(w, 0, 0), new THREE.Vector3(0, hi - lo, 0), new THREE.Vector3(0, 0, -1)],
+        "동쪽 측면": [at(x + w, y, lo), new THREE.Vector3(0, 0, d), new THREE.Vector3(0, hi - lo, 0), new THREE.Vector3(1, 0, 0)],
+        "서쪽 측면": [at(x, y, lo), new THREE.Vector3(0, 0, d), new THREE.Vector3(0, hi - lo, 0), new THREE.Vector3(-1, 0, 0)],
+        "상단": [at(x, y, hi), new THREE.Vector3(w, 0, 0), new THREE.Vector3(0, 0, d), new THREE.Vector3(0, 1, 0)],
+      }[host && face !== "상단" && win ? localFrontFace(host,win.wall) : face];
+      if(host) {
+        const centre=at(host.x+host.width/2,host.y+host.depth/2),axis=new THREE.Vector3(0,1,0),angle=(host.yaw ?? 0)*Math.PI/180;
+        corner.sub(centre).applyAxisAngle(axis,angle).add(centre);corner.y+=host.baseHeight ?? 0;
+        u.applyAxisAngle(axis,angle);v.applyAxisAngle(axis,angle);normal.applyAxisAngle(axis,angle);
+      }
+      return { corner, u, v, normal };
+    };
+    // The side facing the window, and (grade A to C on furniture) the furniture's top as well.
+    const surfaces = [surfaceOf(r.face, lo, hi)];
+    if (host && topCompanions(space).includes(space.regions.indexOf(r))) surfaces.push(surfaceOf("상단", 0, host.height));
     const chip = document.createElement("div");
     chip.className = `s3-chip g-${r.grade}`;
     chip.textContent = r.grade;
@@ -350,8 +356,10 @@ export function createSpaceScene(host: HTMLElement, space: Space, events: Events
       ? at(host.x + host.width / 2, host.y + host.depth / 2, (host.baseHeight ?? 0) + host.height + 0.16)
       : at(r.x + r.width / 2, r.y + r.depth / 2, r.top + 0.16));
     scene.add(label);
-    const box = new THREE.Box3().setFromPoints([corner,corner.clone().add(u),corner.clone().add(v),corner.clone().add(u).add(v)]).expandByVector(new THREE.Vector3(Math.abs(normal.x), Math.abs(normal.y), Math.abs(normal.z)).multiplyScalar(0.01));
-    regionViews.push({ r, box, corner, u, v, normal, chip });
+    for (const { corner, u, v, normal } of surfaces) {
+      const box = new THREE.Box3().setFromPoints([corner,corner.clone().add(u),corner.clone().add(v),corner.clone().add(u).add(v)]).expandByVector(new THREE.Vector3(Math.abs(normal.x), Math.abs(normal.y), Math.abs(normal.z)).multiplyScalar(0.01));
+      regionViews.push({ r, box, corner, u, v, normal, chip });
+    }
   }
   // Furniture without a protection area is grade D (decided 2026-11-06), so it gets a D chip too.
   for (const f of space.furniture) {
@@ -455,7 +463,8 @@ export function createSpaceScene(host: HTMLElement, space: Space, events: Events
         }
         sum++;
       }
-      result[v.r.id] = sum / n;
+      // The side and the top of one furniture share a region: the larger lit share counts.
+      result[v.r.id] = Math.max(result[v.r.id] ?? 0, sum / n);
     }
     return result;
   };
