@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import os
+from collections import Counter
 from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
@@ -18,9 +19,16 @@ from app.nowcast.kma_adapter import KmaCollection, KmaGk2aAdapter, KmaGk2aError
 from app.nowcast.kma_dataset import write_kma_collection
 from app.nowcast.repository import SnapshotRepository
 from app.nowcast.sites import load_unique_sites
+from app.nowcast.worker_report import exit_code, report_line
 from engine.fr01.models import Site
 
 LEASE_NAME = "kma_gk2a_snapshot"
+
+
+def _reason(error: Exception) -> str:
+    if isinstance(error, KmaGk2aError):
+        return error.reason
+    return "kma_file_error" if isinstance(error, OSError) else "kma_value_error"
 
 
 def run_once(
@@ -31,8 +39,12 @@ def run_once(
     now: datetime | None = None,
     owner_id: str | None = None,
     adapter_factory: Callable[[Site, str], KmaGk2aAdapter] | None = None,
+    failures: Counter[str] | None = None,
 ) -> dict[str, int]:
-    """Collect recent KMA data for all persisted sites and store immutable snapshots."""
+    """Collect recent KMA data for all persisted sites and store immutable snapshots.
+
+    ``failures`` (when given) is filled with how often each failure reason happened.
+    """
 
     current_input = now or datetime.now(UTC)
     if current_input.tzinfo is None or current_input.utcoffset() is None:
@@ -59,8 +71,10 @@ def run_once(
                 site_key=f"{site.latitude_deg:.6f},{site.longitude_deg:.6f}",
             )
             stored += 1
-        except (KmaGk2aError, OSError, ValueError):
+        except (KmaGk2aError, OSError, ValueError) as error:
             failed += 1
+            if failures is not None:
+                failures[_reason(error)] += 1
     return {
         "sites": len(sites),
         "stored": stored,
@@ -81,14 +95,16 @@ def main() -> int:
         parser.error("KMA_API_KEY is missing; set it in the repository .env")
     engine = create_engine(args.database_url, connect_args={"check_same_thread": False})
     init_db(engine)
+    failures: Counter[str] = Counter()
     result = run_once(
         engine,
         api_key=api_key,
         output_root=args.output_dir,
         owner_id=args.owner_id,
+        failures=failures,
     )
-    print(" ".join(f"{key}={value}" for key, value in result.items()))
-    return 0 if result["failed"] == 0 else 1
+    print(report_line(result, failures))
+    return exit_code(result)
 
 
 if __name__ == "__main__":
