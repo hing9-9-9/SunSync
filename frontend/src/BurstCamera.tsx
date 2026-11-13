@@ -225,7 +225,7 @@ export default function BurstCamera({
       onPhaseChange("idle");
     }
   }
-  const action = <button type="button" className="primary" disabled={busy || disabled || (running && hint?.tone === "stop")}
+  const action = <button type="button" className="primary" disabled={busy || disabled || (running && !!camera && hint?.tone === "stop")}
     onClick={() => void (!running ? open() : !camera ? setup() : shoot())}>
     {phase === "analyzing" ? "촬영 완료! 사진 분석 중…" : phase === "capturing" ? "촬영 중…" : busy ? "카메라 준비 중…" : !running ? "카메라 열기" : !camera ? `카메라 준비 사진 촬영 (${Math.min(views.length, 11)}/12)` : `${pointLabel} 촬영`}
   </button>;
