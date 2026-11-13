@@ -87,7 +87,7 @@ export default function Space3DView({ space, hour, onHour, date, selected, onSel
     return () => scene.dispose();
     // onSelect is a fresh function each render; the scene keeps the first one, which only forwards ids.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [zoneSpace, grid]);
+  }, [zoneSpace, grid?.rows, grid?.cols]);
   useEffect(() => api.current?.setLevel(level), [level]);
   useEffect(() => api.current?.select(selected), [selected]);
 
