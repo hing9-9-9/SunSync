@@ -258,3 +258,29 @@ def test_a_bad_keep_days_setting_deletes_nothing(monkeypatch, tmp_path, capsys, 
     assert _run_main(monkeypatch, engine, result) == 0
     assert _snapshot_count(engine) == 2
     assert "prune=skipped_bad_setting" in capsys.readouterr().out
+
+
+def test_forecast_runs_are_kept_as_long_as_the_larger_of_30_days_and_the_setting(
+    monkeypatch, tmp_path
+):
+    from datetime import UTC, datetime, timedelta
+
+    from app.nowcast.repository import SnapshotRepository
+    from sqlalchemy import text
+
+    def run_count(engine):
+        with engine.connect() as connection:
+            return connection.execute(text("SELECT count(*) FROM nowcast_run")).scalar_one()
+
+    result = {"sites": 1, "stored": 1, "failed": 0, "lease_acquired": 1}
+    now = datetime.now(UTC)
+    for keep, remaining in (("45", 1), ("7", 0)):
+        (tmp_path / keep).mkdir()
+        engine = make_engine(tmp_path / keep)
+        SnapshotRepository(engine).add_run(
+            "run", [], now - timedelta(days=41), now - timedelta(days=40)
+        )
+        monkeypatch.setenv("SUNSYNC_SNAPSHOT_KEEP_DAYS", keep)
+        _run_main(monkeypatch, engine, result)
+        # expired 40 days ago: kept for a 45 day setting, deleted for 7 (the 30 day floor applies)
+        assert run_count(engine) == remaining

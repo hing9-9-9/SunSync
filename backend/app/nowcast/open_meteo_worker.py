@@ -1,7 +1,8 @@
 """FR-01.4 Step A — Open-Meteo DNI snapshot worker only.
 
 Run with ``python -m app.nowcast.open_meteo_worker``. After each collection it also deletes the
-snapshots and runs that ``SnapshotRepository.prune`` considers expired. It is intentionally not
+snapshots older than ``SUNSYNC_SNAPSHOT_KEEP_DAYS`` (default 14) and the runs older than 30 days
+or than that setting, whichever is longer (``SnapshotRepository.prune``). It is intentionally not
 attached to FastAPI's lifespan: scheduling and process supervision belong to
 deployment.
 """

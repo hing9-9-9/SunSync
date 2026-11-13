@@ -18,21 +18,41 @@ const clock = (iso: string): string | null => {
  * One line that says where the forecast chart's numbers come from, taken only from what the
  * server stored: the source of each point, whether it fell back, and the rollout mode.
  */
-export function nowcastSourceNote(data: NowcastComparisonResponse): NowcastSourceNote | null {
+export function nowcastSourceNote(
+  data: NowcastComparisonResponse,
+): NowcastSourceNote | null {
   const points = data.points ?? [];
   if (points.length === 0) return null;
   if (points.every((p) => p.prediction_source === "unavailable")) {
-    return { tone: "warning", text: "예측 값을 받지 못했어요. 잠시 뒤 다시 확인해 주세요." };
+    return {
+      tone: "warning",
+      text: "예측 값을 받지 못했어요. 잠시 뒤 다시 확인해 주세요.",
+    };
   }
   const ai = points.filter((p) => p.prediction_source === "ai_model");
   if (ai.length > 0) {
+    // In normal operation the 10 and 30 minute values are AI and the 60 minute value is the
+    // general forecast, so say which values are which instead of describing the whole chart.
+    const others = points.filter((p) => p.prediction_source !== "ai_model");
+    const minutes = (list: typeof points) =>
+      `${list.map((p) => p.horizon_minutes).join("·")}분`;
     const observed = ai.map((p) => p.kma_observed_at).find((value) => value);
     const time = observed ? clock(observed) : null;
+    const suffix = time ? ` (관측 ${time})` : "";
+    if (others.length === 0) {
+      return {
+        tone: "info",
+        text: `${minutes(ai)} 값 모두 기상청 관측 기반 AI 예측이에요${suffix}`,
+      };
+    }
+    const replaced = others.some(
+      (p) => p.fallback_used && p.fallback_reason !== "low_solar_elevation",
+    );
     return {
-      tone: "info",
-      text: time
-        ? `기상청 관측을 쓴 AI 예측이에요 (관측 ${time})`
-        : "기상청 관측을 쓴 AI 예측이에요",
+      tone: replaced ? "warning" : "info",
+      text:
+        `${minutes(ai)} 값은 기상청 관측 기반 AI 예측, ` +
+        `${minutes(others)} 값은 ${replaced ? "일반 날씨 예보로 대체한 값이에요" : "일반 날씨 예보예요"}${suffix}`,
     };
   }
   const fallbacks = points.filter(
@@ -41,7 +61,10 @@ export function nowcastSourceNote(data: NowcastComparisonResponse): NowcastSourc
   if (fallbacks.length > 0) {
     // At night the AI is skipped because the sun is low, not because the observation is missing.
     if (fallbacks.every((p) => p.fallback_reason === "low_solar_elevation")) {
-      return { tone: "info", text: "해가 낮아 AI 예측 대신 일반 날씨 예보를 써요" };
+      return {
+        tone: "info",
+        text: "해가 낮아 AI 예측 대신 일반 날씨 예보를 써요",
+      };
     }
     return {
       tone: "warning",

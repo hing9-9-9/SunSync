@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { nowcastSourceNote } from "./nowcastSource.ts";
-import type { NowcastComparisonResponse, QuantileNowcastPoint } from "./spaceApi.ts";
+import type {
+  NowcastComparisonResponse,
+  QuantileNowcastPoint,
+} from "./spaceApi.ts";
 
 function point(over: Partial<QuantileNowcastPoint>): QuantileNowcastPoint {
   return {
@@ -42,21 +45,69 @@ function data(
   };
 }
 
-test("a point from the AI model says the KMA observation time", () => {
+test("normal operation says which values are AI and which are the general forecast", () => {
+  const note = nowcastSourceNote(
+    data(
+      [
+        point({
+          horizon_minutes: 10,
+          prediction_source: "ai_model",
+          kma_observed_at: "2026-11-13T05:00:00Z",
+        }),
+        point({
+          horizon_minutes: 30,
+          prediction_source: "ai_model",
+          kma_observed_at: "2026-11-13T05:00:00Z",
+        }),
+        point({ horizon_minutes: 60 }),
+      ],
+      "active",
+    ),
+  );
+  assert.equal(note?.tone, "info");
+  assert.equal(
+    note?.text,
+    "10·30분 값은 기상청 관측 기반 AI 예측, 60분 값은 일반 날씨 예보예요 (관측 14:00)",
+  );
+  // the chart as a whole is not called an AI forecast
+  assert.doesNotMatch(note?.text ?? "", /^기상청 관측을 쓴 AI/);
+});
+
+test("when every point is AI the note says so for all of them", () => {
   const note = nowcastSourceNote(
     data([
-      point({ prediction_source: "ai_model", kma_observed_at: "2026-11-13T05:00:00Z" }),
+      point({ horizon_minutes: 10, prediction_source: "ai_model" }),
+      point({ horizon_minutes: 30, prediction_source: "ai_model" }),
+    ]),
+  );
+  assert.equal(note?.text, "10·30분 값 모두 기상청 관측 기반 AI 예측이에요");
+});
+
+test("a mixed chart marks the values that replaced the AI as a replacement", () => {
+  const note = nowcastSourceNote(
+    data([
+      point({ horizon_minutes: 10, prediction_source: "ai_model" }),
+      point({
+        horizon_minutes: 30,
+        prediction_source: "open_meteo_fallback",
+        fallback_used: true,
+        fallback_reason: "kma_stale",
+      }),
       point({ horizon_minutes: 60 }),
     ]),
   );
-  assert.equal(note?.tone, "info");
-  assert.match(note?.text ?? "", /기상청 관측을 쓴 AI 예측/);
-  assert.match(note?.text ?? "", /14:00/); // 05:00 UTC is 14:00 in Seoul
+  assert.equal(note?.tone, "warning");
+  assert.match(
+    note?.text ?? "",
+    /^10분 값은 기상청 관측 기반 AI 예측, 30·60분 값은 일반 날씨 예보로 대체한 값이에요/,
+  );
 });
 
 test("a fallback tells that the KMA observation was not received", () => {
   const note = nowcastSourceNote(
-    data([point({ prediction_source: "open_meteo_fallback", fallback_used: true })]),
+    data([
+      point({ prediction_source: "open_meteo_fallback", fallback_used: true }),
+    ]),
   );
   assert.equal(note?.tone, "warning");
   assert.match(note?.text ?? "", /대체/);
@@ -79,9 +130,11 @@ test("a fallback caused by a low sun is not blamed on the KMA observation", () =
 
 test("a malformed observation time does not break the note", () => {
   const note = nowcastSourceNote(
-    data([point({ prediction_source: "ai_model", kma_observed_at: "not a time" })]),
+    data([
+      point({ prediction_source: "ai_model", kma_observed_at: "not a time" }),
+    ]),
   );
-  assert.equal(note?.text, "기상청 관측을 쓴 AI 예측이에요");
+  assert.equal(note?.text, "10분 값 모두 기상청 관측 기반 AI 예측이에요");
 });
 
 test("shadow mode says the AI result is only compared", () => {
@@ -91,7 +144,10 @@ test("shadow mode says the AI result is only compared", () => {
 });
 
 test("active mode without AI points says the forecast is the general one", () => {
-  assert.equal(nowcastSourceNote(data([point({})]))?.text, "일반 날씨 예보 기준이에요");
+  assert.equal(
+    nowcastSourceNote(data([point({})]))?.text,
+    "일반 날씨 예보 기준이에요",
+  );
 });
 
 test("no usable value is a warning and no points is no note", () => {
