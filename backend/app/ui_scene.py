@@ -364,9 +364,7 @@ def top_companions(space: UISpace) -> list[UIRegion]:
     """
     hosts = {f.id for f in space.furniture}
     return [
-        r
-        for r in space.regions
-        if r.furnitureId in hosts and r.face != "상단" and r.grade != "D"
+        r for r in space.regions if r.furnitureId in hosts and r.face != "상단" and r.grade != "D"
     ]
 
 
