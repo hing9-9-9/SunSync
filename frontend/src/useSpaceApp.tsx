@@ -5,10 +5,11 @@ import type { ShadingResult } from "./shading";
 import { createHandoff, connectHandoff, completeHandoff, listMeasurements, predictSunpath, predictShadingPlan } from "./spaceApi";
 import type { HandoffSession, SunpathPrediction } from "./spaceApi";
 import { blockingSchedule, predictionDay, scheduleFromPrediction } from "./sunlight";
+import { estimatedSchedule } from "./sunEstimate";
 import type { BlockingSchedule } from "./sunlight";
 import { useEffect, useCallback, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
-import { editorExample, exampleState } from "./exampleSpace";
+import { editorExample, exampleState, homeExampleSpace } from "./exampleSpace";
 import { markInvalidFields } from "./formIssues";
 import { saveErrorMessage } from "./spaceSync";
 import { EXPIRED_MESSAGE, LOGIN_FAILED_MESSAGE, currentPath, fetchSession, googleLoginUrl, logout, onUnauthorized } from "./auth";
@@ -26,6 +27,7 @@ import {
   regionForFurniture,
   isUnfilledInput,
   repairRegions,
+  regionOwners,
   withDefaultRegions,
   removeZone,
   STORAGE_KEY,
@@ -318,7 +320,7 @@ export function useSpaceApp() {
               latitude: coords.latitude,
               longitude: coords.longitude,
               timezone: current.site?.timezone ?? "Asia/Seoul",
-              northConfirmed: current.site?.northConfirmed ?? false,
+              northConfirmed: true,
             },
           };
         });
@@ -402,7 +404,7 @@ export function useSpaceApp() {
   const predictionDate = active?.site ? new Intl.DateTimeFormat("en-CA", { timeZone: active.site.timezone }).format(predictionNow) : "";
   const windowReady = !!active?.windowDimensions && active.windowDimensions.wall != null && active.windowDimensions.offset != null && active.windowDimensions.sill != null;
   const predictionKey =
-    USE_FR01 && authStatus === "in" && page === "detail" && !editorExample && active?.serverSceneId && active.serverRevision && active.site && active.site.northConfirmed && windowReady && active.regions.length
+    USE_FR01 && authStatus === "in" && page === "detail" && !editorExample && active?.serverSceneId && active.serverRevision && active.site && windowReady && active.regions.length
       ? `${active.serverSceneId}:${active.serverRevision}:${predictionDate}`
       : null;
   const [prediction, setPrediction] = useState<{ key: string; result?: SunpathPrediction; error?: string } | null>(null);
@@ -477,7 +479,7 @@ export function useSpaceApp() {
           </>
         ),
       }
-    : active && !editorExample ? { label: "예측 준비 필요", note: <p className="muted small">햇빛 예측을 사용하려면 보호 영역과 창문 위치·북쪽 방향을 확인한 뒤 공간을 저장하세요. 현재는 간이 계산으로 표시합니다.</p> } : undefined;
+    : active && !editorExample ? { label: "예측 준비 필요", note: <p className="muted small">햇빛 예측을 사용하려면 보호 영역과 창문 위치를 확인한 뒤 공간을 저장하세요. 현재는 간이 계산으로 표시합니다.</p> } : undefined;
   const predictionPill = !predictionKey ? "시뮬레이션" : predictionError ? "예측 실패" : predicted ? "햇빛 예측" : "계산 중";
   const sunSchedule = useMemo(
     () =>
@@ -486,7 +488,7 @@ export function useSpaceApp() {
           ? (predicted ?? new Map())
           : blockingSchedule(active)
         : page === "protect" && draft
-          ? blockingSchedule(draft)
+          ? estimatedSchedule(draft)
           : new Map(),
     [page, active, draft, predictionKey, predicted],
   );
@@ -557,7 +559,7 @@ export function useSpaceApp() {
       setSelectedFurniture((id) =>
         scene?.furniture.some((f) => f.id === id)
           ? id
-          : (scene?.furniture[0]?.id ?? null),
+          : isEditingPage(target.page) ? null : (scene?.furniture[0]?.id ?? null),
       );
       setSelectedRegion((id) =>
         scene?.regions.some((r) => r.id === id) ? id : null,
@@ -567,6 +569,23 @@ export function useSpaceApp() {
     return () => window.removeEventListener("popstate", restore);
   }, [draft, spaces, page, guideIndex, activeId, leaveUnsaved]);
 
+  // Every account gets the home page's example room once and keeps it until the person deletes it.
+  // It is a normal space: deleting it is final (a flag per account on this browser).
+  async function giveExampleSpace(email: string, signal: AbortSignal, existing: Space[]) {
+    const example = homeExampleSpace();
+    if (existing.some((x) => x.building === example.building && x.name === example.name)) return;
+    const key = `sunsync-example-given:${email || "local"}`;
+    try {
+      if (localStorage.getItem(key)) return;
+      localStorage.setItem(key, "1");
+    } catch { return; }
+    try {
+      const saved = await saveServerSpace(example);
+      if (!signal.aborted) setSpaces((current) => upsertSpace(current, saved));
+    } catch {
+      try { localStorage.removeItem(key); } catch { /* not remembered */ }
+    }
+  }
   useEffect(() => {
     if (editorExample || authStatus !== "in") return;
     const controller = new AbortController();
@@ -577,6 +596,7 @@ export function useSpaceApp() {
         setUnavailable(result.unavailable);
         setServerState("online");
         setServerError("");
+        void giveExampleSpace(account?.email ?? "", controller.signal, result.spaces);
       })
       .catch((error) => {
         if (controller.signal.aborted) return;
@@ -611,7 +631,7 @@ export function useSpaceApp() {
       const saved = await getServerSpace(draft.id);
       setDraft(saved);
       setSpaces((current) => upsertSpace(current, saved));
-      setSelectedFurniture(saved.furniture[0]?.id ?? null);
+      setSelectedFurniture(null);
       setSelectedRegion(null);
       setConflict(false);
       setError("");
@@ -636,7 +656,7 @@ export function useSpaceApp() {
         setSpaces((current) => upsertSpace(current, saved));
         setDraft(saved);
         setActiveId(saved.id);
-        setSelectedFurniture(saved.furniture[0]?.id ?? null);
+        setSelectedFurniture(null);
         if (isApp) {
           setAddingByQr(saved.furniture.length > 0);
           qrReturnPage.current = "review";
@@ -935,7 +955,7 @@ export function useSpaceApp() {
     if (server) setActiveId(server.id);
     if (server?.serverRevision && t.space.serverRevision !== server.serverRevision) setToast("서버에 최근 임시 저장본이 있어요");
     setDraft(repairRegions(structuredClone(t.space)));
-    setSelectedFurniture(at === "register" ? null : (t.space.furniture[0]?.id ?? null));
+    setSelectedFurniture(null);
     setSelectedRegion(null);
     setPage(at);
   }
@@ -1024,7 +1044,7 @@ export function useSpaceApp() {
     }
     setActiveId(s.id);
     setDraft(repairRegions(structuredClone(s)));
-    setSelectedFurniture(at === "register" ? null : (s.furniture[0]?.id ?? null));
+    setSelectedFurniture(null);
     setSelectedRegion(null);
     setPage(at);
   }
@@ -1447,7 +1467,9 @@ export function useSpaceApp() {
         ? currentPrediction.result.regions.flatMap((region, index) => {
             const target = Date.parse(currentPrediction.result!.start_time) + hour * 3600000;
             const sample = region.timeline.filter(t => Date.parse(t.timestamp) <= target).at(-1);
-            return sample?.status === "exposed" && active?.regions[index] ? [active.regions[index].id] : [];
+            // The top of a furniture comes back after the regular areas; it lights its furniture's region.
+            const owner = (active ? regionOwners(active, currentPrediction.result!.regions.length)?.[index] : undefined) ?? index;
+            return sample?.status === "exposed" && active?.regions[owner] ? [active.regions[owner].id] : [];
           }) : []}
     />
   );
@@ -1512,7 +1534,7 @@ export function useSpaceApp() {
     latitude: NaN,
     longitude: NaN,
     timezone: "Asia/Seoul",
-    northConfirmed: false,
+    northConfirmed: true,
   };
 
   return {

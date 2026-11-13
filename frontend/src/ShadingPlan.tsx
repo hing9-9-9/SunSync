@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { filmStatesAt } from "./shading";
 import type { ShadingResult } from "./shading";
 import { CELL_SIZE, filmCellEdges, filmGrid, resolveWindow, timeToMinute, validateShadingTime, validateWindow, walls } from "./model";
@@ -32,7 +32,7 @@ export function FilmGrid({ space, schedule, hour, marker = false, prediction, se
     return <p className="error" role="alert">저장된 창문 규격과 차광 계획이 다릅니다. 최신 공간 정보를 불러와 주세요.</p>;
   let states: ReturnType<typeof filmStatesAt> | undefined;
   try {
-    if (prediction?.plan && hour !== undefined) states = filmStatesAt(prediction.plan, hour, setting);
+    if (prediction?.plan && hour !== undefined) states = filmStatesAt(prediction.plan, hour, setting, (id) => space.regions.find((r) => r.id === id)?.shadingSchedule);
   } catch {
     return <p className="error" role="alert">선택한 시각의 차광 계획을 확인할 수 없습니다. 다시 계산해 주세요.</p>;
   }
@@ -85,6 +85,50 @@ export function FilmGrid({ space, schedule, hour, marker = false, prediction, se
   </figure>;
 }
 
+// A time as two pick lists (hour, minute in 10-minute steps) instead of the browser's typed time field,
+// whose blinking segment cursor is hard to use on a phone. The value stays "HH:MM".
+const hourLabel = (h: number) => `${h < 12 ? "오전" : "오후"} ${h % 12 === 0 ? 12 : h % 12}시`;
+export function TimeSelect({ label, value, disabled, onChange }: { label: string; value: string; disabled: boolean; onChange: (value: string) => void }) {
+  const [h = 0, m = 0] = value.split(":").map(Number);
+  const two = (n: number) => String(n).padStart(2, "0");
+  const minutes = [0, 10, 20, 30, 40, 50];
+  if (!minutes.includes(m)) minutes.push(m);
+  minutes.sort((a, b) => a - b);
+  return <div className="field time-field" role="group" aria-label={label}>
+    <span aria-hidden="true">{label}</span>
+    <div className="time-select">
+      <select aria-label={`${label} 시`} value={h} disabled={disabled} onChange={(e) => onChange(`${two(Number(e.target.value))}:${two(m)}`)}>
+        {Array.from({ length: 24 }, (_, i) => <option key={i} value={i}>{hourLabel(i)}</option>)}
+      </select>
+      <select aria-label={`${label} 분`} value={m} disabled={disabled} onChange={(e) => onChange(`${two(h)}:${two(Number(e.target.value))}`)}>
+        {minutes.map((x) => <option key={x} value={x}>{two(x)}분</option>)}
+      </select>
+    </div>
+  </div>;
+}
+
+/** One furniture's own protected time. Off: it follows the space's blocking time. */
+export function RegionTimeField({ base, value, onChange }: { base: ShadingTime; value: ShadingTime | undefined; onChange: (time: ShadingTime | undefined) => void }) {
+  const own = !!value;
+  const error = validateShadingTime(value);
+  return <fieldset className="grade-picker region-time">
+    <legend>보호 시간</legend>
+    <div className="region-time-body">
+      <label className="switch" aria-label="이 가구만 보호 시간 따로 정하기">
+        <input type="checkbox" role="switch" checked={own} onChange={(e) => onChange(e.target.checked ? { enabled: true, start: base.start, end: base.end } : undefined)} />
+        <span className="switch-track" aria-hidden="true" />
+        <span className="switch-label">{own ? "이 가구만 따로 정함" : "공간의 차단 시간을 따라요"}</span>
+      </label>
+      {own && value && <div className="two-fields">
+        <TimeSelect label="시작" value={value.start} disabled={false} onChange={(start) => onChange({ ...value, start })} />
+        <TimeSelect label="종료" value={value.end} disabled={false} onChange={(end) => onChange({ ...value, end })} />
+      </div>}
+      {own && error && <p className="error" role="alert">{error}</p>}
+      {!own && <p className="muted small">{base.enabled ? `공간 전체 ${base.start} ~ ${base.end}에 맞춰 막아요.` : "공간의 차단 시간이 꺼져 있어 막지 않아요."}</p>}
+    </div>
+  </fieldset>;
+}
+
 // WAR4.2: the user chooses when light may be blocked. The 24-hour bar shows that range and the
 // time picked on the slider; the simplified sun times stay as small reference text only.
 export function ShadingTimeControl({ space, value, onChange, sunSchedule, hour, onSave, dirty = false, saving = false, sunSource, compact = false, hideNote = false }: {
@@ -118,17 +162,11 @@ export function ShadingTimeControl({ space, value, onChange, sunSchedule, hour, 
       </label>
     </div>
     {!compact && <p className="muted small">
-      {value.enabled ? "설정한 시간 안에서 햇빛이 보호 영역에 닿을 때만 필름을 가립니다." : "꺼져 있으면 필름을 가리지 않습니다. 켜고 차단할 시간을 정해 주세요."}
+      {value.enabled ? "설정한 시간 안에서 햇빛이 보호 영역에 닿을 때만 필름을 가립니다. 가구마다 따로 정하지 않은 가구는 이 시간을 따릅니다." : "꺼져 있으면 필름을 가리지 않습니다. 켜고 차단할 시간을 정해 주세요."}
     </p>}
     <div className="two-fields">
-      <label className="field">
-        <span>시작</span>
-        <input type="time" step={600} value={value.start} disabled={!value.enabled} onChange={(e) => onChange({ ...value, start: e.target.value })} />
-      </label>
-      <label className="field">
-        <span>종료</span>
-        <input type="time" step={600} value={value.end} disabled={!value.enabled} onChange={(e) => onChange({ ...value, end: e.target.value })} />
-      </label>
+      <TimeSelect label="시작" value={value.start} disabled={!value.enabled} onChange={(start) => onChange({ ...value, start })} />
+      <TimeSelect label="종료" value={value.end} disabled={!value.enabled} onChange={(end) => onChange({ ...value, end })} />
     </div>
     {value.enabled && error && <p className="error" role="alert">{error}</p>}
     <div className="blocking-track" aria-hidden="true">
@@ -179,13 +217,18 @@ export function VirtualFilmControl({ space, prediction, hour, children }: { spac
   const [windowState, setWindowState] = useState<WindowFilmStateResponse | null>(null);
   const [unmet, setUnmet] = useState<{ total: number; logs: FilmApplicationLogEntry[] } | null>(null);
   const [error, setError] = useState("");
+  // The film state is read from the server per chosen time. The newest request always wins, and the
+  // card says "계산 중" until it has the state for the time the slider shows now.
+  const latest = useRef(0);
+  const [loadedFor, setLoadedFor] = useState<string | undefined>();
 
   const plan = prediction?.plan;
   const simulatedAt = plan ? new Date(Date.parse(plan.start_time) + Math.round(hour * 60) * 60_000).toISOString() : undefined;
   const timezone = space.site?.timezone;
 
   async function load(apply: boolean) {
-    if (!sceneId || busy) return;
+    if (!sceneId || (apply && busy)) return;
+    const mine = ++latest.current;
     setBusy(true);
     setError("");
     try {
@@ -194,19 +237,24 @@ export function VirtualFilmControl({ space, prediction, hour, children }: { spac
         result ? Promise.resolve({ windows: result.windows }) : fetchFilmState(sceneId, simulatedAt),
         fetchFilmLogs(sceneId, { status: "target_unmet", limit: 500 }),
       ]);
+      if (mine !== latest.current) return;
       if (result) setApplied(result);
       setWindowState(state.windows[0] ?? null);
       setUnmet({ total: logs.total, logs: logs.logs });
+      setLoadedFor(simulatedAt);
     } catch (err) {
-      setError(userMessage(err, "필름 상태를 불러오지 못했어요."));
+      if (mine === latest.current) setError(userMessage(err, "필름 상태를 불러오지 못했어요."));
     } finally {
-      setBusy(false);
+      if (mine === latest.current) setBusy(false);
     }
   }
 
   // Read the film's current state once the plan is ready, and again when the chosen time moves.
+  // A short wait keeps a dragged slider from sending one request per step.
   useEffect(() => {
-    if (plan && sceneId) void load(false);
+    if (!plan || !sceneId) return;
+    const id = window.setTimeout(() => void load(false), 120);
+    return () => window.clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sceneId, plan, simulatedAt]);
 
@@ -214,6 +262,7 @@ export function VirtualFilmControl({ space, prediction, hour, children }: { spac
 
   const total = windowState ? windowState.film_rows * windowState.film_cols : 0;
   const covered = windowState ? windowState.states.reduce((sum, row) => sum + row.filter((cell) => cell === "opaque").length, 0) : 0;
+  const pending = !!plan && !error && loadedFor !== simulatedAt;
 
   return (
     <section className="film-card" aria-label="필름">
@@ -221,8 +270,10 @@ export function VirtualFilmControl({ space, prediction, hour, children }: { spac
       <div className="film-status" aria-live="polite">
         {windowState
           ? <>
-              <p>{formatTimeLabel(windowState.evaluated_at, timezone)} 기준 <strong>{total}칸 중 {covered}칸</strong> 가림</p>
-              <div className="film-meter" role="img" aria-label={`전체 ${total}칸 중 ${covered}칸 가림`}><span style={{ width: `${total ? (covered / total) * 100 : 0}%` }} /></div>
+              {pending
+                ? <p>{formatTimeLabel(simulatedAt!, timezone)} 기준 <span className="muted">계산 중…</span></p>
+                : <p>{formatTimeLabel(windowState.evaluated_at, timezone)} 기준 <strong>{total}칸 중 {covered}칸</strong> 가림</p>}
+              <div className={pending ? "film-meter is-pending" : "film-meter"} role="img" aria-label={`전체 ${total}칸 중 ${covered}칸 가림`}><span style={{ width: `${total ? (covered / total) * 100 : 0}%` }} /></div>
             </>
           : <p className="muted small">{!plan ? "아직 계산된 차단 계획이 없어요." : busy ? "불러오는 중…" : "필름 상태를 불러오지 못했어요."}</p>}
       </div>

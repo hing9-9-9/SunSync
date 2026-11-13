@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { filmGrid, furnitureTypes, grades, resolveWindow, timeToMinute, walls } from "./model.ts";
+import { filmGrid, furnitureTypes, grades, regionOwners, resolveWindow, walls, withinShading } from "./model.ts";
 import type { Grade, Region, ShadingTime, Space } from "./model.ts";
 import { createSpaceScene } from "./Space3DScene.ts";
 import type { Level, Lit, SceneApi } from "./Space3DScene.ts";
@@ -61,7 +61,7 @@ export default function Space3DView({ space, hour, onHour, date, selected, onSel
   };
   const [playing, setPlaying] = useState(false);
   const [lit, setLit] = useState<Lit | null>(null);
-  const site = space.site ?? { latitude: 37.57, longitude: 126.98, timezone: "Asia/Seoul", northConfirmed: false };
+  const site = space.site ?? { latitude: 37.57, longitude: 126.98, timezone: "Asia/Seoul", northConfirmed: true };
   const [today] = useState(() => new Intl.DateTimeFormat("en-CA", { timeZone: site.timezone }).format(new Date()));
   date ||= today;
   const offset = predictionDay(site.timezone, new Date(`${date}T12:00:00Z`)).start.slice(19);
@@ -69,7 +69,7 @@ export default function Space3DView({ space, hour, onHour, date, selected, onSel
   const day = dayOfYear(month, dom);
   const at = Date.parse(`${date}T${clock(hour)}:00${offset}`);
   const win = resolveWindow(space);
-  const serverDay = useMemo(() => (sunpath && film?.plan ? compactDay(sunpath, [film.plan], 0) : null), [sunpath, film]);
+  const serverDay = useMemo(() => (sunpath && film?.plan ? compactDay(sunpath, [film.plan], 0, regionOwners(space, sunpath.regions.length)) : null), [sunpath, film, space.regions, space.furniture]);
 
   const storedRows = serverDay?.rows, storedCols = serverDay?.cols;
   const grid = useMemo(() => {
@@ -87,39 +87,45 @@ export default function Space3DView({ space, hour, onHour, date, selected, onSel
     return () => scene.dispose();
     // onSelect is a fresh function each render; the scene keeps the first one, which only forwards ids.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [zoneSpace, grid]);
+  }, [zoneSpace, grid?.rows, grid?.cols]);
   useEffect(() => api.current?.setLevel(level), [level]);
   useEffect(() => api.current?.select(selected), [selected]);
 
   // Outside the user's blocking time (or with it off) the film stays open, as in the 2D film card.
-  const from = timeToMinute(shading.start), to = timeToMinute(shading.end);
-  const gated = (minute: number) => shading.enabled && from !== null && to !== null && minute >= from && minute < to;
-  const gateOpen = gated(Math.floor(hour * 60));
+  // A furniture can have its own blocking time; the others follow the space's. A film cell stays closed
+  // while any region that asked for it is inside its own time.
+  const minuteNow = Math.floor(hour * 60);
+  const timeOf = (r: Region) => r.shadingSchedule ?? shading;
+  const gateAt = (minute: number) => (i: number) => withinShading(space.regions[i] ? timeOf(space.regions[i]) : shading, minute);
+  const gateOpen = withinShading(shading, minuteNow);
+  const previewOpen = gateOpen || space.regions.some(r => withinShading(r.shadingSchedule, minuteNow));
   const moment = useMemo(() => {
     const d = serverDay;
     if (!d) return null;
-    const cells = gateOpen ? cellsAt(d, at, space.regions.length) : { states: new Uint8Array(d.rows * d.cols), byRegion: new Array<number>(space.regions.length).fill(0) };
+    const cells = cellsAt(d, at, space.regions.length, gateAt(minuteNow), gateOpen);
     return { sun: sunAt(d, at), ...cells, index: sampleIndex(d, at) };
-  }, [serverDay, at, space.regions.length, gateOpen]);
+    // gateAt only reads space.regions and the space's shading time.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serverDay, at, space.regions, shading.enabled, shading.start, shading.end, minuteNow, gateOpen]);
   useEffect(() => {
     const d = serverDay;
-    const closed = grid && !gateOpen ? { cells: new Uint8Array(grid.rows * grid.cols), rows: grid.rows, cols: grid.cols } : {};
+    const closed = grid && !previewOpen ? { cells: new Uint8Array(grid.rows * grid.cols), rows: grid.rows, cols: grid.cols } : {};
     setLit(api.current!.setTime(day, hour, d && moment ? { sun: moment.sun, cells: moment.states, rows: d.rows, cols: d.cols } : closed));
-  }, [day, hour, serverDay, moment, zoneSpace, gateOpen, grid]);
+  }, [day, hour, serverDay, moment, zoneSpace, previewOpen, grid]);
   // Per region and FR-01 sample between 06:00 and 18:00: sunlit share and whether the plan closes cells for it.
   const series = useMemo(() => {
     const d = serverDay;
     if (!d) return null;
     const midnight = Date.parse(`${date}T00:00:00${offset}`);
     const samples = d.times.map((t, k) => ({ t, k, m: (t - midnight) / 60000 })).filter(s => s.m >= 360 && s.m <= 1080);
-    const closed = samples.map(s => (gated(s.m) ? cellsAt(d, s.t, space.regions.length).byRegion : []));
+    const closed = samples.map(s => cellsAt(d, s.t, space.regions.length, gateAt(s.m), withinShading(shading, s.m)).byRegion);
     return space.regions.map((_, i) => ({
       open: samples.map(s => d.exposure[i]?.share[s.k] ?? 0),
       film: closed.map(f => ((f[i] ?? 0) > 0 ? 1 : 0)),
     }));
-    // gated depends only on the shading fields listed here.
+    // gateAt depends only on the fields listed here.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [serverDay, space.regions, shading.enabled, from, to, date, offset]);
+  }, [serverDay, space.regions, shading.enabled, shading.start, shading.end, date, offset]);
 
   const hourRef = useRef(hour);
   useEffect(() => { hourRef.current = hour; }, [hour]);
@@ -147,7 +153,7 @@ export default function Space3DView({ space, hour, onHour, date, selected, onSel
       if (moment.byRegion[i]) return ["필름으로 가림", "film"];
       if (share === 0) return ["닿지 않음", ""];
       if (r.grade === "D") return [`햇빛 ${pct(share)} · 보호 안 함`, "sun"];
-      if (!gateOpen) return [`햇빛 ${pct(share)} · ${shading.enabled ? "차단 시간 밖" : "차단 시간 꺼짐"}`, "sun"];
+      if (!withinShading(timeOf(r), minuteNow)) return [`햇빛 ${pct(share)} · ${timeOf(r).enabled ? "차단 시간 밖" : "차단 시간 꺼짐"}`, "sun"];
       // B/C cells stay open while the direct sun is under the grade's cap.
       return r.grade === "A" ? [`햇빛 ${pct(share)}`, "sun"] : [`햇빛 ${pct(share)} · 약해서 열어 둠`, "sun"];
     }
@@ -164,7 +170,7 @@ export default function Space3DView({ space, hour, onHour, date, selected, onSel
   };
   // Only say something when the picture is not the server's yet.
   const source = serverDay ? null : !planned
-    ? "북쪽 방향과 창문 위치를 확인하고 저장하면 실제 햇빛으로 보여 드려요. 지금은 미리보기예요."
+    ? "창문 위치를 저장하면 실제 햇빛으로 보여 드려요. 지금은 미리보기예요."
     : film?.error
       ? `${film.error} 지금은 미리보기예요.`
       : "햇빛을 계산하는 중이에요. 잠시만 미리보기로 보여 드려요.";

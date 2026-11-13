@@ -155,9 +155,20 @@ export async function listServerSpaces(signal?: AbortSignal) {
     deleted.push(...(page.deleted ?? []));
     if (!page.has_more) break;
   }
-  return { spaces, unavailable, deleted };
+  const settled = await Promise.all(
+    spaces.map(async (s) => {
+      const fixed = northUp(s);
+      if (fixed === s || !s.serverRevision) return fixed;
+      try { return await saveServerSpace(fixed); } catch { return fixed; }
+    }),
+  );
+  return { spaces: settled, unavailable, deleted };
 }
+// The plan's top is always north, so every space counts as north-aligned. Spaces saved before the
+// checkbox was removed still carry `false`; they are read as true and re-saved once.
+const northUp = (s: Space): Space => (s.site && !s.site.northConfirmed ? { ...s, site: { ...s.site, northConfirmed: true } } : s);
 export function saveServerSpace(space: Space) {
+  space = northUp(space);
   return request<Space>(
     space.serverRevision
       ? `/api/ui/spaces/${encodeURIComponent(space.id)}`

@@ -1,4 +1,4 @@
-import { filmGrid, isWidthWall, resolveWindow, timeToMinute, wallLength } from "./model.ts";
+import { filmGrid, isWidthWall, regionOwners, resolveWindow, timeToMinute, wallLength } from "./model.ts";
 import type { Region, ShadingTime, Space } from "./model.ts";
 import type { SunpathPrediction } from "./spaceApi.ts";
 type Point = { x: number; y: number };
@@ -75,6 +75,11 @@ export function applyShadingTime(schedule: BlockingSchedule, time: ShadingTime |
           .filter((p) => p.start < p.end),
   ]));
 }
+// Same clip, but a region that has its own time uses it instead of the space's.
+export function applyRegionShading(schedule: BlockingSchedule, space: Pick<Space, "regions">, base: ShadingTime | undefined): BlockingSchedule {
+  const own = new Map(space.regions.map((r) => [r.id, r.shadingSchedule] as const));
+  return new Map([...schedule].map(([id, periods]) => [id, applyShadingTime(new Map([[id, periods]]), own.get(id) ?? base).get(id) ?? []]));
+}
 // Stops at the first lit minute, so callers that only need the first contact skip the full-day scan.
 export function firstProtectionContact(space: Space): number | null {
   const areas = protectedRegions(space).map(footprint);
@@ -128,14 +133,17 @@ export function predictionDay(timeZone: string, now = new Date()) {
 export function scheduleFromPrediction(space: Space, prediction: SunpathPrediction): BlockingSchedule {
   if (space.serverRevision && prediction.scene_revision !== space.serverRevision)
     throw new Error("prediction revision does not match the saved space");
-  if (prediction.regions.length !== space.regions.length)
-    throw new Error("prediction regions do not match the saved space");
+  const owners = regionOwners(space, prediction.regions.length);
+  if (!owners) throw new Error("prediction regions do not match the saved space");
   const start = Date.parse(prediction.start_time);
   const minuteOf = (t: string) => Math.round((Date.parse(t) - start) / 60000);
   return new Map(space.regions.map((region, i) => {
     const periods: BlockingPeriod[] = [];
     let arrival: number | null = null;
-    for (const t of [...prediction.regions[i].timeline, null]) {
+    // The side facing the window and the top come back as separate areas; the light reaches the furniture when either is exposed.
+    const timelines = prediction.regions.filter((_, j) => owners[j] === i).map((r) => r.timeline);
+    const timeline = timelines[0].map((t, k) => ({ timestamp: t.timestamp, status: timelines.some((tl) => tl[k]?.status === "exposed") ? "exposed" : t.status }));
+    for (const t of [...timeline, null]) {
       const minute = t ? minuteOf(t.timestamp) : DAY_MINUTES;
       if (t?.status === "exposed") {
         arrival ??= minute;

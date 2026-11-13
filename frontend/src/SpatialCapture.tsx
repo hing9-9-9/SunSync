@@ -87,17 +87,20 @@ function SessionSpatialCapture(props: { sceneId?: string; count: number; onFinis
       <button type="button" className="text-button" onClick={()=>{if(!props.sceneId)return;setBusy(true);void cancelStoredCapture(props.sceneId).then(()=>setRetry(n=>n+1)).catch(e=>{setError(String(e));setBusy(false);});}}>이전 촬영 끝내기</button>
     </section>;
   }
-  return <section>
-    <p>선택한 필름: 아래에서 {(session.film_module?.row ?? 0)+1}번째, 왼쪽에서 {(session.film_module?.col ?? 0)+1}번째 · 마커 60cm</p>
-    <details><summary>가상 필름 표시 확인 · 테스트용</summary>
+  return <section className="capture-session">
+    <p className="capture-film-line">선택한 필름 · 아래에서 {(session.film_module?.row ?? 0)+1}번째, 왼쪽에서 {(session.film_module?.col ?? 0)+1}번째 (마커 60cm)</p>
+    <details className="capture-test-details"><summary>가상 필름 표시 확인 · 테스트용</summary>
       <svg viewBox={`0 0 ${session.film_cells[0]?.length ?? 10} ${session.film_cells.length || 10}`} width="200" height="200" role="img" aria-label="이번 촬영의 가상 필름 마커" shapeRendering="crispEdges">
         {session.film_cells.flatMap((row, y) => row.map((opacity, x) => <rect key={`${x}:${y}`} x={x} y={y} width="1" height="1" fill={opacity >= 0.5 ? "black" : "white"} />))}
       </svg>
       <p>가상 필름에 촬영용 마커를 표시했어요. 실제 필름 장치는 아직 연결되지 않았어요.</p>
     </details>
-    {error && <p role="alert">{error}</p>}
+    {error && <p className="error" role="alert">{error}</p>}
     <TestSpatialCapture key={session.session_id} {...props} session={session} />
-    <button type="button" onClick={() => void cancel()}>촬영 취소 · 마커 표시 종료</button>
+    <div className="capture-end">
+      <button type="button" className="secondary" onClick={() => void cancel()}>촬영 취소</button>
+      <p className="muted small">창문 필름에 띄운 마커도 함께 꺼져요.</p>
+    </div>
   </section>;
 }
 
@@ -121,6 +124,8 @@ function TestSpatialCapture({ count, onFinish, session }: { count: number; onFin
   const [problems, setProblems] = useState<Record<number,string>>({});
   const [verifying, setVerifying] = useState(false);
   const [checkedKey, setCheckedKey] = useState("");
+  // The check itself failed (network/server); wait for the user instead of retrying in a loop or unlocking the finish buttons.
+  const [verifyFailed, setVerifyFailed] = useState(false);
   const [surfaceProblem, setSurfaceProblem] = useState("");
   useEffect(()=>()=>{version.current++;},[]);
   const latest = useRef(photos);
@@ -129,7 +134,7 @@ function TestSpatialCapture({ count, onFinish, session }: { count: number; onFin
   const pendingPoint = nextCapturePoint(points.map((_,i)=>(photos[i]??[]).map(p=>!!p&&!p.issue)));
   const corner = pendingPoint ?? points.length - 1;
   const complete = confirmed && pendingPoint === null;
-  function reset() { version.current++;setProblems({});setCheckedKey("");setSurfaceProblem("");setRawFrames({});setBatchMessage(""); photos.flat().forEach(p=>p&&URL.revokeObjectURL(p.url)); setPhotos([]); setError(''); }
+  function reset() { version.current++;setVerifying(false);setVerifyFailed(false);setProblems({});setCheckedKey("");setSurfaceProblem("");setRawFrames({});setBatchMessage(""); photos.flat().forEach(p=>p&&URL.revokeObjectURL(p.url)); setPhotos([]); setError(''); }
 
   async function takeBatch(files:File[],profile:Camera,ticket:number) {
     if(pendingPoint===null||!confirmed||ticket!==version.current)return;
@@ -165,7 +170,7 @@ function TestSpatialCapture({ count, onFinish, session }: { count: number; onFin
   // is found here, while only that point needs retaking, not after the plan is made.
   const photoKey = points.map((_,i)=>(photos[i]??[]).map(p=>p?.frame?.capture_id).join(",")).join("|");
   useEffect(() => {
-    if (!complete || !captureCamera || verifying || checkedKey === photoKey) return;
+    if (!complete || !captureCamera || verifying || verifyFailed || checkedKey === photoKey) return;
     const ticket = version.current, key = photoKey;
     setVerifying(true); setError(""); setSurfaceProblem("");
     checkMeasurement(session.scene_id, captureCamera, { session, shape, vertices: points, points: points.map((_,i)=>({ id:`P${i+1}`, frames:rawFrames[i] ?? (photos[i]??[]).map(p=>p!.frame!) })) })
@@ -186,9 +191,9 @@ function TestSpatialCapture({ count, onFinish, session }: { count: number; onFin
         } else if (found.length) setSurfaceProblem(found[0].message);
         setCheckedKey(key);
       })
-      .catch(e => { if (ticket === version.current) { setError(e instanceof Error ? e.message : String(e)); setCheckedKey(key); } })
+      .catch(e => { if (ticket === version.current) { setError(e instanceof Error ? e.message : String(e)); setVerifyFailed(true); } })
       .finally(() => { if (ticket === version.current) setVerifying(false); });
-  }, [complete, captureCamera, verifying, checkedKey, photoKey]);
+  }, [complete, captureCamera, verifying, verifyFailed, checkedKey, photoKey]);
   function nextFurniture() {
     const captured: CapturedFurniture[] = [...items, { name: name.trim() || `가구 ${count + items.length + 1}`, type: "other", capture: {session, camera:captureCamera!, shape, points: points.map((p,i)=>({id:`P${i+1}`,position:p,photos:photos[i].map(p=>p!.file),frames:rawFrames[i]??(photos[i].every(p=>p?.frame)?photos[i].map(p=>p!.frame!):undefined)}))} }];
     setItems(captured);
@@ -238,11 +243,12 @@ function TestSpatialCapture({ count, onFinish, session }: { count: number; onFin
     {surfaceProblem && <p role="alert" className="error">{surfaceProblem}</p>}
     {!complete && !checking && <p className="muted small">도면의 P{corner+1}에 렌즈를 맞추고 마커 전체가 보이도록 촬영 버튼을 한 번 눌러 주세요. 촬영이 끝날 때까지 위치를 유지해 주세요.</p>}
     <div className="actions">{points.map((_,i)=>(photos[i]??[]).some(Boolean)&&<button key={i} type="button" className="text-button" disabled={checking} onClick={()=>{
-      version.current++;photos[i]?.forEach(p=>p&&URL.revokeObjectURL(p.url));
+      version.current++;setVerifying(false);setVerifyFailed(false);photos[i]?.forEach(p=>p&&URL.revokeObjectURL(p.url));
       setRawFrames(all=>{const next={...all};delete next[i];return next;});setProblems(all=>{const next={...all};delete next[i];return next;});setSurfaceProblem("");
       setPhotos(all=>all.map((row,j)=>j===i?[]:row));setBatchMessage("");setError("");
     }}>P{i+1} 다시 촬영</button>)}</div>
     {error && !Object.values(problems).includes(error) && <p role="alert" className="error">{error}</p>}
+    {complete && verifyFailed && <button type="button" className="secondary" onClick={()=>setVerifyFailed(false)}>다시 확인</button>}
     {/* The screen's one primary action; the app pins this bar above the bottom nav. */}
     <div className="capture-action" ref={setActionTarget}>
       {complete && <button type="button" className="primary" disabled={verifying||!!surfaceProblem||checkedKey!==photoKey} onClick={() => onFinish(nextFurniture())}>촬영 마치고 도면 만들기 ({items.length + 1}개)</button>}

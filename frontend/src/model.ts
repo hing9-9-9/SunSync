@@ -35,6 +35,8 @@ export type Region = {
   bottom: number;
   top: number;
   grade: Grade;
+  // Only for a furniture whose protected time differs from the space's; otherwise the space's time applies.
+  shadingSchedule?: ShadingTime;
 };
 export type ShadingTime = { enabled: boolean; start: string; end: string };
 // The user chooses when light may be blocked; until they do, nothing is blocked.
@@ -43,6 +45,15 @@ export function timeToMinute(value: string): number | null {
   const m = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(value);
   return m ? Number(m[1]) * 60 + Number(m[2]) : null;
 }
+/** Whether blocking is allowed at this minute of the day under a time setting. */
+export function withinShading(t: ShadingTime | undefined, minute: number): boolean {
+  if (!t || !t.enabled) return false;
+  const start = timeToMinute(t.start), end = timeToMinute(t.end);
+  return start !== null && end !== null && start < end && minute >= start && minute < end;
+}
+/** A region's own time when it has one, otherwise the space's. */
+export const regionShading = (s: { shadingSchedule?: ShadingTime }, r: { shadingSchedule?: ShadingTime }): ShadingTime =>
+  r.shadingSchedule ?? s.shadingSchedule ?? defaultShadingTime;
 export function validateShadingTime(t: ShadingTime | undefined): string | null {
   if (!t || !t.enabled) return null;
   const start = timeToMinute(t.start), end = timeToMinute(t.end);
@@ -389,6 +400,10 @@ export function validateSpace(s: Space, options?: { allowOverlap?: boolean }): s
   if (windowMessage) return windowMessage;
   const timeMessage = validateShadingTime(s.shadingSchedule);
   if (timeMessage) return timeMessage;
+  for (const r of s.regions) {
+    const regionTime = validateShadingTime(r.shadingSchedule);
+    if (regionTime) return `${r.name}: ${regionTime}`;
+  }
   for (const f of s.furniture) {
     if (!s.zones.includes(f.zone)) return "가구의 구역 연결을 확인해 주세요.";
     if (!f.name.trim()) return "가구 이름을 입력해 주세요.";
@@ -585,6 +600,25 @@ export function gradeCounts(space: Pick<Space, "furniture" | "regions">): Record
   }
   for (const r of space.regions) if (!r.furnitureId) counts[r.grade]++;
   return counts;
+}
+
+/**
+ * A protection area on furniture guards the side that looks at the window, and also the furniture's top
+ * (decided 2026-11-13). The server gets that top as one more protected area, listed after all the
+ * regular ones, in the order of this list. Same rule as top_companions in backend/app/ui_scene.py.
+ */
+export function topCompanions(space: Pick<Space, "regions" | "furniture">): number[] {
+  return space.regions.flatMap((r, i) =>
+    r.furnitureId && r.face !== "상단" && r.grade !== "D" && space.furniture.some((f) => f.id === r.furnitureId) ? [i] : []);
+}
+/**
+ * For every protected area the server returned, the index of the space region it belongs to. A scene saved
+ * before the top was added has no extra areas; any other count means the server and the space disagree (null).
+ */
+export function regionOwners(space: Pick<Space, "regions" | "furniture">, count: number): number[] | null {
+  const own = space.regions.map((_, i) => i), extra = topCompanions(space);
+  if (count === own.length) return own;
+  return count === own.length + extra.length ? [...own, ...extra] : null;
 }
 
 export function localFrontFace(f: Furniture, wall: Wall = "south"): Face {

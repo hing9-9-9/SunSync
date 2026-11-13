@@ -86,3 +86,11 @@
 .point-problem { margin: var(--space-1) 0; font-size: 13px; line-height: 1.5; color: #C2520F; }
 .app.award-mobile.mode-app.page-capture .corner-steps .retake { background: #fff; box-shadow: inset 0 0 0 1px #FF7426; }
 .app.award-mobile.mode-app.page-capture .corner-steps .retake small { color: #C2520F; font-weight: 500; }
+
+/* Running capture: the selected-film line, the test preview and the cancel button follow the other cards. */
+.app.award-mobile.mode-app.page-capture .capture-film-line { margin:0 0 var(--space-3); font-size:14px; line-height:1.6; color:var(--at-muted); }
+.app.award-mobile.mode-app.page-capture .capture-test-details { margin:0 0 var(--space-4); font-size:14px; line-height:1.6; color:var(--at-muted); }
+.app.award-mobile.mode-app.page-capture .capture-test-details > summary { min-height:44px; display:flex; align-items:center; cursor:pointer; }
+.app.award-mobile.mode-app.page-capture .capture-end { display:grid; gap:var(--space-2); margin:var(--space-4) 0 var(--space-6); text-align:center; }
+.app.award-mobile.mode-app.page-capture .capture-end > .secondary { width:100%; min-height:44px; font-size:15px; }
+.app.award-mobile.mode-app.page-capture .capture-end > p { margin:0; font-size:13px; line-height:1.5; color:var(--at-muted); }

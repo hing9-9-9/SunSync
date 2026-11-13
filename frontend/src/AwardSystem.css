@@ -2354,3 +2354,50 @@
   background-position: right 4px center;
   background-size: 12px 8px;
 }
+
+/* Time pick lists (ShadingTimeControl): hour and minute side by side inside one field box. */
+.field .time-select { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: var(--space-2); }
+.field .time-select > select { cursor: pointer; }
+.field .time-select > select:disabled { cursor: not-allowed; }
+.field .time-select > select:focus-visible { outline: 2px solid var(--c-action); outline-offset: 2px; }
+
+/* The film card keeps its last bar, faded, while the state for the newly chosen time is on its way. */
+.app .film-meter.is-pending span { opacity: .3; }
+@media (prefers-reduced-motion: reduce) { .app .film-meter span { transition: none; } }
+/* On a phone the two times go one per row, so "오전 10시" and the minutes are not cut off. */
+.app.mode-app .shading-time .two-fields { grid-template-columns: minmax(0, 1fr); }
+.app .film-layout { margin-bottom: var(--space-4); }
+.app.mode-app .field .time-select > select { min-height: 44px; }
+
+/* One furniture's own protected time, under its grade. */
+.app .region-time .region-time-body { flex: 1 1 100%; display: grid; gap: var(--space-2); min-width: 0; }
+.app .region-time .region-time-body > p { margin: 0; }
+.app .region-time .two-fields { margin: 0; }
+.app .region-time .two-fields { grid-template-columns: minmax(0, 1fr); }
+.app.award-mobile.mode-app .mobile-editor-sheet-body .region-time .two-fields { grid-template-columns: minmax(0, 1fr); gap: var(--space-2); }
+.app.award-mobile.mode-app .region-time .time-field > span { font-size: 14px; }
+.app .time-field { align-items: stretch; width: 100%; }
+.app .field .time-select { width: 100%; }
+.app .field .time-select > select { width: 100%; min-width: 0; text-overflow: clip; }
+.app .region-time { display: block; }
+.app .region-time .region-time-body { width: 100%; }
+
+/* Phone: the hour and minute lists sit in a box like the number fields beside them. */
+.app.award-mobile.mode-app .field .time-select > select {
+  min-height: 44px;
+  padding: var(--space-2) 36px var(--space-2) var(--space-3);
+  border: 1px solid var(--c-bdbac5);
+  border-radius: 8px;
+  background-color: var(--c-white);
+}
+
+/* Narrow web: start and end go one per row so the hour and minute lists keep their full text. */
+@media (max-width: 760px) {
+  .app .shading-time .two-fields { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* App registration: the zone chips and their two actions stay on one line; with many zones the row scrolls sideways. */
+.app.award-mobile.mode-app.page-register .zone-tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+.app.award-mobile.mode-app.page-register .zone-tabs::-webkit-scrollbar { display: none; }
+.app.award-mobile.mode-app.page-register .zone-tabs > * { flex: 0 0 auto; }
+.app.award-mobile.mode-app.page-register .zone-tabs .zone-action { padding: 0 10px; }

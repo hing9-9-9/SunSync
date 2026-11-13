@@ -8,7 +8,7 @@ import "./ReferencePreview.css";
 import "./WorkspaceDesign.css";
 import { DeviceHandoff } from "./DeviceHandoff";
 import { CaptureHelp } from "./CaptureHelp";
-import { ShadingTimeControl, VirtualFilmControl } from "./ShadingPlan";
+import { RegionTimeField, ShadingTimeControl, VirtualFilmControl } from "./ShadingPlan";
 import { SpaceMenu, SpaceMenuGlyph } from "./SpaceMenu";
 import AdaptiveEffect from "./AdaptiveEffect.tsx";
 import SpatialCapture from "./SpatialCapture";
@@ -505,15 +505,6 @@ function App() {
                           <FilmLayout space={draft} onChange={(row, col) => changeWindow({ captureModule: { row, col, rowOrigin: "bottom" } })} />
                         </>
                       )}
-                      <div className="mini-room">
-                        <span>
-                          {draft.width || "—"} × {draft.depth || "—"} m
-                        </span>
-                        <span>창</span>
-                      </div>
-                      <p className="muted small">
-                        공간 크기는 직접 입력 후 도면에서 확인
-                      </p>
                       <div className="divider" />
                       <div className="section-row location-heading">
                         <h3>건물 위치</h3>
@@ -568,21 +559,6 @@ function App() {
                             })
                           }
                         />
-                      </label>
-                      <label className="checkbox-row">
-                        <input
-                          type="checkbox"
-                          checked={draftSite.northConfirmed}
-                          onChange={(e) =>
-                            change({
-                              site: {
-                                ...draftSite,
-                                northConfirmed: e.target.checked,
-                              },
-                            })
-                          }
-                        />
-                        <span>도면의 위쪽이 북쪽임을 확인</span>
                       </label>
                     </Card>
                   </div>
@@ -1017,6 +993,13 @@ function App() {
                           <p className="grade-description" aria-live="polite">
                             {grades[region.grade]}
                           </p>
+                          {region.grade !== "D" && (
+                            <RegionTimeField
+                              base={draft.shadingSchedule ?? defaultShadingTime}
+                              value={region.shadingSchedule}
+                              onChange={(shadingSchedule) => patchRegion({ shadingSchedule })}
+                            />
+                          )}
                           <div className="furniture-actions">
                             <button
                               className="text-button furniture-delete region-delete"
