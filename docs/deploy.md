@@ -164,6 +164,40 @@ Check in this order:
 
 Unit files: `update.sh` runs `deploy/install-units.sh`, which copies new or changed `deploy/*.service` and `*.timer` to `/etc/systemd/system/`, runs `daemon-reload`, and enables only timers that were not installed before. `sunsync-autoupdate.timer` stays under the switch file `/etc/sunsync/autoupdate`.
 
+## Checking the weather collection
+
+Three timers collect weather for every saved building location: `sunsync-worker` (Open-Meteo, every hour), `sunsync-kma-worker` and `sunsync-ai-nowcast-worker` (every 10 minutes, they need `KMA_API_KEY` in `/etc/sunsync/sunsync.env`). Each run writes one line to the journal:
+
+```
+sites=11 stored=11 failed=0 lease_acquired=1 pruned_snapshots=0 pruned_runs=0
+sites=11 stored=5 failed=6 lease_acquired=1 reasons=kma_transport_error:6
+```
+
+- `lease_acquired=0` means another run was still holding the lock; nothing is wrong.
+- `reasons` names why sites failed, with fixed words and counts only (never a response, an address or a key). Open-Meteo: `open_meteo_timeout`, `open_meteo_transport_error`, `open_meteo_invalid_response`. KMA: `kma_transport_error`, or a `kma_invalid_*` / `kma_empty_response` word when the answer cannot be used (the full list is in `backend/app/nowcast/kma_adapter.py`).
+- **Retry and time limits.** Open-Meteo: 5 seconds per request and one more try after 2 seconds for a network failure (not for a bad response). KMA: 90 seconds per request and three tries with a growing pause.
+- **When a run counts as failed.** The service is marked failed only when it tried and stored nothing. A run that stored some sites and failed on others (for example a site the provider cannot serve) is reported in the line but stays successful, so `systemctl --failed` shows real outages. There is no e-mail or message alert: look at `systemctl --failed` or the lines below.
+
+Look at the recent runs and the last collection (the server has no `sqlite3` program, so use the virtualenv's Python):
+
+```bash
+journalctl -u sunsync-worker -u sunsync-kma-worker --since "-3h" --no-pager | grep sites=
+sudo -u sunsync /opt/sunsync/.venv/bin/python - <<'PY'
+import sqlite3
+c = sqlite3.connect("file:/var/lib/sunsync/sunsync.db?mode=ro", uri=True)
+for row in c.execute("select site_key, max(fetched_at), count(*) from weather_snapshot "
+                     "where provider='open_meteo' group by site_key order by 2"): print(row)
+print(c.execute("select count(*), coalesce(sum(p.fallback_reason is not null), 0) from nowcast_point p "
+                "join nowcast_run r using(run_id) where r.created_at > datetime('now','-1 day')").fetchone())
+PY
+```
+
+The first block lists each site with the time of its last Open-Meteo snapshot and how many snapshots it has; a site that is hours behind is failing. The last line is the number of forecast points of the last 24 hours and how many of them used the clear-sky fallback.
+
+- **Old data is deleted by the Open-Meteo worker.** Every hour adds one snapshot per site (168 hourly points each). After each collection the worker deletes snapshots older than `SUNSYNC_SNAPSHOT_KEEP_DAYS` days (default 14; set it in `/etc/sunsync/sunsync.env`, for example 45 to keep everything until the last demo) and forecast runs older than 30 days or older than the setting, whichever is longer (so 45 keeps runs for 45 days; a snapshot that an unexpired run still uses is kept), and adds `pruned_snapshots=N pruned_runs=M` to its log line (`prune=failed` if the cleanup failed, `prune=skipped_bad_setting` and nothing deleted if the setting is not a whole number of days; the collection itself is not marked failed). With the default, the first deletions happen two weeks after the first collection. Analyses that replay past weather (for example the FR-04 comparison on real days) need the history: copy a database backup before the deletions start or raise the setting. The tables of the AI nowcast (`ai_nowcast_*`) are not cleaned by this.
+- **Test spaces count too.** Every saved space with its own location is collected. On the demo server the spaces placed outside Korea were reported as failed KMA sites in every run (presumably because the provider does not cover them; the `reasons` word shows the actual cause).
+- The forecast chart of a space states which source it shows (KMA-based AI, general forecast, or a fallback) under the chart.
+
 ## Backup and logs
 
 The database and its copies hold e-mail addresses once the Google login is on, so they must not be readable by other users. The services now create their files private (`UMask=0077`; copy the unit files to `/etc/systemd/system/` and run `sudo systemctl daemon-reload` to apply this) and `backup.sh` writes private copies. One time, for the files that already exist: `sudo chmod -R go-rwx /var/lib/sunsync` (the owner keeps access, so the services keep working).

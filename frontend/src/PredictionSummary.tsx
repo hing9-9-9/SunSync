@@ -4,6 +4,7 @@ import { fetchNowcastComparison } from "./spaceApi.ts";
 import { regionOwners } from "./model.ts";
 import type { Space } from "./model.ts";
 import NowcastComparisonChart from "./NowcastComparisonChart.tsx";
+import { nowcastSourceNote } from "./nowcastSource.ts";
 
 export default function PredictionSummary({
   result,
@@ -49,6 +50,7 @@ export default function PredictionSummary({
   }, [space.serverSceneId, startTime]);
 
   const comparison = serverComparison;
+  const sourceNote = comparison ? nowcastSourceNote(comparison) : null;
   const owners = result ? regionOwners(space, result.regions.length) ?? result.regions.map((_, i) => i) : [];
 
   return (
@@ -60,6 +62,7 @@ export default function PredictionSummary({
       {comparison && (
         <NowcastComparisonChart data={comparison} />
       )}
+      {sourceNote && <p role="note">{sourceNote.text}</p>}
 
       {result && (
         <>
