@@ -169,7 +169,7 @@ Unit files: `update.sh` runs `deploy/install-units.sh`, which copies new or chan
 Three timers collect weather for every saved building location: `sunsync-worker` (Open-Meteo, every hour), `sunsync-kma-worker` and `sunsync-ai-nowcast-worker` (every 10 minutes, they need `KMA_API_KEY` in `/etc/sunsync/sunsync.env`). Each run writes one line to the journal:
 
 ```
-sites=11 stored=11 failed=0 lease_acquired=1
+sites=11 stored=11 failed=0 lease_acquired=1 pruned_snapshots=0 pruned_runs=0
 sites=11 stored=5 failed=6 lease_acquired=1 reasons=kma_transport_error:6
 ```
 
@@ -194,7 +194,7 @@ PY
 
 The first block lists each site with the time of its last Open-Meteo snapshot and how many snapshots it has; a site that is hours behind is failing. The last line is the number of forecast points of the last 24 hours and how many of them used the clear-sky fallback.
 
-- **Snapshots are not deleted yet.** Every hour adds one snapshot per site (168 hourly points each). `SnapshotRepository.prune` (snapshots older than 14 days, forecast runs older than 30 days) exists, but no worker calls it. Check the size of `/var/lib/sunsync/sunsync.db` now and then until it is called.
+- **Old data is deleted by the Open-Meteo worker.** Every hour adds one snapshot per site (168 hourly points each). After each collection the worker deletes snapshots older than 14 days and forecast runs older than 30 days (a snapshot that an unexpired run still uses is kept), and adds `pruned_snapshots=N pruned_runs=M` to its log line (`prune=failed` if the cleanup failed; the collection itself is not marked failed). The first deletions happen two weeks after the first collection. The tables of the AI nowcast (`ai_nowcast_*`) are not cleaned by this.
 - **Test spaces count too.** Every saved space with its own location is collected. On the demo server the spaces placed outside Korea were reported as failed KMA sites in every run (presumably because the provider does not cover them; the `reasons` word shows the actual cause).
 - The forecast chart of a space states which source it shows (KMA-based AI, general forecast, or a fallback) under the chart.
 

@@ -174,3 +174,63 @@ def test_kma_worker_exit_code_and_reasons(monkeypatch, tmp_path, capsys, stored,
     assert f"stored={stored} failed={failed}" in out
     assert f"reasons=kma_transport_error:{failed}" in out
     assert "secret-key" not in out
+
+
+def _run_main(monkeypatch, engine, result):
+    monkeypatch.setattr(open_meteo_worker, "run_once", lambda *_a, **_k: result)
+    monkeypatch.setattr(open_meteo_worker, "create_engine", lambda *_a, **_k: engine)
+    monkeypatch.setattr("sys.argv", ["open_meteo_worker"])
+    return open_meteo_worker.main()
+
+
+def _snapshot_count(engine):
+    from sqlalchemy import text
+
+    with engine.connect() as connection:
+        return connection.execute(text("SELECT count(*) FROM weather_snapshot")).scalar_one()
+
+
+def _store_snapshots(engine):
+    from datetime import UTC, datetime, timedelta
+
+    from app.nowcast.repository import SnapshotRepository
+    from test_nowcast_persistence import raw
+
+    now = datetime.now(UTC)
+    repository = SnapshotRepository(engine, id_factory=iter(["old", "recent"]).__next__)
+    repository.store(raw(now - timedelta(days=20), 1), now - timedelta(days=20))
+    repository.store(raw(now - timedelta(hours=1), 2), now - timedelta(hours=1))
+
+
+def test_the_worker_deletes_expired_snapshots_after_a_collection(monkeypatch, tmp_path, capsys):
+    engine = make_engine(tmp_path)
+    _store_snapshots(engine)
+    result = {"sites": 1, "stored": 1, "failed": 0, "lease_acquired": 1}
+    assert _run_main(monkeypatch, engine, result) == 0
+    assert _snapshot_count(engine) == 1  # only the recent one is left
+    assert "pruned_snapshots=1 pruned_runs=0" in capsys.readouterr().out
+
+
+def test_nothing_is_deleted_when_the_lock_is_held_by_another_run(monkeypatch, tmp_path, capsys):
+    engine = make_engine(tmp_path)
+    _store_snapshots(engine)
+    result = {"sites": 0, "stored": 0, "failed": 0, "lease_acquired": 0}
+    assert _run_main(monkeypatch, engine, result) == 0
+    assert _snapshot_count(engine) == 2
+    assert "pruned" not in capsys.readouterr().out
+
+
+def test_a_failing_cleanup_does_not_fail_the_collection(monkeypatch, tmp_path, capsys):
+    from app.nowcast.repository import SnapshotRepository
+    from sqlalchemy.exc import OperationalError
+
+    def broken(*_args, **_kwargs):
+        raise OperationalError("DELETE", {}, Exception("database is locked"))
+
+    engine = make_engine(tmp_path)
+    monkeypatch.setattr(SnapshotRepository, "prune", broken)
+    result = {"sites": 1, "stored": 1, "failed": 0, "lease_acquired": 1}
+    assert _run_main(monkeypatch, engine, result) == 0
+    out = capsys.readouterr().out
+    assert "prune=failed" in out
+    assert "locked" not in out  # the database error text is not printed

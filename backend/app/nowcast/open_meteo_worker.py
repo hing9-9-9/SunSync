@@ -1,6 +1,7 @@
 """FR-01.4 Step A — Open-Meteo DNI snapshot worker only.
 
-Run with ``python -m app.nowcast.open_meteo_worker``. It is intentionally not
+Run with ``python -m app.nowcast.open_meteo_worker``. After each collection it also deletes the
+snapshots and runs that ``SnapshotRepository.prune`` considers expired. It is intentionally not
 attached to FastAPI's lifespan: scheduling and process supervision belong to
 deployment.
 """
@@ -14,6 +15,7 @@ from datetime import UTC, datetime
 from uuid import uuid4
 
 from sqlalchemy import Engine
+from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import create_engine
 
 from app.db import DATABASE_URL, init_db
@@ -37,6 +39,15 @@ def _fetch(site: Site, current: datetime, retry_delay_seconds: float):  # type: 
             raise
     time.sleep(retry_delay_seconds)
     return OpenMeteoDniAdapter(site).fetch(current)
+
+
+def _prune(engine: Engine, now: datetime) -> str:
+    """Delete old snapshots and runs after a collection; a failure here never fails the run."""
+    try:
+        pruned = SnapshotRepository(engine).prune(now)
+    except SQLAlchemyError:
+        return "prune=failed"
+    return f"pruned_snapshots={pruned['weather_snapshots']} pruned_runs={pruned['nowcast_runs']}"
 
 
 def _reason(error: ValueError) -> str:
@@ -95,7 +106,10 @@ def main() -> int:
     failures: Counter[str] = Counter()
     result = run_once(engine, owner_id=args.owner_id, failures=failures)
     # Deliberately report aggregate counts and fixed reason words only: no provider response or secret.
-    print(report_line(result, failures))
+    line = report_line(result, failures)
+    if result["lease_acquired"]:
+        line += " " + _prune(engine, datetime.now(UTC))
+    print(line)
     return exit_code(result)
 
 
