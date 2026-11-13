@@ -62,6 +62,28 @@ test("a fallback tells that the KMA observation was not received", () => {
   assert.match(note?.text ?? "", /대체/);
 });
 
+test("a fallback caused by a low sun is not blamed on the KMA observation", () => {
+  const note = nowcastSourceNote(
+    data([
+      point({
+        prediction_source: "open_meteo_fallback",
+        fallback_used: true,
+        fallback_reason: "low_solar_elevation",
+      }),
+    ]),
+  );
+  assert.equal(note?.tone, "info");
+  assert.match(note?.text ?? "", /해가 낮아/);
+  assert.doesNotMatch(note?.text ?? "", /기상청/);
+});
+
+test("a malformed observation time does not break the note", () => {
+  const note = nowcastSourceNote(
+    data([point({ prediction_source: "ai_model", kma_observed_at: "not a time" })]),
+  );
+  assert.equal(note?.text, "기상청 관측을 쓴 AI 예측이에요");
+});
+
 test("shadow mode says the AI result is only compared", () => {
   const note = nowcastSourceNote(data([point({})], "shadow"));
   assert.equal(note?.tone, "info");

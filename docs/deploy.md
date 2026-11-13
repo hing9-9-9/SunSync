@@ -174,7 +174,7 @@ sites=11 stored=5 failed=6 lease_acquired=1 reasons=kma_transport_error:6
 ```
 
 - `lease_acquired=0` means another run was still holding the lock; nothing is wrong.
-- `reasons` names why sites failed, with fixed words and counts only (never a response, an address or a key): `open_meteo_timeout`, `open_meteo_transport_error`, `open_meteo_invalid_response`, `kma_transport_error`, `kma_api_key_missing`, and `*_value_error` or `kma_file_error` for the rest.
+- `reasons` names why sites failed, with fixed words and counts only (never a response, an address or a key). Open-Meteo: `open_meteo_timeout`, `open_meteo_transport_error`, `open_meteo_invalid_response`. KMA: `kma_transport_error`, or a `kma_invalid_*` / `kma_empty_response` word when the answer cannot be used (the full list is in `backend/app/nowcast/kma_adapter.py`).
 - **Retry and time limits.** Open-Meteo: 5 seconds per request and one more try after 2 seconds for a network failure (not for a bad response). KMA: 90 seconds per request and three tries with a growing pause.
 - **When a run counts as failed.** The service is marked failed only when it tried and stored nothing. A run that stored some sites and failed on others (for example a site the provider cannot serve) is reported in the line but stays successful, so `systemctl --failed` shows real outages. There is no e-mail or message alert: look at `systemctl --failed` or the lines below.
 
@@ -194,7 +194,7 @@ PY
 
 The first block lists each site with the time of its last Open-Meteo snapshot and how many snapshots it has; a site that is hours behind is failing. The last line is the number of forecast points of the last 24 hours and how many of them used the clear-sky fallback.
 
-- **Snapshots are never deleted.** Every hour adds one snapshot per site (about 168 hourly points each). Check the size of `/var/lib/sunsync/sunsync.db` now and then until a retention rule exists.
+- **Snapshots are not deleted yet.** Every hour adds one snapshot per site (168 hourly points each). `SnapshotRepository.prune` (snapshots older than 14 days, forecast runs older than 30 days) exists, but no worker calls it. Check the size of `/var/lib/sunsync/sunsync.db` now and then until it is called.
 - **Test spaces count too.** Every saved space with its own location is collected. On the demo server the spaces placed outside Korea were reported as failed KMA sites in every run (presumably because the provider does not cover them; the `reasons` word shows the actual cause).
 - The forecast chart of a space states which source it shows (KMA-based AI, general forecast, or a fallback) under the chart.
 

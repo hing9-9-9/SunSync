@@ -131,3 +131,46 @@ def test_kma_worker_names_the_reason_of_each_failed_site(tmp_path):
     assert (result["sites"], result["stored"], result["failed"]) == (2, 0, 2)
     assert failures == {"kma_transport_error": 2}
     assert "secret-key" not in report_line(result, failures)
+
+
+def test_open_meteo_lock_outlives_a_run_in_which_every_site_is_retried(monkeypatch, tmp_path):
+    from datetime import datetime
+
+    from sqlalchemy import text
+
+    engine = make_engine(tmp_path)
+    for index in range(8):
+        add_scene(engine, f"scene_{index}", latitude=30.0 + index, longitude=127.0)
+    monkeypatch.setattr(
+        "app.nowcast.adapters.urlopen",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(URLError("offline")),
+    )
+    open_meteo_worker.run_once(engine, now=NOW, owner_id="a", retry_delay_seconds=0)
+    with engine.connect() as connection:
+        expires = connection.execute(
+            text("SELECT expires_at FROM worker_lease WHERE lease_name=:n"),
+            {"n": open_meteo_worker.LEASE_NAME},
+        ).scalar_one()
+    held = datetime.fromisoformat(expires) - NOW
+    # worst case per site: two 5 s tries and a 2 s pause
+    assert held.total_seconds() >= 8 * (5 + 5 + 2)
+
+
+@pytest.mark.parametrize(("stored", "failed", "expected"), [(5, 6, 0), (0, 11, 1)])
+def test_kma_worker_exit_code_and_reasons(monkeypatch, tmp_path, capsys, stored, failed, expected):
+    engine = make_engine(tmp_path)
+
+    def fake_run_once(*_args, failures, **_kwargs):
+        failures["kma_transport_error"] += failed
+        return {"sites": stored + failed, "stored": stored, "failed": failed, "lease_acquired": 1}
+
+    monkeypatch.setattr(kma_worker, "run_once", fake_run_once)
+    monkeypatch.setattr(kma_worker, "load_local_environment", lambda: None)
+    monkeypatch.setattr(kma_worker, "create_engine", lambda *_a, **_k: engine)
+    monkeypatch.setenv("KMA_API_KEY", "secret-key")
+    monkeypatch.setattr("sys.argv", ["kma_worker", "--output-dir", str(tmp_path)])
+    assert kma_worker.main() == expected
+    out = capsys.readouterr().out
+    assert f"stored={stored} failed={failed}" in out
+    assert f"reasons=kma_transport_error:{failed}" in out
+    assert "secret-key" not in out

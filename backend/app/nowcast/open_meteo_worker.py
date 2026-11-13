@@ -62,9 +62,11 @@ def run_once(
     current = current_input.astimezone(UTC)
     owner = owner_id or str(uuid4())
     repository = SnapshotRepository(engine)
-    if not repository.acquire_lease(LEASE_NAME, owner, current):
-        return {"sites": 0, "stored": 0, "failed": 0, "lease_acquired": 0}
     sites = load_unique_sites(engine)
+    # Worst case per site: two tries and the pause between them. The lock must outlive the run.
+    lease_seconds = 60 + 15 * len(sites)
+    if not repository.acquire_lease(LEASE_NAME, owner, current, ttl_seconds=lease_seconds):
+        return {"sites": 0, "stored": 0, "failed": 0, "lease_acquired": 0}
     stored = failed = 0
     for site in sites:
         try:
