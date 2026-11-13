@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { BOARD, captureSelection, captureTargets, resumeCaptureMarker, cancelStoredCapture, boardAlignment, filmBoardAlignment, serverMessage, startCaptureMarker, checkCaptureMarker, endCaptureMarker, measureAndRegister, measurementProblem, measurementProblems, setupCamera } from "./measureApi.ts";
+import { BOARD, captureSelection, captureTargets, resumeCaptureMarker, cancelStoredCapture, boardAlignment, filmBoardAlignment, serverMessage, startCaptureMarker, checkCaptureMarker, endCaptureMarker, checkMeasurement, detectFrame, measureAndRegister, measurementProblem, measurementProblems, setupCamera } from "./measureApi.ts";
 import { blankSpace } from "./model.ts";
 
 const space = (wall: "south" | "north" | "east" | "west") => ({
@@ -88,15 +88,16 @@ test("setup and final measurement use the server-selected ID; mixed session phot
   const marker = {code_id:37,dictionary:"DICT_4X4_50",side_length_m:.6,plane:"window",T_ENU_marker:[-1,0,0,3,0,0,1,0,0,1,0,1,0,0,0,1]};
   const session = {session_id:"session",scene_id:"scene",window_id:"win",expires_at:"2030-01-01",display_status:"virtual_applied" as const,board,marker,film_cells:[]};
   const camera = {width:800,height:600,fx:600,fy:600,cx:400,cy:300,pixel_space:"raw_opencv" as const,distortion:[0,0,0,0,0],source:"test",lens_id:"test"};
-  const recorded: {url:string;body:Record<string,unknown>}[]=[];
+  const checkedText = '{"status":"model_ready_unreviewed","model":{"dimensions_m":[1.0,0.5,0.8]}}';
+  const recorded: {url:string;body:Record<string,unknown>;raw?: string;method?:string}[]=[];
   const scene = {revision:1,room:{room_id:"room"},markers:[marker],registration_calibration:null};
   const room = {...space("south"),serverSceneId:"scene",site:{latitude:37,longitude:127,timezone:"Asia/Seoul",northConfirmed:true}};
   t.mock.method(globalThis,"fetch",async (url:string,init?:RequestInit)=>{
     const body = init?.body ? JSON.parse(init.body as string) : {};
-    recorded.push({url,body});
+    recorded.push({url,body,raw:init?.body as string | undefined,method:init?.method});
     if(url.includes("capture-marker")) return Response.json(session);
     if(url.endsWith("automatic-setup")) return Response.json({camera});
-    if(url.endsWith("/v1/measurements")) return Response.json({test_measurement:true});
+    if(url.endsWith("/v1/measurements")) return new Response(checkedText);
     if(url.endsWith("/v1/fr06")) return Response.json({calibration_id:"reference",markers:[marker],occluders:[]});
     if(url.includes("/api/ui/spaces/")) return Response.json(room);
     return Response.json(scene);
@@ -104,12 +105,34 @@ test("setup and final measurement use the server-selected ID; mixed session phot
   await setupCamera([],board);
   const frame = {marker_session_id:"session",capture_id:"c",captured_at:"2026-11-08T00:00:00Z",width:800,height:600,base64:"",detections:[{marker_id:37,corners_px:[[0,0],[1,0],[1,1],[0,1]] as [number,number][]}]};
   const item = {session,name:"desk",shape:"rectangle",vertices:[],points:[{id:"P1",frames:[frame]}]};
-  await measureAndRegister(room,camera,item);
+  const { checked, problems } = await checkMeasurement("scene", camera, item);
+  assert.deepEqual(problems, []);
+  assert.ok(checked);
+  scene.revision = 7;
+  await measureAndRegister(room,camera,{...item, checkedMeasurement: checked});
+  assert.equal(recorded.filter(r=>r.url.endsWith("/v1/measurements")).length,1);
+  assert.equal(recorded.find(r=>r.url.endsWith("/v1/fr06"))?.raw, `{"measurement":${checkedText}}`);
+  assert.equal(recorded.find(r=>r.url.endsWith("/registrations"))?.body.expected_revision,8);
+  await assert.rejects(measureAndRegister(room,camera,{...item, checkedMeasurement:{...checked,roomId:"other"}}),/촬영 기준/);
   assert.deepEqual(recorded.find(r=>r.url.endsWith("automatic-setup"))!.body.board,board);
   assert.deepEqual(recorded.find(r=>r.url.endsWith("/v1/measurements"))!.body.board,board);
   recorded.length=0;
   await assert.rejects(measureAndRegister(room,camera,{...item,points:[{id:"P1",frames:[{...frame,marker_session_id:"old"}]}]}),/섞였어요/);
   assert.equal(recorded.some(r=>r.url.endsWith("/v1/measurements")),false);
+
+  // A cancelled preview session check must never proceed to image detection.
+  const preview = new AbortController();
+  const reason = new Error("Preview cancelled");
+  t.mock.method(globalThis, "fetch", async (url: string, init?: RequestInit) => {
+    assert.match(url, /capture-marker/);
+    assert.equal(init?.signal, preview.signal);
+    preview.abort(reason);
+    throw reason;
+  });
+  await assert.rejects(
+    detectFrame(new File([], "preview.jpg"), board, session, undefined, camera, preview.signal),
+    error => error === reason,
+  );
 });
 
 test("an incomplete measurement names each failed point and the reason instead of a generic error", () => {
@@ -117,11 +140,20 @@ test("an incomplete measurement names each failed point and the reason instead o
   const two = measurementProblems(bad("incomplete", { P1: { status: "ok" }, P2: { status: "insufficient_samples" }, P3: { status: "inconsistent_samples" } }));
   assert.deepEqual(two.map((p) => p.point), ["P2", "P3"]);
   assert.match(two[0].message, /^P2 · .*마커/);
-  assert.match(two[1].message, /^P3 · .*3cm/);
+  assert.match(two[1].message, /^P3 · .*어긋나요/);
   assert.equal(measurementProblems(bad("invalid_surface", { P1: { status: "ok" } }))[0].point, undefined);
   assert.match(measurementProblem(bad("incomplete", { P4: { status: "retake" } }))!, /^P4 · /);
-  assert.deepEqual(measurementProblems(bad("model_ready_unreviewed", {})), []);
-  assert.deepEqual(measurementProblems('{"test_measurement":true}'), []);
+  assert.deepEqual(measurementProblems('{"status":"model_ready_unreviewed","model":{"dimensions_m":[1,0.5,0.8]}}'), []);
+  for (const response of [
+    bad("incomplete", {}), '{"status":"incomplete"}',
+    bad("incomplete", { P1: { status: "ok" } }), 'null', 'invalid JSON',
+    '{"status":"model_ready_unreviewed","model":null}', '{"status":"model_ready_unreviewed","model":{}}', '{"status":"unknown"}',
+  ]) {
+    const [failure] = measurementProblems(response);
+    assert.equal(failure?.retryable, true, response);
+    assert.equal(failure.point, undefined);
+  }
+  assert.match(measurementProblem(bad("surface_measured", { P1: { status: "ok" } }))!, /높이/);
 });
 
 test("a 401 with a non-JSON body becomes the expired message and notifies", async (t) => {

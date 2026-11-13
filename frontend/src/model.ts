@@ -217,7 +217,7 @@ const typicalSize: Record<FurnitureType, [number, number, number]> = {
   other: [1, 0.6, 1],
 };
 // frames: photos prepared and checked by the measurement server (absent when measuring is skipped).
-export type CapturedFurniture = { name: string; type: FurnitureType; capture?: {camera?: import("./measureApi").Camera; session?: import("./measureApi").CaptureMarker; shape: string; points: {id: string; position: {x:number;y:number}; photos: File[]; frames?: import("./measureApi").Frame[]}[]} };
+export type CapturedFurniture = { name: string; type: FurnitureType; capture?: {checkedMeasurement?: import("./measureApi").CheckedMeasurement; camera?: import("./measureApi").Camera; session?: import("./measureApi").CaptureMarker; shape: string; points: {id: string; position: {x:number;y:number}; photos: File[]; frames?: import("./measureApi").Frame[]}[]} };
 // Lays captured furniture out in rows inside the room, clamped to its size.
 export function placeCapturedFurniture(
   space: Pick<Space, "width" | "depth" | "height" | "zone">,

@@ -10,7 +10,7 @@ import type { CapturedFurniture } from "./model";
 import { browserCaptureEnabled } from "./captureEnvironment";
 import { checkMeasurement, selectFrames, detectFrame, captureSelection, resumeCaptureMarker, cancelStoredCapture, startCaptureMarker, endCaptureMarker } from "./measureApi";
 import FilmModulePicker from "./FilmModulePicker";
-import type { Camera, Frame, CaptureMarker, FilmTargetWindow } from "./measureApi";
+import type { CheckedMeasurement, Camera, Frame, CaptureMarker, FilmTargetWindow } from "./measureApi";
 
 type Photo = { file: File; url: string; issue: PhotoIssue | null; metrics: { brightness: number; sharpness: number }; frame?: Frame };
 
@@ -124,6 +124,7 @@ function TestSpatialCapture({ count, onFinish, session }: { count: number; onFin
   const [problems, setProblems] = useState<Record<number,string>>({});
   const [verifying, setVerifying] = useState(false);
   const [checkedKey, setCheckedKey] = useState("");
+  const [checkedMeasurement, setCheckedMeasurement] = useState<CheckedMeasurement>();
   // The check itself failed (network/server); wait for the user instead of retrying in a loop or unlocking the finish buttons.
   const [verifyFailed, setVerifyFailed] = useState(false);
   const [surfaceProblem, setSurfaceProblem] = useState("");
@@ -134,7 +135,7 @@ function TestSpatialCapture({ count, onFinish, session }: { count: number; onFin
   const pendingPoint = nextCapturePoint(points.map((_,i)=>(photos[i]??[]).map(p=>!!p&&!p.issue)));
   const corner = pendingPoint ?? points.length - 1;
   const complete = confirmed && pendingPoint === null;
-  function reset() { version.current++;setVerifying(false);setVerifyFailed(false);setProblems({});setCheckedKey("");setSurfaceProblem("");setRawFrames({});setBatchMessage(""); photos.flat().forEach(p=>p&&URL.revokeObjectURL(p.url)); setPhotos([]); setError(''); }
+  function reset() { version.current++;setVerifying(false);setVerifyFailed(false);setProblems({});setCheckedKey("");setCheckedMeasurement(undefined);setSurfaceProblem("");setRawFrames({});setBatchMessage(""); photos.flat().forEach(p=>p&&URL.revokeObjectURL(p.url)); setPhotos([]); setError(''); }
 
   async function takeBatch(files:File[],profile:Camera,ticket:number) {
     if(pendingPoint===null||!confirmed||ticket!==version.current)return;
@@ -174,8 +175,15 @@ function TestSpatialCapture({ count, onFinish, session }: { count: number; onFin
     const ticket = version.current, key = photoKey;
     setVerifying(true); setError(""); setSurfaceProblem("");
     checkMeasurement(session.scene_id, captureCamera, { session, shape, vertices: points, points: points.map((_,i)=>({ id:`P${i+1}`, frames:rawFrames[i] ?? (photos[i]??[]).map(p=>p!.frame!) })) })
-      .then(found => {
+      .then(({ problems: found, checked }) => {
         if (ticket !== version.current) return;
+        const retry = found.find(f => f.retryable || (f.point && !points.some((_, i) => f.point === `P${i+1}`)));
+        if (retry) {
+          setError(retry.message);
+          setVerifyFailed(true);
+          return;
+        }
+        setCheckedMeasurement(checked);
         const failed = found.filter(f => f.point);
         if (failed.length) {
           const bad = new Set(failed.map(f => Number(f.point!.slice(1)) - 1));
@@ -195,7 +203,7 @@ function TestSpatialCapture({ count, onFinish, session }: { count: number; onFin
       .finally(() => { if (ticket === version.current) setVerifying(false); });
   }, [complete, captureCamera, verifying, verifyFailed, checkedKey, photoKey]);
   function nextFurniture() {
-    const captured: CapturedFurniture[] = [...items, { name: name.trim() || `가구 ${count + items.length + 1}`, type: "other", capture: {session, camera:captureCamera!, shape, points: points.map((p,i)=>({id:`P${i+1}`,position:p,photos:photos[i].map(p=>p!.file),frames:rawFrames[i]??(photos[i].every(p=>p?.frame)?photos[i].map(p=>p!.frame!):undefined)}))} }];
+    const captured: CapturedFurniture[] = [...items, { name: name.trim() || `가구 ${count + items.length + 1}`, type: "other", capture: {session, camera:captureCamera!, checkedMeasurement, shape, points: points.map((p,i)=>({id:`P${i+1}`,position:p,photos:photos[i].map(p=>p!.file),frames:rawFrames[i]??(photos[i].every(p=>p?.frame)?photos[i].map(p=>p!.frame!):undefined)}))} }];
     setItems(captured);
     setName(`가구 ${count + captured.length + 1}`);
     reset();
@@ -243,7 +251,7 @@ function TestSpatialCapture({ count, onFinish, session }: { count: number; onFin
     {surfaceProblem && <p role="alert" className="error">{surfaceProblem}</p>}
     {!complete && !checking && <p className="muted small">도면의 P{corner+1}에 렌즈를 맞추고 마커 전체가 보이도록 촬영 버튼을 한 번 눌러 주세요. 촬영이 끝날 때까지 위치를 유지해 주세요.</p>}
     <div className="actions">{points.map((_,i)=>(photos[i]??[]).some(Boolean)&&<button key={i} type="button" className="text-button" disabled={checking} onClick={()=>{
-      version.current++;setVerifying(false);setVerifyFailed(false);photos[i]?.forEach(p=>p&&URL.revokeObjectURL(p.url));
+      version.current++;setCheckedMeasurement(undefined);setCheckedKey("");setVerifying(false);setVerifyFailed(false);photos[i]?.forEach(p=>p&&URL.revokeObjectURL(p.url));
       setRawFrames(all=>{const next={...all};delete next[i];return next;});setProblems(all=>{const next={...all};delete next[i];return next;});setSurfaceProblem("");
       setPhotos(all=>all.map((row,j)=>j===i?[]:row));setBatchMessage("");setError("");
     }}>P{i+1} 다시 촬영</button>)}</div>
@@ -251,10 +259,10 @@ function TestSpatialCapture({ count, onFinish, session }: { count: number; onFin
     {complete && verifyFailed && <button type="button" className="secondary" onClick={()=>setVerifyFailed(false)}>다시 확인</button>}
     {/* The screen's one primary action; the app pins this bar above the bottom nav. */}
     <div className="capture-action" ref={setActionTarget}>
-      {complete && <button type="button" className="primary" disabled={verifying||!!surfaceProblem||checkedKey!==photoKey} onClick={() => onFinish(nextFurniture())}>촬영 마치고 도면 만들기 ({items.length + 1}개)</button>}
+      {complete && <button type="button" className="primary" disabled={verifying||!checkedMeasurement||!!surfaceProblem||checkedKey!==photoKey} onClick={() => onFinish(nextFurniture())}>촬영 마치고 도면 만들기 ({items.length + 1}개)</button>}
     </div>
     {complete && <div className="actions">
-      <button type="button" className="secondary" disabled={verifying||!!surfaceProblem||checkedKey!==photoKey} onClick={nextFurniture}>이 가구 저장 · 다음 가구 촬영</button>
+      <button type="button" className="secondary" disabled={verifying||!checkedMeasurement||!!surfaceProblem||checkedKey!==photoKey} onClick={nextFurniture}>이 가구 저장 · 다음 가구 촬영</button>
     </div>}
     {!complete && items.length > 0 && <button type="button" className="secondary" onClick={() => onFinish(items)}>촬영 마치고 도면 만들기 ({items.length}개)</button>}
     </>}

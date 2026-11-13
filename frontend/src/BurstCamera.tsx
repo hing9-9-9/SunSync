@@ -181,12 +181,14 @@ export default function BurstCamera({
   useEffect(() => {
     if (!active || !running || busy || disabled) { setHint(null); return; }
     let live = true;
+    const preview = new AbortController();
     let timer: ReturnType<typeof setTimeout>;
     async function inspect() {
       try {
         const file = await snapshot();
+        preview.signal.throwIfAborted();
         const [frame, metrics] = await Promise.all([
-          detectFrame(file, session.board, session, new Date(file.lastModified).toISOString(), camera ?? undefined),
+          detectFrame(file, session.board, session, new Date(file.lastModified).toISOString(), camera ?? undefined, preview.signal),
           analyseImage(file),
         ]);
         if (live) setHint(liveHint(frame, metrics));
@@ -199,6 +201,7 @@ export default function BurstCamera({
     return () => {
       live = false;
       clearTimeout(timer);
+      preview.abort();
     };
   }, [active, running, camera, busy, disabled, session]);
   async function shoot() {
