@@ -234,3 +234,27 @@ def test_a_failing_cleanup_does_not_fail_the_collection(monkeypatch, tmp_path, c
     out = capsys.readouterr().out
     assert "prune=failed" in out
     assert "locked" not in out  # the database error text is not printed
+
+
+def test_the_keep_days_setting_decides_what_is_deleted(monkeypatch, tmp_path, capsys):
+    engine = make_engine(tmp_path)
+    _store_snapshots(engine)  # one snapshot 20 days old, one from an hour ago
+    monkeypatch.setenv("SUNSYNC_SNAPSHOT_KEEP_DAYS", "45")
+    result = {"sites": 1, "stored": 1, "failed": 0, "lease_acquired": 1}
+    assert _run_main(monkeypatch, engine, result) == 0
+    assert _snapshot_count(engine) == 2  # 20 days is within 45
+    assert "pruned_snapshots=0" in capsys.readouterr().out
+    monkeypatch.setenv("SUNSYNC_SNAPSHOT_KEEP_DAYS", "7")
+    _run_main(monkeypatch, engine, result)
+    assert _snapshot_count(engine) == 1
+
+
+@pytest.mark.parametrize("value", ["abc", "0", "-3", "1.5", "99999"])
+def test_a_bad_keep_days_setting_deletes_nothing(monkeypatch, tmp_path, capsys, value):
+    engine = make_engine(tmp_path)
+    _store_snapshots(engine)
+    monkeypatch.setenv("SUNSYNC_SNAPSHOT_KEEP_DAYS", value)
+    result = {"sites": 1, "stored": 1, "failed": 0, "lease_acquired": 1}
+    assert _run_main(monkeypatch, engine, result) == 0
+    assert _snapshot_count(engine) == 2
+    assert "prune=skipped_bad_setting" in capsys.readouterr().out

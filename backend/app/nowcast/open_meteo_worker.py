@@ -9,6 +9,7 @@ deployment.
 from __future__ import annotations
 
 import argparse
+import os
 import time
 from collections import Counter
 from datetime import UTC, datetime
@@ -29,6 +30,9 @@ LEASE_NAME = "open_meteo_dni_snapshot"
 # A short network failure is tried once more; a bad response is not (it would answer the same).
 RETRYABLE_REASONS = {"open_meteo_timeout", "open_meteo_transport_error"}
 RETRY_DELAY_SECONDS = 2.0
+KEEP_DAYS_ENV = "SUNSYNC_SNAPSHOT_KEEP_DAYS"
+DEFAULT_KEEP_DAYS = 14
+MAX_KEEP_DAYS = 3650
 
 
 def _fetch(site: Site, current: datetime, retry_delay_seconds: float):  # type: ignore[no-untyped-def]
@@ -41,10 +45,28 @@ def _fetch(site: Site, current: datetime, retry_delay_seconds: float):  # type: 
     return OpenMeteoDniAdapter(site).fetch(current)
 
 
-def _prune(engine: Engine, now: datetime) -> str:
-    """Delete old snapshots and runs after a collection; a failure here never fails the run."""
+def _keep_days() -> int | None:
+    """Days of snapshots to keep; None when the setting is not a whole number of days."""
+    raw = os.environ.get(KEEP_DAYS_ENV, "").strip()
+    if not raw:
+        return DEFAULT_KEEP_DAYS
     try:
-        pruned = SnapshotRepository(engine).prune(now)
+        days = int(raw)
+    except ValueError:
+        return None
+    return days if 1 <= days <= MAX_KEEP_DAYS else None
+
+
+def _prune(engine: Engine, now: datetime) -> str:
+    """Delete old snapshots and runs after a collection; a failure here never fails the run.
+
+    A bad retention setting deletes nothing: the safe direction when the intent is unclear.
+    """
+    days = _keep_days()
+    if days is None:
+        return "prune=skipped_bad_setting"
+    try:
+        pruned = SnapshotRepository(engine).prune(now, snapshot_days=days, run_days=max(30, days))
     except SQLAlchemyError:
         return "prune=failed"
     return f"pruned_snapshots={pruned['weather_snapshots']} pruned_runs={pruned['nowcast_runs']}"

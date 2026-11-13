@@ -140,9 +140,9 @@ class SnapshotRepository:
                 },
             )
 
-    def prune(self, now: datetime) -> dict[str, int]:
-        cutoff_snapshots = utc_z(now - timedelta(days=14))
-        cutoff_runs = utc_z(now - timedelta(days=30))
+    def prune(self, now: datetime, snapshot_days: int = 14, run_days: int = 30) -> dict[str, int]:
+        cutoff_snapshots = utc_z(now - timedelta(days=snapshot_days))
+        cutoff_runs = utc_z(now - timedelta(days=run_days))
         with self.engine.begin() as conn:
             expired_runs = (
                 conn.execute(
