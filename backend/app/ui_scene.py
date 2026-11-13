@@ -399,6 +399,8 @@ def to_scene(space: UISpace, revision: int, created_at: str | None = None) -> Sc
         )
     hosts = {f.id: f for f in space.furniture}
     for region in top_companions(space):
+        if region.furnitureId is None:
+            continue
         host = hosts[region.furnitureId]
         top = region.model_copy(update={"face": "상단", "bottom": 0.0, "top": host.height})
         vertices, normal = region_surface(space, top)
