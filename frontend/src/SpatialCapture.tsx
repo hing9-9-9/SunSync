@@ -88,19 +88,17 @@ function SessionSpatialCapture(props: { sceneId?: string; count: number; onFinis
     </section>;
   }
   return <section className="capture-session">
-    <p className="capture-film-line">선택한 필름 · 아래에서 {(session.film_module?.row ?? 0)+1}번째, 왼쪽에서 {(session.film_module?.col ?? 0)+1}번째 (마커 60cm)</p>
-    <details className="capture-test-details"><summary>가상 필름 표시 확인 · 테스트용</summary>
-      <svg viewBox={`0 0 ${session.film_cells[0]?.length ?? 10} ${session.film_cells.length || 10}`} width="200" height="200" role="img" aria-label="이번 촬영의 가상 필름 마커" shapeRendering="crispEdges">
-        {session.film_cells.flatMap((row, y) => row.map((opacity, x) => <rect key={`${x}:${y}`} x={x} y={y} width="1" height="1" fill={opacity >= 0.5 ? "black" : "white"} />))}
-      </svg>
-      <p>가상 필름에 촬영용 마커를 표시했어요. 실제 필름 장치는 아직 연결되지 않았어요.</p>
-    </details>
     {error && <p className="error" role="alert">{error}</p>}
     <TestSpatialCapture key={session.session_id} {...props} session={session} />
     <div className="capture-end">
       <button type="button" className="secondary" onClick={() => void cancel()}>촬영 취소</button>
-      <p className="muted small">창문 필름에 띄운 마커도 함께 꺼져요.</p>
     </div>
+    {import.meta.env.DEV && new URLSearchParams(location.search).has("test") && <details className="capture-test-details"><summary>가상 필름 표시 확인 · 테스트용</summary>
+      <svg viewBox={`0 0 ${session.film_cells[0]?.length ?? 10} ${session.film_cells.length || 10}`} width="200" height="200" role="img" aria-label="이번 촬영의 가상 필름 마커" shapeRendering="crispEdges">
+        {session.film_cells.flatMap((row, y) => row.map((opacity, x) => <rect key={`${x}:${y}`} x={x} y={y} width="1" height="1" fill={opacity >= 0.5 ? "black" : "white"} />))}
+      </svg>
+      <p>가상 필름에 촬영용 마커를 표시했어요. 실제 필름 장치는 아직 연결되지 않았어요.</p>
+    </details>}
   </section>;
 }
 
@@ -109,7 +107,6 @@ function TestSpatialCapture({ count, onFinish, session }: { count: number; onFin
   const [captureCamera,setCaptureCamera]=useState<Camera|null>(null);
   const [actionTarget,setActionTarget]=useState<HTMLDivElement|null>(null);
   const [rawFrames,setRawFrames]=useState<Record<number,Frame[]>>({});
-  const [batchMessage,setBatchMessage]=useState("");
   const version=useRef(0);
   const [name, setName] = useState(`가구 ${count + 1}`);
   const [shape, setShape] = useState<Shape>('rectangle');
@@ -135,7 +132,7 @@ function TestSpatialCapture({ count, onFinish, session }: { count: number; onFin
   const pendingPoint = nextCapturePoint(points.map((_,i)=>(photos[i]??[]).map(p=>!!p&&!p.issue)));
   const corner = pendingPoint ?? points.length - 1;
   const complete = confirmed && pendingPoint === null;
-  function reset() { version.current++;setVerifying(false);setVerifyFailed(false);setProblems({});setCheckedKey("");setCheckedMeasurement(undefined);setSurfaceProblem("");setRawFrames({});setBatchMessage(""); photos.flat().forEach(p=>p&&URL.revokeObjectURL(p.url)); setPhotos([]); setError(''); }
+  function reset() { version.current++;setVerifying(false);setVerifyFailed(false);setProblems({});setCheckedKey("");setCheckedMeasurement(undefined);setSurfaceProblem("");setRawFrames({}); photos.flat().forEach(p=>p&&URL.revokeObjectURL(p.url)); setPhotos([]); setError(''); }
 
   async function takeBatch(files:File[],profile:Camera,ticket:number) {
     if(pendingPoint===null||!confirmed||ticket!==version.current)return;
@@ -143,7 +140,7 @@ function TestSpatialCapture({ count, onFinish, session }: { count: number; onFin
     if(JSON.stringify(profile)!==JSON.stringify(captureCamera)&&photos.some(row=>row.some(Boolean))) {
       reset();setCaptureCamera(profile);setError("카메라 설정이 바뀌어 이전 사진을 비웠어요. P1부터 다시 촬영해 주세요.");return;
     }
-    setCaptureCamera(profile);setError("");setBatchMessage("");
+    setCaptureCamera(profile);setError("");
     const candidates:Photo[]=[];
     try {
       for(const file of files.slice(0,20)) {
@@ -159,7 +156,7 @@ function TestSpatialCapture({ count, onFinish, session }: { count: number; onFin
       if(ticket!==version.current)return;
       if(result.status!=="ok"){const why=pointFailure(`P${target+1}`,result);setProblems(all=>({...all,[target]:why}));throw new Error(why);}
       setProblems(all=>{const next={...all};delete next[target];return next;});
-      setBatchMessage(`P${target+1} 촬영을 완료했어요.`);
+      
       const ids=new Set(result.selected_capture_ids);
       const selected=candidates.filter(p=>ids.has(p.frame!.capture_id)).map(p=>({...p,url:URL.createObjectURL(p.file)}));
       photos[target]?.forEach(p=>p&&URL.revokeObjectURL(p.url));
@@ -211,50 +208,58 @@ function TestSpatialCapture({ count, onFinish, session }: { count: number; onFin
     return captured;
   }
 
+  function retakePoint(i: number) {
+    version.current++;setCheckedMeasurement(undefined);setCheckedKey("");setVerifying(false);setVerifyFailed(false);photos[i]?.forEach(p=>p&&URL.revokeObjectURL(p.url));
+    setRawFrames(all=>{const next={...all};delete next[i];return next;});setProblems(all=>{const next={...all};delete next[i];return next;});setSurfaceProblem("");
+    setPhotos(all=>all.map((row,j)=>j===i?[]:row));setError("");
+  }
+
   return <div className="spatial-capture corner-capture">
-    <div className="two-fields">
+    {!confirmed && <div className="two-fields">
       <label className="field"><span>가구 이름</span><input value={name} onChange={(e) => setName(e.target.value)} /></label>
       <label className="field"><span>상판 형태</span>
         <select value={shape} disabled={confirmed||checking} onChange={e=>{reset();setShape(e.target.value as Shape);setCustom([]);}}>
           {Object.entries(shapes).map(([value,s])=><option key={value} value={value}>{s.label}</option>)}
         </select>
       </label>
-    </div>
-    <section className="shape-plan" aria-label="형태별 촬영 계획">
+    </div>}
+    <section className={`shape-plan${confirmed?" compact":""}`} aria-label="형태별 촬영 계획">
       <svg viewBox="0 0 100 100" role="img" aria-label={`${shapes[shape].label} 촬영 순서`} onClick={e=>{if(shape!=='polygon'||confirmed)return; const r=e.currentTarget.getBoundingClientRect();setCustom(p=>[...p,{x:Math.max(8,Math.min(92,(e.clientX-r.left)/r.width*100)),y:Math.max(8,Math.min(92,(e.clientY-r.top)/r.height*100))}]);}}>
         {shape==='circle'?<circle cx="50" cy="50" r="35" className="shape-outline"/>:shape==='ellipse'?<ellipse cx="50" cy="50" rx="40" ry="25" className="shape-outline"/>:<polygon points={points.map(p=>`${p.x},${p.y}`).join(' ')} className="shape-outline"/>}
         {points.map((p,i)=><g key={i}><circle cx={p.x} cy={p.y} r="3" className={confirmed&&!complete&&i===corner?'point-current':'point'}/><text x={p.x} y={p.y-5} textAnchor="middle">P{i+1}</text></g>)}
       </svg>
-      <p>{shape==='polygon'&&!confirmed?'꼭짓점을 순서대로 눌러 모양 구성':`${points.length}개 지점 · 지점마다 촬영 버튼 한 번`}</p>
+      <div className="shape-plan-body">
+      {confirmed&&<strong className="shape-plan-name">{name.trim()||"가구"}</strong>}
+      <p>{shape==='polygon'&&!confirmed?'꼭짓점을 순서대로 눌러 모양 구성':confirmed?`${shapes[shape].label} · ${points.length}개 지점`:`${points.length}개 지점 · 지점마다 촬영 버튼 한 번`}</p>
       {!confirmed ? <div className="actions">
         {shape==='polygon'&&<button type="button" className="secondary" disabled={!custom.length} onClick={()=>setCustom(p=>p.slice(0,-1))}>마지막 점 취소</button>}
         <button type="button" className="primary" disabled={shape==='polygon'&&!validPolygon(custom)} onClick={()=>{setConfirmed(true);setError('');}}>형태 확정 · 촬영 시작</button>
       </div>:<button type="button" className="text-button" disabled={checking} onClick={()=>{reset();setConfirmed(false);}}>형태 다시 선택</button>}
+      </div>
     </section>
-    <figure className="capture-viewfinder" style={{display: confirmed ? undefined : "none"}}>
-      <BurstCamera session={session} active={confirmed&&!complete} pointLabel={`P${corner+1}`} actionTarget={actionTarget}
-        disabled={checking} getTicket={()=>version.current} phase={capturePhase} onPhaseChange={setCapturePhase} onReady={setCaptureCamera} onBatch={takeBatch}/>
-      <figcaption role="status">{capturePhase === "analyzing" || verifying ? "촬영 완료! 휴대폰을 내려도 돼요. 사진 분석 중…" : capturePhase === "capturing" ? "촬영 중… 휴대폰 위치를 유지해 주세요." : complete ? "모든 지점 촬영 완료" : !captureCamera ? "카메라 준비 · 마커가 보이도록 12장 촬영해 주세요" : `P${corner+1} · 촬영 버튼을 한 번 눌러 주세요`}</figcaption>
-    </figure>
     {confirmed && <>
-    {batchMessage&&<p role="status">{batchMessage}</p>}
     <ol className="corner-steps" aria-label="지점 촬영 상태">
       {points.map((_,i) => {
         const n=(photos[i]??[]).filter(p=>p&&!p.issue).length;
+        const done=(photos[i]??[]).some(Boolean);
+        const label=problems[i]?"다시 촬영":n>=photosPerPoint?"완료":"대기";
         return <li key={i} className={problems[i]?'retake':n>=photosPerPoint?'done':i===corner?'current':'waiting'} aria-current={i===corner?'step':undefined}>
-          <span className="corner-number">P{i+1}</span><small>{problems[i]?"다시 촬영":n>=photosPerPoint?"완료":"대기"}</small>
+          {done ? <button type="button" className="corner-retake" disabled={checking} aria-label={`P${i+1} 다시 촬영`} onClick={()=>retakePoint(i)}>
+            <span className="corner-number">P{i+1}</span><small>{label}</small>
+          </button> : <><span className="corner-number">P{i+1}</span><small>{label}</small></>}
         </li>;
       })}
     </ol>
-    <p role="status" className="tracking-status">{capturePhase === "analyzing" ? "사진 분석 중…" : capturePhase === "capturing" ? "촬영 중…":verifying?'지점별 측정 확인 중…':complete?'모든 지점 촬영 완료':!captureCamera?'카메라 준비 사진 촬영 단계 (완료 후 P1부터 시작)':`P${corner+1} 위치에서 촬영`}</p>
+    </>}
+    <figure className="capture-viewfinder" style={{display: confirmed && !(complete && !verifying) ? undefined : "none"}}>
+      <BurstCamera session={session} active={confirmed&&!complete} pointLabel={`P${corner+1}`} actionTarget={actionTarget}
+        disabled={checking} getTicket={()=>version.current} phase={capturePhase} onPhaseChange={setCapturePhase} onReady={setCaptureCamera} onBatch={takeBatch}/>
+      {(capturePhase !== "idle" || verifying || complete || !captureCamera) && <figcaption role="status">{capturePhase === "analyzing" || verifying ? "촬영 완료! 휴대폰을 내려도 돼요. 사진 분석 중…" : capturePhase === "capturing" ? "촬영 중… 휴대폰 위치를 유지해 주세요." : complete ? "모든 지점 촬영 완료" : "카메라 준비 · 마커가 보이도록 12장 촬영해 주세요"}</figcaption>}
+    </figure>
+    {confirmed && <>
     {Object.entries(problems).sort(([a],[b])=>Number(a)-Number(b)).map(([i,why])=><p key={i} className="point-problem">{why}</p>)}
     {surfaceProblem && <p role="alert" className="error">{surfaceProblem}</p>}
-    {!complete && !checking && <p className="muted small">도면의 P{corner+1}에 렌즈를 맞추고 마커 전체가 보이도록 촬영 버튼을 한 번 눌러 주세요. 촬영이 끝날 때까지 위치를 유지해 주세요.</p>}
-    <div className="actions">{points.map((_,i)=>(photos[i]??[]).some(Boolean)&&<button key={i} type="button" className="text-button" disabled={checking} onClick={()=>{
-      version.current++;setCheckedMeasurement(undefined);setCheckedKey("");setVerifying(false);setVerifyFailed(false);photos[i]?.forEach(p=>p&&URL.revokeObjectURL(p.url));
-      setRawFrames(all=>{const next={...all};delete next[i];return next;});setProblems(all=>{const next={...all};delete next[i];return next;});setSurfaceProblem("");
-      setPhotos(all=>all.map((row,j)=>j===i?[]:row));setBatchMessage("");setError("");
-    }}>P{i+1} 다시 촬영</button>)}</div>
+    {photos.some(row=>(row??[]).some(Boolean)) && !checking && <p role="status" className="muted small corner-hint">{complete ? "모든 지점 촬영 완료 · 지점을 누르면 다시 찍어요." : "완료한 지점을 누르면 다시 찍어요."}</p>}
     {error && !Object.values(problems).includes(error) && <p role="alert" className="error">{error}</p>}
     {complete && verifyFailed && <button type="button" className="secondary" onClick={()=>setVerifyFailed(false)}>다시 확인</button>}
     {/* The screen's one primary action; the app pins this bar above the bottom nav. */}
@@ -266,6 +271,5 @@ function TestSpatialCapture({ count, onFinish, session }: { count: number; onFin
     </div>}
     {!complete && items.length > 0 && <button type="button" className="secondary" onClick={() => onFinish(items)}>촬영 마치고 도면 만들기 ({items.length}개)</button>}
     </>}
-    <p className="muted small">측정한 가구의 위치와 치수를 확인해 주세요.</p>
   </div>;
 }

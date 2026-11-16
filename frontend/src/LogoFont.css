@@ -1,0 +1,29 @@
+/* Wordmark font: Sora Bold, used only for the English "SunSync" logo. Everything else stays Noto Sans KR. */
+@font-face {
+  font-family: "Sora";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/sora-700-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122;
+}
+.app.app.app .brand,
+.app.app.app .website-brand,
+.app.app.app .ap-logo,
+.app.app.app .rp-brand,
+.app.app.app .auth-brand {
+  font-family: "Sora", "Noto Sans KR", sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.app.app.app .brand > span,
+.app.app.app .ap-logo > span,
+.app.app.app .rp-brand > span[translate="no"],
+.app.app.app .auth-brand > span,
+.app.app.app .website-brand > span {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  /* Sora's letters sit higher in the line box than Noto's, so the name looked lifted next to the sun icon. */
+  position: relative;
+  top: 0.05em;
+}

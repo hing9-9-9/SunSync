@@ -473,7 +473,6 @@ export function useSpaceApp() {
                 result={!predictionError ? currentPrediction?.result : undefined}
                 space={active}
                 date={predictionDate}
-                onRetry={retryPrediction}
               />
             </details>
           </>

@@ -34,7 +34,6 @@ export function AwardHeader({
       >
         <SunMark />
         <span translate="no">SunSync</span>
-        <sup>®</sup>
       </button>
       <nav aria-label="주요 메뉴">
         <button

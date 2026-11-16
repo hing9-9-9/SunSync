@@ -26,7 +26,7 @@ export function nowcastSourceNote(
   if (points.every((p) => p.prediction_source === "unavailable")) {
     return {
       tone: "warning",
-      text: "예측 값을 받지 못했어요. 잠시 뒤 다시 확인해 주세요.",
+      text: "예측 값 수신 실패. 잠시 후 다시 확인 필요.",
     };
   }
   const ai = points.filter((p) => p.prediction_source === "ai_model");
@@ -48,12 +48,13 @@ export function nowcastSourceNote(
     const replaced = others.some(
       (p) => p.fallback_used && p.fallback_reason !== "low_solar_elevation",
     );
-    return {
-      tone: replaced ? "warning" : "info",
-      text:
-        `${minutes(ai)} 값은 기상청 관측 기반 AI 예측, ` +
-        `${minutes(others)} 값은 ${replaced ? "일반 날씨 예보로 대체한 값이에요" : "일반 날씨 예보예요"}${suffix}`,
-    };
+    // Only the replaced case is shown to the user (a warning), so it is the short one.
+    return replaced
+      ? { tone: "warning", text: `${minutes(others)} 값: 기상청 관측 없음, 일반 날씨 예보로 대체` }
+      : {
+          tone: "info",
+          text: `${minutes(ai)} 값은 기상청 관측 기반 AI 예측, ${minutes(others)} 값은 일반 날씨 예보예요${suffix}`,
+        };
   }
   const fallbacks = points.filter(
     (p) => p.fallback_used || p.prediction_source === "open_meteo_fallback",
@@ -68,7 +69,7 @@ export function nowcastSourceNote(
     }
     return {
       tone: "warning",
-      text: "기상청 관측을 쓰지 못해 일반 날씨 예보로 대체했어요",
+      text: "기상청 관측 없음, 일반 날씨 예보로 대체",
     };
   }
   if (data.rollout_mode === "shadow") {

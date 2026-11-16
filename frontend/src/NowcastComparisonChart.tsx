@@ -1,4 +1,3 @@
-import { useState } from "react";
 import type { NowcastComparisonResponse } from "./spaceApi.ts";
 import {
   DEFAULT_CHART_MARGIN,
@@ -14,298 +13,93 @@ export interface NowcastComparisonChartProps {
   height?: number;
 }
 
+const TICK_STEP = 200;
+
+/**
+ * Sunlight strength for the next hour as a report figure: titled, both axes drawn with ticks and
+ * titles (time after now across, W/m² up), applied values with a marker on every forecast point,
+ * the general forecast and the AI range. No hover readout (a phone has none).
+ */
 export default function NowcastComparisonChart({
   data,
-  width = 560,
-  height = 240,
+  width = 360,
+  height = 230,
 }: NowcastComparisonChartProps) {
-  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
-
   const points = data.points ?? [];
-  const margin = DEFAULT_CHART_MARGIN;
+  const margin = { ...DEFAULT_CHART_MARGIN, top: 14, right: 16, bottom: 50, left: 54 };
 
   const rawMax = Math.max(
     ...points.map((p) => Math.max(p.dni_W_m2 ?? 0, p.p90_dni_W_m2 ?? 0, p.open_meteo_dni_W_m2 ?? 0)),
-    800,
+    100,
   );
-  // Round up to clean 100s
-  const maxDni = Math.ceil(rawMax / 100) * 100;
+  const maxDni = Math.ceil((rawMax * 1.1) / TICK_STEP) * TICK_STEP;
+  const yTicks = Array.from({ length: maxDni / TICK_STEP + 1 }, (_, i) => i * TICK_STEP);
 
+  const line = (values: (number | null)[]) => buildPolylinePoints(values, width, height, maxDni, margin);
   const bandPolygon = buildQuantileBandPolygon(points, width, height, maxDni, margin);
-  const p50Points = buildPolylinePoints(
-    points.map((p) => p.p50_dni_W_m2),
-    width,
-    height,
-    maxDni,
-    margin,
-  );
-  const openMeteoPoints = buildPolylinePoints(
-    points.map((p) => p.open_meteo_dni_W_m2),
-    width,
-    height,
-    maxDni,
-    margin,
-  );
-  const selectedPoints = buildPolylinePoints(
-    points.map((p) => p.dni_W_m2),
-    width,
-    height,
-    maxDni,
-    margin,
-  );
+  const usedPoints = line(points.map((p) => p.dni_W_m2));
+  const forecastPoints = line(points.map((p) => p.open_meteo_dni_W_m2));
 
-  const yTicks = [0, Math.round(maxDni * 0.33), Math.round(maxDni * 0.66), maxDni];
-  const stepCount = Math.max(1, Math.floor(points.length / 5));
-  const xIndices = points
-    .map((_, i) => i)
-    .filter((i) => i % stepCount === 0 || i === points.length - 1);
-
-  const hoveredPoint = hoverIndex !== null && points[hoverIndex] ? points[hoverIndex] : null;
+  const left = margin.left;
+  const right = width - margin.right;
+  const bottom = computeY(0, maxDni, height, margin);
+  const top = computeY(maxDni, maxDni, height, margin);
 
   return (
-    <div
-      className="nowcast-comparison-container"
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: "10px",
-        margin: "12px 0",
-        background: "var(--c-pressed, #fafafc)",
-        padding: "14px 16px",
-        borderRadius: "var(--radius-card, 12px)",
-        border: "1px solid var(--c-hairline, #ebebf0)",
-      }}
-    >
-      <div
-        className="nowcast-summary-bar"
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          alignItems: "center",
-          gap: "8px",
-          fontSize: "12px",
-        }}
-      >
-        <span
-          className="pill"
-          style={{
-            background: "var(--c-action-tint, rgba(102, 96, 229, 0.12))",
-            color: "var(--c-action-ink, #554ed0)",
-            padding: "3px 10px",
-            fontWeight: 600,
-          }}
-        >
-          {data.rollout_mode === "active" ? "AI 예측을 반영해요" : "AI 예측은 참고만 해요"}
-        </span>
-        <span
-          className="pill"
-          style={{
-            background: "var(--c-block, #e9e9e9)",
-            color: "var(--c-protect-ink, #343434)",
-            padding: "3px 10px",
-          }}
-        >
-          {data.status === "ready" ? "기상 정보를 모두 받았어요" : "일부 기상 정보를 받지 못했어요"}
-        </span>
-      </div>
+    <figure className="forecast-chart">
+      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="향후 60분 일사량 예측 그래프. 가로축은 현재 기준 경과 시간, 세로축은 햇빛 세기(W/m²)">
+        {/* gridlines, y ticks */}
+        {yTicks.map((value) => {
+          const y = computeY(value, maxDni, height, margin);
+          return (
+            <g key={value}>
+              {value > 0 && <line x1={left} y1={y} x2={right} y2={y} className="forecast-grid" />}
+              <line x1={left - 4} y1={y} x2={left} y2={y} className="forecast-axis-line" />
+              <text x={left - 8} y={y + 4} textAnchor="end" className="forecast-tick">{value}</text>
+            </g>
+          );
+        })}
 
-      <div style={{ position: "relative", width: "100%", overflowX: "auto" }}>
-        <svg
-          role="img"
-          aria-label="곧 들어올 햇빛 세기를 AI 예측과 일반 날씨 예보로 비교한 차트"
-          viewBox={`0 0 ${width} ${height}`}
-          style={{ width: "100%", maxWidth: `${width}px`, height: "auto", display: "block" }}
-        >
-          <title>곧 들어올 햇빛 세기를 AI 예측과 일반 날씨 예보로 비교한 차트</title>
+        {/* axes */}
+        <line x1={left} y1={top} x2={left} y2={bottom} className="forecast-axis-line" />
+        <line x1={left} y1={bottom} x2={right} y2={bottom} className="forecast-axis-line" />
 
-          {/* Grid lines and Y labels */}
-          {yTicks.map((val) => {
-            const y = computeY(val, maxDni, height, margin);
-            return (
-              <g key={`y-${val}`}>
-                <line
-                  x1={margin.left}
-                  y1={y}
-                  x2={width - margin.right}
-                  y2={y}
-                  stroke="var(--c-hairline, #e0e0e5)"
-                  strokeDasharray="3 3"
-                  strokeWidth="1"
-                />
-                <text
-                  x={margin.left - 6}
-                  y={y + 3}
-                  textAnchor="end"
-                  fill="var(--c-muted, #75727d)"
-                  fontSize="10"
-                >
-                  {val}
-                </text>
-              </g>
-            );
-          })}
+        {/* x ticks */}
+        {points.map((p, i) => {
+          const x = computeX(i, points.length, width, margin);
+          return (
+            <g key={p.horizon_minutes}>
+              <line x1={x} y1={bottom} x2={x} y2={bottom + 4} className="forecast-axis-line" />
+              <text x={x} y={bottom + 18} textAnchor="middle" className="forecast-tick">+{p.horizon_minutes}분</text>
+            </g>
+          );
+        })}
 
-          {/* X axis labels */}
-          {xIndices.map((idx) => {
-            const x = computeX(idx, points.length, width, margin);
-            const pt = points[idx];
-            return (
-              <text
-                key={`x-${idx}`}
-                x={x}
-                y={height - margin.bottom + 16}
-                textAnchor="middle"
-                fill="var(--c-muted, #75727d)"
-                fontSize="10"
-              >
-                {pt.horizon_minutes}분 뒤
-              </text>
-            );
-          })}
+        {/* axis titles */}
+        <text x={(left + right) / 2} y={height - 6} textAnchor="middle" className="forecast-axis-title">현재 기준 경과 시간</text>
+        <text transform={`translate(12 ${(top + bottom) / 2}) rotate(-90)`} textAnchor="middle" className="forecast-axis-title">햇빛 세기 (W/m²)</text>
 
-          {/* Uncertainty band polygon (q10 to q90) */}
-          {bandPolygon && (
-            <polygon
-              points={bandPolygon}
-              fill="rgba(102, 96, 229, 0.22)"
-              aria-label="AI 예측 범위"
+        {bandPolygon && <polygon points={bandPolygon} className="forecast-band" />}
+        {forecastPoints && <polyline points={forecastPoints} className="forecast-line forecast-line-general" />}
+        {usedPoints && <polyline points={usedPoints} className="forecast-line forecast-line-used" />}
+        {points.map((p, i) =>
+          p.dni_W_m2 === null ? null : (
+            <circle
+              key={p.horizon_minutes}
+              cx={computeX(i, points.length, width, margin)}
+              cy={computeY(p.dni_W_m2, maxDni, height, margin)}
+              r="3.5"
+              className="forecast-dot"
             />
-          )}
-
-          {/* Selected operational output */}
-          {selectedPoints && (
-            <polyline
-              points={selectedPoints}
-              fill="none"
-              stroke="var(--c-action, #6660e5)"
-              strokeWidth="2.5"
-            />
-          )}
-
-          {/* Open-Meteo hourly curve */}
-          {openMeteoPoints && (
-            <polyline
-              points={openMeteoPoints}
-              fill="none"
-              stroke="var(--c-sun, #ff7426)"
-              strokeDasharray="5 3"
-              strokeWidth="2"
-            />
-          )}
-
-          {/* KMA AI Median (q50) curve where public quantiles exist */}
-          {p50Points && (
-            <polyline
-              points={p50Points}
-              fill="none"
-              stroke="var(--c-action-ink, #554ed0)"
-              strokeDasharray="3 2"
-              strokeWidth="1.5"
-            />
-          )}
-
-          {/* Interactive hover points */}
-          {points.map((_, i) => {
-            const x = computeX(i, points.length, width, margin);
-            return (
-              <rect
-                key={`hit-${i}`}
-                x={x - width / (points.length * 2)}
-                y={margin.top}
-                width={width / points.length}
-                height={height - margin.top - margin.bottom}
-                fill="transparent"
-                style={{ cursor: "pointer" }}
-                onMouseEnter={() => setHoverIndex(i)}
-                onMouseLeave={() => setHoverIndex(null)}
-              />
-            );
-          })}
-
-          {/* Hover highlight line */}
-          {hoverIndex !== null && (
-            <line
-              x1={computeX(hoverIndex, points.length, width, margin)}
-              y1={margin.top}
-              x2={computeX(hoverIndex, points.length, width, margin)}
-              y2={height - margin.bottom}
-              stroke="var(--c-action-ink, #554ed0)"
-              strokeWidth="1.2"
-              strokeDasharray="2 2"
-            />
-          )}
-        </svg>
-      </div>
-
-      {/* Legend & Active Point readout */}
-      <div
-        className="nowcast-legend-bar"
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          justifyContent: "space-between",
-          alignItems: "center",
-          fontSize: "11px",
-          color: "var(--c-muted, #5f5b66)",
-          paddingTop: "4px",
-          borderTop: "1px solid var(--c-hairline, #ebebf0)",
-        }}
-      >
-        <div style={{ display: "flex", gap: "12px", alignItems: "center", flexWrap: "wrap" }}>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
-            <span
-              style={{
-                width: "12px",
-                height: "10px",
-                background: "rgba(102, 96, 229, 0.28)",
-                borderRadius: "2px",
-              }}
-            />
-            AI 예측 범위
-          </span>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
-            <span
-              style={{
-                width: "14px",
-                height: "2.5px",
-                background: "var(--c-action, #6660e5)",
-              }}
-            />
-            지금 쓰는 햇빛 세기
-          </span>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
-            <span
-              style={{
-                width: "14px",
-                height: "2px",
-                background: "var(--c-sun, #ff7426)",
-                borderBottom: "1px dashed #ff7426",
-              }}
-            />
-            일반 날씨 예보
-          </span>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
-            <span
-              style={{
-                width: "14px",
-                height: "1.5px",
-                background: "#9d9d9d",
-                borderBottom: "1px dotted #9d9d9d",
-              }}
-            />
-            AI 예측 중간값
-          </span>
-        </div>
-
-        {hoveredPoint && (
-          <div style={{ fontWeight: 600, color: "var(--c-ink, #1d1c22)" }}>
-            {hoveredPoint.horizon_minutes}분 뒤: {hoveredPoint.dni_W_m2 ?? "확인할 수 없어요"} W/m²
-            {hoveredPoint.p50_dni_W_m2 !== null
-              ? ` (AI 예측 범위 ${hoveredPoint.p10_dni_W_m2}~${hoveredPoint.p90_dni_W_m2})`
-              : ""}
-          </div>
+          ),
         )}
-      </div>
-    </div>
+      </svg>
+
+      <figcaption className="forecast-legend">
+        {usedPoints && <span><i className="forecast-key forecast-key-used" />적용값</span>}
+        {forecastPoints && <span><i className="forecast-key forecast-key-general" />일반 날씨 예보</span>}
+        {bandPolygon && <span><i className="forecast-key forecast-key-band" />AI 예측 범위</span>}
+      </figcaption>
+    </figure>
   );
 }
