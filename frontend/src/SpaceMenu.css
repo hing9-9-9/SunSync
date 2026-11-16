@@ -67,3 +67,12 @@
 .app .heading-actions > .secondary svg { width: 16px; height: 16px; }
 .app .heading-actions > .secondary { gap: 6px; }
 .app .space-menu-trigger svg { width: 18px; height: 18px; }
+/* Spaces tab: a space and its measurement status are one row of the grouped card. The row, not the card button, carries the white fill and the outer corners, so the status strip never sticks out square below a rounded card. */
+.app.app.award-mobile.mode-app.page-spaces .room-entry { gap: 0; background: var(--c-white); }
+.app.app.award-mobile.mode-app.page-spaces .room-entry:first-child { border-radius: 12px 12px 0 0; }
+.app.app.award-mobile.mode-app.page-spaces .room-entry:last-child { border-radius: 0 0 12px 12px; }
+.app.app.award-mobile.mode-app.page-spaces .room-entry:first-child:last-child { border-radius: 12px; }
+.app.app.award-mobile.mode-app.page-spaces .room-entry > .room-card { border-radius: inherit !important; background: transparent; box-shadow: none !important; }
+.app.app.award-mobile.mode-app.page-spaces .room-entry > .room-card:not(:last-child) { border-bottom-left-radius: 0 !important; border-bottom-right-radius: 0 !important; }
+.app.app.award-mobile.mode-app.page-spaces .room-entry > .space-measurement-status { margin: 0 16px; padding: 8px 0; background: transparent; border-top: 1px solid var(--c-hairline); }
+.app.app.award-mobile.mode-app.page-spaces .room-entry > .space-measurement-status > button { min-width: 0; padding: var(--space-2) var(--space-4); font-size: 14px; }

@@ -539,6 +539,16 @@ function MobileApp() {
                     ＋
                   </button>
                 )}
+                {isApp && page === "capture" && (
+                  <button
+                    type="button"
+                    className="capture-help-button"
+                    aria-label="촬영 방법 보기"
+                    onClick={() => setModal("capture-help")}
+                  >
+                    ?
+                  </button>
+                )}
                 {page === "detail" && active && (
                   <div className="heading-actions">
                     <button type="button" className="secondary" onClick={() => editSpace(active)}><SpaceMenuGlyph name="layout" />배치 편집</button>
@@ -994,22 +1004,6 @@ function MobileApp() {
                       </Card>
                     )}
                   </div>
-                  <Card className="capture-controls">
-                    <h3>촬영 순서</h3>
-                    <ol className="instruction-list">
-                      <li>창문 규격 확인 및 필름의 QR 마커 표시</li>
-                      <li>촬영할 가구의 이름과 상판 형태 선택</li>
-                      <li>형태 도면의 P1부터 순서대로 이동하며 지점마다 촬영 버튼을 한 번 누르기</li>
-                      <li>재촬영 안내가 나오면 안내대로 같은 지점에서 다시 촬영</li>
-                      <li>모든 가구 촬영 후 도면과 가로·세로·높이 확인</li>
-                    </ol>
-                    <button
-                      className="secondary"
-                      onClick={() => setModal("capture-help")}
-                    >
-                      촬영 방법 보기
-                    </button>
-                  </Card>
                 </div>
               )}
               {page === "processing" && (

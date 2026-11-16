@@ -1,21 +1,28 @@
 import { useEffect, useState } from "react";
 import type { NowcastComparisonResponse, SunpathPrediction } from "./spaceApi.ts";
-import { fetchNowcastComparison } from "./spaceApi.ts";
+import { buildDemoNowcastComparison, fetchNowcastComparison } from "./spaceApi.ts";
 import { regionOwners } from "./model.ts";
 import type { Space } from "./model.ts";
 import NowcastComparisonChart from "./NowcastComparisonChart.tsx";
 import { nowcastSourceNote } from "./nowcastSource.ts";
+import "./PredictionSummary.css";
+
+/** The furniture's own name when the area was set for a piece of furniture (the face is chosen
+ *  automatically, so it is not shown); otherwise the area's name. */
+function regionLabel(space: Space, index: number): string | undefined {
+  const region = space.regions[index];
+  const furniture = region?.furnitureId ? space.furniture.find((f) => f.id === region.furnitureId) : undefined;
+  return furniture?.name ?? region?.name;
+}
 
 export default function PredictionSummary({
   result,
   space,
   date,
-  onRetry,
 }: {
   result?: SunpathPrediction;
   space: Space;
   date: string;
-  onRetry: () => void;
 }) {
   const [serverComparison, setServerComparison] = useState<NowcastComparisonResponse | null>(null);
 
@@ -41,7 +48,17 @@ export default function PredictionSummary({
         if (!cancelled) setServerComparison(resp);
       })
       .catch(() => {
-        if (!cancelled) setServerComparison(null);
+        // Development only: ?test=1 (or ?test=fallback) shows sample forecast data when the server has no run, so the chart and its note can be looked at.
+        const demo = import.meta.env.DEV ? new URLSearchParams(location.search).get("test") : null;
+        const sample = demo ? buildDemoNowcastComparison(startTime) : null;
+        if (sample && demo === "fallback") {
+          sample.points = sample.points.map((p) =>
+            p.horizon_minutes === 30
+              ? { ...p, prediction_source: "open_meteo_fallback", fallback_used: true, fallback_reason: "kma_stale" }
+              : p,
+          );
+        }
+        if (!cancelled) setServerComparison(sample);
       });
 
     return () => {
@@ -53,55 +70,32 @@ export default function PredictionSummary({
   const sourceNote = comparison ? nowcastSourceNote(comparison) : null;
   const owners = result ? regionOwners(space, result.regions.length) ?? result.regions.map((_, i) => i) : [];
 
-  return (
-    <div className="sun-reference muted small">
-      <button type="button" className="text-button" onClick={onRetry}>
-        다시 계산
-      </button>
+  const noWeather = [...sources].some((source) => source.includes("clear_sky"));
+  const gaps = !!result && (sources.has("unknown") || result.regions.some((r) => r.timeline.some((t) => t.samples?.some((x) => x.direct_irradiance_W_m2 === null))));
 
-      {comparison && (
-        <NowcastComparisonChart data={comparison} />
-      )}
-      {sourceNote && <p role="note">{sourceNote.text}</p>}
+  return (
+    <div className="forecast-panel">
+      {comparison && <NowcastComparisonChart data={comparison} />}
+      {sourceNote?.tone === "warning" && <p role="note" className="forecast-note">{sourceNote.text}</p>}
+      {noWeather && <p role="note" className="forecast-note">날씨 정보 없음, 맑은 날 기준으로 계산.</p>}
+      {gaps && <p role="note" className="forecast-note">일부 시간대 일사량 확인 불가.</p>}
 
       {result && (
-        <>
-          <p>{(result.interval_seconds ?? 1800) / 60}분 간격으로 계산했어요.</p>
-          <p>
-            {[...sources]
-              .map((source) =>
-                source.includes("open_meteo")
-                  ? "지역 날씨 예보 기반"
-                  : source.includes("clear_sky")
-                    ? "맑은 하늘 가정"
-                    : source === "unknown"
-                      ? "일사량 확인 불가"
-                      : "저장된 기상 자료 기반",
-              )
-              .join(" · ")}
-          </p>
-          <ul>
-            {[...new Set(owners)].map((index) => {
-              // The furniture's top is a second server area of the same furniture: the first exposure is the earlier of the two.
-              const group = result.regions.filter((_, j) => owners[j] === index);
-              const r = group[0];
-              const first = group.flatMap((g) => g.timeline.filter((t) => t.status === "exposed").slice(0, 1)).sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp))[0];
-              const values = group.flatMap((g) => g.timeline.flatMap(
-                (t) => t.samples?.map((s) => s.direct_irradiance_W_m2) ?? [],
-              ));
-              return (
-                <li key={r.region_id}>
-                  {space.regions[index]?.name ?? r.region_id}:{" "}
-                  {first
-                    ? `첫 노출 예상 ${time(first.timestamp)}`
-                    : "계산 시각에 직사광선 경로 없음"}
-                  {values.some((v) => v === null) && " · 일부 시간은 햇빛 세기를 알 수 없어요"}
-                </li>
-              );
-            })}
-          </ul>
-          <p>바깥 건물의 그늘과 유리 투과는 계산에 넣지 않았어요.</p>
-        </>
+        <ul className="forecast-list">
+          <li className="forecast-list-head" aria-hidden="true"><span>가구</span><span>직사광선 시작</span></li>
+          {[...new Set(owners)].map((index) => {
+            // The furniture's top is a second server area of the same furniture: the first exposure is the earlier of the two.
+            const group = result.regions.filter((_, j) => owners[j] === index);
+            const r = group[0];
+            const first = group.flatMap((g) => g.timeline.filter((t) => t.status === "exposed").slice(0, 1)).sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp))[0];
+            return (
+              <li key={r.region_id}>
+                <span>{regionLabel(space, index) ?? r.region_id}</span>
+                <span>{first ? time(first.timestamp) : "없음"}</span>
+              </li>
+            );
+          })}
+        </ul>
       )}
     </div>
   );

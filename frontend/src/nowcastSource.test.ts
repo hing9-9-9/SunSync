@@ -99,7 +99,7 @@ test("a mixed chart marks the values that replaced the AI as a replacement", () 
   assert.equal(note?.tone, "warning");
   assert.match(
     note?.text ?? "",
-    /^10분 값은 기상청 관측 기반 AI 예측, 30·60분 값은 일반 날씨 예보로 대체한 값이에요/,
+    /^30·60분 값: 기상청 관측 없음, 일반 날씨 예보로 대체$/,
   );
 });
 

@@ -162,7 +162,7 @@ export default function BurstCamera({
           setViews(next);
           setCamera(profile);
           onReady?.(profile);
-          setMessage(`카메라 준비가 완료됐어요. 이제 ${pointLabel} 지점에서 촬영해 주세요.`);
+          setMessage("카메라 준비가 완료됐어요.");
         }
       } else {
         setViews(next);
@@ -235,7 +235,6 @@ export default function BurstCamera({
   return (
     <section className="point-camera" style={{display:active?undefined:"none",width:"100%"}}>
       <video ref={video} autoPlay muted playsInline style={{width:"100%",maxHeight:320,display:running?"block":"none"}} />
-      {!running && <p>카메라를 열어 촬영을 준비해 주세요.</p>}
       {running && !camera && <p>처음에는 마커 전체가 보이도록 위치와 기울기를 바꾸며 카메라를 준비해 주세요. ({Math.min(views.length, 11)}/12)</p>}
       {active && actionTarget && createPortal(action,actionTarget)}
       {running && <button type="button" className="text-button" disabled={busy||disabled} onClick={()=>{

@@ -847,3 +847,12 @@
     background: var(--c-pressed);
   }
 }
+
+/* Compact app bar (66px was too tall for a logo-only bar) and a tighter 내 공간 · 전체 보기 row on home. The link keeps a 44px touch target through its ::before. */
+.app.award-mobile.mode-app > .app-header { height: 44px; }
+.app.award-mobile.mode-app > .app-header .brand { font-size: 14px; gap: 6px; }
+.app.award-mobile.mode-app > .app-header .brand .icon { width: 18px; height: 18px; }
+.app.award-mobile.mode-app.page-home .home-preview-head { margin-top: 4px; min-height: 32px; }
+.app.app.award-mobile.mode-app.page-home .home-preview-head .text-button { position: relative; min-height: 32px; }
+.app.app.award-mobile.mode-app.page-home .home-preview-head .section-label { margin: 0; }
+.app.award-mobile.mode-app.page-home .home-preview-head .text-button::before { content: ""; position: absolute; inset: -6px -4px; }
