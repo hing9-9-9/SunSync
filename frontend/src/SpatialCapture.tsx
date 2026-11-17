@@ -16,7 +16,9 @@ import type { CheckedMeasurement, Camera, Frame, CaptureMarker, FilmTargetWindow
 type Photo = { file: File; url: string; issue: PhotoIssue | null; metrics: { brightness: number; sharpness: number }; frame?: Frame };
 
 // MAR3.2: stand at each of the four corners of one piece of furniture and photograph the window marker.
-export default function SpatialCapture(props: { sceneId?: string; count: number; onFinish: (items: CapturedFurniture[]) => void }) {
+type SpatialCaptureProps = { sceneId?: string; count: number; onFinish: (items: CapturedFurniture[]) => void; onMarkerChange?: (session: CaptureMarker | null) => void };
+
+export default function SpatialCapture(props: SpatialCaptureProps) {
   if (!browserCaptureEnabled) return <section role="status">
     <h3>촬영은 SunSync 앱에서 진행해 주세요</h3>
     <p>앱에서 같은 공간을 선택해 촬영하면 측정 결과를 웹에서 확인할 수 있어요.</p>
@@ -25,8 +27,13 @@ export default function SpatialCapture(props: { sceneId?: string; count: number;
   return <SessionSpatialCapture key={props.sceneId} {...props} />;
 }
 
-function SessionSpatialCapture(props: { sceneId?: string; count: number; onFinish: (items: CapturedFurniture[]) => void }) {
+function SessionSpatialCapture(props: SpatialCaptureProps) {
   const [session, setSession] = useState<CaptureMarker | null>(null);
+  const { onMarkerChange } = props;
+  useEffect(() => {
+    onMarkerChange?.(session);
+    return () => onMarkerChange?.(null);
+  }, [session, onMarkerChange]);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(true);
   const [retry, setRetry] = useState(0);
@@ -94,12 +101,6 @@ function SessionSpatialCapture(props: { sceneId?: string; count: number; onFinis
     <div className="capture-end">
       <button type="button" className="secondary" onClick={() => void cancel()}>촬영 취소</button>
     </div>
-    {import.meta.env.DEV && new URLSearchParams(location.search).has("test") && <details className="capture-test-details"><summary>가상 필름 표시 확인 · 테스트용</summary>
-      <svg viewBox={`0 0 ${session.film_cells[0]?.length ?? 10} ${session.film_cells.length || 10}`} width="200" height="200" role="img" aria-label="이번 촬영의 가상 필름 마커" shapeRendering="crispEdges">
-        {session.film_cells.flatMap((row, y) => row.map((opacity, x) => <rect key={`${x}:${y}`} x={x} y={y} width="1" height="1" fill={opacity >= 0.5 ? "black" : "white"} />))}
-      </svg>
-      <p>가상 필름에 촬영용 마커를 표시했어요. 실제 필름 장치는 아직 연결되지 않았어요.</p>
-    </details>}
   </section>;
 }
 
