@@ -339,6 +339,12 @@ def test_fr04_filled_gap_takes_the_reasons_of_the_step_before() -> None:
     assert result[1].reasons == (("r1", "B"),)
 
 
+def test_fr04_filled_gap_takes_the_smaller_neighbour_opacity() -> None:
+    # u = min(left, right): a filled gap is never darker than the weaker of its two neighbours.
+    assert [step.opacity for step in _stabilize([0.5, 0, 1])] == [0.5, 0.5, 1.0]
+    assert [step.opacity for step in _stabilize([1, 0, 0.5])] == [1.0, 0.5, 0.5]
+
+
 def test_fr04_minimum_holding_time_applies_after_a_darkening_in_the_middle_of_the_day() -> None:
     # Darkened at step 2; the film may not clear before the 600 s (two steps) have passed.
     result = _stabilize([0, 0, 1, 0, 0, 0, 0], gap=0, hold=600)
