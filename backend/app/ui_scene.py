@@ -368,6 +368,26 @@ def top_companions(space: UISpace) -> list[UIRegion]:
     ]
 
 
+def parse_floor_level(floor_text: str) -> int | None:
+    """Extract an integer building floor_level (-100..1000) from free-form UI floor text."""
+    text = floor_text.strip()
+    if not text:
+        return None
+    basement = re.search(r"(?:지하\s*|B\s*)(\d+)\s*(?:층|F|f)?", text, re.IGNORECASE)
+    if basement:
+        level = -int(basement[1])
+        return level if -100 <= level <= 1000 else None
+    explicit = re.search(r"(-?\d+)\s*(?:층|[Ff](?![A-Za-z0-9]))", text)
+    if explicit:
+        level = int(explicit[1])
+        return level if -100 <= level <= 1000 else None
+    standalone = re.fullmatch(r"-?\d+", text)
+    if standalone:
+        level = int(standalone[0])
+        return level if -100 <= level <= 1000 else None
+    return None
+
+
 def to_scene(space: UISpace, revision: int, created_at: str | None = None) -> Scene:
     overlap = furniture_overlap_message(space)
     if overlap is not None:
@@ -504,10 +524,7 @@ def to_scene(space: UISpace, revision: int, created_at: str | None = None) -> Sc
                 "actual_sgf_properties": None,
             }
         )
-    floor_match = re.fullmatch(r"(-?\d+)\s*층?", space.floor)
-    floor_level = int(floor_match[1]) if floor_match else None
-    if floor_level is not None and not -100 <= floor_level <= 1000:
-        floor_level = None
+    floor_level = parse_floor_level(space.floor)
     return Scene.model_validate(
         {
             "schema_version": "0.2.0",

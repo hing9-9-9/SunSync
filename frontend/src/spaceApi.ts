@@ -212,19 +212,46 @@ export const createHandoff = (space_id: string) =>
     method: "POST",
     body: JSON.stringify({ space_id }),
   });
-export const readHandoff = (token: string, signal?: AbortSignal) =>
-  request<HandoffSession>(`/api/ui/measurements/${encodeURIComponent(token)}`, {
-    signal,
-  });
-export const connectHandoff = (token: string) =>
-  request<HandoffSession>(
-    `/api/ui/measurements/${encodeURIComponent(token)}/connect`,
-    { method: "POST" },
-  );
-export const completeHandoff = (token: string, space: Space) =>
-  request<Space>(`/api/ui/measurements/${encodeURIComponent(token)}/complete`, {
+export const readHandoff = async (token: string, signal?: AbortSignal): Promise<HandoffSession> => {
+  const encoded = encodeURIComponent(token);
+  try {
+    return await request<HandoffSession>(`/api/ui/measurements/${encoded}`, { signal });
+  } catch (e) {
+    if (e instanceof SpaceApiError && e.status === 404) {
+      return request<HandoffSession>(`/api/ui/handoffs/${encoded}`, { signal });
+    }
+    throw e;
+  }
+};
+export const connectHandoff = async (token: string): Promise<HandoffSession> => {
+  const encoded = encodeURIComponent(token);
+  try {
+    return await request<HandoffSession>(`/api/ui/measurements/${encoded}/connect`, {
+      method: "POST",
+    });
+  } catch (e) {
+    if (e instanceof SpaceApiError && e.status === 404) {
+      return request<HandoffSession>(`/api/ui/handoffs/${encoded}/connect`, { method: "POST" });
+    }
+    throw e;
+  }
+};
+export const completeHandoff = async (token: string, space: Space): Promise<Space> => {
+  const encoded = encodeURIComponent(token);
+  const options = { method: "POST", body: JSON.stringify(space) };
+  try {
+    return await request<Space>(`/api/ui/measurements/${encoded}/complete`, options);
+  } catch (e) {
+    if (e instanceof SpaceApiError && e.status === 404) {
+      return request<Space>(`/api/ui/handoffs/${encoded}/complete`, options);
+    }
+    throw e;
+  }
+};
+export const claimHandoffCode = (code: string) =>
+  request<HandoffSession>("/api/ui/handoffs/claim", {
     method: "POST",
-    body: JSON.stringify(space),
+    body: JSON.stringify({ code: code.trim().toUpperCase() }),
   });
 
 export const listMeasurements = (signal?: AbortSignal) => request<HandoffSession[]>("/api/ui/measurements", {signal});
@@ -372,6 +399,45 @@ export function fetchFilmLogs(
   const query = params.toString();
   return request<FilmApplicationLogListResponse>(
     `/api/scenes/${encodeURIComponent(sceneId)}/film-logs${query ? `?${query}` : ""}`,
+  );
+}
+
+/** FR-05: send manual cell opacity commands to a virtual film window. */
+export function sendFilmCommands(
+  sceneId: string,
+  commands: { row: number; col: number; opacity: number }[],
+  windowId?: string,
+) {
+  return request<WindowFilmStateResponse>(
+    `/api/scenes/${encodeURIComponent(sceneId)}/film-commands`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        ...(windowId ? { window_id: windowId } : {}),
+        commands,
+      }),
+    },
+  );
+}
+
+/** FR-05.2: enable or disable 6x6 ArUco marker display on the virtual film, restoring prior opacities on disable. */
+export function toggleFilmMarkerMode(
+  sceneId: string,
+  enabled: boolean,
+  options?: { windowId?: string; codeId?: number; moduleRow?: number; moduleCol?: number },
+) {
+  return request<WindowFilmStateResponse>(
+    `/api/scenes/${encodeURIComponent(sceneId)}/film-marker-mode`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        enabled,
+        ...(options?.windowId ? { window_id: options.windowId } : {}),
+        ...(options?.codeId !== undefined ? { code_id: options.codeId } : {}),
+        ...(options?.moduleRow !== undefined ? { module_row: options.moduleRow } : {}),
+        ...(options?.moduleCol !== undefined ? { module_col: options.moduleCol } : {}),
+      }),
+    },
   );
 }
 
