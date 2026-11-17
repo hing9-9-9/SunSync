@@ -1,3 +1,16 @@
+[project]
+name = "sunsync"
+version = "0.1.0"
+requires-python = ">=3.11"
+
+[project.optional-dependencies]
+vision = [
+    "ultralytics>=8.0.0",
+    "transformers>=4.40.0",
+    "torch>=2.0.0",
+    "Pillow>=10.0.0",
+]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["backend", "measure/registration-core", "."]

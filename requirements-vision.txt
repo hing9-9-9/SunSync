@@ -1,0 +1,6 @@
+# Optional Vision AI runtime dependencies (YOLOv8 + Depth Anything V2 / MiDaS)
+# Install via: pip install -r requirements-vision.txt  (or: pip install ".[vision]")
+ultralytics>=8.0.0
+transformers>=4.40.0
+torch>=2.0.0
+Pillow>=10.0.0

@@ -5,8 +5,8 @@
 // through the web app run a one-time guided setup (더보기 › 카메라 준비, the installed board seen
 // from many angles) and keep the result on the device. The native app (mobile/) reads intrinsics
 // from the OS camera instead; drop savedCamera/setupCamera/prepare's fixed size when it ships.
-import { resolveWindow } from "./model.ts";
-import type { Space } from "./model.ts";
+import { resolveWindow, toSceneFurnitureType } from "./model.ts";
+import type { FurnitureType, Space } from "./model.ts";
 import { pointFailure } from "./captureGuide.ts";
 import { EXPIRED_MESSAGE, notifyUnauthorized } from "./auth.ts";
 
@@ -278,7 +278,12 @@ export function filmBoardAlignment(marker: FilmMarker, board: Board = BOARD) {
 
 const SERVER_SHAPES: Record<string, string> = { rectangle: "rectangle", circle: "circle", ellipse: "ellipse" };
 
-type MeasureItem = { session: CaptureMarker; shape: string; vertices: { x: number; y: number }[]; points: MeasuredPoint[] };
+export function measurementPlanForType(type?: FurnitureType | string | null): { furniture_kind: string; model_id: string } {
+  const kind = type ? toSceneFurnitureType(type) : "desk";
+  return { furniture_kind: kind, model_id: `standard_${kind}` };
+}
+
+type MeasureItem = { session: CaptureMarker; type?: FurnitureType; shape: string; vertices: { x: number; y: number }[]; points: MeasuredPoint[] };
 
 export type CheckedMeasurement = { sceneId: string; roomId: string; sessionId: string; text: string };
 
@@ -314,8 +319,7 @@ async function measureRaw(sceneId: string, camera: Camera, item: MeasureItem) {
   const plan = {
     space_id: scene.room.room_id,
     furniture_id: `measured_${crypto.randomUUID().slice(0, 8)}`,
-    furniture_kind: "desk",
-    model_id: "standard_desk",
+    ...measurementPlanForType(item.type),
     shape: kind === "polygon" ? { kind, vertices: item.vertices.map((p) => [p.x / 100, p.y / 100]) } : { kind },
     samples_per_point: 3,
   };

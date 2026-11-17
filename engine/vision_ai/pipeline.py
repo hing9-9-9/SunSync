@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import base64
 import math
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 import cv2
 import numpy as np
@@ -13,7 +14,14 @@ from app.schemas.scene import Occluder, ProtectedRegion, Quality
 from app.services.film import clamp_cuboid_to_room
 from shapely.geometry import Polygon
 
-from engine.vision_ai.protocols import FurnitureLabel
+from engine.vision_ai.protocols import (
+    DepthEstimatorProtocol,
+    FurnitureLabel,
+    GeometricSyntheticDetector,
+    ObjectDetectorProtocol,
+    create_default_depth_estimator,
+    create_default_detector,
+)
 
 if TYPE_CHECKING:
     from app.schemas.vision_ai import (
@@ -65,6 +73,30 @@ class DepthCalibrationResult:
 
 class VisionRegistrationPipeline:
     """Pipeline for ArUco-anchored metric depth calibration and 3D cuboid unprojection."""
+
+    def __init__(
+        self,
+        detector: ObjectDetectorProtocol | None = None,
+        depth_estimator: DepthEstimatorProtocol | None = None,
+    ) -> None:
+        self.detector = detector or create_default_detector(prefer_yolo=False)
+        self.depth_estimator = depth_estimator or create_default_depth_estimator(
+            prefer_monocular=False
+        )
+
+    @staticmethod
+    def decode_image_base64(image_base64: str) -> np.ndarray:
+        """Decode base64-encoded JPEG/PNG image bytes into an RGB uint8 array."""
+        payload = image_base64.split(",", 1)[1] if "," in image_base64 else image_base64
+        try:
+            raw = base64.b64decode(payload, validate=True)
+        except Exception as exc:
+            raise ValueError("Invalid base64 image payload.") from exc
+        arr = np.frombuffer(raw, dtype=np.uint8)
+        bgr = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+        if bgr is None or bgr.size == 0:
+            raise ValueError("Could not decode image bytes from base64 payload.")
+        return cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
 
     # -------------------------------------------------------------------------
     # Step 1: ArUco Window Marker Metric Anchor
@@ -477,17 +509,105 @@ class VisionRegistrationPipeline:
         existing_ids: set[str] | None = None,
     ) -> tuple[CameraPoseResult, DepthCalibrationResult, list[EstimatedFurnitureResult]]:
         """Run full 3-step registration pipeline."""
+        from app.schemas.vision_ai import CameraIntrinsicsInput, Detection2DInput
+
+        if image_rgb is None and request.image_base64 is not None:
+            image_rgb = self.decode_image_base64(request.image_base64)
+
+        camera = request.camera
+        if image_rgb is not None:
+            h_img, w_img = image_rgb.shape[:2]
+            if (camera.width, camera.height) == (1280, 720) and (w_img, h_img) != (1280, 720):
+                focal = float(max(w_img, h_img)) * 0.9
+                camera = CameraIntrinsicsInput(
+                    width=w_img,
+                    height=h_img,
+                    fx=focal,
+                    fy=focal,
+                    cx=w_img / 2.0,
+                    cy=h_img / 2.0,
+                )
+
+        marker_corners = request.marker_anchor.corners_px
+        if marker_corners is None and request.T_ENU_camera is None and image_rgb is not None:
+            marker_corners = self._detect_aruco_corners(image_rgb, request.marker_anchor.code_id)
+
+        marker_anchor = (
+            request.marker_anchor.model_copy(update={"corners_px": marker_corners})
+            if marker_corners is not None and request.marker_anchor.corners_px is None
+            else request.marker_anchor
+        )
+
         pose_res = self.resolve_camera_pose_from_aruco(
-            camera=request.camera,
-            marker_anchor=request.marker_anchor,
+            camera=camera,
+            marker_anchor=marker_anchor,
             T_ENU_marker=T_ENU_marker,
             T_ENU_camera_presolved=request.T_ENU_camera,
             image_rgb=image_rgb,
         )
 
-        anchor_rel = [request.marker_anchor.anchor_depth_rel] * len(
-            pose_res.marker_corner_depths_metric
-        )
+        active_detections = list(request.detections)
+        rel_depth_map: np.ndarray | None = None
+        if len(active_detections) == 0 and image_rgb is not None:
+            exclude_boxes: list[tuple[float, float, float, float]] = []
+            if marker_corners is not None:
+                xs = [pt[0] for pt in marker_corners]
+                ys = [pt[1] for pt in marker_corners]
+                exclude_boxes.append((min(xs), min(ys), max(xs), max(ys)))
+
+            if isinstance(self.detector, GeometricSyntheticDetector):
+                raw_detected = self.detector.detect(
+                    image_rgb,
+                    exclude_boxes=exclude_boxes or None,
+                )
+            else:
+                raw_detected = self.detector.detect(image_rgb)
+                if exclude_boxes:
+                    from engine.vision_ai.protocols import _overlaps_any_box
+
+                    raw_detected = [
+                        d for d in raw_detected if not _overlaps_any_box(d.box_xyxy, exclude_boxes)
+                    ]
+
+            if len(raw_detected) == 0:
+                raise ValueError("No furniture objects detected in the provided image.")
+
+            for det_obj in raw_detected:
+                grade: Literal["B", "C", "D"] = (
+                    "B"
+                    if det_obj.label == "bookshelf"
+                    else ("C" if det_obj.label == "desk" else "D")
+                )
+                active_detections.append(
+                    Detection2DInput(
+                        box_xyxy=det_obj.box_xyxy,
+                        label=det_obj.label,
+                        confidence=float(min(max(det_obj.confidence, 0.0), 1.0)),
+                        name=None,
+                        protection_grade=grade,
+                    )
+                )
+
+            if depth_map is None:
+                rel_depth_map = self.depth_estimator.estimate_relative_depth(
+                    image_rgb, camera.width, camera.height
+                )
+
+        if rel_depth_map is not None and marker_corners is not None:
+            anchor_rel = [
+                float(
+                    rel_depth_map[
+                        int(min(max(0, round(py)), rel_depth_map.shape[0] - 1)),
+                        int(min(max(0, round(px)), rel_depth_map.shape[1] - 1)),
+                    ]
+                )
+                for px, py in marker_corners
+            ]
+        else:
+            anchor_rel = [request.marker_anchor.anchor_depth_rel] * len(
+                pose_res.marker_corner_depths_metric
+            )
+
         depth_calib = self.calibrate_monocular_depth(
             anchor_relative_depths=anchor_rel,
             anchor_metric_depths=pose_res.marker_corner_depths_metric,
@@ -495,11 +615,18 @@ class VisionRegistrationPipeline:
             manual_beta=request.depth_shift_beta,
         )
 
+        if depth_map is None and rel_depth_map is not None:
+            depth_map = np.clip(
+                depth_calib.alpha * rel_depth_map + depth_calib.beta,
+                MIN_METRIC_DEPTH_M,
+                MAX_METRIC_DEPTH_M,
+            )
+
         room_floor_poly = Polygon(room_floor_vertices)
         estimated_items: list[EstimatedFurnitureResult] = []
         used_ids = set(existing_ids or ())
 
-        for idx, det in enumerate(request.detections):
+        for idx, det in enumerate(active_detections):
             counter = idx + 1
             occ_id = f"occluder_{det.label}_{counter}"
             while occ_id in used_ids or f"region_{occ_id}" in used_ids:
@@ -510,7 +637,7 @@ class VisionRegistrationPipeline:
 
             res = self.backproject_box_to_3d_cuboid(
                 detection=det,
-                camera=request.camera,
+                camera=camera,
                 T_ENU_camera=pose_res.T_ENU_camera,
                 depth_calibration=depth_calib,
                 room_floor_poly=room_floor_poly,

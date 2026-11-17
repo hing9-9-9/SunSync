@@ -6,7 +6,8 @@ import { pointFailure } from "./captureGuide";
 import type { PhotoIssue } from "./captureCheck";
 import { shapes, validPolygon, nextCapturePoint, photosPerPoint } from "./capturePlan";
 import type { Shape, CapturePoint } from "./capturePlan";
-import type { CapturedFurniture } from "./model";
+import { furnitureTypes } from "./model";
+import type { CapturedFurniture, FurnitureType } from "./model";
 import { browserCaptureEnabled } from "./captureEnvironment";
 import { checkMeasurement, selectFrames, detectFrame, captureSelection, resumeCaptureMarker, cancelStoredCapture, startCaptureMarker, endCaptureMarker } from "./measureApi";
 import FilmModulePicker from "./FilmModulePicker";
@@ -109,6 +110,7 @@ function TestSpatialCapture({ count, onFinish, session }: { count: number; onFin
   const [rawFrames,setRawFrames]=useState<Record<number,Frame[]>>({});
   const version=useRef(0);
   const [name, setName] = useState(`가구 ${count + 1}`);
+  const [furnitureType, setFurnitureType] = useState<FurnitureType>("desk");
   const [shape, setShape] = useState<Shape>('rectangle');
   const [custom, setCustom] = useState<CapturePoint[]>([]);
   const [confirmed, setConfirmed] = useState(false);
@@ -171,7 +173,7 @@ function TestSpatialCapture({ count, onFinish, session }: { count: number; onFin
     if (!complete || !captureCamera || verifying || verifyFailed || checkedKey === photoKey) return;
     const ticket = version.current, key = photoKey;
     setVerifying(true); setError(""); setSurfaceProblem("");
-    checkMeasurement(session.scene_id, captureCamera, { session, shape, vertices: points, points: points.map((_,i)=>({ id:`P${i+1}`, frames:rawFrames[i] ?? (photos[i]??[]).map(p=>p!.frame!) })) })
+    checkMeasurement(session.scene_id, captureCamera, { session, type: furnitureType, shape, vertices: points, points: points.map((_,i)=>({ id:`P${i+1}`, frames:rawFrames[i] ?? (photos[i]??[]).map(p=>p!.frame!) })) })
       .then(({ problems: found, checked }) => {
         if (ticket !== version.current) return;
         const retry = found.find(f => f.retryable || (f.point && !points.some((_, i) => f.point === `P${i+1}`)));
@@ -200,7 +202,7 @@ function TestSpatialCapture({ count, onFinish, session }: { count: number; onFin
       .finally(() => { if (ticket === version.current) setVerifying(false); });
   }, [complete, captureCamera, verifying, verifyFailed, checkedKey, photoKey]);
   function nextFurniture() {
-    const captured: CapturedFurniture[] = [...items, { name: name.trim() || `가구 ${count + items.length + 1}`, type: "other", capture: {session, camera:captureCamera!, checkedMeasurement, shape, points: points.map((p,i)=>({id:`P${i+1}`,position:p,photos:photos[i].map(p=>p!.file),frames:rawFrames[i]??(photos[i].every(p=>p?.frame)?photos[i].map(p=>p!.frame!):undefined)}))} }];
+    const captured: CapturedFurniture[] = [...items, { name: name.trim() || `가구 ${count + items.length + 1}`, type: furnitureType, capture: {session, camera:captureCamera!, checkedMeasurement, shape, points: points.map((p,i)=>({id:`P${i+1}`,position:p,photos:photos[i].map(p=>p!.file),frames:rawFrames[i]??(photos[i].every(p=>p?.frame)?photos[i].map(p=>p!.frame!):undefined)}))} }];
     setItems(captured);
     setName(`가구 ${count + captured.length + 1}`);
     reset();
@@ -217,6 +219,11 @@ function TestSpatialCapture({ count, onFinish, session }: { count: number; onFin
   return <div className="spatial-capture corner-capture">
     {!confirmed && <div className="two-fields">
       <label className="field"><span>가구 이름</span><input value={name} onChange={(e) => setName(e.target.value)} /></label>
+      <label className="field"><span>가구 종류</span>
+        <select value={furnitureType} disabled={confirmed||checking} onChange={e=>setFurnitureType(e.target.value as FurnitureType)}>
+          {(Object.entries(furnitureTypes) as [FurnitureType, string][]).map(([value,label])=><option key={value} value={value}>{label}</option>)}
+        </select>
+      </label>
       <label className="field"><span>상판 형태</span>
         <select value={shape} disabled={confirmed||checking} onChange={e=>{reset();setShape(e.target.value as Shape);setCustom([]);}}>
           {Object.entries(shapes).map(([value,s])=><option key={value} value={value}>{s.label}</option>)}
