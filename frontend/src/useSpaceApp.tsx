@@ -1259,6 +1259,7 @@ export function useSpaceApp() {
           checkedMeasurement: item.capture.checkedMeasurement,
           session: item.capture.session,
           name: item.name,
+          type: item.type,
           shape: item.capture!.shape,
           vertices: item.capture!.points.map((p) => p.position),
           points: item.capture!.points.map((p) => ({ id: p.id, frames: p.frames! })),

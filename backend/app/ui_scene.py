@@ -14,7 +14,7 @@ from sqlmodel import Field as SQLField
 from sqlmodel import Session, SQLModel, select
 
 from app.schemas.geometry import cuboid_footprint
-from app.schemas.scene import Occluder, Scene, Window
+from app.schemas.scene import Occluder, ProtectedRegion, Scene, Window
 
 Number = Annotated[float, Field(allow_inf_nan=False)]
 Positive = Annotated[Number, Field(gt=0)]
@@ -22,7 +22,7 @@ Nonnegative = Annotated[Number, Field(ge=0)]
 Identifier = Annotated[str, Field(pattern=r"^[A-Za-z0-9_-]{1,128}$")]
 Name = Annotated[str, Field(min_length=1, max_length=200)]
 Face = Literal["남쪽 전면", "북쪽 후면", "동쪽 측면", "서쪽 측면", "상단"]
-FurnitureType = Literal["bookcase", "desk", "table", "cabinet", "display", "other"]
+FurnitureType = Literal["bookcase", "desk", "table", "cabinet", "display", "chair", "other"]
 Wall = Literal["south", "north", "east", "west"]
 
 
@@ -368,6 +368,26 @@ def top_companions(space: UISpace) -> list[UIRegion]:
     ]
 
 
+def parse_floor_level(floor_text: str) -> int | None:
+    """Extract an integer building floor_level (-100..1000) from free-form UI floor text."""
+    text = floor_text.strip()
+    if not text:
+        return None
+    basement = re.search(r"(?:지하\s*|B\s*)(\d+)\s*(?:층|F|f)?", text, re.IGNORECASE)
+    if basement:
+        level = -int(basement[1])
+        return level if -100 <= level <= 1000 else None
+    explicit = re.search(r"(-?\d+)\s*(?:층|[Ff](?![A-Za-z0-9]))", text)
+    if explicit:
+        level = int(explicit[1])
+        return level if -100 <= level <= 1000 else None
+    standalone = re.fullmatch(r"-?\d+", text)
+    if standalone:
+        level = int(standalone[0])
+        return level if -100 <= level <= 1000 else None
+    return None
+
+
 def to_scene(space: UISpace, revision: int, created_at: str | None = None) -> Scene:
     overlap = furniture_overlap_message(space)
     if overlap is not None:
@@ -504,10 +524,7 @@ def to_scene(space: UISpace, revision: int, created_at: str | None = None) -> Sc
                 "actual_sgf_properties": None,
             }
         )
-    floor_match = re.fullmatch(r"(-?\d+)\s*층?", space.floor)
-    floor_level = int(floor_match[1]) if floor_match else None
-    if floor_level is not None and not -100 <= floor_level <= 1000:
-        floor_level = None
+    floor_level = parse_floor_level(space.floor)
     return Scene.model_validate(
         {
             "schema_version": "0.2.0",
@@ -548,9 +565,7 @@ def to_scene(space: UISpace, revision: int, created_at: str | None = None) -> Sc
                     "room_id": room_id,
                     "name": f.name,
                     "kind": "cuboid",
-                    "type": {"bookcase": "bookshelf", "desk": "desk", "table": "desk"}.get(
-                        f.type or "other", "other"
-                    ),
+                    "type": UI_TO_SCENE_TYPE.get(f.type or "other", "other"),
                     "base_center_m": [
                         f.x + f.width / 2,
                         space.depth - f.y - f.depth / 2,
@@ -593,11 +608,40 @@ SERVER_OWNED = {
     "registration_calibration",
     "observations",
     "occluders",
+    "protected_regions",
+    "policy",
 }
-UI_TYPES: dict[str, FurnitureType] = {"bookshelf": "bookcase", "desk": "desk"}
+UI_TO_SCENE_TYPE: dict[str, Literal["bookshelf", "desk", "chair", "other"]] = {
+    "bookcase": "bookshelf",
+    "bookshelf": "bookshelf",
+    "desk": "desk",
+    "table": "desk",
+    "chair": "chair",
+    "cabinet": "other",
+    "display": "other",
+    "other": "other",
+}
+UI_TYPES: dict[str, FurnitureType] = {
+    "bookshelf": "bookcase",
+    "bookcase": "bookcase",
+    "desk": "desk",
+    "chair": "chair",
+    "table": "table",
+    "cabinet": "cabinet",
+    "display": "display",
+    "other": "other",
+}
 
 
-UI_LABELS = {"bookcase": "책장", "desk": "책상"}
+UI_LABELS: dict[str, str] = {
+    "bookcase": "책장",
+    "desk": "책상",
+    "chair": "의자",
+    "table": "열람 테이블",
+    "cabinet": "수납장",
+    "display": "진열장",
+    "other": "가구",
+}
 
 
 def ui_furniture(occluder: Occluder, space: UISpace, number: int = 1) -> UIFurniture:
@@ -623,12 +667,48 @@ def ui_furniture(occluder: Occluder, space: UISpace, number: int = 1) -> UIFurni
     )
 
 
+def _normal_to_face(normal: tuple[float, float, float]) -> Face:
+    nx, ny, nz = normal
+    if abs(nz) > 0.7:
+        return "상단"
+    candidates: list[tuple[Face, float]] = [
+        ("남쪽 전면", -ny),
+        ("북쪽 후면", ny),
+        ("동쪽 측면", nx),
+        ("서쪽 측면", -nx),
+    ]
+    return max(candidates, key=lambda item: item[1])[0]
+
+
+def ui_region(reg: ProtectedRegion, host: UIFurniture, space: UISpace) -> UIRegion:
+    """Project a server-generated ProtectedRegion onto a UIRegion hosted on the matching UIFurniture."""
+    raw_face = _normal_to_face(reg.receiving_normal)
+    draft = UIRegion(
+        id=reg.region_id,
+        name=reg.name if re.search(r"[가-힣]", reg.name) else f"{host.name} 보호면",
+        zone=host.zone,
+        furnitureId=host.id,
+        x=host.x,
+        y=host.y,
+        width=host.width,
+        depth=host.depth,
+        face=raw_face,
+        bottom=0.0,
+        top=host.height,
+        grade=reg.grade,
+    )
+    resolved_face = protected_face(space, draft)
+    if resolved_face != raw_face:
+        return draft.model_copy(update={"face": resolved_face})
+    return draft
+
+
 def sync_ui_record(session: Session, previous: Scene, scene: Scene) -> None:
     """Keep a UI-created space editable after a server-only change (calibration, registration).
 
-    Only additions the UI can show are accepted: room, site, windows and regions stay as they
-    were and existing furniture is untouched. Anything else leaves the space marked as changed
-    by another module, as before.
+    Only additions the UI can show are accepted: room, site, windows and existing
+    furniture/regions stay as they were. Newly registered occluders and their hosted
+    protected_regions (e.g. from FR-06 registration or Vision AI) are projected into UISpace.
     """
     record = session.exec(
         select(UISpaceRecord).where(UISpaceRecord.scene_id == scene.scene_id)
@@ -638,13 +718,28 @@ def sync_ui_record(session: Session, previous: Scene, scene: Scene) -> None:
     before, after = previous.model_dump(mode="json"), scene.model_dump(mode="json")
     if any(before[key] != after[key] for key in before if key not in SERVER_OWNED):
         return
+    if previous.policy is not None and previous.policy != scene.policy:
+        return
     old = {o.occluder_id: o for o in previous.occluders}
     new = {o.occluder_id: o for o in scene.occluders}
     if any(new.get(key) != value for key, value in old.items()):
         return
+    old_reg = {r.region_id: r for r in previous.protected_regions}
+    new_reg = {r.region_id: r for r in scene.protected_regions}
+    if any(new_reg.get(key) != value for key, value in old_reg.items()):
+        return
     space = UISpace.model_validate_json(record.payload_json)
     fresh = [o for key, o in new.items() if key not in old]
     added = [ui_furniture(o, space, len(space.furniture) + i + 1) for i, o in enumerate(fresh)]
+    added_by_id = {f.id: f for f in added}
+    fresh_regs = [r for key, r in new_reg.items() if key not in old_reg]
+    if any(r.host_occluder_id not in added_by_id for r in fresh_regs):
+        return
+    added_regions = [
+        ui_region(r, added_by_id[r.host_occluder_id], space)
+        for r in fresh_regs
+        if r.host_occluder_id is not None
+    ]
     try:
         synced = UISpace.model_validate(
             {
@@ -652,6 +747,10 @@ def sync_ui_record(session: Session, previous: Scene, scene: Scene) -> None:
                 "furniture": [
                     *space.model_dump(mode="json")["furniture"],
                     *(f.model_dump() for f in added),
+                ],
+                "regions": [
+                    *space.model_dump(mode="json")["regions"],
+                    *(r.model_dump() for r in added_regions),
                 ],
                 "serverRevision": scene.revision,
             }

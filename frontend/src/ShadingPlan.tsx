@@ -6,7 +6,7 @@ import { defaultShadingTime } from "./model";
 import type { ShadingTime, Space } from "./model";
 import { DAY_MINUTES, formatMinute, protectedRegions, shadedCells } from "./sunlight";
 import type { BlockingSchedule as Schedule } from "./sunlight";
-import { applyFilmSchedule, fetchFilmLogs, fetchFilmState, formatTimeLabel, userMessage } from "./spaceApi";
+import { applyFilmSchedule, fetchFilmLogs, fetchFilmState, formatTimeLabel, sendFilmCommands, toggleFilmMarkerMode, userMessage } from "./spaceApi";
 import type { FilmApplicationLogEntry, ScheduleApplyResponse, WindowFilmStateResponse } from "./spaceApi";
 import type { ReactNode } from "react";
 
@@ -216,6 +216,7 @@ export function VirtualFilmControl({ space, prediction, hour, children }: { spac
   const [applied, setApplied] = useState<ScheduleApplyResponse | null>(null);
   const [windowState, setWindowState] = useState<WindowFilmStateResponse | null>(null);
   const [unmet, setUnmet] = useState<{ total: number; logs: FilmApplicationLogEntry[] } | null>(null);
+  const [appliedLogs, setAppliedLogs] = useState<{ total: number; logs: FilmApplicationLogEntry[] } | null>(null);
   const [error, setError] = useState("");
   // The film state is read from the server per chosen time. The newest request always wins, and the
   // card says "계산 중" until it has the state for the time the slider shows now.
@@ -233,17 +234,58 @@ export function VirtualFilmControl({ space, prediction, hour, children }: { spac
     setError("");
     try {
       const result = apply && plan ? await applyFilmSchedule(sceneId, plan, simulatedAt) : null;
-      const [state, logs] = await Promise.all([
+      const [state, unmetRes, appliedRes] = await Promise.all([
         result ? Promise.resolve({ windows: result.windows }) : fetchFilmState(sceneId, simulatedAt),
         fetchFilmLogs(sceneId, { status: "target_unmet", limit: 500 }),
+        fetchFilmLogs(sceneId, { status: "applied", limit: 20 }),
       ]);
       if (mine !== latest.current) return;
       if (result) setApplied(result);
       setWindowState(state.windows[0] ?? null);
-      setUnmet({ total: logs.total, logs: logs.logs });
+      setUnmet({ total: unmetRes.total, logs: unmetRes.logs });
+      setAppliedLogs({ total: appliedRes.total, logs: appliedRes.logs });
       setLoadedFor(simulatedAt);
     } catch (err) {
       if (mine === latest.current) setError(userMessage(err, "필름 상태를 불러오지 못했어요."));
+    } finally {
+      if (mine === latest.current) setBusy(false);
+    }
+  }
+
+  async function setAllCellsOpacity(opacity: number) {
+    if (!sceneId || !windowState || busy) return;
+    const mine = ++latest.current;
+    setBusy(true);
+    setError("");
+    try {
+      const commands = Array.from({ length: windowState.film_rows }, (_, r) =>
+        Array.from({ length: windowState.film_cols }, (_, c) => ({ row: r, col: c, opacity })),
+      ).flat();
+      const updated = await sendFilmCommands(sceneId, commands, windowState.window_id);
+      const appliedRes = await fetchFilmLogs(sceneId, { status: "applied", limit: 20 });
+      if (mine !== latest.current) return;
+      setWindowState(updated);
+      setAppliedLogs({ total: appliedRes.total, logs: appliedRes.logs });
+    } catch (err) {
+      if (mine === latest.current) setError(userMessage(err, "수동 필름 제어를 적용하지 못했어요."));
+    } finally {
+      if (mine === latest.current) setBusy(false);
+    }
+  }
+
+  async function handleMarkerToggle() {
+    if (!sceneId || !windowState || busy) return;
+    const mine = ++latest.current;
+    setBusy(true);
+    setError("");
+    try {
+      const updated = await toggleFilmMarkerMode(sceneId, !windowState.marker_mode_active, {
+        windowId: windowState.window_id,
+      });
+      if (mine !== latest.current) return;
+      setWindowState(updated);
+    } catch (err) {
+      if (mine === latest.current) setError(userMessage(err, "마커 표시 상태를 바꾸지 못했어요."));
     } finally {
       if (mine === latest.current) setBusy(false);
     }
@@ -290,6 +332,34 @@ export function VirtualFilmControl({ space, prediction, hour, children }: { spac
             {unmetByTime(unmet.logs, timezone).map(([time, cells]) => <li key={time}>{time} · {cells}칸</li>)}
           </ul>
         </div>
+      )}
+      {windowState && (
+        <details className="film-dev-controls muted small">
+          <summary>
+            필름 제어 기록 · 수동 점검
+            {appliedLogs && appliedLogs.total > 0 ? ` (${appliedLogs.total}건)` : ""}
+          </summary>
+          <div className="actions">
+            <button type="button" className="text-button" disabled={busy} onClick={() => void setAllCellsOpacity(0)}>
+              전체 투명
+            </button>
+            <button type="button" className="text-button" disabled={busy} onClick={() => void setAllCellsOpacity(1)}>
+              전체 가림
+            </button>
+            <button type="button" className="text-button" disabled={busy} onClick={() => void handleMarkerToggle()}>
+              {windowState.marker_mode_active ? "마커 표시 끄기" : "마커 표시 켜기"}
+            </button>
+          </div>
+          {appliedLogs && appliedLogs.logs.length > 0 && (
+            <ul className="film-unmet-list">
+              {appliedLogs.logs.slice(0, 5).map((entry, idx) => (
+                <li key={entry.log_id ?? `${entry.timestamp}-${entry.row}-${entry.col}-${idx}`}>
+                  {formatTimeLabel(entry.timestamp, timezone)} · ({entry.row + 1}행, {entry.col + 1}열) {entry.previous_state === "opaque" ? "가림" : "투명"} → {entry.new_state === "opaque" ? "가림" : "투명"}
+                </li>
+              ))}
+            </ul>
+          )}
+        </details>
       )}
     </section>
   );

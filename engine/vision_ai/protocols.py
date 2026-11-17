@@ -69,6 +69,7 @@ class GeometricSyntheticDetector:
         self,
         image_rgb: np.ndarray | None,
         hints: Sequence[DetectedObject2D] | None = None,
+        exclude_boxes: Sequence[tuple[float, float, float, float]] | None = None,
     ) -> list[DetectedObject2D]:
         if hints is not None and len(hints) > 0:
             return [hint for hint in hints if hint.confidence >= self.min_confidence]
@@ -87,11 +88,14 @@ class GeometricSyntheticDetector:
                 x, y, w, h = cv2.boundingRect(cnt)
                 area = w * h
                 if 400 < area < (w_img * h_img * 0.9):
+                    box = (float(x), float(y), float(x + w), float(y + h))
+                    if exclude_boxes and _overlaps_any_box(box, exclude_boxes):
+                        continue
                     aspect = w / max(1, h)
                     label: FurnitureLabel = "desk" if aspect > 1.2 else "bookshelf"
                     detected.append(
                         DetectedObject2D(
-                            box_xyxy=(float(x), float(y), float(x + w), float(y + h)),
+                            box_xyxy=box,
                             label=label,
                             confidence=0.85,
                             raw_class_name=f"synthetic_contour_{label}",
@@ -101,6 +105,27 @@ class GeometricSyntheticDetector:
                 return detected
 
         return list(self.default_detections)
+
+
+def _overlaps_any_box(
+    box: tuple[float, float, float, float],
+    exclude_boxes: Sequence[tuple[float, float, float, float]],
+) -> bool:
+    """Return True if a candidate box's center lies inside or strongly overlaps an excluded box."""
+    bx1, by1, bx2, by2 = box
+    cx, cy = (bx1 + bx2) / 2.0, (by1 + by2) / 2.0
+    b_area = max(1.0, (bx2 - bx1) * (by2 - by1))
+    for ex1, ey1, ex2, ey2 in exclude_boxes:
+        if ex1 <= cx <= ex2 and ey1 <= cy <= ey2:
+            return True
+        ix1, iy1 = max(bx1, ex1), max(by1, ey1)
+        ix2, iy2 = min(bx2, ex2), min(by2, ey2)
+        if ix2 > ix1 and iy2 > iy1:
+            inter = (ix2 - ix1) * (iy2 - iy1)
+            e_area = max(1.0, (ex2 - ex1) * (ey2 - ey1))
+            if inter / min(b_area, e_area) > 0.3:
+                return True
+    return False
 
 
 class GeometricSyntheticDepthEstimator:
@@ -275,3 +300,21 @@ class MonocularDepthAdapter:
         if max_v - min_v > 1e-4:
             depth_arr = (depth_arr - min_v) / (max_v - min_v) * 9.9 + 0.1
         return depth_arr.astype(np.float32)
+
+
+def create_default_detector(prefer_yolo: bool = True) -> ObjectDetectorProtocol:
+    """Return YOLOv8 detector when optional extras are installed, else synthetic contour fallback."""
+    if prefer_yolo and importlib.util.find_spec("ultralytics") is not None:
+        return YoloV8DetectorAdapter()
+    return GeometricSyntheticDetector()
+
+
+def create_default_depth_estimator(prefer_monocular: bool = True) -> DepthEstimatorProtocol:
+    """Return monocular depth adapter when PyTorch/Transformers are installed, else synthetic fallback."""
+    if (
+        prefer_monocular
+        and importlib.util.find_spec("torch") is not None
+        and importlib.util.find_spec("transformers") is not None
+    ):
+        return MonocularDepthAdapter()
+    return GeometricSyntheticDepthEstimator()

@@ -34,6 +34,7 @@ from app.schemas.vision_ai import (
 )
 
 from engine.vision_ai.pipeline import VisionRegistrationPipeline
+from engine.vision_ai.protocols import create_default_depth_estimator, create_default_detector
 
 
 def setup_virtual_room() -> dict[str, Any]:
@@ -310,16 +311,150 @@ def print_benchmark_table(report: dict[str, Any], noise_pct: float) -> None:
     print("=" * 100)
 
 
-def run_real_photo_experiment(annotations_path: str) -> None:
-    """Run registration on real user annotations JSON."""
-    data = json.loads(Path(annotations_path).read_text(encoding="utf-8"))
-    print(f"Loaded {len(data.get('detections', []))} detections from {annotations_path}")
-    print("To execute with real photo models:")
-    print("  1. Run YOLOv8: YoloV8DetectorAdapter().detect(image_rgb)")
-    print(
-        "  2. Run Depth Anything V2: MonocularDepthAdapter().estimate_relative_depth(image_rgb, w, h)"
+def run_real_photo_experiment(annotations_path: str, json_out: str | None = None) -> dict[str, Any]:
+    """Run VisionRegistrationPipeline on real photo/annotation JSON and compare to tape truth."""
+    import cv2
+
+    raw_data = json.loads(Path(annotations_path).read_text(encoding="utf-8"))
+    entries = (
+        raw_data.get("entries")
+        if isinstance(raw_data, dict) and "entries" in raw_data
+        else [raw_data]
     )
-    print("  3. Pass 2D boxes + ArUco window marker corners into VisionRegistrationPipeline.")
+    pipeline = VisionRegistrationPipeline(
+        detector=create_default_detector(prefer_yolo=True),
+        depth_estimator=create_default_depth_estimator(prefer_monocular=True),
+    )
+
+    reports: list[dict[str, Any]] = []
+    for idx, data in enumerate(entries):
+        image_rgb: np.ndarray | None = None
+        if data.get("image_path"):
+            img_path = Path(data["image_path"])
+            if not img_path.is_absolute():
+                img_path = Path(annotations_path).resolve().parent / img_path
+            bgr = cv2.imread(str(img_path))
+            if bgr is None:
+                raise FileNotFoundError(f"Could not read image at {img_path}")
+            image_rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
+        elif data.get("image_base64"):
+            image_rgb = VisionRegistrationPipeline.decode_image_base64(data["image_base64"])
+
+        if image_rgb is None and not data.get("detections"):
+            print(
+                f"[Entry {idx}] No image or detections supplied in {annotations_path}. "
+                "Provide `image_path`, `image_base64`, or `detections`."
+            )
+            continue
+
+        room_floor = data.get("room_floor_vertices_m") or [
+            [0.0, 0.0],
+            [6.0, 0.0],
+            [6.0, 5.0],
+            [0.0, 5.0],
+        ]
+        room_height = float(data.get("room_height_m", 2.8))
+        t_enu_marker = data.get("T_ENU_marker") or [
+            -1.0,
+            0.0,
+            0.0,
+            3.0,
+            0.0,
+            0.0,
+            1.0,
+            5.0,
+            0.0,
+            1.0,
+            0.0,
+            1.6,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+        ]
+        request = VisionFurnitureEstimateRequest.model_validate(
+            {
+                "camera": data.get("camera", {}),
+                "marker_anchor": data.get("marker_anchor", {}),
+                "T_ENU_camera": data.get("T_ENU_camera"),
+                "depth_scale_alpha": data.get("depth_scale_alpha"),
+                "depth_shift_beta": data.get("depth_shift_beta"),
+                "detections": data.get("detections", []),
+                "apply_to_scene": False,
+                "auto_create_protected_regions": True,
+            }
+        )
+        pose_res, depth_calib, items = pipeline.run(
+            scene_id=str(data.get("scene_id", "real_experiment")),
+            room_id=str(data.get("room_id", "room_real")),
+            room_floor_vertices=[(float(p[0]), float(p[1])) for p in room_floor],
+            room_height_m=room_height,
+            T_ENU_marker=t_enu_marker,
+            request=request,
+            observation_id=f"obs_real_{idx}",
+            image_rgb=image_rgb,
+        )
+
+        entry_items: list[dict[str, Any]] = []
+        gt_list = data.get("ground_truth", [])
+        for item_idx, res in enumerate(items):
+            occ = res.occluder
+            row: dict[str, Any] = {
+                "name": occ.name,
+                "label": occ.type,
+                "est_center_m": list(occ.base_center_m),
+                "est_dimensions_m": list(occ.dimensions_m),
+                "calibrated_distance_m": round(res.calibrated_distance_m, 3),
+                "clamped": res.clamped_to_room,
+            }
+            gt = gt_list[item_idx] if item_idx < len(gt_list) else None
+            if gt:
+                if "center_m" in gt:
+                    c_err_cm = float(
+                        np.linalg.norm(
+                            np.array(occ.base_center_m) - np.array(gt["center_m"], dtype=float)
+                        )
+                        * 100.0
+                    )
+                    row["center_err_cm"] = round(c_err_cm, 2)
+                if "dimensions_m" in gt:
+                    d_err_cm = float(
+                        np.mean(
+                            np.abs(
+                                np.array(occ.dimensions_m)
+                                - np.array(gt["dimensions_m"], dtype=float)
+                            )
+                        )
+                        * 100.0
+                    )
+                    row["dim_err_cm"] = round(d_err_cm, 2)
+            entry_items.append(row)
+
+        entry_report = {
+            "entry_index": idx,
+            "camera_position_enu_m": list(pose_res.camera_position_enu_m),
+            "depth_scale_alpha": round(depth_calib.alpha, 4),
+            "depth_shift_beta": round(depth_calib.beta, 4),
+            "items": entry_items,
+        }
+        reports.append(entry_report)
+        print(
+            f"[Entry {idx}] camera_enu={entry_report['camera_position_enu_m']} "
+            f"alpha={entry_report['depth_scale_alpha']} items={len(entry_items)}"
+        )
+        for r in entry_items:
+            print(
+                f"  - {r['name']} ({r['label']}): dims={r['est_dimensions_m']} "
+                f"center={r['est_center_m']} dist={r['calibrated_distance_m']}m"
+            )
+
+    summary: dict[str, Any] = {"annotations_path": annotations_path, "entries": reports}
+    if json_out:
+        out_p = Path(json_out)
+        out_p.parent.mkdir(parents=True, exist_ok=True)
+        out_p.write_text(json.dumps(summary, indent=2), encoding="utf-8")
+        print(f"Real photo experiment report saved to {out_p}")
+    return summary
 
 
 def main() -> None:
@@ -337,7 +472,7 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.real_annotations_json:
-        run_real_photo_experiment(args.real_annotations_json)
+        run_real_photo_experiment(args.real_annotations_json, json_out=args.json_out)
         return
 
     report = run_synthetic_benchmark(noise_pct=args.noise_pct)

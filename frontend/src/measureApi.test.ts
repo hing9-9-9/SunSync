@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { BOARD, captureSelection, captureTargets, resumeCaptureMarker, cancelStoredCapture, boardAlignment, filmBoardAlignment, serverMessage, startCaptureMarker, checkCaptureMarker, endCaptureMarker, checkMeasurement, detectFrame, measureAndRegister, measurementProblem, measurementProblems, setupCamera } from "./measureApi.ts";
+import { BOARD, captureSelection, captureTargets, resumeCaptureMarker, cancelStoredCapture, boardAlignment, filmBoardAlignment, serverMessage, startCaptureMarker, checkCaptureMarker, endCaptureMarker, checkMeasurement, detectFrame, measureAndRegister, measurementPlanForType, measurementProblem, measurementProblems, setupCamera } from "./measureApi.ts";
 import { blankSpace } from "./model.ts";
 
 const space = (wall: "south" | "north" | "east" | "west") => ({
@@ -228,4 +228,19 @@ test("capture selection loads the window and module saved on another device", as
   const result = await captureSelection("scene");
   assert.deepEqual(result.selected_target,selected);
   assert.equal(result.windows[0].cols,3);
+});
+
+test("measurement plans map selected UI furniture types instead of hardcoding desk", () => {
+  assert.deepEqual(measurementPlanForType("bookcase"), {
+    furniture_kind: "bookshelf",
+    model_id: "standard_bookshelf",
+  });
+  assert.deepEqual(measurementPlanForType("chair"), {
+    furniture_kind: "chair",
+    model_id: "standard_chair",
+  });
+  assert.deepEqual(measurementPlanForType("desk"), {
+    furniture_kind: "desk",
+    model_id: "standard_desk",
+  });
 });

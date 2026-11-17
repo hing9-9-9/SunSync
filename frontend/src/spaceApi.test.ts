@@ -201,3 +201,76 @@ test("FR-05 virtual film schedule apply, state and logs call scene film endpoint
   assert.equal(logs.entries.length, 1);
   assert.equal(calls.length, 3);
 });
+
+test("FR-05 manual film commands and marker mode endpoints send expected payloads", async (t) => {
+  const { sendFilmCommands, toggleFilmMarkerMode } = await import("./spaceApi.ts");
+  const seen: { url: string; body: Record<string, unknown> }[] = [];
+  t.mock.method(globalThis, "fetch", async (url: string, init?: RequestInit) => {
+    seen.push({ url, body: JSON.parse(String(init?.body ?? "{}")) });
+    return new Response(
+      JSON.stringify({
+        scene_id: "scene-1",
+        window_id: "win-1",
+        film_type: "PDLC",
+        film_rows: 10,
+        film_cols: 10,
+        cells: [],
+        states: [],
+        marker_mode_active: url.includes("film-marker-mode"),
+        marker_code_id: 0,
+        active_plan_id: null,
+        evaluated_at: "2026-11-17T06:00:00Z",
+        updated_at: "2026-11-17T06:00:00Z",
+      }),
+      { status: 200 },
+    );
+  });
+
+  await sendFilmCommands("scene-1", [{ row: 1, col: 2, opacity: 1 }], "win-1");
+  await toggleFilmMarkerMode("scene-1", true, { windowId: "win-1", codeId: 7 });
+  assert.equal(seen[0].url, "/api/scenes/scene-1/film-commands");
+  assert.deepEqual(seen[0].body, {
+    window_id: "win-1",
+    commands: [{ row: 1, col: 2, opacity: 1 }],
+  });
+  assert.equal(seen[1].url, "/api/scenes/scene-1/film-marker-mode");
+  assert.deepEqual(seen[1].body, {
+    enabled: true,
+    window_id: "win-1",
+    code_id: 7,
+  });
+});
+
+test("handoff clients fall back to legacy /api/ui/handoffs on 404 and support claim codes", async (t) => {
+  const { readHandoff, connectHandoff, completeHandoff, claimHandoffCode } = await import("./spaceApi.ts");
+  const { blankSpace } = await import("./model.ts");
+  const calls: string[] = [];
+  t.mock.method(globalThis, "fetch", async (url: string) => {
+    calls.push(url);
+    if (url.startsWith("/api/ui/measurements/")) {
+      return new Response(JSON.stringify({ detail: "not found" }), { status: 404 });
+    }
+    if (url.endsWith("/complete")) {
+      return new Response(JSON.stringify(blankSpace()), { status: 200 });
+    }
+    return new Response(
+      JSON.stringify({ token: "tok-1", space_id: "s-1", status: "connected" }),
+      { status: 200 },
+    );
+  });
+
+  const read = await readHandoff("tok-1");
+  assert.equal(read.token, "tok-1");
+  await connectHandoff("tok-1");
+  await completeHandoff("tok-1", blankSpace());
+  await claimHandoffCode(" abcd1234 ");
+  assert.deepEqual(calls, [
+    "/api/ui/measurements/tok-1",
+    "/api/ui/handoffs/tok-1",
+    "/api/ui/measurements/tok-1/connect",
+    "/api/ui/handoffs/tok-1/connect",
+    "/api/ui/measurements/tok-1/complete",
+    "/api/ui/handoffs/tok-1/complete",
+    "/api/ui/handoffs/claim",
+  ]);
+});
