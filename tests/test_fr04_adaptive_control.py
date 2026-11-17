@@ -26,6 +26,7 @@ from engine.fr04 import (
     AdaptiveWeights,
     CellObservation,
     OpticalProfileData,
+    OptimizedCellStep,
     UncertaintyQuantiles,
     apply_cell_edge_margin,
     apply_fr04_stabilization,
@@ -227,7 +228,7 @@ def test_fr04_stabilization_gap_filling_and_holding() -> None:
     start = datetime(2026, 10, 14, 8, 0, 0, tzinfo=UTC)
 
     # Test Gap Filling: Shaded -> Transparent (1 step = 300s) -> Shaded
-    # Gap is <= min_gap_seconds (600s), so it must be filled!
+    # The gap (300s) is shorter than min_gap_seconds (600s), so it must be filled!
     obs_seq = []
     for step in range(5):
         t = start + timedelta(seconds=300 * step)
@@ -289,6 +290,59 @@ def test_fr04_stabilization_immediate_darkening() -> None:
         dp_steps, interval_seconds=300, weights=weights, optical_profile=profile
     )
     assert stabilized[1].opacity == 1.0
+
+
+def _stabilize(opacities: list[float], interval: int = 300, gap: int = 600, hold: int = 0):
+    """Run FR-04.1/04.2 on a ready-made opacity series (no DP in between)."""
+    start = datetime(2026, 10, 14, 8, 0, 0, tzinfo=UTC)
+    steps = tuple(
+        OptimizedCellStep(
+            timestamp=start + timedelta(seconds=interval * i),
+            opacity=value,
+            transmittance=0.5,
+            state="opaque" if value else "transparent",
+            reasons=(("r1", "B"),) if value else (),
+        )
+        for i, value in enumerate(opacities)
+    )
+    weights = AdaptiveWeights(min_gap_seconds=gap, brightening_hold_seconds=hold)
+    return apply_fr04_stabilization(steps, interval, weights, OpticalProfileData())
+
+
+@pytest.mark.parametrize(
+    ("series", "interval", "gap", "expected"),
+    [
+        ([1, 0, 1], 300, 600, [1, 1, 1]),  # 300 s gap < 600 s: filled
+        ([1, 0, 0, 1], 300, 600, [1, 0, 0, 1]),  # 600 s gap = the limit: kept
+        ([1, 0, 0, 1], 300, 700, [1, 1, 1, 1]),  # 600 s < 700 s: filled
+        ([1, 0, 0, 0, 1], 300, 700, [1, 0, 0, 0, 1]),  # 900 s > 700 s (not a multiple): kept
+        ([1, 0, 1], 300, 0, [1, 0, 1]),  # a limit of 0 fills nothing
+        ([1, 0, 1], 1800, 600, [1, 0, 1]),  # one 1800 s step is longer than 600 s
+        ([1, 0, 1], 1800, 3600, [1, 1, 1]),  # ... but shorter than 3600 s
+    ],
+)
+def test_fr04_gap_is_filled_only_when_shorter_than_the_limit(series, interval, gap, expected):
+    result = _stabilize(series, interval=interval, gap=gap)
+    assert [round(step.opacity) for step in result] == expected
+
+
+@pytest.mark.parametrize("series", [[0, 1, 1], [1, 1, 0], [0, 1, 0]])
+def test_fr04_gaps_at_the_edges_of_the_day_are_not_filled(series):
+    # Only a gap between two shaded periods is filled; the first and last gap are not.
+    result = _stabilize(series, gap=600)
+    assert [round(step.opacity) for step in result] == series
+
+
+def test_fr04_filled_gap_takes_the_reasons_of_the_step_before() -> None:
+    result = _stabilize([1, 0, 1], gap=600)
+    assert result[1].state == "opaque"
+    assert result[1].reasons == (("r1", "B"),)
+
+
+def test_fr04_minimum_holding_time_applies_after_a_darkening_in_the_middle_of_the_day() -> None:
+    # Darkened at step 2; the film may not clear before the 600 s (two steps) have passed.
+    result = _stabilize([0, 0, 1, 0, 0, 0, 0], gap=0, hold=600)
+    assert [round(step.opacity) for step in result] == [0, 0, 1, 1, 0, 0, 0]
 
 
 def test_fr04_cell_edge_margin() -> None:
