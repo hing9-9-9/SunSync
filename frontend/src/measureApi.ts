@@ -259,18 +259,29 @@ export function boardAlignment(space: Space) {
 
 export type FilmMarker = { code_id: number; dictionary: string; side_length_m: number; plane: string; T_ENU_marker: number[] };
 
-/** FR-05 marker frame is centre/x-right/y-up; measurement board is top-left/x-right/y-down. */
+export function measurementBoard(session: CaptureMarker, testMarkerSideM?: number): Board {
+  if (testMarkerSideM === undefined) return session.board;
+  if (!Number.isFinite(testMarkerSideM) || testMarkerSideM <= 0 || testMarkerSideM > session.board.marker_side_m) {
+    throw new MeasureError("테스트 마커의 한 변 길이는 0보다 크고 60cm 이하여야 해요.");
+  }
+  return testMarkerSideM === session.board.marker_side_m
+    ? session.board
+    : { ...session.board, marker_side_m: testMarkerSideM };
+}
+
+/** The board starts at the displayed marker's top-left; its centre stays anchored to the film. */
 export function filmBoardAlignment(marker: FilmMarker, board: Board = BOARD) {
   if (marker.dictionary !== board.dictionary || marker.code_id !== board.ids_by_row[0][0] ||
       Math.abs(marker.side_length_m - BOARD.marker_side_m) > 1e-6 || marker.T_ENU_marker.length !== 16) {
     throw new MeasureError("필름 마커 규격이 달라요. 이번 촬영에서 지정된 60cm 단일 마커를 표시하고 측정 기준을 다시 확인해 주세요.");
   }
+  const side = board.marker_side_m;
   const t = marker.T_ENU_marker;
   const T = [...t];
   for (let r = 0; r < 3; r++) {
     T[r * 4 + 1] = -t[r * 4 + 1];
     T[r * 4 + 2] = -t[r * 4 + 2];
-    T[r * 4 + 3] = t[r * 4 + 3] - t[r * 4] * BOARD_W / 2 + t[r * 4 + 1] * BOARD_H / 2;
+    T[r * 4 + 3] = t[r * 4 + 3] - t[r * 4] * side / 2 + t[r * 4 + 1] * side / 2;
   }
   return { alignment: { T_enu_board: T, north_confirmed: true, floor_confirmed: true },
     floor: { board_origin_height_m: T[11], up_board: [T[8], T[9], T[10]] } };
@@ -283,9 +294,9 @@ export function measurementPlanForType(type?: FurnitureType | string | null): { 
   return { furniture_kind: kind, model_id: `standard_${kind}` };
 }
 
-type MeasureItem = { session: CaptureMarker; type?: FurnitureType; shape: string; vertices: { x: number; y: number }[]; points: MeasuredPoint[] };
+type MeasureItem = { session: CaptureMarker; testMarkerSideM?: number; type?: FurnitureType; shape: string; vertices: { x: number; y: number }[]; points: MeasuredPoint[] };
 
-export type CheckedMeasurement = { sceneId: string; roomId: string; sessionId: string; text: string };
+export type CheckedMeasurement = { sceneId: string; roomId: string; sessionId: string; markerSideM: number; text: string };
 
 function readMeasurementScene(sceneId: string) {
   return get<{ revision: number; room: { room_id: string }; registration_calibration: { calibration_id: string } | null } & Record<string, unknown>>(
@@ -293,8 +304,7 @@ function readMeasurementScene(sceneId: string) {
   );
 }
 
-function measurementAlignment(scene: Awaited<ReturnType<typeof readMeasurementScene>>, session: CaptureMarker) {
-  const board = session.board;
+function measurementAlignment(scene: Awaited<ReturnType<typeof readMeasurementScene>>, session: CaptureMarker, board: Board) {
   const filmMarkers = ((scene.markers ?? []) as FilmMarker[]).filter(m => m.plane === "window");
   const filmMarker = filmMarkers.find(m => m.code_id === board.ids_by_row[0][0]);
   if (!filmMarker || JSON.stringify(filmMarker.T_ENU_marker) !== JSON.stringify(session.marker.T_ENU_marker)) {
@@ -306,7 +316,7 @@ function measurementAlignment(scene: Awaited<ReturnType<typeof readMeasurementSc
 async function measureRaw(sceneId: string, camera: Camera, item: MeasureItem) {
   if (item.session.scene_id !== sceneId) throw new MeasureError("촬영한 공간과 측정할 공간이 달라요.");
   const session = await checkCaptureMarker(item.session);
-  const board = session.board;
+  const board = measurementBoard(session, item.testMarkerSideM);
   for (const point of item.points) for (const frame of point.frames) {
     if (frame.marker_session_id !== session.session_id || frame.detections.length !== 1 ||
         frame.detections[0].marker_id !== board.ids_by_row[0][0]) {
@@ -314,7 +324,7 @@ async function measureRaw(sceneId: string, camera: Camera, item: MeasureItem) {
     }
   }
   const scene = await readMeasurementScene(sceneId);
-  const pose = measurementAlignment(scene, session);
+  const pose = measurementAlignment(scene, session, board);
   const kind = SERVER_SHAPES[item.shape] ?? "polygon";
   const plan = {
     space_id: scene.room.room_id,
@@ -333,7 +343,7 @@ async function measureRaw(sceneId: string, camera: Camera, item: MeasureItem) {
     }))),
   }));
   const checked: CheckedMeasurement = {
-    sceneId, roomId: scene.room.room_id, sessionId: session.session_id, text: measurement,
+    sceneId, roomId: scene.room.room_id, sessionId: session.session_id, markerSideM: board.marker_side_m, text: measurement,
   };
   return { checked, session, scene };
 }
@@ -361,10 +371,12 @@ export async function measureAndRegister(space: Space, camera: Camera, item: Mea
       }
     : await measureRaw(sceneId, camera, item);
   const { checked, session, scene } = result;
-  if (checked.sceneId !== sceneId || checked.sessionId !== session.session_id || checked.roomId !== scene.room.room_id) {
+  const board = measurementBoard(session, item.testMarkerSideM);
+  if (checked.sceneId !== sceneId || checked.sessionId !== session.session_id || checked.roomId !== scene.room.room_id ||
+      checked.markerSideM !== board.marker_side_m) {
     throw new MeasureError("촬영 기준이 바뀌었어요. 다시 촬영해 주세요.");
   }
-  if (item.checkedMeasurement) measurementAlignment(scene, session);
+  if (item.checkedMeasurement) measurementAlignment(scene, session, board);
   const measurement = checked.text;
   const problem = measurementProblem(measurement);
   if (problem) throw new MeasureError(problem);

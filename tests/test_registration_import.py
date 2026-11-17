@@ -24,8 +24,14 @@ example = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(example)
 
 
-def measured_fragment(furniture_id="desk_01", mode="surface_is_top", floating=False, single=False):
-    request = example.fixture(single=single).model_dump()
+def measured_fragment(
+    furniture_id="desk_01",
+    mode="surface_is_top",
+    floating=False,
+    single=False,
+    single_marker_side_m=0.6,
+):
+    request = example.fixture(single=single, single_marker_side_m=single_marker_side_m).model_dump()
     request["plan"].update(space_id="room_001", furniture_id=furniture_id, height_mode=mode)
     request["alignment"]["T_enu_board"][3] = 2.0
     request["alignment"]["T_enu_board"][7] = 3.0
@@ -67,8 +73,9 @@ def submit(client, fragment, revision=1):
     )
 
 
-def test_single_film_marker_measurement_registration_round_trip(client):
-    fragment = measured_fragment(single=True)
+@pytest.mark.parametrize("side_m", [0.6, 0.15])
+def test_single_marker_measurement_registration_round_trip(client, side_m):
+    fragment = measured_fragment(single=True, single_marker_side_m=side_m)
     before = client.get("/api/scenes/scene_manual_room").json()
     # A change of board must never silently reuse the old calibration.
     assert submit(client, fragment).status_code == 422
@@ -80,7 +87,7 @@ def test_single_film_marker_measurement_registration_round_trip(client):
     assert response.status_code == 200, response.text
     result = client.get("/api/scenes/scene_manual_room").json()
     assert result["markers"][0]["code_id"] == 0
-    assert result["markers"][0]["side_length_m"] == 0.6
+    assert result["markers"][0]["side_length_m"] == side_m
     assert result["occluders"][0]["dimensions_m"] == pytest.approx([0.6, 0.45, 0.75])
 
 

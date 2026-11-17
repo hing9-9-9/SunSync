@@ -1,6 +1,6 @@
 import BurstCamera from "./BurstCamera";
 import type { CapturePhase } from "./BurstCamera";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { analyseImage, photoIssue } from "./captureCheck";
 import { pointFailure } from "./captureGuide";
 import type { PhotoIssue } from "./captureCheck";
@@ -9,14 +9,14 @@ import type { Shape, CapturePoint } from "./capturePlan";
 import { furnitureTypes } from "./model";
 import type { CapturedFurniture, FurnitureType } from "./model";
 import { browserCaptureEnabled } from "./captureEnvironment";
-import { checkMeasurement, selectFrames, detectFrame, captureSelection, resumeCaptureMarker, cancelStoredCapture, startCaptureMarker, endCaptureMarker } from "./measureApi";
+import { measurementBoard, checkMeasurement, selectFrames, detectFrame, captureSelection, resumeCaptureMarker, cancelStoredCapture, startCaptureMarker, endCaptureMarker } from "./measureApi";
 import FilmModulePicker from "./FilmModulePicker";
 import type { CheckedMeasurement, Camera, Frame, CaptureMarker, FilmTargetWindow } from "./measureApi";
 
 type Photo = { file: File; url: string; issue: PhotoIssue | null; metrics: { brightness: number; sharpness: number }; frame?: Frame };
 
 // MAR3.2: stand at each of the four corners of one piece of furniture and photograph the window marker.
-type SpatialCaptureProps = { sceneId?: string; count: number; onFinish: (items: CapturedFurniture[]) => void; onMarkerChange?: (session: CaptureMarker | null) => void };
+type SpatialCaptureProps = { sceneId?: string; markerSizeOverride?: { sessionId: string; sideM: number }; count: number; onFinish: (items: CapturedFurniture[]) => void; onMarkerChange?: (session: CaptureMarker | null) => void };
 
 export default function SpatialCapture(props: SpatialCaptureProps) {
   if (!browserCaptureEnabled) return <section role="status">
@@ -95,16 +95,21 @@ function SessionSpatialCapture(props: SpatialCaptureProps) {
       <button type="button" className="text-button" onClick={()=>{if(!props.sceneId)return;setBusy(true);void cancelStoredCapture(props.sceneId).then(()=>setRetry(n=>n+1)).catch(e=>{setError(String(e));setBusy(false);});}}>이전 촬영 끝내기</button>
     </section>;
   }
+  const testMarkerSideM = props.markerSizeOverride?.sessionId === session.session_id
+    ? props.markerSizeOverride.sideM : undefined;
   return <section className="capture-session">
     {error && <p className="error" role="alert">{error}</p>}
-    <TestSpatialCapture key={session.session_id} {...props} session={session} />
+    <TestSpatialCapture key={`${session.session_id}:${testMarkerSideM ?? ""}`} {...props} session={session} testMarkerSideM={testMarkerSideM} />
     <div className="capture-end">
       <button type="button" className="secondary" onClick={() => void cancel()}>촬영 취소</button>
     </div>
   </section>;
 }
 
-function TestSpatialCapture({ count, onFinish, session }: { count: number; onFinish: (items: CapturedFurniture[]) => void; session: CaptureMarker }) {
+function TestSpatialCapture({ count, onFinish, session, testMarkerSideM }: {
+  count: number; onFinish: (items: CapturedFurniture[]) => void; session: CaptureMarker; testMarkerSideM?: number;
+}) {
+  const board = useMemo(() => measurementBoard(session, testMarkerSideM), [session, testMarkerSideM]);
   const [items, setItems] = useState<CapturedFurniture[]>([]);
   const [captureCamera,setCaptureCamera]=useState<Camera|null>(null);
   const [actionTarget,setActionTarget]=useState<HTMLDivElement|null>(null);
@@ -150,12 +155,12 @@ function TestSpatialCapture({ count, onFinish, session }: { count: number; onFin
         if(ticket!==version.current)return;
         const metrics=await analyseImage(file);
         if(photoIssue({...metrics,marker:"visible"}))continue;
-        const frame=await detectFrame(file,session.board,session,new Date(file.lastModified).toISOString());
+        const frame=await detectFrame(file,board,session,new Date(file.lastModified).toISOString());
         if(frame.width!==profile.width||frame.height!==profile.height)throw new Error("카메라 준비 때와 영상 크기가 달라요. 다시 준비해 주세요.");
         candidates.push({file,url:"",frame,metrics,issue:frame.detections.length===1?null:"missing"});
       }
       if(!candidates.length)throw new Error("사용할 수 있는 사진이 없어요. 밝기와 흔들림을 확인해 주세요.");
-      const result=await selectFrames(candidates.map(p=>p.frame!),profile,session.board,`P${target+1}`);
+      const result=await selectFrames(candidates.map(p=>p.frame!),profile,board,`P${target+1}`);
       if(ticket!==version.current)return;
       if(result.status!=="ok"){const why=pointFailure(`P${target+1}`,result);setProblems(all=>({...all,[target]:why}));throw new Error(why);}
       setProblems(all=>{const next={...all};delete next[target];return next;});
@@ -174,7 +179,7 @@ function TestSpatialCapture({ count, onFinish, session }: { count: number; onFin
     if (!complete || !captureCamera || verifying || verifyFailed || checkedKey === photoKey) return;
     const ticket = version.current, key = photoKey;
     setVerifying(true); setError(""); setSurfaceProblem("");
-    checkMeasurement(session.scene_id, captureCamera, { session, type: furnitureType, shape, vertices: points, points: points.map((_,i)=>({ id:`P${i+1}`, frames:rawFrames[i] ?? (photos[i]??[]).map(p=>p!.frame!) })) })
+    checkMeasurement(session.scene_id, captureCamera, { session, testMarkerSideM, type: furnitureType, shape, vertices: points, points: points.map((_,i)=>({ id:`P${i+1}`, frames:rawFrames[i] ?? (photos[i]??[]).map(p=>p!.frame!) })) })
       .then(({ problems: found, checked }) => {
         if (ticket !== version.current) return;
         const retry = found.find(f => f.retryable || (f.point && !points.some((_, i) => f.point === `P${i+1}`)));
@@ -203,7 +208,7 @@ function TestSpatialCapture({ count, onFinish, session }: { count: number; onFin
       .finally(() => { if (ticket === version.current) setVerifying(false); });
   }, [complete, captureCamera, verifying, verifyFailed, checkedKey, photoKey]);
   function nextFurniture() {
-    const captured: CapturedFurniture[] = [...items, { name: name.trim() || `가구 ${count + items.length + 1}`, type: furnitureType, capture: {session, camera:captureCamera!, checkedMeasurement, shape, points: points.map((p,i)=>({id:`P${i+1}`,position:p,photos:photos[i].map(p=>p!.file),frames:rawFrames[i]??(photos[i].every(p=>p?.frame)?photos[i].map(p=>p!.frame!):undefined)}))} }];
+    const captured: CapturedFurniture[] = [...items, { name: name.trim() || `가구 ${count + items.length + 1}`, type: furnitureType, capture: {session, testMarkerSideM, camera:captureCamera!, checkedMeasurement, shape, points: points.map((p,i)=>({id:`P${i+1}`,position:p,photos:photos[i].map(p=>p!.file),frames:rawFrames[i]??(photos[i].every(p=>p?.frame)?photos[i].map(p=>p!.frame!):undefined)}))} }];
     setItems(captured);
     setName(`가구 ${count + captured.length + 1}`);
     reset();
@@ -260,7 +265,7 @@ function TestSpatialCapture({ count, onFinish, session }: { count: number; onFin
     </ol>
     </>}
     <figure className="capture-viewfinder" style={{display: confirmed && !(complete && !verifying) ? undefined : "none"}}>
-      <BurstCamera session={session} active={confirmed&&!complete} pointLabel={`P${corner+1}`} actionTarget={actionTarget}
+      <BurstCamera session={session} board={board} active={confirmed&&!complete} pointLabel={`P${corner+1}`} actionTarget={actionTarget}
         disabled={checking} getTicket={()=>version.current} phase={capturePhase} onPhaseChange={setCapturePhase} onReady={setCaptureCamera} onBatch={takeBatch}/>
       {(capturePhase !== "idle" || verifying || complete || !captureCamera) && <figcaption role="status">{capturePhase === "analyzing" || verifying ? "촬영 완료! 휴대폰을 내려도 돼요. 사진 분석 중…" : capturePhase === "capturing" ? "촬영 중… 휴대폰 위치를 유지해 주세요." : complete ? "모든 지점 촬영 완료" : "카메라 준비 · 마커가 보이도록 12장 촬영해 주세요"}</figcaption>}
     </figure>
