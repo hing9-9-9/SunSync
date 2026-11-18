@@ -5,7 +5,10 @@ from typing import Annotated, Any, Literal, Self
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.schemas.scene import Occluder, ProtectedRegion
-from engine.vision_ai.protocols import FurnitureLabel
+from engine.vision_ai.protocols import DetectionSource, FurnitureLabel
+
+EstimationQuality = Literal["high", "medium", "low_needs_aruco"]
+CaptureShapeHint = Literal["rectangle", "circle", "ellipse", "l-shape"]
 
 _UI_LABEL_ALIASES: dict[str, FurnitureLabel] = {
     "bookcase": "bookshelf",
@@ -104,6 +107,15 @@ class EstimatedFurnitureResult(BaseModel):
     confidence: float
     calibrated_distance_m: float
     clamped_to_room: bool
+    detection_source: DetectionSource = "client_hint"
+    estimation_quality: EstimationQuality = "medium"
+    needs_aruco_refinement: bool = False
+    uncertainty_reason_ko: str = ""
+    aruco_capture_guidance_ko: str = ""
+    recommended_capture_shape: CaptureShapeHint = "rectangle"
+    estimated_corners_enu_m: Annotated[list[tuple[float, float]], Field(strict=False)] = Field(
+        default_factory=list
+    )
 
 
 class VisionFurnitureEstimateResponse(BaseModel):

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import math
+import re
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal
@@ -15,7 +16,9 @@ from app.services.film import clamp_cuboid_to_room
 from shapely.geometry import Polygon
 
 from engine.vision_ai.protocols import (
+    CompositeFurnitureDetector,
     DepthEstimatorProtocol,
+    DetectionSource,
     FurnitureLabel,
     GeometricSyntheticDetector,
     ObjectDetectorProtocol,
@@ -28,6 +31,7 @@ if TYPE_CHECKING:
         CameraIntrinsicsInput,
         Detection2DInput,
         EstimatedFurnitureResult,
+        EstimationQuality,
         MarkerAnchorInput,
         VisionFurnitureEstimateRequest,
     )
@@ -35,6 +39,13 @@ if TYPE_CHECKING:
 # Standard physical bounds for monocular metric depth (metres)
 MIN_METRIC_DEPTH_M = 0.3
 MAX_METRIC_DEPTH_M = 25.0
+
+KOREAN_FURNITURE_LABELS: dict[FurnitureLabel, str] = {
+    "bookshelf": "책장",
+    "desk": "책상",
+    "chair": "의자",
+    "other": "가구",
+}
 
 # Class-specific geometric priors (width, depth, height) in metres
 CLASS_GEOMETRIC_PRIORS: dict[FurnitureLabel, dict[str, float]] = {
@@ -79,9 +90,9 @@ class VisionRegistrationPipeline:
         detector: ObjectDetectorProtocol | None = None,
         depth_estimator: DepthEstimatorProtocol | None = None,
     ) -> None:
-        self.detector = detector or create_default_detector(prefer_yolo=False)
+        self.detector = detector or create_default_detector(prefer_yolo=True)
         self.depth_estimator = depth_estimator or create_default_depth_estimator(
-            prefer_monocular=False
+            prefer_monocular=True
         )
 
     @staticmethod
@@ -272,7 +283,7 @@ class VisionRegistrationPipeline:
             beta = float(np.mean(met - manual_alpha * rel))
             return DepthCalibrationResult(alpha=float(manual_alpha), beta=beta)
 
-        if len(rel) >= 2 and (float(np.ptp(rel)) > 1e-4):
+        if len(rel) >= 2 and float(np.ptp(rel)) > 0.15 and float(np.ptp(met)) > 0.25:
             try:
                 coeffs = np.polyfit(rel, met, deg=1)
                 alpha, beta = float(coeffs[0]), float(coeffs[1])
@@ -291,6 +302,61 @@ class VisionRegistrationPipeline:
 
         return DepthCalibrationResult(alpha=alpha, beta=beta)
 
+    @staticmethod
+    def _assess_estimation_quality(
+        *,
+        label: FurnitureLabel,
+        display_name: str,
+        confidence: float,
+        z_metric: float,
+        was_clamped: bool,
+        detection_source: DetectionSource,
+        clamped_base: tuple[float, float, float],
+        clamped_dims: tuple[float, float, float],
+    ) -> tuple[EstimationQuality, bool, str, str]:
+        """Score single-photo 3D accuracy and build actionable Korean ArUco corner guidance."""
+        reasons: list[str] = []
+        if detection_source == "synthetic_contour":
+            reasons.append("윤곽선 보조 검출로 추정되어 실제 가구 형태·치수 오차가 클 수 있습니다")
+        if confidence < 0.65:
+            reasons.append(f"객체 검출 신뢰도({confidence:.0%})가 낮습니다")
+        if z_metric > 4.0:
+            reasons.append(
+                f"창문 마커로부터 거리({z_metric:.1f}m)가 멀어 단안 깊이 오차가 커집니다"
+            )
+        if was_clamped:
+            reasons.append("방 경계에 걸쳐 위치·크기가 자동 보정되었습니다")
+
+        if reasons:
+            quality: EstimationQuality = (
+                "low_needs_aruco"
+                if (confidence < 0.65 or z_metric > 4.0 or detection_source == "synthetic_contour")
+                else "medium"
+            )
+            needs_refinement = True
+        elif confidence >= 0.80 and z_metric <= 3.0 and not was_clamped:
+            quality = "high"
+            needs_refinement = False
+            reasons.append(
+                "단일 사진 기준 추정 신뢰도가 양호하지만 정밀 배치가 필요하면 ArUco 촬영을 권장합니다"
+            )
+        else:
+            quality = "medium"
+            needs_refinement = True
+            reasons.append("단일 사진 단안 깊이 추정으로 실제 두께·깊이 오차가 있을 수 있습니다")
+
+        label_ko = (
+            display_name
+            if re.search(r"[가-힣]", display_name)
+            else KOREAN_FURNITURE_LABELS.get(label, "가구")
+        )
+        guidance = (
+            f"창문에서 약 {z_metric:.1f}m 거리(동쪽 {clamped_base[0]:.1f}m, 북쪽 {clamped_base[1]:.1f}m)로 "
+            f"추정된 '{label_ko}'({clamped_dims[0]:.2f}×{clamped_dims[1]:.2f}×{clamped_dims[2]:.2f}m) 위치로 이동해 주세요. "
+            "해당 가구 네 모서리(P1~P4)에서 창문 ArUco 마커를 촬영하면 정확한 위치와 치수로 등록됩니다."
+        )
+        return quality, needs_refinement, "; ".join(reasons) + ".", guidance
+
     # -------------------------------------------------------------------------
     # Step 3: 3D Cuboid Back-Projection & Floor-Standing Refinement
     # -------------------------------------------------------------------------
@@ -308,6 +374,7 @@ class VisionRegistrationPipeline:
         policy_id: str = "policy_default",
         auto_create_protected_regions: bool = True,
         depth_map_metric: np.ndarray | None = None,
+        detection_source: DetectionSource = "client_hint",
     ) -> EstimatedFurnitureResult:
         """Unproject 2D box + calibrated depth into floor-standing 3D cuboid and generate ProtectedRegion."""
         from app.schemas.vision_ai import EstimatedFurnitureResult
@@ -418,12 +485,20 @@ class VisionRegistrationPipeline:
             quality=Quality(observation_ids=[observation_id], confirmed=False),
         )
 
+        cx_c, cy_c, cz_c = clamped_base
+        w_c, d_c, h_c = clamped_dims
+        rad_c = math.radians(yaw_deg)
+        cu, su = math.cos(rad_c), math.sin(rad_c)
+        estimated_corners = [
+            (
+                round(cx_c + sx * 0.5 * w_c * cu - sy * 0.5 * d_c * su, 3),
+                round(cy_c + sx * 0.5 * w_c * su + sy * 0.5 * d_c * cu, 3),
+            )
+            for sx, sy in ((-1.0, -1.0), (1.0, -1.0), (1.0, 1.0), (-1.0, 1.0))
+        ]
+
         protected_region: ProtectedRegion | None = None
         if auto_create_protected_regions:
-            cx_c, cy_c, cz_c = clamped_base
-            w_c, d_c, h_c = clamped_dims
-            rad_c = math.radians(yaw_deg)
-            cu, su = math.cos(rad_c), math.sin(rad_c)
             u_c_vec = (cu, su, 0.0)
             v_c_vec = (-su, cu, 0.0)
 
@@ -483,12 +558,32 @@ class VisionRegistrationPipeline:
                     quality=Quality(observation_ids=[observation_id], confirmed=False),
                 )
 
+        quality, needs_refinement, reason_ko, guidance_ko = (
+            VisionRegistrationPipeline._assess_estimation_quality(
+                label=detection.label,
+                display_name=display_name,
+                confidence=detection.confidence,
+                z_metric=z_metric,
+                was_clamped=was_clamped,
+                detection_source=detection_source,
+                clamped_base=clamped_base,
+                clamped_dims=clamped_dims,
+            )
+        )
+
         return EstimatedFurnitureResult(
             occluder=occluder,
             protected_region=protected_region,
             confidence=detection.confidence,
             calibrated_distance_m=z_metric,
             clamped_to_room=was_clamped,
+            detection_source=detection_source,
+            estimation_quality=quality,
+            needs_aruco_refinement=needs_refinement,
+            uncertainty_reason_ko=reason_ko,
+            aruco_capture_guidance_ko=guidance_ko,
+            recommended_capture_shape="rectangle",
+            estimated_corners_enu_m=estimated_corners,
         )
 
     # -------------------------------------------------------------------------
@@ -548,6 +643,7 @@ class VisionRegistrationPipeline:
 
         active_detections = list(request.detections)
         rel_depth_map: np.ndarray | None = None
+        detection_source: DetectionSource = "client_hint"
         if len(active_detections) == 0 and image_rgb is not None:
             exclude_boxes: list[tuple[float, float, float, float]] = []
             if marker_corners is not None:
@@ -555,11 +651,18 @@ class VisionRegistrationPipeline:
                 ys = [pt[1] for pt in marker_corners]
                 exclude_boxes.append((min(xs), min(ys), max(xs), max(ys)))
 
-            if isinstance(self.detector, GeometricSyntheticDetector):
+            if isinstance(self.detector, CompositeFurnitureDetector):
                 raw_detected = self.detector.detect(
                     image_rgb,
                     exclude_boxes=exclude_boxes or None,
                 )
+                detection_source = self.detector.last_source
+            elif isinstance(self.detector, GeometricSyntheticDetector):
+                raw_detected = self.detector.detect(
+                    image_rgb,
+                    exclude_boxes=exclude_boxes or None,
+                )
+                detection_source = "synthetic_contour"
             else:
                 raw_detected = self.detector.detect(image_rgb)
                 if exclude_boxes:
@@ -568,6 +671,7 @@ class VisionRegistrationPipeline:
                     raw_detected = [
                         d for d in raw_detected if not _overlaps_any_box(d.box_xyxy, exclude_boxes)
                     ]
+                detection_source = "yolov8"
 
             if len(raw_detected) == 0:
                 raise ValueError("No furniture objects detected in the provided image.")
@@ -648,6 +752,7 @@ class VisionRegistrationPipeline:
                 policy_id=policy_id,
                 auto_create_protected_regions=request.auto_create_protected_regions,
                 depth_map_metric=depth_map,
+                detection_source=detection_source,
             )
             estimated_items.append(res)
 

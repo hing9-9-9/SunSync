@@ -134,6 +134,7 @@ function App() {
     renameZone,
     zoneTabs,
     finishCapture,
+    completeVisionRegistration,
     addFurniture,
     addManualFurniture,
     confirmReview,
@@ -672,6 +673,7 @@ function App() {
                             : 0
                         }
                         onFinish={finishCapture}
+                        onVisionRegistered={completeVisionRegistration}
                       />
                     ) : (
                       <Card>

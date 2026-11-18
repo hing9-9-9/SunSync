@@ -6,17 +6,17 @@ import { pointFailure } from "./captureGuide";
 import type { PhotoIssue } from "./captureCheck";
 import { shapes, validPolygon, nextCapturePoint, photosPerPoint } from "./capturePlan";
 import type { Shape, CapturePoint } from "./capturePlan";
-import { furnitureTypes } from "./model";
+import { fromSceneFurnitureType, furnitureTypes } from "./model";
 import type { CapturedFurniture, FurnitureType } from "./model";
 import { browserCaptureEnabled } from "./captureEnvironment";
-import { measurementBoard, checkMeasurement, selectFrames, detectFrame, captureSelection, resumeCaptureMarker, cancelStoredCapture, startCaptureMarker, endCaptureMarker } from "./measureApi";
+import { measurementBoard, checkMeasurement, selectFrames, detectFrame, captureSelection, resumeCaptureMarker, cancelStoredCapture, startCaptureMarker, endCaptureMarker, prepare, savedCamera, estimateVisionFurniture } from "./measureApi";
 import FilmModulePicker from "./FilmModulePicker";
-import type { CheckedMeasurement, Camera, Frame, CaptureMarker, FilmTargetWindow } from "./measureApi";
+import type { CheckedMeasurement, Camera, Frame, CaptureMarker, FilmTargetWindow, VisionEstimatedItem } from "./measureApi";
 
 type Photo = { file: File; url: string; issue: PhotoIssue | null; metrics: { brightness: number; sharpness: number }; frame?: Frame };
 
 // MAR3.2: stand at each of the four corners of one piece of furniture and photograph the window marker.
-type SpatialCaptureProps = { sceneId?: string; markerSizeOverride?: { sessionId: string; sideM: number }; count: number; onFinish: (items: CapturedFurniture[]) => void; onMarkerChange?: (session: CaptureMarker | null) => void };
+type SpatialCaptureProps = { sceneId?: string; markerSizeOverride?: { sessionId: string; sideM: number }; count: number; onFinish: (items: CapturedFurniture[]) => void; onMarkerChange?: (session: CaptureMarker | null) => void; onVisionRegistered?: (addedCount: number) => Promise<void> | void };
 
 export default function SpatialCapture(props: SpatialCaptureProps) {
   if (!browserCaptureEnabled) return <section role="status">
@@ -106,8 +106,8 @@ function SessionSpatialCapture(props: SpatialCaptureProps) {
   </section>;
 }
 
-function TestSpatialCapture({ count, onFinish, session, testMarkerSideM }: {
-  count: number; onFinish: (items: CapturedFurniture[]) => void; session: CaptureMarker; testMarkerSideM?: number;
+function TestSpatialCapture({ count, onFinish, session, testMarkerSideM, onVisionRegistered }: {
+  count: number; onFinish: (items: CapturedFurniture[]) => void; session: CaptureMarker; testMarkerSideM?: number; onVisionRegistered?: (addedCount: number) => Promise<void> | void;
 }) {
   const board = useMemo(() => measurementBoard(session, testMarkerSideM), [session, testMarkerSideM]);
   const [items, setItems] = useState<CapturedFurniture[]>([]);
@@ -120,6 +120,11 @@ function TestSpatialCapture({ count, onFinish, session, testMarkerSideM }: {
   const [shape, setShape] = useState<Shape>('rectangle');
   const [custom, setCustom] = useState<CapturePoint[]>([]);
   const [confirmed, setConfirmed] = useState(false);
+  const [visionBusy, setVisionBusy] = useState(false);
+  const [visionError, setVisionError] = useState("");
+  const [visionItems, setVisionItems] = useState<VisionEstimatedItem[]>([]);
+  const [lastVisionImage, setLastVisionImage] = useState<{ width: number; height: number; base64: string } | null>(null);
+  const [activeGuidance, setActiveGuidance] = useState("");
   const points = shape === 'polygon' ? custom : shapes[shape].points;
   const [photos, setPhotos] = useState<(Photo | null)[][]>([]);
   const [capturePhase, setCapturePhase] = useState<CapturePhase>("idle");
@@ -222,7 +227,125 @@ function TestSpatialCapture({ count, onFinish, session, testMarkerSideM }: {
     setPhotos(all=>all.map((row,j)=>j===i?[]:row));setError("");
   }
 
+  async function scanRoomWithVision(file: File) {
+    if (visionBusy || checking) return;
+    setVisionBusy(true);
+    setVisionError("");
+    try {
+      const prepared = await prepare(file);
+      const result = await estimateVisionFurniture(session.scene_id, prepared, session, {
+        camera: captureCamera ?? savedCamera(),
+        applyToScene: false,
+        testMarkerSideM,
+      });
+      setLastVisionImage(prepared);
+      setVisionItems(result.estimated_items);
+    } catch (e) {
+      setVisionItems([]);
+      setVisionError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setVisionBusy(false);
+    }
+  }
+
+  function startGuidedCaptureFromEstimate(item: VisionEstimatedItem, index: number) {
+    const kind = fromSceneFurnitureType(item.occluder.type);
+    const koreanLabel = furnitureTypes[kind] || "가구";
+    reset();
+    setName(`${koreanLabel} ${count + items.length + index + 1}`);
+    setFurnitureType(kind);
+    const hintShape = item.recommended_capture_shape;
+    if (hintShape && hintShape in shapes) setShape(hintShape);
+    setActiveGuidance(
+      item.aruco_capture_guidance_ko ||
+      `추정된 '${koreanLabel}' 위치로 이동해 네 모서리(P1~P4)에서 창문 ArUco 마커를 촬영해 주세요.`,
+    );
+    setConfirmed(true);
+  }
+
+  async function applyVisionDraftToScene() {
+    if (!lastVisionImage || visionBusy || checking) return;
+    setVisionBusy(true);
+    setVisionError("");
+    try {
+      const result = await estimateVisionFurniture(session.scene_id, lastVisionImage, session, {
+        camera: captureCamera ?? savedCamera(),
+        applyToScene: true,
+        testMarkerSideM,
+      });
+      try { await endCaptureMarker(session); } catch { /* Best-effort session cleanup */ }
+      await onVisionRegistered?.(result.estimated_items.length);
+    } catch (e) {
+      setVisionError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setVisionBusy(false);
+    }
+  }
+
+  function visionQualityLabel(item: VisionEstimatedItem): string {
+    if (item.estimation_quality === "high") return "추정 양호";
+    if (item.estimation_quality === "low_needs_aruco") return "정확도 낮음 · ArUco 촬영 필요";
+    return "ArUco 정밀 보정 권장";
+  }
+
   return <div className="spatial-capture corner-capture">
+    {!confirmed && <section className="vision-assist" aria-label="AI 사진 1장 보조 스캔">
+      <div className="vision-assist-head">
+        <h3>사진 1장으로 가구 먼저 찾기</h3>
+        <p className="muted small">창문 마커와 가구가 함께 보이게 1장 찍으면 AI가 위치와 크기를 추정해요. 추정 정확도가 낮으면 해당 가구 위치에서 ArUco 정밀 촬영으로 바로 이어집니다.</p>
+      </div>
+      <label className={`secondary file-button${visionBusy || checking ? " disabled" : ""}`}>
+        <span>{visionBusy ? "사진 분석 중…" : "방 사진 1장으로 가구 찾기"}</span>
+        <input
+          type="file"
+          accept="image/*"
+          capture="environment"
+          disabled={visionBusy || checking}
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            e.target.value = "";
+            if (file) void scanRoomWithVision(file);
+          }}
+        />
+      </label>
+      {visionError && <p role="alert" className="error">{visionError}</p>}
+      {visionItems.length > 0 && <div className="vision-results">
+        <p className="muted small"><strong>{visionItems.length}개 가구</strong>를 찾았어요. 정확도가 낮거나 정밀 측정이 필요하면 각 가구에서 ArUco 촬영을 진행해 주세요.</p>
+        <ul className="vision-item-list">
+          {visionItems.map((item, idx) => {
+            const kind = fromSceneFurnitureType(item.occluder.type);
+            const [w, d, h] = item.occluder.dimensions_m;
+            return <li key={item.occluder.occluder_id} className="vision-item">
+              <div className="vision-item-top">
+                <strong>{furnitureTypes[kind]} {idx + 1}</strong>
+                <span className={`vision-quality ${item.estimation_quality ?? "medium"}`}>{visionQualityLabel(item)}</span>
+              </div>
+              <p className="muted small">
+                크기 약 {w.toFixed(2)}×{d.toFixed(2)}×{h.toFixed(2)}m · 창문 거리 약 {item.calibrated_distance_m.toFixed(1)}m · 신뢰도 {Math.round(item.confidence * 100)}%
+              </p>
+              {item.uncertainty_reason_ko && <p className="vision-uncertainty small">{item.uncertainty_reason_ko}</p>}
+              <p className="vision-guidance-note small">{item.aruco_capture_guidance_ko}</p>
+              <button
+                type="button"
+                className="primary"
+                disabled={visionBusy || checking}
+                onClick={() => startGuidedCaptureFromEstimate(item, idx)}
+              >
+                이 가구 위치로 가서 ArUco 정밀 촬영
+              </button>
+            </li>;
+          })}
+        </ul>
+        {onVisionRegistered && <button
+          type="button"
+          className="secondary"
+          disabled={visionBusy || checking}
+          onClick={() => void applyVisionDraftToScene()}
+        >
+          {visionBusy ? "배치 저장 중…" : "AI 추정 치수로 바로 도면에 배치"}
+        </button>}
+      </div>}
+    </section>}
     {!confirmed && <div className="two-fields">
       <label className="field"><span>가구 이름</span><input value={name} onChange={(e) => setName(e.target.value)} /></label>
       <label className="field"><span>가구 종류</span>
@@ -247,9 +370,10 @@ function TestSpatialCapture({ count, onFinish, session, testMarkerSideM }: {
       {!confirmed ? <div className="actions">
         {shape==='polygon'&&<button type="button" className="secondary" disabled={!custom.length} onClick={()=>setCustom(p=>p.slice(0,-1))}>마지막 점 취소</button>}
         <button type="button" className="primary" disabled={shape==='polygon'&&!validPolygon(custom)} onClick={()=>{setConfirmed(true);setError('');}}>형태 확정 · 촬영 시작</button>
-      </div>:<button type="button" className="text-button" disabled={checking} onClick={()=>{reset();setConfirmed(false);}}>형태 다시 선택</button>}
+      </div>:<button type="button" className="text-button" disabled={checking} onClick={()=>{reset();setConfirmed(false);setActiveGuidance("");}}>형태 다시 선택</button>}
       </div>
     </section>
+    {confirmed && activeGuidance && <p role="status" className="capture-hint ok vision-guidance-banner">{activeGuidance}</p>}
     {confirmed && <>
     <ol className="corner-steps" aria-label="지점 촬영 상태">
       {points.map((_,i) => {

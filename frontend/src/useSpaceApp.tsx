@@ -1315,6 +1315,22 @@ export function useSpaceApp() {
     setProgress(0);
     setPage("processing");
   }
+  async function completeVisionRegistration(addedCount: number) {
+    if (!draft) return;
+    try {
+      const refreshed = await getServerSpace(draft.id);
+      const added = refreshed.furniture.filter((f) => !draft.furniture.some((o) => o.id === f.id));
+      setSpaces((all) => upsertSpace(all, refreshed));
+      setDraft(refreshed);
+      setSelectedFurniture(added[0]?.id ?? refreshed.furniture.at(-1)?.id ?? null);
+      setSelectedRegion(null);
+      setAddingByQr(false);
+      setToast(`AI 추정으로 가구 ${added.length || addedCount}개를 배치했어요. 도면에서 위치와 크기를 확인해 주세요.`);
+      setPageState(qrReturnPage.current);
+    } catch (e) {
+      setError(userMessage(e, "AI로 인식한 공간 정보를 불러오지 못했어요. 다시 시도해 주세요."));
+    }
+  }
   function addFurniture() {
     setModal("add-furniture");
   }
@@ -1679,6 +1695,7 @@ export function useSpaceApp() {
     addZone,
     zoneTabs,
     finishCapture,
+    completeVisionRegistration,
     addFurniture,
     addManualFurniture,
     addRegion,

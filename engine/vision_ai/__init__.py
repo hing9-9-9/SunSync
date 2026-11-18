@@ -7,22 +7,29 @@ from engine.vision_ai.pipeline import (
     VisionRegistrationPipeline,
 )
 from engine.vision_ai.protocols import (
+    CompositeDepthEstimator,
+    CompositeFurnitureDetector,
     DepthEstimatorProtocol,
     DetectedObject2D,
+    DetectionSource,
     FurnitureLabel,
     GeometricSyntheticDepthEstimator,
     GeometricSyntheticDetector,
     MonocularDepthAdapter,
     ObjectDetectorProtocol,
     YoloV8DetectorAdapter,
+    _merge_book_clusters,
 )
 
 __all__ = [
     "CLASS_GEOMETRIC_PRIORS",
     "CameraPoseResult",
+    "CompositeDepthEstimator",
+    "CompositeFurnitureDetector",
     "DepthCalibrationResult",
     "DepthEstimatorProtocol",
     "DetectedObject2D",
+    "DetectionSource",
     "FurnitureLabel",
     "GeometricSyntheticDepthEstimator",
     "GeometricSyntheticDetector",
@@ -30,4 +37,5 @@ __all__ = [
     "ObjectDetectorProtocol",
     "VisionRegistrationPipeline",
     "YoloV8DetectorAdapter",
+    "_merge_book_clusters",
 ]
