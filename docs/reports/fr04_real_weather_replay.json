@@ -1,0 +1,329 @@
+{
+  "input_sha256": "00e8259d5dbb5dd56bfee7a82e5b3f892b3a81a588bb5cfb70c4c8d18396d413",
+  "results": [
+    {
+      "label": "clear",
+      "date_kst": "2026-10-10",
+      "hours_kst": [
+        "08:00",
+        "16:50"
+      ],
+      "statistics": {
+        "rows": 54,
+        "rows_with_values": 53,
+        "mean_cloud_cover_pct": 1.5,
+        "mean_dsr_W_m2": 529.2,
+        "cloud_cover_flips": 0,
+        "dsr_jumps_150": 0
+      },
+      "weather_records": {
+        "records": 53,
+        "rows_without_dsr": 1
+      },
+      "cases": [
+        {
+          "interval_seconds": 300,
+          "fr02_switches": 112,
+          "fr04_switches": 112,
+          "switch_change_pct": 0.0,
+          "fr02_total_change": 112.0,
+          "fr04_total_change": 112.0,
+          "total_change_reduction_pct": 0.0,
+          "fr02_mean_opacity": 0.0819,
+          "fr04_mean_opacity": 0.0819,
+          "daylight_gain_pct": 0.0,
+          "fr02_above_cap_q50": 0,
+          "fr04_above_cap_q50": 0,
+          "fr02_above_cap_q90": 0,
+          "fr04_above_cap_q90": 0,
+          "never_brighter_than_fr02": true
+        },
+        {
+          "interval_seconds": 600,
+          "fr02_switches": 107,
+          "fr04_switches": 107,
+          "switch_change_pct": 0.0,
+          "fr02_total_change": 107.0,
+          "fr04_total_change": 107.0,
+          "total_change_reduction_pct": 0.0,
+          "fr02_mean_opacity": 0.0872,
+          "fr04_mean_opacity": 0.0872,
+          "daylight_gain_pct": 0.0,
+          "fr02_above_cap_q50": 0,
+          "fr04_above_cap_q50": 0,
+          "fr02_above_cap_q90": 0,
+          "fr04_above_cap_q90": 0,
+          "never_brighter_than_fr02": true
+        },
+        {
+          "interval_seconds": 1800,
+          "fr02_switches": 97,
+          "fr04_switches": 97,
+          "switch_change_pct": 0.0,
+          "fr02_total_change": 97.0,
+          "fr04_total_change": 97.0,
+          "total_change_reduction_pct": 0.0,
+          "fr02_mean_opacity": 0.1111,
+          "fr04_mean_opacity": 0.1111,
+          "daylight_gain_pct": 0.0,
+          "fr02_above_cap_q50": 0,
+          "fr04_above_cap_q50": 0,
+          "fr02_above_cap_q90": 0,
+          "fr04_above_cap_q90": 0,
+          "never_brighter_than_fr02": true
+        }
+      ]
+    },
+    {
+      "label": "intermittent",
+      "date_kst": "2026-10-16",
+      "hours_kst": [
+        "08:00",
+        "16:50"
+      ],
+      "statistics": {
+        "rows": 54,
+        "rows_with_values": 53,
+        "mean_cloud_cover_pct": 65.7,
+        "mean_dsr_W_m2": 358.0,
+        "cloud_cover_flips": 15,
+        "dsr_jumps_150": 4
+      },
+      "weather_records": {
+        "records": 53,
+        "rows_without_dsr": 1
+      },
+      "cases": [
+        {
+          "interval_seconds": 300,
+          "fr02_switches": 116,
+          "fr04_switches": 116,
+          "switch_change_pct": 0.0,
+          "fr02_total_change": 116.0,
+          "fr04_total_change": 116.0,
+          "total_change_reduction_pct": 0.0,
+          "fr02_mean_opacity": 0.0811,
+          "fr04_mean_opacity": 0.0811,
+          "daylight_gain_pct": 0.0,
+          "fr02_above_cap_q50": 0,
+          "fr04_above_cap_q50": 0,
+          "fr02_above_cap_q90": 0,
+          "fr04_above_cap_q90": 0,
+          "never_brighter_than_fr02": true
+        },
+        {
+          "interval_seconds": 600,
+          "fr02_switches": 110,
+          "fr04_switches": 110,
+          "switch_change_pct": 0.0,
+          "fr02_total_change": 110.0,
+          "fr04_total_change": 110.0,
+          "total_change_reduction_pct": 0.0,
+          "fr02_mean_opacity": 0.0849,
+          "fr04_mean_opacity": 0.0849,
+          "daylight_gain_pct": 0.0,
+          "fr02_above_cap_q50": 0,
+          "fr04_above_cap_q50": 0,
+          "fr02_above_cap_q90": 0,
+          "fr04_above_cap_q90": 0,
+          "never_brighter_than_fr02": true
+        },
+        {
+          "interval_seconds": 1800,
+          "fr02_switches": 101,
+          "fr04_switches": 101,
+          "switch_change_pct": 0.0,
+          "fr02_total_change": 101.0,
+          "fr04_total_change": 101.0,
+          "total_change_reduction_pct": 0.0,
+          "fr02_mean_opacity": 0.1144,
+          "fr04_mean_opacity": 0.1144,
+          "daylight_gain_pct": 0.0,
+          "fr02_above_cap_q50": 0,
+          "fr04_above_cap_q50": 0,
+          "fr02_above_cap_q90": 0,
+          "fr04_above_cap_q90": 0,
+          "never_brighter_than_fr02": true
+        }
+      ]
+    },
+    {
+      "label": "intermittent (restless)",
+      "date_kst": "2026-10-05",
+      "hours_kst": [
+        "08:00",
+        "16:50"
+      ],
+      "statistics": {
+        "rows": 48,
+        "rows_with_values": 47,
+        "mean_cloud_cover_pct": 78.5,
+        "mean_dsr_W_m2": 358.9,
+        "cloud_cover_flips": 7,
+        "dsr_jumps_150": 13
+      },
+      "weather_records": {
+        "records": 47,
+        "rows_without_dsr": 1
+      },
+      "cases": [
+        {
+          "interval_seconds": 300,
+          "fr02_switches": 159,
+          "fr04_switches": 115,
+          "switch_change_pct": 27.7,
+          "fr02_total_change": 159.0,
+          "fr04_total_change": 115.0,
+          "total_change_reduction_pct": 27.7,
+          "fr02_mean_opacity": 0.0601,
+          "fr04_mean_opacity": 0.0644,
+          "daylight_gain_pct": -7.2,
+          "fr02_above_cap_q50": 0,
+          "fr04_above_cap_q50": 0,
+          "fr02_above_cap_q90": 0,
+          "fr04_above_cap_q90": 0,
+          "never_brighter_than_fr02": true
+        },
+        {
+          "interval_seconds": 600,
+          "fr02_switches": 108,
+          "fr04_switches": 108,
+          "switch_change_pct": 0.0,
+          "fr02_total_change": 108.0,
+          "fr04_total_change": 108.0,
+          "total_change_reduction_pct": 0.0,
+          "fr02_mean_opacity": 0.0691,
+          "fr04_mean_opacity": 0.0691,
+          "daylight_gain_pct": 0.0,
+          "fr02_above_cap_q50": 0,
+          "fr04_above_cap_q50": 0,
+          "fr02_above_cap_q90": 0,
+          "fr04_above_cap_q90": 0,
+          "never_brighter_than_fr02": true
+        },
+        {
+          "interval_seconds": 1800,
+          "fr02_switches": 80,
+          "fr04_switches": 80,
+          "switch_change_pct": 0.0,
+          "fr02_total_change": 80.0,
+          "fr04_total_change": 80.0,
+          "total_change_reduction_pct": 0.0,
+          "fr02_mean_opacity": 0.0972,
+          "fr04_mean_opacity": 0.0972,
+          "daylight_gain_pct": 0.0,
+          "fr02_above_cap_q50": 0,
+          "fr04_above_cap_q50": 0,
+          "fr02_above_cap_q90": 0,
+          "fr04_above_cap_q90": 0,
+          "never_brighter_than_fr02": true
+        }
+      ]
+    },
+    {
+      "label": "overcast",
+      "date_kst": "2026-10-18",
+      "hours_kst": [
+        "08:00",
+        "16:50"
+      ],
+      "statistics": {
+        "rows": 54,
+        "rows_with_values": 53,
+        "mean_cloud_cover_pct": 95.5,
+        "mean_dsr_W_m2": 112.7,
+        "cloud_cover_flips": 0,
+        "dsr_jumps_150": 0
+      },
+      "weather_records": {
+        "records": 53,
+        "rows_without_dsr": 1
+      },
+      "cases": [
+        {
+          "interval_seconds": 300,
+          "fr02_switches": 2,
+          "fr04_switches": 2,
+          "switch_change_pct": 0.0,
+          "fr02_total_change": 2.0,
+          "fr04_total_change": 2.0,
+          "total_change_reduction_pct": 0.0,
+          "fr02_mean_opacity": 0.0002,
+          "fr04_mean_opacity": 0.0002,
+          "daylight_gain_pct": 0.0,
+          "fr02_above_cap_q50": 0,
+          "fr04_above_cap_q50": 0,
+          "fr02_above_cap_q90": 0,
+          "fr04_above_cap_q90": 0,
+          "never_brighter_than_fr02": true
+        },
+        {
+          "interval_seconds": 600,
+          "fr02_switches": 0,
+          "fr04_switches": 0,
+          "switch_change_pct": null,
+          "fr02_total_change": 0.0,
+          "fr04_total_change": 0.0,
+          "total_change_reduction_pct": 0.0,
+          "fr02_mean_opacity": 0.0,
+          "fr04_mean_opacity": 0.0,
+          "daylight_gain_pct": 0.0,
+          "fr02_above_cap_q50": 0,
+          "fr04_above_cap_q50": 0,
+          "fr02_above_cap_q90": 0,
+          "fr04_above_cap_q90": 0,
+          "never_brighter_than_fr02": true
+        },
+        {
+          "interval_seconds": 1800,
+          "fr02_switches": 0,
+          "fr04_switches": 0,
+          "switch_change_pct": null,
+          "fr02_total_change": 0.0,
+          "fr04_total_change": 0.0,
+          "total_change_reduction_pct": 0.0,
+          "fr02_mean_opacity": 0.0,
+          "fr04_mean_opacity": 0.0,
+          "daylight_gain_pct": 0.0,
+          "fr02_above_cap_q50": 0,
+          "fr04_above_cap_q50": 0,
+          "fr02_above_cap_q90": 0,
+          "fr04_above_cap_q90": 0,
+          "never_brighter_than_fr02": true
+        }
+      ]
+    }
+  ],
+  "sky_controls": [
+    {
+      "dni_W_m2": 0.0,
+      "fr02_switches": 0,
+      "fr02_shaded_cell_steps": 0
+    },
+    {
+      "dni_W_m2": 20.0,
+      "fr02_switches": 0,
+      "fr02_shaded_cell_steps": 0
+    },
+    {
+      "dni_W_m2": 50.0,
+      "fr02_switches": 12,
+      "fr02_shaded_cell_steps": 30
+    },
+    {
+      "dni_W_m2": 100.0,
+      "fr02_switches": 120,
+      "fr02_shaded_cell_steps": 713
+    },
+    {
+      "dni_W_m2": 300.0,
+      "fr02_switches": 112,
+      "fr02_shaded_cell_steps": 868
+    },
+    {
+      "dni_W_m2": 700.0,
+      "fr02_switches": 112,
+      "fr02_shaded_cell_steps": 868
+    }
+  ]
+}
