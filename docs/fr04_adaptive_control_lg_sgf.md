@@ -268,22 +268,22 @@ The rule is ours and open to review. `w_damage` (1000) and `w_daylight` (1.0) we
 
 ### 7.3 Real-weather replay (issue #149, run of 2026-11-18)
 
-Source: `tools/ai_experiments/run_fr04_real_weather_replay.py`; full tables, the control and the limits in `docs/reports/fr04_real_weather_replay.md`. KMA 10-minute observations of four days in Seoul (08:00 to 16:50 Korean time) are converted to direct irradiance, put into the weather of the example Scene, and the application's own API computes the FR-02 plan and the default FR-04 plan (`smooth_fr02`). The frozen final-test days are not used. Positive is better than FR-02.
+Source: `tools/ai_experiments/run_fr04_real_weather_replay.py`; full tables, the control and the limits in `docs/reports/fr04_real_weather_replay.md`. KMA 10-minute observations of four days in Seoul (08:00 to 16:50 Korean time) are converted to direct irradiance, put into the weather of the example Scene, and the application's own API computes the FR-02 plan and the default FR-04 plan (`smooth_fr02`). The frozen final-test days are not used. Switches are shown as FR-02 to FR-04.
 
-| Day (Korean time) | Kind | Switches FR-02 to FR-04, 5-minute step | Same, 30-minute step (app screens) |
-|---|---|---|---|
-| 2026-10-10 | clear | 112 to 112 (+0.0%) | 97 to 97 (+0.0%) |
-| 2026-10-16 | intermittent (15 cloud-cover flips, 4 large DSR jumps) | 116 to 116 (+0.0%) | 101 to 101 (+0.0%) |
-| 2026-10-05 | intermittent, restless (7 flips, 13 large DSR jumps) | 159 to 115 (+27.7%, daylight -7.2%) | 80 to 80 (+0.0%) |
-| 2026-10-18 | overcast | 2 to 2 (+0.0%) | 0 to 0 (n/a) |
+| Day (Korean time) | Kind | 5-minute step (interpolated) | 10-minute step (the data's own) | 30-minute step (app screens) |
+|---|---|---|---|---|
+| 2026-10-10 | clear | 112 to 112 | 107 to 107 | 97 to 97 |
+| 2026-10-16 | intermittent (15 cloud-cover flips, 4 large DSR jumps) | 116 to 116 | 110 to 110 | 101 to 101 |
+| 2026-10-05 | intermittent, restless (7 flips, 13 large DSR jumps) | **159 to 115** (+27.7%, daylight -7.2%) | 108 to 108 | 80 to 80 |
+| 2026-10-18 | overcast | 2 to 2 | 0 to 0 | 0 to 0 |
 
-- **Protection.** In all eight cases the smoothed plan is never brighter than the FR-02 plan, and no case has a cell-step above the cap at q50 or q90 (FR-02 has none either).
-- **NFR1.2.** The number of switches is lower where there is flicker to remove (2026-10-05, 5-minute step) and equal elsewhere; it is never higher. The observation is treated as a perfect forecast, so this is the most the stabilization can do on those days.
-- **Cost.** On 2026-10-05 the 28% fewer switches cost 7.2% daylight (mean opacity).
-- **The 30-minute step changes nothing.** With the default limit of 600 s a gap of one 30-minute step is not filled (section 3.1), and the holding time is one step. The effect badges of the screens, computed with 30-minute steps, are therefore expected to read about 0%. Whether the badge should use a finer step or the limit should be raised is open and has no evidence yet beyond this one restless day.
-- **Cloud-cover flips did not predict the effect.** 2026-10-16 has the most flips (15) and nothing is removed; the day with the most large DSR jumps (13) is the one where FR-04 acted.
-- **Why the effect is small in this Scene.** A constant-sky control shows that its FR-02 plan reacts to direct irradiance only between about 20 and 300 W/m2 (nothing is shaded at 20, 868 cell-steps from 300 up), and the sunlit patch crosses a cell quickly, so a cloud rarely splits one exposure.
-- **No change to the defaults.** One restless day does not justify new values for the holding time, the gap limit or the margin.
+- **No evidence that the default smoothing helps on real weather.** At the data's own 10-minute step and at the 30-minute step of the screens FR-04 changes nothing on any of the four days. The only change (2026-10-05, 5-minute step) is an effect of the interpolation: the Scene interpolates linearly between two 10-minute values, which turns a dip of one 10-minute observation into a dip of one 5-minute step and gives FR-02 51 extra switches (159 against 108 at the 10-minute step). FR-04 fills those one-step gaps and ends at 115, close to the 108 of the 10-minute step. That is cleaning up the artifact, not removing real flicker.
+- **Why FR-04.1 cannot act on this data with the default values.** Every dip in a 10-minute series lasts at least one 10-minute step, which is as long as the default limit of 600 s, and a gap is only filled when it is strictly shorter than the limit (section 3.1). Whether a 10-minute gap counts as "short" is open. The API does not expose the limit, so a larger limit was not tried.
+- **Protection.** In all twelve cases the smoothed plan is never brighter than the FR-02 plan, and no case has a cell-step above the cap at q50 or q90 (FR-02 has none either).
+- **NFR1.2.** The number of switches is never higher with FR-04, but it is also never lower on real, non-interpolated steps, so "lower than without stabilization" is not shown by these days. The observation is treated as a perfect forecast, so a forecast would have to be less steady than this to give FR-04 more to remove.
+- **The 30-minute step of the screens.** A gap of one 30-minute step is not filled with the default limit and the holding time is one step, so the effect badges are expected to read about 0%. The plan with 30-minute steps already has fewer switches than the 5-minute plan (80 against 159 on 2026-10-05); the coarse step itself smooths.
+- **Why the effect is small in this Scene.** A constant-sky control shows that the FR-02 plan reacts to direct irradiance only between about 20 and 300 W/m2 (nothing is shaded at 20, 868 cell-steps from 300 up), and the sunlit patch crosses a cell quickly, so a cloud rarely splits one exposure.
+- **Not shown by four days of one Scene:** that the smoothing is useless in other rooms or with other limits. It is shown that with the default values it does nothing here, and that the defaults are not changed on this evidence.
 
 ---
 

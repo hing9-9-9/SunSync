@@ -54,7 +54,7 @@ DEFAULT_DAYS = (
     ("overcast", "2026-10-18"),
 )
 DEFAULT_SCENE = WORKSPACE_ROOT / "docs" / "examples" / "fr06_scene_example.json"
-DEFAULT_INTERVALS = (300, 1800)
+DEFAULT_INTERVALS = (300, 600, 1800)  # 600 s is the step of the KMA data itself
 
 
 @dataclass(frozen=True)
@@ -447,7 +447,10 @@ LIMITATIONS = (
     ),
     (
         "- **The 5-minute step is interpolated.** KMA gives one value per 10 minutes; the Scene "
-        "interpolates linearly between them, so the 5-minute case is not an independent measurement."
+        "interpolates linearly between them, so the 5-minute case is not an independent measurement. "
+        "It also turns a dip of one 10-minute observation into a dip of one 5-minute step. The "
+        "10-minute rows use the observations as they are: a difference between the 5-minute and the "
+        "10-minute rows is an effect of the interpolation, not of the weather."
     ),
     (
         "- **Label.** The Scene only accepts the weather sources `synthetic`, `open_meteo` and "
