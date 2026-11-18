@@ -106,6 +106,15 @@ async function request<T>(url: string, init?: RequestInit, timeoutMs = 15000): P
     });
   } catch (error) {
     if (init?.signal?.aborted) throw error;
+    if (
+      error instanceof DOMException &&
+      (error.name === "TimeoutError" || error.name === "AbortError")
+    ) {
+      throw new SpaceApiError(
+        408,
+        "계산 시간이 초과되었습니다. 잠시 후 다시 시도해 주세요.",
+      );
+    }
     throw new SpaceApiError(
       0,
       "저장 서버에 연결할 수 없습니다. 연결을 확인한 뒤 다시 시도해 주세요.",
@@ -258,6 +267,7 @@ export function predictSunpath(sceneId: string, revision: number, startTime: str
         expected_scene_revision: revision,
       }),
     },
+    45000,
   );
 }
 
@@ -269,6 +279,7 @@ export function predictShadingPlan(sceneId: string, revision: number, startTime:
       start_time: startTime, duration_minutes: 1440, interval_seconds: 1800,
       expected_scene_revision: revision,
     }) },
+    45000,
   );
 }
 

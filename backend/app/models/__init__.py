@@ -2,6 +2,7 @@
 from app.models.auth import AuthSession, AuthUser, LoginAttempt
 from app.models.film import FilmApplicationLogRecord, FilmStateRecord
 from app.models.room import Room
+from app.models.scenario_snapshot import ScenarioSnapshotRecord
 from app.models.scene import SceneRecord
 from app.ui_scene import UISpaceRecord
 
@@ -12,6 +13,7 @@ __all__ = [
     "FilmStateRecord",
     "LoginAttempt",
     "Room",
+    "ScenarioSnapshotRecord",
     "SceneRecord",
     "UISpaceRecord",
 ]

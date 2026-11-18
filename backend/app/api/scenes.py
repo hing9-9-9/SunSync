@@ -14,6 +14,7 @@ from app.ownership import CurrentUser, owner_of
 from app.scene_cli import schema_document
 from app.schemas.registration import RegisterFurnitureRequest
 from app.schemas.scene import Scene
+from app.services.scenario_store import invalidate_scene_scenarios
 from app.services.stored_scene import load_stored_scene
 from app.ui_scene import sync_ui_record
 
@@ -167,5 +168,6 @@ def replace_scene(scene_id: str, scene: Scene, session: SessionDependency) -> Sc
         )
     if previous is not None:
         sync_ui_record(session, previous, scene)
+    invalidate_scene_scenarios(session, scene_id)
     session.commit()
     return scene

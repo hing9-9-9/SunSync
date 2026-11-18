@@ -201,3 +201,26 @@ test("FR-05 virtual film schedule apply, state and logs call scene film endpoint
   assert.equal(logs.entries.length, 1);
   assert.equal(calls.length, 3);
 });
+
+test("TimeoutError reports HTTP 408 calculation timeout instead of server unreachable", async (t) => {
+  const { predictShadingPlan } = await import("./spaceApi.ts");
+  t.mock.method(globalThis, "fetch", async () => {
+    throw new DOMException("The operation was aborted due to timeout", "TimeoutError");
+  });
+  await assert.rejects(
+    predictShadingPlan("scene-1", 1, "2026-11-09T00:00:00+09:00"),
+    (error: unknown) => error instanceof SpaceApiError
+      && error.status === 408
+      && error.message === "계산 시간이 초과되었습니다. 잠시 후 다시 시도해 주세요.",
+  );
+
+  t.mock.method(globalThis, "fetch", async () => {
+    throw new TypeError("Failed to fetch");
+  });
+  await assert.rejects(
+    predictShadingPlan("scene-1", 1, "2026-11-09T00:00:00+09:00"),
+    (error: unknown) => error instanceof SpaceApiError
+      && error.status === 0
+      && error.message === "저장 서버에 연결할 수 없습니다. 연결을 확인한 뒤 다시 시도해 주세요.",
+  );
+});

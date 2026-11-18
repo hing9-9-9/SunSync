@@ -33,7 +33,7 @@ from app.services.film import (
     pair_marker_for_scene,
     set_marker_mode,
 )
-from app.services.shading import shading_plan_for_scene
+from app.services.scenario_store import get_or_compute_shading_plan
 
 router = APIRouter(tags=["film"])
 SessionDependency = Annotated[Session, Depends(get_session)]
@@ -107,8 +107,10 @@ def apply_schedule(
         if scene_record is None:
             raise HTTPException(status_code=404, detail=f"Scene '{scene_id}' not found")
         scene = Scene.model_validate_json(scene_record.scene_json)
-        nowcast_engine = session.bind if isinstance(session.bind, Engine) else None
-        plan = shading_plan_for_scene(
+        bind = session.get_bind()
+        nowcast_engine = bind if isinstance(bind, Engine) else bind.engine
+        plan = get_or_compute_shading_plan(
+            session,
             scene,
             request.plan_request,
             request_received_at=datetime.now(UTC),

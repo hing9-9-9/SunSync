@@ -101,6 +101,18 @@ Open-Meteo 기반 DNI 기상 예보 수집 스냅샷과 시계열 예보 포인�
 ### 2.12 `room` (과거 초안)
 초기 개발의 Room 테이블. 지금은 `scenes`가 대신하며, 삭제하거나 변경하지 않는다.
 
+### 2.13 `scenario_snapshots` (`ScenarioSnapshotRecord`)
+로컬 씬 변경 및 10분 단위 Time-bucket 롤링 업데이트로 선계산된 일조·차광·적응형 제어 시나리오를 저장하는 캐시 테이블입니다 ([scenario-precomputation.md](scenario-precomputation.md)).
+- `snapshot_key` (TEXT, PK): `{scene_id}:{scene_revision}:{start_utc}:{duration_minutes}:{interval_seconds}` 복합 키.
+- `scene_id` (TEXT, Index) / `scene_revision` (INTEGER, Index): 대상 씬과 리비전. 씬이 수정·삭제되면 구 리비전 스냅샷이 무효화됩니다.
+- `start_time` (TEXT) / `duration_minutes` (INTEGER) / `interval_seconds` (INTEGER): 예측 요청 시간 창 파라미터.
+- `time_bucket` (TEXT, Index): 계산이 수행된 10분 단위 UTC 롤링 버킷 (`YYYY-MM-DDTHH:MM:00Z`).
+- `weather_fingerprint` (TEXT, NOT NULL): `scene.weather`, 유효한 Open-Meteo `snapshot_id`, 활성화된 `ai_nowcast_run.run_id` 조합의 SHA-256 다이제스트. 기상 입력 변경 시 재계산 트리거로 사용됩니다.
+- `sunpath_summary_json` (TEXT, NOT NULL): FR-01 `SunpathPredictionResponse`(`summary`) 직렬화 JSON.
+- `shading_plan_json` (TEXT, Nullable): FR-02 `ShadingPlan` 직렬화 JSON.
+- `adaptive_plan_json` (TEXT, Nullable): FR-04 기본 미리보기(`smooth_fr02` / `LG_SGF`) `AdaptiveShadingPlanResponse` 직렬화 JSON.
+- `computed_at` (TEXT, NOT NULL): 최종 계산 완료 시각 (ISO 8601 UTC).
+
 ---
 
 ## 2A. 마이그레이션
