@@ -10,7 +10,10 @@ The sky is borrowed from a US station and the geometry is Seoul's; only the clou
 variation of the direct irradiance is real. See the report for the limits.
 
 Usage:
-    python tools/ai_experiments/run_fr04_minute_replay.py --surfrad-dir DIR --download
+    python tools/ai_experiments/run_fr04_minute_replay.py --surfrad-dir DIR
+
+The tool makes no network request. Download the daily files by hand into DIR from the addresses
+in the report (for example `curl -O ADDRESS`) and compare their SHA-256 with the report.
 """
 
 from __future__ import annotations
@@ -18,9 +21,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import re
 import sys
-import urllib.request
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
@@ -73,56 +74,9 @@ def doy_name(prefix: str, day: date) -> str:
     return f"{prefix}{day:%y}{day.timetuple().tm_yday:03d}.dat"
 
 
-SAFE_NAME = re.compile(r"[A-Za-z0-9_]{1,40}")
-# A daily file is about 350 KB; anything much larger is not what was asked for.
-MAX_DOWNLOAD_BYTES = 2 * 1024 * 1024
-
-
-def safe_name(value: str, what: str) -> str:
-    """Folder and file prefix become part of an address and of a file name: letters, digits and
-    underscores only, so neither can leave the NOAA folder or the cache directory."""
-    if not SAFE_NAME.fullmatch(value):
-        raise ValueError(f"{what} may only hold letters, digits and underscores: {value!r}")
-    return value
-
-
 def surfrad_url(folder: str, prefix: str, day: date) -> str:
-    name = doy_name(safe_name(prefix, "prefix"), day)
-    return f"{SURFRAD_ROOT}/{safe_name(folder, 'folder')}/{day.year}/{name}"
-
-
-class _NoRedirect(urllib.request.HTTPRedirectHandler):
-    """Fail on a redirect instead of following it to another host (or to plain http)."""
-
-    def redirect_request(self, *args: Any, **kwargs: Any) -> None:
-        return None
-
-
-def fetch_day(folder: str, prefix: str, day: date, directory: Path, opener: Any = None) -> Path:
-    """The day's file in `directory`; downloaded from NOAA when it is not there yet.
-
-    The download is capped in size, checked to be a SURFRAD daily file, and written under its
-    final name only when it passed, so an interrupted or wrong download is never trusted later.
-    """
-    path = directory / doy_name(safe_name(prefix, "prefix"), day)
-    if path.exists():
-        return path
-    url = surfrad_url(folder, prefix, day)
-    opener = opener or urllib.request.build_opener(_NoRedirect)
-    with opener.open(url, timeout=60) as response:
-        data = response.read(MAX_DOWNLOAD_BYTES + 1)
-    if len(data) > MAX_DOWNLOAD_BYTES:
-        raise ValueError(f"{url} is larger than {MAX_DOWNLOAD_BYTES} bytes")
-    directory.mkdir(parents=True, exist_ok=True)
-    partial = path.with_suffix(".part")
-    partial.write_bytes(data)
-    try:
-        read_surfrad(partial)
-    except (ValueError, IndexError, UnicodeDecodeError) as error:
-        partial.unlink()
-        raise ValueError(f"{url} is not a SURFRAD daily file") from error
-    partial.replace(path)
-    return path
+    """Where the day's file is published (the tool itself never fetches it)."""
+    return f"{SURFRAD_ROOT}/{folder}/{day.year}/{doy_name(prefix, day)}"
 
 
 def sha256_of(path: Path) -> str:
@@ -356,26 +310,17 @@ LIMITATIONS = (
 
 DATA_HANDLING = (
     (
-        "- **Source and transport.** The files come from `gml.noaa.gov` over https only. A redirect "
-        "is refused, a download is capped at 2 MiB, and it must parse as a SURFRAD daily file "
-        "before it is kept under its final name."
+        "- **No network request.** The tool only reads the files in the directory it is given. "
+        "The files are downloaded by hand from the addresses in the table above; compare their "
+        "SHA-256 with the table."
     ),
     (
-        "- **Names.** The station folder and the file prefix may hold letters, digits and "
-        "underscores only, so neither can leave the NOAA folder or the cache directory."
+        "- **Untrusted data.** The files are read as text and parsed as numbers; nothing in them "
+        "is executed. They are public data and are not committed to the repository (their terms "
+        "of use were not checked); only the hashes and the derived tables are."
     ),
     (
-        "- **Untrusted data.** The files are only read as text and parsed as numbers; nothing in "
-        "them is executed. The SHA-256 of each file is recorded above, so a later run can be "
-        "checked against the same input."
-    ),
-    (
-        "- **Not in the repository.** The measurements are public, but the files stay in the "
-        "cache directory of whoever runs the tool; only their hashes and the derived tables are "
-        "committed."
-    ),
-    (
-        "- **No secrets, no personal data.** The tool sends no key and no identity. The KMA "
+        "- **No secrets, no personal data.** The tool sends nothing and holds no key. The KMA "
         "replay reads a local CSV only. These reports hold no server address and no key."
     ),
 )
@@ -552,19 +497,9 @@ def _day_argument(text: str) -> MinuteDay:
         raise argparse.ArgumentTypeError(str(error)) from error
 
 
-def _name_argument(text: str) -> str:
-    try:
-        return safe_name(text, "value")
-    except ValueError as error:
-        raise argparse.ArgumentTypeError(str(error)) from error
-
-
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--surfrad-dir", type=Path, required=True)
-    parser.add_argument("--download", action="store_true", help="fetch missing days from NOAA")
-    parser.add_argument("--folder", default=DEFAULT_FOLDER, type=_name_argument)
-    parser.add_argument("--prefix", default=DEFAULT_PREFIX, type=_name_argument)
     parser.add_argument("--day", type=_day_argument, action="append")
     parser.add_argument("--intervals", type=int, nargs="+", default=list(DEFAULT_INTERVALS))
     parser.add_argument("--scene", type=Path, default=DEFAULT_SCENE)
@@ -579,24 +514,17 @@ def main(argv: Sequence[str] | None = None) -> int:
     files: dict[date, Path] = {}
     provenance = []
     for entry in days:
-        path = args.surfrad_dir / doy_name(args.prefix, entry.day)
+        path = args.surfrad_dir / doy_name(DEFAULT_PREFIX, entry.day)
+        url = surfrad_url(DEFAULT_FOLDER, DEFAULT_PREFIX, entry.day)
         if not path.exists():
-            if not args.download:
-                parser.error(f"{path} is missing; pass --download to fetch it from NOAA")
-            path = fetch_day(args.folder, args.prefix, entry.day, args.surfrad_dir)
+            parser.error(f"{path} is missing; download it from {url}")
         files[entry.day] = path
-        provenance.append(
-            {
-                "name": path.name,
-                "sha256": sha256_of(path),
-                "url": surfrad_url(args.folder, args.prefix, entry.day),
-            }
-        )
+        provenance.append({"name": path.name, "sha256": sha256_of(path), "url": url})
     template = json.loads(args.scene.read_text(encoding="utf-8"))
     results = replay_minutes(
         files, days, args.intervals, template, parse_clock(args.start), parse_clock(args.end)
     )
-    report = build_report(results, provenance, f"{args.folder} ({args.prefix})")
+    report = build_report(results, provenance, f"{DEFAULT_FOLDER} ({DEFAULT_PREFIX})")
     args.output_dir.mkdir(parents=True, exist_ok=True)
     (args.output_dir / "fr04_minute_replay.md").write_text(report, encoding="utf-8")
     (args.output_dir / "fr04_minute_replay.json").write_text(

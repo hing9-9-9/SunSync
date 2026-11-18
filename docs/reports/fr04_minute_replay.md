@@ -69,11 +69,9 @@ Planning at a coarser step is the plain way to get fewer switches. A positive da
 
 ## Data handling and security
 
-- **Source and transport.** The files come from `gml.noaa.gov` over https only. A redirect is refused, a download is capped at 2 MiB, and it must parse as a SURFRAD daily file before it is kept under its final name.
-- **Names.** The station folder and the file prefix may hold letters, digits and underscores only, so neither can leave the NOAA folder or the cache directory.
-- **Untrusted data.** The files are only read as text and parsed as numbers; nothing in them is executed. The SHA-256 of each file is recorded above, so a later run can be checked against the same input.
-- **Not in the repository.** The measurements are public, but the files stay in the cache directory of whoever runs the tool; only their hashes and the derived tables are committed.
-- **No secrets, no personal data.** The tool sends no key and no identity. The KMA replay reads a local CSV only. These reports hold no server address and no key.
+- **No network request.** The tool only reads the files in the directory it is given. The files are downloaded by hand from the addresses in the table above; compare their SHA-256 with the table.
+- **Untrusted data.** The files are read as text and parsed as numbers; nothing in them is executed. They are public data and are not committed to the repository (their terms of use were not checked); only the hashes and the derived tables are.
+- **No secrets, no personal data.** The tool sends nothing and holds no key. The KMA replay reads a local CSV only. These reports hold no server address and no key.
 
 ## Next steps
 
