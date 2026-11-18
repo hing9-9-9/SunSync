@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { filmStatesAt } from "./shading";
 import type { ShadingResult } from "./shading";
 import { CELL_SIZE, filmCellEdges, filmGrid, resolveWindow, timeToMinute, validateShadingTime, validateWindow, walls } from "./model";
-import { defaultShadingTime } from "./model";
+import { defaultShadingTime, m2 } from "./model";
 import type { ShadingTime, Space } from "./model";
 import { DAY_MINUTES, formatMinute, protectedRegions, shadedCells } from "./sunlight";
 import type { BlockingSchedule as Schedule } from "./sunlight";
@@ -76,7 +76,7 @@ export function FilmGrid({ space, schedule, hour, marker = false, prediction, se
         <span><i className="open" />열림</span>
         {markerBox && <span><i className="marker" />QR 마커</span>}
       </span>
-      {walls[win.wall]} · {win.width} × {win.height} m · {cols}×{rows}칸
+      {walls[win.wall]} · {m2(win.width)} × {m2(win.height)} m · {cols}×{rows}칸
       {showShading && ` · 가림 ${shaded.size}칸`}
       {showShading && <span className="example-note">{prediction ? " · 계산된 차단 계획" : " · 예시 칸 배치"}</span>}
       {counts.infeasible > 0 && <p role="status">보호 조건 충족 불가 {counts.infeasible}칸: 필름을 가장 어둡게 해도 보호 조건을 만족하지 못합니다.</p>}
@@ -213,7 +213,7 @@ export function VirtualFilmControl({ space, prediction, hour, children }: { spac
   const sceneId = space.serverSceneId;
   const win = resolveWindow(space);
   const [busy, setBusy] = useState(false);
-  const [applied, setApplied] = useState<ScheduleApplyResponse | null>(null);
+  const [, setApplied] = useState<ScheduleApplyResponse | null>(null);
   const [windowState, setWindowState] = useState<WindowFilmStateResponse | null>(null);
   const [unmet, setUnmet] = useState<{ total: number; logs: FilmApplicationLogEntry[] } | null>(null);
   const [appliedLogs, setAppliedLogs] = useState<{ total: number; logs: FilmApplicationLogEntry[] } | null>(null);
@@ -324,7 +324,6 @@ export function VirtualFilmControl({ space, prediction, hour, children }: { spac
         {busy ? "적용 중…" : "필름에 적용"}
       </button>
       {error && <p className="error" role="alert">{error}</p>}
-      {applied && !error && <p className="muted small" role="status">적용했어요.</p>}
       {unmet && unmet.total > 0 && (
         <div className="film-unmet muted small">
           <p>목표만큼 못 가린 칸이 {unmet.total}건 있어요.</p>
@@ -333,7 +332,7 @@ export function VirtualFilmControl({ space, prediction, hour, children }: { spac
           </ul>
         </div>
       )}
-      {windowState && (
+      {import.meta.env.DEV && new URLSearchParams(location.search).has("test") && windowState && (
         <details className="film-dev-controls muted small">
           <summary>
             필름 제어 기록 · 수동 점검

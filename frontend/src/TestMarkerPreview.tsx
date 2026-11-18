@@ -21,10 +21,10 @@ export default function TestMarkerPreview({ session }: { session: CaptureMarker 
     </button>
     <dialog ref={dialog} className="test-marker-dialog" aria-labelledby={titleId}>
       <h2 id={titleId}>이번 촬영 마커</h2>
-      <p>ArUco ID {id}</p>
+      <p>마커 ID {id}</p>
       {hasPattern ? (
         <svg viewBox={`-1 -1 ${width + 2} ${cells.length + 2}`} role="img"
-          aria-label={`이번 촬영에 배정된 ArUco 마커 ID ${id}`} shapeRendering="crispEdges">
+          aria-label={`이번 촬영에 배정된 마커 ID ${id}`} shapeRendering="crispEdges">
           <rect x="-1" y="-1" width={width + 2} height={cells.length + 2} fill="white" />
           {cells.flatMap((row, y) => row.map((opacity, x) => opacity >= 0.5
             ? <rect key={`${x}:${y}`} x={x} y={y} width="1" height="1" fill="black" />

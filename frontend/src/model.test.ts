@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   blankSpace,
+  m2,
   validateShadingTime,
   filmGrid,
   hasUnsavedChanges,
@@ -445,4 +446,10 @@ test("furniture types round-trip between UI and scene schemas and support chair 
   assert.equal(fromSceneFurnitureType("desk"), "desk");
   const placed = placeCapturedFurniture(fixture(), [{ name: "열람 의자", type: "chair" }]);
   assert.equal(placed[0].type, "chair");
+});
+
+test('m2 shows measurements with at most two decimals', () => {
+  assert.equal(m2(0.7703703496654764), 0.77);
+  assert.equal(m2(1.2), 1.2);
+  assert.equal(m2(0), 0);
 });

@@ -28,7 +28,6 @@ export function AccountOverview({
   onLogout: () => void;
 }) {
   const regions = spaces.flatMap((s) => s.regions.filter((r) => r.grade !== "D"));
-  const zones = spaces.reduce((n, s) => n + s.zones.length, 0);
   const buildings = [...new Set(spaces.map((s) => s.building || "건물 미지정"))];
   return (
     <div className="acct">
@@ -51,10 +50,6 @@ export function AccountOverview({
         <div>
           <dt>등록한 공간</dt>
           <dd>{spaces.length}곳</dd>
-        </div>
-        <div>
-          <dt>구역</dt>
-          <dd>{zones}개</dd>
         </div>
         <div>
           <dt>보호 영역</dt>
@@ -91,7 +86,7 @@ export function AccountOverview({
                           <span className="acct-space-name">
                             <strong>{s.name || "이름 없는 공간"}</strong>
                             <small>
-                              {s.floor} · 구역 {s.zones.length}개
+                              {s.floor}
                             </small>
                           </span>
                           <span className="acct-grades" aria-label="등급별 가구·영역 수">

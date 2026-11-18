@@ -166,7 +166,7 @@ export async function listServerSpaces(signal?: AbortSignal) {
   }
   const settled = await Promise.all(
     spaces.map(async (s) => {
-      const fixed = northUp(s);
+      const fixed = oneZone(northUp(s));
       if (fixed === s || !s.serverRevision) return fixed;
       try { return await saveServerSpace(fixed); } catch { return fixed; }
     }),
@@ -176,6 +176,13 @@ export async function listServerSpaces(signal?: AbortSignal) {
 // The plan's top is always north, so every space counts as north-aligned. Spaces saved before the
 // checkbox was removed still carry `false`; they are read as true and re-saved once.
 const northUp = (s: Space): Space => (s.site && !s.site.northConfirmed ? { ...s, site: { ...s.site, northConfirmed: true } } : s);
+// Zones are no longer part of the UI. A space saved earlier with several zones is merged into its
+// first zone (furniture and protected areas move with it) and re-saved once, so nothing is hidden.
+export const oneZone = (s: Space): Space => {
+  if (s.zones.length <= 1) return s;
+  const zone = s.zones[0];
+  return { ...s, zone, zones: [zone], furniture: s.furniture.map((f) => ({ ...f, zone })), regions: s.regions.map((r) => ({ ...r, zone })) };
+};
 export function saveServerSpace(space: Space) {
   space = northUp(space);
   return request<Space>(

@@ -47,11 +47,11 @@ function SessionSpatialCapture(props: SpatialCaptureProps) {
     void Promise.all([resumeCaptureMarker(props.sceneId),captureSelection(props.sceneId)]).then(([value,targets]) => {
       if (live) {
         const selected = targets.selected_target;
+        setWindows(targets.windows);setSavedSelection(!!selected);
         if (value && selected && (value.window_id !== selected.window_id ||
             value.film_module?.row !== selected.module_row || value.film_module?.col !== selected.module_col)) {
-          throw new Error("선택한 필름과 진행 중인 촬영이 달라요. 이전 촬영을 끝낸 뒤 다시 시작해 주세요.");
-        }
-        setSession(value);setWindows(targets.windows);setSavedSelection(!!selected);
+          setError("선택한 필름과 진행 중인 촬영이 달라요. 이전 촬영을 끝낸 뒤 다시 시작해 주세요.");
+        } else setSession(value);
         setWindowId(selected?.window_id ?? targets.windows[0]?.window_id ?? "");
         setRow(selected?.module_row ?? 0);setCol(selected?.module_col ?? 0);
       }
@@ -75,13 +75,17 @@ function SessionSpatialCapture(props: SpatialCaptureProps) {
     catch (e) { setError(e instanceof Error ? e.message : "촬영을 종료하지 못했어요."); }
     finally { setBusy(false); }
   }
+  function endPrevious() {
+    if (!props.sceneId) return;
+    setBusy(true); setError("");
+    void cancelStoredCapture(props.sceneId).then(() => setRetry(n => n + 1))
+      .catch(() => { setError("이전 촬영을 끝내지 못했어요. 잠시 뒤 다시 시도해 주세요."); setBusy(false); });
+  }
   if (busy) return <p role="status">촬영 마커를 준비하고 있어요…</p>;
   if (!session) {
     const win=windows.find(w=>w.window_id===windowId);
     return <section className="film-select">
       <h3>{savedSelection ? "선택한 필름으로 촬영" : "마커를 띄울 필름 선택"}</h3>
-      <p className="muted small">안쪽에서 창문을 본 모습이에요. 고른 칸 가운데에 마커(60cm)가 떠요.</p>
-      {error && <p className="error" role="alert">{error}</p>}
       {!windows.length && <p className="muted small">촬영할 필름이 없어요. 창문 크기와 위치를 먼저 저장해 주세요.</p>}
       {!savedSelection && windows.length > 1 && <label className="field"><span>창문</span><select value={windowId} onChange={e=>{setWindowId(e.target.value);setRow(0);setCol(0);}}>
         {windows.map((w,i)=><option key={w.window_id} value={w.window_id}>창 {i+1}</option>)}
@@ -91,8 +95,11 @@ function SessionSpatialCapture(props: SpatialCaptureProps) {
         {savedSelection && <p>창문 입력 단계에서 선택한 필름 정보를 가져왔어요.</p>}
         <p className="film-select-choice" role="status">아래에서 {row+1}번째 · 왼쪽에서 {col+1}번째 필름</p>
       </>}
-      <button type="button" className="primary" disabled={!win} onClick={()=>void begin()}>촬영 시작</button>
-      <button type="button" className="text-button" onClick={()=>{if(!props.sceneId)return;setBusy(true);void cancelStoredCapture(props.sceneId).then(()=>setRetry(n=>n+1)).catch(e=>{setError(String(e));setBusy(false);});}}>이전 촬영 끝내기</button>
+      {error && <div className="film-error" role="alert">
+        <p>{error}</p>
+        {/다른 촬영이 진행 중|진행 중인 촬영이 달라요|촬영 마커가 바뀌었|필름이 변경됐|촬영을 시작하지 못했/.test(error) && <button type="button" className="secondary" onClick={endPrevious}>이전 촬영 끝내기</button>}
+      </div>}
+      <div className="capture-action"><button type="button" className="primary" disabled={!win} onClick={()=>void begin()}>촬영 시작</button></div>
     </section>;
   }
   const testMarkerSideM = props.markerSizeOverride?.sessionId === session.session_id
@@ -116,10 +123,11 @@ function TestSpatialCapture({ count, onFinish, session, testMarkerSideM, onVisio
   const [rawFrames,setRawFrames]=useState<Record<number,Frame[]>>({});
   const version=useRef(0);
   const [name, setName] = useState(`가구 ${count + 1}`);
-  const [furnitureType, setFurnitureType] = useState<FurnitureType>("desk");
+  const [furnitureType, setFurnitureType] = useState<FurnitureType | undefined>();
   const [shape, setShape] = useState<Shape>('rectangle');
   const [custom, setCustom] = useState<CapturePoint[]>([]);
   const [confirmed, setConfirmed] = useState(false);
+  const visionInput = useRef<HTMLInputElement>(null);
   const [visionBusy, setVisionBusy] = useState(false);
   const [visionError, setVisionError] = useState("");
   const [visionItems, setVisionItems] = useState<VisionEstimatedItem[]>([]);
@@ -213,9 +221,10 @@ function TestSpatialCapture({ count, onFinish, session, testMarkerSideM, onVisio
       .finally(() => { if (ticket === version.current) setVerifying(false); });
   }, [complete, captureCamera, verifying, verifyFailed, checkedKey, photoKey]);
   function nextFurniture() {
-    const captured: CapturedFurniture[] = [...items, { name: name.trim() || `가구 ${count + items.length + 1}`, type: furnitureType, capture: {session, testMarkerSideM, camera:captureCamera!, checkedMeasurement, shape, points: points.map((p,i)=>({id:`P${i+1}`,position:p,photos:photos[i].map(p=>p!.file),frames:rawFrames[i]??(photos[i].every(p=>p?.frame)?photos[i].map(p=>p!.frame!):undefined)}))} }];
+    const captured: CapturedFurniture[] = [...items, { name: name.trim() || `가구 ${count + items.length + 1}`, type: furnitureType ?? "desk", capture: {session, testMarkerSideM, camera:captureCamera!, checkedMeasurement, shape, points: points.map((p,i)=>({id:`P${i+1}`,position:p,photos:photos[i].map(p=>p!.file),frames:rawFrames[i]??(photos[i].every(p=>p?.frame)?photos[i].map(p=>p!.frame!):undefined)}))} }];
     setItems(captured);
     setName(`가구 ${count + captured.length + 1}`);
+    setFurnitureType(undefined);
     reset();
     setConfirmed(false);
     return captured;
@@ -256,10 +265,7 @@ function TestSpatialCapture({ count, onFinish, session, testMarkerSideM, onVisio
     setFurnitureType(kind);
     const hintShape = item.recommended_capture_shape;
     if (hintShape && hintShape in shapes) setShape(hintShape);
-    setActiveGuidance(
-      item.aruco_capture_guidance_ko ||
-      `추정된 '${koreanLabel}' 위치로 이동해 네 모서리(P1~P4)에서 창문 ArUco 마커를 촬영해 주세요.`,
-    );
+    setActiveGuidance("가구 네 모서리(P1~P4)에서 창문 마커를 촬영해 주세요.");
     setConfirmed(true);
   }
 
@@ -282,97 +288,115 @@ function TestSpatialCapture({ count, onFinish, session, testMarkerSideM, onVisio
     }
   }
 
-  function visionQualityLabel(item: VisionEstimatedItem): string {
-    if (item.estimation_quality === "high") return "추정 양호";
-    if (item.estimation_quality === "low_needs_aruco") return "정확도 낮음 · ArUco 촬영 필요";
-    return "ArUco 정밀 보정 권장";
+  function visionNote(item: VisionEstimatedItem): string {
+    if (item.estimation_quality === "high" || item.estimation_quality === "low_needs_aruco") return "";
+    return "마커로 정밀 촬영하면 더 정확해요.";
   }
 
   return <div className="spatial-capture corner-capture">
-    {!confirmed && <section className="vision-assist" aria-label="AI 사진 1장 보조 스캔">
+    {!confirmed && <section className="vision-assist" aria-label="사진으로 가구 찾기">
       <div className="vision-assist-head">
-        <h3>사진 1장으로 가구 먼저 찾기</h3>
-        <p className="muted small">창문 마커와 가구가 함께 보이게 1장 찍으면 AI가 위치와 크기를 추정해요. 추정 정확도가 낮으면 해당 가구 위치에서 ArUco 정밀 촬영으로 바로 이어집니다.</p>
+        <h3>사진으로 가구 찾기</h3>
+        <p className="muted small">창문 마커와 가구가 같이 보이게 한 장 찍어 주세요.</p>
       </div>
-      <label className={`secondary file-button${visionBusy || checking ? " disabled" : ""}`}>
-        <span>{visionBusy ? "사진 분석 중…" : "방 사진 1장으로 가구 찾기"}</span>
-        <input
-          type="file"
-          accept="image/*"
-          capture="environment"
-          disabled={visionBusy || checking}
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            e.target.value = "";
-            if (file) void scanRoomWithVision(file);
-          }}
-        />
-      </label>
+      <button type="button" className="primary vision-shoot" aria-label={visionBusy ? undefined : "사진으로 촬영 시작"} disabled={visionBusy || checking} onClick={() => visionInput.current?.click()}>
+        {visionBusy ? "사진 분석 중…" : "촬영 시작"}
+      </button>
+      <input
+        ref={visionInput}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        hidden
+        disabled={visionBusy || checking}
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          e.target.value = "";
+          if (file) void scanRoomWithVision(file);
+        }}
+      />
       {visionError && <p role="alert" className="error">{visionError}</p>}
       {visionItems.length > 0 && <div className="vision-results">
-        <p className="muted small"><strong>{visionItems.length}개 가구</strong>를 찾았어요. 정확도가 낮거나 정밀 측정이 필요하면 각 가구에서 ArUco 촬영을 진행해 주세요.</p>
+        <p className="muted small">가구 {visionItems.length}개를 찾았어요.</p>
         <ul className="vision-item-list">
           {visionItems.map((item, idx) => {
             const kind = fromSceneFurnitureType(item.occluder.type);
             const [w, d, h] = item.occluder.dimensions_m;
+            const note = visionNote(item);
             return <li key={item.occluder.occluder_id} className="vision-item">
               <div className="vision-item-top">
                 <strong>{furnitureTypes[kind]} {idx + 1}</strong>
-                <span className={`vision-quality ${item.estimation_quality ?? "medium"}`}>{visionQualityLabel(item)}</span>
+                <span className="muted small">신뢰도 {Math.round(item.confidence * 100)}%</span>
               </div>
-              <p className="muted small">
-                크기 약 {w.toFixed(2)}×{d.toFixed(2)}×{h.toFixed(2)}m · 창문 거리 약 {item.calibrated_distance_m.toFixed(1)}m · 신뢰도 {Math.round(item.confidence * 100)}%
-              </p>
-              {item.uncertainty_reason_ko && <p className="vision-uncertainty small">{item.uncertainty_reason_ko}</p>}
-              <p className="vision-guidance-note small">{item.aruco_capture_guidance_ko}</p>
+              {item.estimation_quality === "low_needs_aruco" && <span className="vision-badge">정확도 낮음 · 마커 촬영 필요</span>}
+              {note && <p className="muted small">{note}</p>}
+              <dl className="vision-facts">
+                <div><dt>크기</dt><dd>{w.toFixed(2)}×{d.toFixed(2)}×{h.toFixed(2)}m</dd></div>
+                <div><dt>창문과의 거리</dt><dd>{item.calibrated_distance_m.toFixed(1)}m</dd></div>
+              </dl>
               <button
                 type="button"
-                className="primary"
+                className="secondary"
                 disabled={visionBusy || checking}
                 onClick={() => startGuidedCaptureFromEstimate(item, idx)}
               >
-                이 가구 위치로 가서 ArUco 정밀 촬영
+                마커로 정밀 촬영
               </button>
             </li>;
           })}
         </ul>
         {onVisionRegistered && <button
           type="button"
-          className="secondary"
+          className="primary"
           disabled={visionBusy || checking}
           onClick={() => void applyVisionDraftToScene()}
         >
-          {visionBusy ? "배치 저장 중…" : "AI 추정 치수로 바로 도면에 배치"}
+          {visionBusy ? "배치 중…" : "이대로 도면에 배치"}
         </button>}
       </div>}
     </section>}
-    {!confirmed && <div className="two-fields">
-      <label className="field"><span>가구 이름</span><input value={name} onChange={(e) => setName(e.target.value)} /></label>
-      <label className="field"><span>가구 종류</span>
-        <select value={furnitureType} disabled={confirmed||checking} onChange={e=>setFurnitureType(e.target.value as FurnitureType)}>
-          {(Object.entries(furnitureTypes) as [FurnitureType, string][]).map(([value,label])=><option key={value} value={value}>{label}</option>)}
-        </select>
-      </label>
+    {(() => {
+      const plan = (
+    <section className={`shape-plan${confirmed?" compact":""}`} aria-label="형태별 촬영 계획">
+      <svg viewBox={confirmed&&points.length?tightBox(points):"0 0 100 100"} role="img" aria-label={`${shapes[shape].label} 촬영 순서`} onClick={e=>{if(shape!=='polygon'||confirmed)return; const r=e.currentTarget.getBoundingClientRect();setCustom(p=>[...p,{x:Math.max(8,Math.min(92,(e.clientX-r.left)/r.width*100)),y:Math.max(8,Math.min(92,(e.clientY-r.top)/r.height*100))}]);}}>
+        {shape==='circle'?<circle cx="50" cy="50" r="35" className="shape-outline"/>:shape==='ellipse'?<ellipse cx="50" cy="50" rx="40" ry="25" className="shape-outline"/>:<polygon points={points.map(p=>`${p.x},${p.y}`).join(' ')} className="shape-outline"/>}
+        {points.map((p,i)=>{
+          // The label sits outside the outline: on the outward side of the corner (reversed at an inward corner).
+          const n=points.length, prev=points[(i+n-1)%n], next=points[(i+1)%n];
+          const unit=(x:number,y:number)=>{const l=Math.hypot(x,y)||1;return {x:x/l,y:y/l};};
+          const a=unit(p.x-prev.x,p.y-prev.y), c=unit(p.x-next.x,p.y-next.y);
+          const area=points.reduce((t,q,j)=>{const r=points[(j+1)%n];return t+q.x*r.y-r.x*q.y;},0);
+          const turn=(p.x-prev.x)*(next.y-p.y)-(p.y-prev.y)*(next.x-p.x);
+          const mx=points.reduce((t,q)=>t+q.x,0)/n, my=points.reduce((t,q)=>t+q.y,0)/n;
+          const bis=n>=3&&area&&Math.hypot(a.x+c.x,a.y+c.y)>.2?unit((a.x+c.x)*(turn*area>0?1:-1),(a.y+c.y)*(turn*area>0?1:-1)):unit(p.x-mx,p.y-my);
+          const anchor=bis.x>.85?'start':bis.x<-.85?'end':'middle', lx=Math.max(anchor==='middle'?9:2,Math.min(anchor==='middle'?91:98,p.x+bis.x*(anchor==='middle'?11:7))), ly=Math.max(9,Math.min(91,p.y+bis.y*(anchor==='middle'?11:0)))+3;
+          return <g key={i}><circle cx={p.x} cy={p.y} r="3" className={confirmed&&!complete&&i===corner?'point-current':'point'}/><text x={lx} y={ly} textAnchor={anchor}>P{i+1}</text></g>;
+        })}
+      </svg>
+      <div className="shape-plan-body">
+      <p>{shape==='polygon'&&!confirmed?'꼭짓점을 순서대로 눌러 모양 구성':confirmed?`${shapes[shape].label} · ${points.length}개 지점`:`${points.length}개 지점 · 지점마다 촬영 한 번`}</p>
+      {!confirmed ? <div className="actions">
+        {shape==='polygon'&&<button type="button" className="secondary" disabled={!custom.length} onClick={()=>setCustom(p=>p.slice(0,-1))}>마지막 점 취소</button>}
+        <button type="button" className="primary" aria-label="마커로 촬영 시작" disabled={shape==='polygon'&&!validPolygon(custom)} onClick={()=>{setConfirmed(true);setError('');}}>촬영 시작</button>
+      </div>:<button type="button" className="text-button" disabled={checking} onClick={()=>{reset();setConfirmed(false);setActiveGuidance("");setFurnitureType(undefined);}}>형태 다시 선택</button>}
+      </div>
+    </section>
+      );
+      return confirmed ? plan : <div className="shape-card">
+      <div className="shape-field">
+      <div className="shape-field-head">
+        <h3 className="shape-field-title">마커로 정밀 촬영</h3>
+        <p>가구별 위치로 가서 찍어 주세요.</p>
+      </div>
       <label className="field"><span>상판 형태</span>
         <select value={shape} disabled={confirmed||checking} onChange={e=>{reset();setShape(e.target.value as Shape);setCustom([]);}}>
           {Object.entries(shapes).map(([value,s])=><option key={value} value={value}>{s.label}</option>)}
         </select>
       </label>
-    </div>}
-    <section className={`shape-plan${confirmed?" compact":""}`} aria-label="형태별 촬영 계획">
-      <svg viewBox="0 0 100 100" role="img" aria-label={`${shapes[shape].label} 촬영 순서`} onClick={e=>{if(shape!=='polygon'||confirmed)return; const r=e.currentTarget.getBoundingClientRect();setCustom(p=>[...p,{x:Math.max(8,Math.min(92,(e.clientX-r.left)/r.width*100)),y:Math.max(8,Math.min(92,(e.clientY-r.top)/r.height*100))}]);}}>
-        {shape==='circle'?<circle cx="50" cy="50" r="35" className="shape-outline"/>:shape==='ellipse'?<ellipse cx="50" cy="50" rx="40" ry="25" className="shape-outline"/>:<polygon points={points.map(p=>`${p.x},${p.y}`).join(' ')} className="shape-outline"/>}
-        {points.map((p,i)=><g key={i}><circle cx={p.x} cy={p.y} r="3" className={confirmed&&!complete&&i===corner?'point-current':'point'}/><text x={p.x} y={p.y-5} textAnchor="middle">P{i+1}</text></g>)}
-      </svg>
-      <div className="shape-plan-body">
-      {confirmed&&<strong className="shape-plan-name">{name.trim()||"가구"}</strong>}
-      <p>{shape==='polygon'&&!confirmed?'꼭짓점을 순서대로 눌러 모양 구성':confirmed?`${shapes[shape].label} · ${points.length}개 지점`:`${points.length}개 지점 · 지점마다 촬영 버튼 한 번`}</p>
-      {!confirmed ? <div className="actions">
-        {shape==='polygon'&&<button type="button" className="secondary" disabled={!custom.length} onClick={()=>setCustom(p=>p.slice(0,-1))}>마지막 점 취소</button>}
-        <button type="button" className="primary" disabled={shape==='polygon'&&!validPolygon(custom)} onClick={()=>{setConfirmed(true);setError('');}}>형태 확정 · 촬영 시작</button>
-      </div>:<button type="button" className="text-button" disabled={checking} onClick={()=>{reset();setConfirmed(false);setActiveGuidance("");}}>형태 다시 선택</button>}
-      </div>
-    </section>
+    </div>
+      {plan}
+      </div>;
+    })()}
     {confirmed && activeGuidance && <p role="status" className="capture-hint ok vision-guidance-banner">{activeGuidance}</p>}
     {confirmed && <>
     <ol className="corner-steps" aria-label="지점 촬영 상태">
@@ -409,4 +433,12 @@ function TestSpatialCapture({ count, onFinish, session, testMarkerSideM, onVisio
     {!complete && items.length > 0 && <button type="button" className="secondary" onClick={() => onFinish(items)}>촬영 마치고 도면 만들기 ({items.length}개)</button>}
     </>}
   </div>;
+}
+
+// The small summary drawing is cropped to the shape itself, so it sits flush with the card padding.
+function tightBox(points: { x: number; y: number }[]) {
+  const xs = points.map((p) => p.x), ys = points.map((p) => p.y);
+  const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+  const size = Math.max(maxX - minX, maxY - minY) + 8;
+  return `${(minX + maxX) / 2 - size / 2} ${(minY + maxY) / 2 - size / 2} ${size} ${size}`;
 }

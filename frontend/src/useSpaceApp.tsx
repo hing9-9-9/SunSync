@@ -38,6 +38,7 @@ import {
   validateFurnitureOverlap,
   validateSpace,
   validateShadingTime,
+  furnitureTypes,
   } from "./model";
 import type {
   Account,
@@ -213,6 +214,7 @@ export function useSpaceApp() {
   );
   const [pendingPage, setPendingPage] = useState<Page>("home");
   const [addingByQr, setAddingByQr] = useState(false);
+  const [namePrompt, setNamePrompt] = useState(0);
   const qrReturnPage = useRef<Page>("review");
   const [progress, setProgress] = useState(0);
   const [hour, setHour] = useState(14);
@@ -1197,7 +1199,9 @@ export function useSpaceApp() {
     setSelectedFurniture(null);
     setSelectedRegion(null);
   }
-  const zoneTabs = space && (
+  // Zones are no longer offered in the UI: spaces are merged to one zone on load (oneZone), so these
+  // tabs only show for a local draft that still carries several zones.
+  const zoneTabs = space && space.zones.length > 1 && (
     <div className="zone-tabs" aria-label="구역 선택">
       {space.zones.map((z) => (
         <button
@@ -1211,34 +1215,27 @@ export function useSpaceApp() {
         </button>
       ))}
       {draft && editing && (
-        <>
-          <button type="button" className="zone-action" onClick={addZone}>
-            ＋ 구역 추가
-          </button>
-          <button
-            type="button"
-            className="zone-action zone-delete"
-            disabled={draft.zones.length <= 1}
-            title={draft.zones.length <= 1 ? "최소 1개 구역 필요" : undefined}
-            onClick={() => {
-              const next = removeZone(draft, draft.zone);
-              const furnitureCount = draft.furniture.filter((f) => f.zone === draft.zone).length;
-              const regionCount = draft.regions.filter((r) => r.zone === draft.zone).length;
-              askDelete(
-                next,
-                `'${draft.zone}'을 삭제할까요?`,
-                `이 구역의 가구 ${furnitureCount}개와 보호 영역 ${regionCount}개도 함께 삭제됩니다.`,
-                () => {
-                  setSelectedFurniture(next.furniture.find((f) => f.zone === next.zone)?.id ?? null);
-                  setSelectedRegion(null);
-                  setError("");
-                },
-              );
-            }}
-          >
-            선택 구역 삭제
-          </button>
-        </>
+        <button
+          type="button"
+          className="zone-action zone-delete"
+          onClick={() => {
+            const next = removeZone(draft, draft.zone);
+            const furnitureCount = draft.furniture.filter((f) => f.zone === draft.zone).length;
+            const regionCount = draft.regions.filter((r) => r.zone === draft.zone).length;
+            askDelete(
+              next,
+              `'${draft.zone}'을 삭제할까요?`,
+              `이 구역의 가구 ${furnitureCount}개와 보호 영역 ${regionCount}개도 함께 삭제됩니다.`,
+              () => {
+                setSelectedFurniture(next.furniture.find((f) => f.zone === next.zone)?.id ?? null);
+                setSelectedRegion(null);
+                setError("");
+              },
+            );
+          }}
+        >
+          선택 구역 삭제
+        </button>
       )}
     </div>
   );
@@ -1276,7 +1273,8 @@ export function useSpaceApp() {
       setSelectedFurniture(added[0]?.id ?? null);
       setSelectedRegion(null);
       setAddingByQr(false);
-      setToast(`측정 완료 · 가구 ${added.length}개를 배치했어요. ${markerEndFailed ? "마커 표시 종료에 실패했어요. 촬영 화면에서 종료를 다시 시도해 주세요." : "위치와 크기를 확인해 주세요."}`);
+      if (added.length) setNamePrompt((n) => n + 1);
+      setToast(`측정 완료 · 가구 ${added.length}개를 배치했어요. ${markerEndFailed ? "마커 표시 종료에 실패했어요. 촬영 화면에서 종료를 다시 시도해 주세요." : "이름과 종류를 입력해 주세요."}`);
     } catch (e) {
       setError(e instanceof MeasureError ? e.message : "측정하지 못했어요. 다시 촬영해 주세요.");
       setPageState("capture");
@@ -1320,12 +1318,23 @@ export function useSpaceApp() {
     try {
       const refreshed = await getServerSpace(draft.id);
       const added = refreshed.furniture.filter((f) => !draft.furniture.some((o) => o.id === f.id));
+      const addedIds = new Set(added.map((f) => f.id));
+      let order = draft.furniture.length;
+      const named = {
+        ...refreshed,
+        furniture: refreshed.furniture.map((f) => {
+          if (!addedIds.has(f.id)) return f;
+          order += 1;
+          return /vision ai/i.test(f.name) ? { ...f, name: `${furnitureTypes[f.type ?? "other"]} ${order}` } : f;
+        }),
+      };
       setSpaces((all) => upsertSpace(all, refreshed));
-      setDraft(refreshed);
+      setDraft(named);
       setSelectedFurniture(added[0]?.id ?? refreshed.furniture.at(-1)?.id ?? null);
       setSelectedRegion(null);
       setAddingByQr(false);
-      setToast(`AI 추정으로 가구 ${added.length || addedCount}개를 배치했어요. 도면에서 위치와 크기를 확인해 주세요.`);
+      if (added.length) setNamePrompt((n) => n + 1);
+      setToast(`가구 ${added.length || addedCount}개를 배치했어요. 이름과 종류를 입력해 주세요.`);
       setPageState(qrReturnPage.current);
     } catch (e) {
       setError(userMessage(e, "AI로 인식한 공간 정보를 불러오지 못했어요. 다시 시도해 주세요."));
@@ -1696,6 +1705,7 @@ export function useSpaceApp() {
     zoneTabs,
     finishCapture,
     completeVisionRegistration,
+    namePrompt,
     addFurniture,
     addManualFurniture,
     addRegion,

@@ -21,7 +21,7 @@
 .forecast-key-general { border-top-style: dashed; border-color: var(--c-sun, #ff7426); }
 
 .app .forecast-panel > .forecast-note { margin: 0; font-size: 13px; line-height: 1.5; color: var(--c-muted, #5f5b66); }
-.forecast-provenance { display: grid; gap: 6px; }
+.forecast-provenance { display: grid; gap: 6px; margin: var(--space-1) 0 var(--space-3); }
 .forecast-provenance-bar { display: flex; height: 6px; overflow: hidden; border-radius: 999px; background: #e4e3e8; }
 .forecast-provenance-segment { min-width: 1px; }
 .forecast-provenance-forecast { background: #6660e5; }
