@@ -19,6 +19,12 @@ from .pose import estimate, point_covariance
 from .robust import fuse, refine
 
 
+def yaw_degrees(transform):
+    # A tiny negative angle can round to exactly 360 after the first modulo.
+    angle = float(np.degrees(np.arctan2(transform[1, 0], transform[0, 0]))) % 360.0
+    return angle % 360.0
+
+
 def digest(value):
     return hashlib.sha256(
         json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
@@ -363,9 +369,7 @@ def measure(request: MeasureRequest):
         model.update(
             T_enu_model=transformed.ravel().tolist(),
             base_center_enu_m=transformed[:3, 3].tolist(),
-            yaw_deg_ccw_from_east=float(
-                np.degrees(np.arctan2(transformed[1, 0], transformed[0, 0])) % 360
-            ),
+            yaw_deg_ccw_from_east=yaw_degrees(transformed),
         )
     response["model"] = model
     response["status"] = "model_ready_unreviewed"
@@ -413,9 +417,7 @@ def canonical_model(value: dict):
         data.update(
             T_enu_model=expected.ravel().tolist(),
             base_center_enu_m=expected[:3, 3].tolist(),
-            yaw_deg_ccw_from_east=float(
-                np.degrees(np.arctan2(expected[1, 0], expected[0, 0])) % 360
-            ),
+            yaw_deg_ccw_from_east=yaw_degrees(expected),
         )
     elif floor:
         up = np.array(floor.up_board)
