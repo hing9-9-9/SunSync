@@ -1,0 +1,137 @@
+{
+  "specification_status": "frozen_stage4_10min",
+  "specification_frozen_at": "2026-11-08",
+  "frozen_reason": "Extended-train validation accepted; do not tune from diagnostic or final-test results.",
+  "cloud_patch_used": false,
+  "diagnostic_metrics_report_only": {
+    "mean_interval_width_W_m2": 231.01777333539013,
+    "median_interval_width_W_m2": 238.30565531081314,
+    "open_meteo": {
+      "mae_W_m2": 79.12723889814093,
+      "rmse_W_m2": 128.29930685277705
+    },
+    "p50": {
+      "mae_W_m2": 38.15407885067567,
+      "rmse_W_m2": 117.3621425032961
+    },
+    "picp_p10_p90": 0.9175257731958762,
+    "pinball_loss_W_m2": {
+      "p10": 15.467922244980588,
+      "p50": 19.077039425337833,
+      "p90": 24.66743488564659
+    },
+    "raw_crossing_count": 1,
+    "raw_crossing_rate": 0.010309278350515464,
+    "raw_p10_gt_p50_count": 1,
+    "raw_p50_gt_p90_count": 0,
+    "raw_pinball_loss_W_m2": {
+      "p10": 19.512555165754662,
+      "p50": 19.820521346212853,
+      "p90": 24.725358317180948
+    },
+    "row_count": 97
+  },
+  "dsr_unit_assumed_W_m2": true,
+  "excluded_rows": {
+    "missing_input_cloud": 1,
+    "missing_input_dsr": 2512,
+    "missing_target_dsr": 56,
+    "missing_target_timestamp": 1
+  },
+  "feature_names": [
+    "intercept",
+    "direct_prior_factor",
+    "open_meteo_factor",
+    "cloud_transmittance",
+    "advection_impact"
+  ],
+  "final_test_used": false,
+  "horizon_minutes": 10,
+  "leakage_checks_passed": true,
+  "model_type": "linear_quantile_regression_p10_p50_p90",
+  "optimizer": "L-BFGS-B",
+  "optimizer_iterations": {
+    "p10": 21,
+    "p50": 21,
+    "p90": 23
+  },
+  "quantile_postprocessing": {
+    "p10": "clip(raw_p10, 0, 1.05)",
+    "p50": "max(p10, clip(raw_p50, 0, 1.05))",
+    "p90": "max(p50, clip(raw_p90, 0, 1.05))"
+  },
+  "reference_type": "dsr_proxy",
+  "selection_policy": "validation only; diagnostic is report-only",
+  "source_kma_rows": 4032,
+  "split_boundaries_utc": {
+    "diagnostic_start": "2026-10-31T00:00:00Z",
+    "diagnostic_target_before": "2026-11-02T00:00:00Z",
+    "split_embargo_rule": "valid_time < next_split_start",
+    "train_start": "2026-10-05T00:00:00Z",
+    "train_target_before": "2026-10-29T00:00:00Z",
+    "validation_start": "2026-10-29T00:00:00Z",
+    "validation_target_before": "2026-10-31T00:00:00Z"
+  },
+  "split_counts": {
+    "diagnostic": 97,
+    "train": 1266,
+    "validation": 97
+  },
+  "training_pinball_loss_factor": {
+    "p10": 0.03256449991115971,
+    "p50": 0.04999274694949851,
+    "p90": 0.030649888231955823
+  },
+  "valid_model_rows": 1462,
+  "validation_metrics": {
+    "mean_interval_width_W_m2": 272.7176528977877,
+    "median_interval_width_W_m2": 315.3951426662569,
+    "open_meteo": {
+      "mae_W_m2": 163.9426019988661,
+      "rmse_W_m2": 208.71092008173105
+    },
+    "p50": {
+      "mae_W_m2": 62.28544148419928,
+      "rmse_W_m2": 122.23147928157992
+    },
+    "picp_p10_p90": 0.8247422680412371,
+    "pinball_loss_W_m2": {
+      "p10": 12.550451499126352,
+      "p50": 31.14272074209964,
+      "p90": 26.848781343309863
+    },
+    "raw_crossing_count": 0,
+    "raw_crossing_rate": 0.0,
+    "raw_p10_gt_p50_count": 0,
+    "raw_p50_gt_p90_count": 0,
+    "raw_pinball_loss_W_m2": {
+      "p10": 16.401029591740247,
+      "p50": 31.15236479974595,
+      "p90": 26.879615057621713
+    },
+    "row_count": 97
+  },
+  "weights": {
+    "p10": [
+      -0.13177931396839113,
+      0.5829738738093839,
+      0.0,
+      0.38425539457016267,
+      0.0
+    ],
+    "p50": [
+      -0.005406465890973672,
+      1.0084778452873229,
+      0.0,
+      0.015838667691265764,
+      0.0
+    ],
+    "p90": [
+      0.36392467578085536,
+      0.7566848500162618,
+      0.0,
+      -0.07916727226258788,
+      0.0
+    ]
+  }
+}

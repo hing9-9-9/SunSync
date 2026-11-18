@@ -1,0 +1,155 @@
+{
+  "specification_status": "frozen_stage5_30min",
+  "specification_frozen_at": "2026-11-08",
+  "frozen_reason": "Validation accepted; diagnostic and final test are not model-selection inputs.",
+  "cloud_patch_used": false,
+  "diagnostic_metrics_report_only": {
+    "empirical_cdf_at_quantile": {
+      "p10": 0.02197802197802198,
+      "p50": 0.6703296703296703,
+      "p90": 0.945054945054945
+    },
+    "mean_interval_width_W_m2": 330.86307211804746,
+    "median_interval_width_W_m2": 332.06881811141966,
+    "open_meteo": {
+      "bias_W_m2": -12.941889840247748,
+      "mae_W_m2": 74.48076701400731,
+      "rmse_W_m2": 121.19005278291971
+    },
+    "p10_zero_rate": 0.5164835164835165,
+    "p50": {
+      "bias_W_m2": 13.21366062939553,
+      "mae_W_m2": 49.85413393705823,
+      "rmse_W_m2": 105.98314925459894
+    },
+    "p90_cap_rate": 0.06593406593406594,
+    "picp_p10_p90": 0.9340659340659341,
+    "pinball_loss_W_m2": {
+      "p10": 13.493692002813647,
+      "p50": 24.927066968529115,
+      "p90": 30.596192038114214
+    },
+    "raw_crossing_count": 1,
+    "raw_crossing_rate": 0.01098901098901099,
+    "raw_p10_gt_p50_count": 1,
+    "raw_p50_gt_p90_count": 0,
+    "raw_pinball_loss_W_m2": {
+      "p10": 17.627221844579697,
+      "p50": 25.587258639146338,
+      "p90": 30.687342125250495
+    },
+    "row_count": 91
+  },
+  "dsr_unit_assumed_W_m2": true,
+  "excluded_rows": {
+    "missing_input_cloud": 1,
+    "missing_input_dsr": 2512,
+    "missing_target_dsr": 112,
+    "missing_target_timestamp": 3
+  },
+  "feature_names": [
+    "intercept",
+    "direct_prior_factor",
+    "open_meteo_factor",
+    "cloud_transmittance",
+    "advection_impact"
+  ],
+  "final_test_used": false,
+  "horizon_minutes": 30,
+  "leakage_checks_passed": true,
+  "model_type": "linear_quantile_regression_p10_p50_p90",
+  "optimizer": "L-BFGS-B",
+  "optimizer_iterations": {
+    "p10": 17,
+    "p50": 11,
+    "p90": 22
+  },
+  "quantile_postprocessing": {
+    "p10": "clip(raw_p10, 0, 1.05)",
+    "p50": "max(p10, clip(raw_p50, 0, 1.05))",
+    "p90": "max(p50, clip(raw_p90, 0, 1.05))"
+  },
+  "reference_type": "dsr_proxy",
+  "selection_policy": "validation only; diagnostic is report-only",
+  "source_kma_rows": 4032,
+  "split_boundaries_utc": {
+    "diagnostic_start": "2026-10-31T00:00:00Z",
+    "diagnostic_target_before": "2026-11-02T00:00:00Z",
+    "split_embargo_rule": "valid_time < next_split_start",
+    "train_start": "2026-10-05T00:00:00Z",
+    "train_target_before": "2026-10-29T00:00:00Z",
+    "validation_start": "2026-10-29T00:00:00Z",
+    "validation_target_before": "2026-10-31T00:00:00Z"
+  },
+  "split_counts": {
+    "diagnostic": 91,
+    "train": 1216,
+    "validation": 91
+  },
+  "training_pinball_loss_factor": {
+    "p10": 0.03785394473583633,
+    "p50": 0.06817194284901917,
+    "p90": 0.03477853186103828
+  },
+  "valid_model_rows": 1404,
+  "validation_metrics": {
+    "empirical_cdf_at_quantile": {
+      "p10": 0.06593406593406594,
+      "p50": 0.6923076923076923,
+      "p90": 0.8571428571428571
+    },
+    "mean_interval_width_W_m2": 381.6664903060522,
+    "median_interval_width_W_m2": 406.9428810789768,
+    "open_meteo": {
+      "bias_W_m2": -20.274992733355152,
+      "mae_W_m2": 159.19752851861517,
+      "rmse_W_m2": 205.5820562925568
+    },
+    "p10_zero_rate": 0.43956043956043955,
+    "p50": {
+      "bias_W_m2": 2.934444384600538,
+      "mae_W_m2": 83.61886898731655,
+      "rmse_W_m2": 133.15095510871313
+    },
+    "p90_cap_rate": 0.04395604395604396,
+    "picp_p10_p90": 0.8131868131868132,
+    "pinball_loss_W_m2": {
+      "p10": 17.37381827926876,
+      "p50": 41.80943449365827,
+      "p90": 32.858652907849596
+    },
+    "raw_crossing_count": 0,
+    "raw_crossing_rate": 0.0,
+    "raw_p10_gt_p50_count": 0,
+    "raw_p50_gt_p90_count": 0,
+    "raw_pinball_loss_W_m2": {
+      "p10": 21.076852362405166,
+      "p50": 41.80943449365827,
+      "p90": 32.873279552957285
+    },
+    "row_count": 91
+  },
+  "weights": {
+    "p10": [
+      -0.12971104101724173,
+      0.2773778681182723,
+      0.12187936982110291,
+      0.4631219209997629,
+      0.0
+    ],
+    "p50": [
+      -0.0021937817877441504,
+      0.8972149576416787,
+      0.017224391206798015,
+      0.12037785290548125,
+      0.0
+    ],
+    "p90": [
+      0.46923841324061694,
+      0.7096365313352453,
+      0.0,
+      -0.08975113250054019,
+      0.0
+    ]
+  }
+}

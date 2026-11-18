@@ -21,6 +21,16 @@
 .forecast-key-general { border-top-style: dashed; border-color: var(--c-sun, #ff7426); }
 
 .app .forecast-panel > .forecast-note { margin: 0; font-size: 13px; line-height: 1.5; color: var(--c-muted, #5f5b66); }
+.forecast-provenance { display: grid; gap: 6px; }
+.forecast-provenance-bar { display: flex; height: 6px; overflow: hidden; border-radius: 999px; background: #e4e3e8; }
+.forecast-provenance-segment { min-width: 1px; }
+.forecast-provenance-forecast { background: #6660e5; }
+.forecast-provenance-stored { background: #7c4d9e; }
+.forecast-provenance-unavailable { background: #aaa7b0; }
+.forecast-provenance-unknown { background: repeating-linear-gradient(135deg, #b45309 0 3px, #f8d6a4 3px 6px); }
+.forecast-provenance-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; color: var(--c-muted, #5f5b66); font-size: 12px; line-height: 1.4; }
+.forecast-provenance-legend > span { display: inline-flex; align-items: center; gap: 5px; }
+.forecast-provenance-key { width: 9px; height: 9px; border-radius: 2px; }
 .forecast-panel { row-gap: var(--space-2); }
 .forecast-panel > .forecast-chart { margin-bottom: var(--space-1); }
 
