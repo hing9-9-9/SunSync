@@ -15,8 +15,11 @@ artifacts/mock_validation/*
 !artifacts/mock_validation/.gitkeep
 # Local external-source diagnostic captures are never committed.
 artifacts/local/
-# Local FR-01 provider responses and normalized experiment datasets.
-data/fr01/
+# Finalized FR-01 experimental inputs and results are shared with the team.
+# Exclude obsolete, rejected, and diagnostic-only outputs.
+data/fr01/archive/previous_work/
+data/fr01/model/stage5/validation_experiments/
+data/fr01/model/**/diagnostic_*_predictions.csv
 # Node
 node_modules/
 dist/

@@ -1,0 +1,367 @@
+{
+  "availability_assumption_hours": 6,
+  "availability_note": "Conservative reconstructed availability time; run initialization is not publication time.",
+  "dni_unit": "W/m²",
+  "grid": {
+    "grid_elevation_m": 70.0,
+    "grid_latitude": 37.5,
+    "grid_longitude": 127.0,
+    "timezone": "GMT"
+  },
+  "model": "ecmwf_ifs025",
+  "normalized_csv": "normalized/open_meteo/20261019T000000Z_20261101T235000Z_open_meteo_runs.csv",
+  "product": "single_runs_hourly_direct_normal_irradiance",
+  "provider": "open_meteo",
+  "raw_payloads": [
+    {
+      "path": "raw/open_meteo_single_runs/20261018T180000Z_ecmwf_ifs025.json",
+      "point_count": 28,
+      "run_utc": "2026-10-18T18:00:00Z",
+      "sha256": "2db02e515dc080ac6cc7f198fb847916cc869312fe526623e6b04c42453913b7"
+    },
+    {
+      "path": "raw/open_meteo_single_runs/20261019T000000Z_ecmwf_ifs025.json",
+      "point_count": 28,
+      "run_utc": "2026-10-19T00:00:00Z",
+      "sha256": "a0bfbae80ee3bf7b45485440adba7974472bd3280c93939e88a33d327ebfbb39"
+    },
+    {
+      "path": "raw/open_meteo_single_runs/20261019T060000Z_ecmwf_ifs025.json",
+      "point_count": 28,
+      "run_utc": "2026-10-19T06:00:00Z",
+      "sha256": "812d24a77ad2a38d01bd59adb64c6dd4b7bbf113449f46fc88d811bcbc810987"
+    },
+    {
+      "path": "raw/open_meteo_single_runs/20261019T120000Z_ecmwf_ifs025.json",
+      "point_count": 28,
+      "run_utc": "2026-10-19T12:00:00Z",
+      "sha256": "1df0b54b1bbb7e079f7e404561c7db9ffa90ee43b74bc3f8f403deb7fd67ed64"
+    },
+    {
+      "path": "raw/open_meteo_single_runs/20261019T180000Z_ecmwf_ifs025.json",
+      "point_count": 28,
+      "run_utc": "2026-10-19T18:00:00Z",
+      "sha256": "b44bbf30660226a9057223d1e0b4bd5e7867d8b4a463f0427d265b36817318cb"
+    },
+    {
+      "path": "raw/open_meteo_single_runs/20261020T000000Z_ecmwf_ifs025.json",
+      "point_count": 28,
+      "run_utc": "2026-10-20T00:00:00Z",
+      "sha256": "3e1aa34b12e09ffdf7c8f5551ef54759b30bae2aff56af643e915094e2fd68d4"
+    },
+    {
+      "path": "raw/open_meteo_single_runs/20261020T060000Z_ecmwf_ifs025.json",
+      "point_count": 28,
+      "run_utc": "2026-10-20T06:00:00Z",
+      "sha256": "4e8e8245820de12ab7ebfa4becfb2eb74dd402d6881c773da0d567264efe2d10"
+    },
+    {
+      "path": "raw/open_meteo_single_runs/20261020T120000Z_ecmwf_ifs025.json",
+      "point_count": 28,
+      "run_utc": "2026-10-20T12:00:00Z",
+      "sha256": "71f3a777b2b26fdde480732a1c01d04bf5a6c93009bef95c2aadb3996d27994e"
+    },
+    {
+      "path": "raw/open_meteo_single_runs/20261020T180000Z_ecmwf_ifs025.json",
+      "point_count": 28,
+      "run_utc": "2026-10-20T18:00:00Z",
+      "sha256": "8fdcc021a2bac5c453c100ea801e336a7e7dda0ec5e60a7c80f83484138e644f"
+    },
+    {
+      "path": "raw/open_meteo_single_runs/20261021T000000Z_ecmwf_ifs025.json",
+      "point_count": 28,
+      "run_utc": "2026-10-21T00:00:00Z",
+      "sha256": "f8ba6a17f52fc8a2e8b18948465bff8936a264ebc22f55d2b9373084205a9892"
+    },
+    {
+      "path": "raw/open_meteo_single_runs/20261021T060000Z_ecmwf_ifs025.json",
+      "point_count": 28,
+      "run_utc": "2026-10-21T06:00:00Z",
+      "sha256": "5099cb3d8fc5711bd08173a3cb45fac37ef91ede22a08b6ab9185009a16174c3"
+    },
+    {
+      "path": "raw/open_meteo_single_runs/20261021T120000Z_ecmwf_ifs025.json",
+      "point_count": 28,
+      "run_utc": "2026-10-21T12:00:00Z",
+      "sha256": "b454a62b21d0807a1b38022e9136475414e8921a2f6791606065319635640d43"
+    },
+    {
+      "path": "raw/open_meteo_single_runs/20261021T180000Z_ecmwf_ifs025.json",
+      "point_count": 28,
+      "run_utc": "2026-10-21T18:00:00Z",
+      "sha256": "33e97e8b949fe0034ea9ddc4faac4bd6dc873b0cac033fe416fa4cc5c00b0921"
+    },
+    {
+      "path": "raw/open_meteo_single_runs/20261022T000000Z_ecmwf_ifs025.json",
+      "point_count": 28,
+      "run_utc": "2026-10-22T00:00:00Z",
+      "sha256": "0595f0b05b70017d6fcd6b0d335933250ad6a1e02913971f888d5660d4909ab9"
+    },
+    {
+      "path": "raw/open_meteo_single_runs/20261022T060000Z_ecmwf_ifs025.json",
+      "point_count": 28,
+      "run_utc": "2026-10-22T06:00:00Z",
+      "sha256": "40459ca7390da0a9417f5bd98b6a2fbcbcf1a5c23222ef8ba3e930f869f97cb1"
+    },
+    {
+      "path": "raw/open_meteo_single_runs/20261022T120000Z_ecmwf_ifs025.json",
+      "point_count": 28,
+      "run_utc": "2026-10-22T12:00:00Z",
+      "sha256": "2a3639d430977ad2acd742d078f4256e2bc38f32b81f323b6bdd447dd49d06e6"
+    },
+    {
+      "path": "raw/open_meteo_single_runs/20261022T180000Z_ecmwf_ifs025.json",
+      "point_count": 28,
+      "run_utc": "2026-10-22T18:00:00Z",
+      "sha256": "c27b41e9960fe1eaf2fad911ddcdb8f9aff71f7a20fc1d5e5f26e0a4b5fd0b7f"
+    },
+    {
+      "path": "raw/open_meteo_single_runs/20261023T000000Z_ecmwf_ifs025.json",
+      "point_count": 28,
+      "run_utc": "2026-10-23T00:00:00Z",
+      "sha256": "9f760261d0fed1da4f0786ee8a7cf8486d04285f2e0b8da1c00a32453624750f"
+    },
+    {
+      "path": "raw/open_meteo_single_runs/20261023T060000Z_ecmwf_ifs025.json",
+      "point_count": 28,
+      "run_utc": "2026-10-23T06:00:00Z",
+      "sha256": "00edb5d592d9f9705e7e7932468abd3ce5b1307f7617d3a45db3b2f6ba6fadfa"
+    },
+    {
+      "path": "raw/open_meteo_single_runs/20261023T120000Z_ecmwf_ifs025.json",
+      "point_count": 28,
+      "run_utc": "2026-10-23T12:00:00Z",
+      "sha256": "243292e1bc52bce894824d72d2370ec04d734aa4ccaaa12b5f31407e8600a5b0"
+    },
+    {
+      "path": "raw/open_meteo_single_runs/20261023T180000Z_ecmwf_ifs025.json",
+      "point_count": 28,
+      "run_utc": "2026-10-23T18:00:00Z",
+      "sha256": "b5a28080bf5b14dad21e6807a4416cc54486251852bf40c8769fea24e1643c0b"
+    },
+    {
+      "path": "raw/open_meteo_single_runs/20261024T000000Z_ecmwf_ifs025.json",
+      "point_count": 28,
+      "run_utc": "2026-10-24T00:00:00Z",
+      "sha256": "a690b7fdf1e22cc32a76e4bc11c37e40595590e5c373325880104463dd8ad927"
+    },
+    {
+      "path": "raw/open_meteo_single_runs/20261024T060000Z_ecmwf_ifs025.json",
+      "point_count": 28,
+      "run_utc": "2026-10-24T06:00:00Z",
+      "sha256": "4998749c376746025c3df4f294bc3c96191dc2a0d48f981c7f92584c81afb656"
+    },
+    {
+      "path": "raw/open_meteo_single_runs/20261024T120000Z_ecmwf_ifs025.json",
+      "point_count": 28,
+      "run_utc": "2026-10-24T12:00:00Z",
+      "sha256": "404e6e6d7fa812a83431059b02862c7e40e34edc3e7a71c066e73ca2a18be333"
+    },
+    {
+      "path": "raw/open_meteo_single_runs/20261024T180000Z_ecmwf_ifs025.json",
+      "point_count": 28,
+      "run_utc": "2026-10-24T18:00:00Z",
+      "sha256": "1d47a9c867441e6a4ece2e59cf22216ac95c982457391f8e007acd2175544670"
+    },
+    {
+      "path": "raw/open_meteo_single_runs/20261025T000000Z_ecmwf_ifs025.json",
+      "point_count": 28,
+      "run_utc": "2026-10-25T00:00:00Z",
+      "sha256": "88090fddcdbd57d51f9706eb5f5908513af07d3aaa5555b0332d7812649626a1"
+    },
+    {
+      "path": "raw/open_meteo_single_runs/20261025T060000Z_ecmwf_ifs025.json",
+      "point_count": 28,
+      "run_utc": "2026-10-25T06:00:00Z",
+      "sha256": "938b4035006770bbb6c84ab1a118a784ee906741e72bb7a08a77d74a12fcff0e"
+    },
+    {
+      "path": "raw/open_meteo_single_runs/20261025T120000Z_ecmwf_ifs025.json",
+      "point_count": 28,
+      "run_utc": "2026-10-25T12:00:00Z",
+      "sha256": "abc2ffbe985861158c41d2b709ebc0dfc65ad9bee99dda64aeed05af65a97ec0"
+    },
+    {
+      "path": "raw/open_meteo_single_runs/20261025T180000Z_ecmwf_ifs025.json",
+      "point_count": 28,
+      "run_utc": "2026-10-25T18:00:00Z",
+      "sha256": "f58173784287dbcb11ec6b03e5c63ba31d031469122031a85921b41a350f7b45"
+    },
+    {
+      "path": "raw/open_meteo_single_runs/20261026T000000Z_ecmwf_ifs025.json",
+      "point_count": 28,
+      "run_utc": "2026-10-26T00:00:00Z",
+      "sha256": "8b5f1bec4d9941c54ff5a0ca3653b14e9393883cde24d8144a97e8f101e8fa3e"
+    },
+    {
+      "path": "raw/open_meteo_single_runs/20261026T060000Z_ecmwf_ifs025.json",
+      "point_count": 28,
+      "run_utc": "2026-10-26T06:00:00Z",
+      "sha256": "f7729e7022294ffdef1811e68ad7a3dc3c0fde846c3efe09757f053e7328cb77"
+    },
+    {
+      "path": "raw/open_meteo_single_runs/20261026T120000Z_ecmwf_ifs025.json",
+      "point_count": 28,
+      "run_utc": "2026-10-26T12:00:00Z",
+      "sha256": "647addea72278ea251dd2730f294c1840c6485c600247bdd89a8ff28127ddadd"
+    },
+    {
+      "path": "raw/open_meteo_single_runs/20261026T180000Z_ecmwf_ifs025.json",
+      "point_count": 28,
+      "run_utc": "2026-10-26T18:00:00Z",
+      "sha256": "ef7637f3b3275938506e89f649128d780f060ee2f741efc8061ac10ab6c22e3e"
+    },
+    {
+      "path": "raw/open_meteo_single_runs/20261027T000000Z_ecmwf_ifs025.json",
+      "point_count": 28,
+      "run_utc": "2026-10-27T00:00:00Z",
+      "sha256": "8362f24a2b6e0c92b023c56b6aecb24ad57784ef34b699195894a7fba2dcb729"
+    },
+    {
+      "path": "raw/open_meteo_single_runs/20261027T060000Z_ecmwf_ifs025.json",
+      "point_count": 28,
+      "run_utc": "2026-10-27T06:00:00Z",
+      "sha256": "dba0e34e18c24a4d862292eeea45350ecb1d43240b27bb8d3c7080be29d76d02"
+    },
+    {
+      "path": "raw/open_meteo_single_runs/20261027T120000Z_ecmwf_ifs025.json",
+      "point_count": 28,
+      "run_utc": "2026-10-27T12:00:00Z",
+      "sha256": "d57dd32f44b528f6ea1180c301c1a18534bf5731f9a3bb5803728df72ff9d8f3"
+    },
+    {
+      "path": "raw/open_meteo_single_runs/20261027T180000Z_ecmwf_ifs025.json",
+      "point_count": 28,
+      "run_utc": "2026-10-27T18:00:00Z",
+      "sha256": "f28c195fd8115af22518b13c028915cc7172384339f122e488d9d08f331904d3"
+    },
+    {
+      "path": "raw/open_meteo_single_runs/20261028T000000Z_ecmwf_ifs025.json",
+      "point_count": 28,
+      "run_utc": "2026-10-28T00:00:00Z",
+      "sha256": "a14421589eeaa2eea881b924350f910b1022377671e5d6841e6dc9b74aa960a6"
+    },
+    {
+      "path": "raw/open_meteo_single_runs/20261028T060000Z_ecmwf_ifs025.json",
+      "point_count": 28,
+      "run_utc": "2026-10-28T06:00:00Z",
+      "sha256": "f5b13e8bcb6806c3c17ea5a6bc69b42830c4b121d0a58a54898545425d5e39a0"
+    },
+    {
+      "path": "raw/open_meteo_single_runs/20261028T120000Z_ecmwf_ifs025.json",
+      "point_count": 28,
+      "run_utc": "2026-10-28T12:00:00Z",
+      "sha256": "4f78545f901b923ac44740128c2305e69e1fc212a192eef21037f25c6d4f7bdf"
+    },
+    {
+      "path": "raw/open_meteo_single_runs/20261028T180000Z_ecmwf_ifs025.json",
+      "point_count": 28,
+      "run_utc": "2026-10-28T18:00:00Z",
+      "sha256": "1879ad347c2330376721af4b83d19ff04198afba4c110586d2e68e53cdab63de"
+    },
+    {
+      "path": "raw/open_meteo_single_runs/20261029T000000Z_ecmwf_ifs025.json",
+      "point_count": 28,
+      "run_utc": "2026-10-29T00:00:00Z",
+      "sha256": "e63d2a840042fdb665c9ee317552b9abcc82a14b3ca381b3d1ab37c865309e78"
+    },
+    {
+      "path": "raw/open_meteo_single_runs/20261029T060000Z_ecmwf_ifs025.json",
+      "point_count": 28,
+      "run_utc": "2026-10-29T06:00:00Z",
+      "sha256": "49f70b6bdebe361463c697c20eb85801f545e2bd4541ecb6d88b4e90008c05ad"
+    },
+    {
+      "path": "raw/open_meteo_single_runs/20261029T120000Z_ecmwf_ifs025.json",
+      "point_count": 28,
+      "run_utc": "2026-10-29T12:00:00Z",
+      "sha256": "55ee49a979a783293f3171128b7b29dda6b20a14961d91bb9f1a4c1914b0ec36"
+    },
+    {
+      "path": "raw/open_meteo_single_runs/20261029T180000Z_ecmwf_ifs025.json",
+      "point_count": 28,
+      "run_utc": "2026-10-29T18:00:00Z",
+      "sha256": "060f80583c26a10c33395527ab4b647a6d1260e1d3b11f7a88f8db496e41e4e5"
+    },
+    {
+      "path": "raw/open_meteo_single_runs/20261030T000000Z_ecmwf_ifs025.json",
+      "point_count": 28,
+      "run_utc": "2026-10-30T00:00:00Z",
+      "sha256": "52035be1299935dabcd00097cbe69a7ea322bc72fac9784ed111138839a14c0a"
+    },
+    {
+      "path": "raw/open_meteo_single_runs/20261030T060000Z_ecmwf_ifs025.json",
+      "point_count": 28,
+      "run_utc": "2026-10-30T06:00:00Z",
+      "sha256": "1a20466523e89536c20e29d54933aed5206da98e8cb21bc2a1908e19a6a100fa"
+    },
+    {
+      "path": "raw/open_meteo_single_runs/20261030T120000Z_ecmwf_ifs025.json",
+      "point_count": 28,
+      "run_utc": "2026-10-30T12:00:00Z",
+      "sha256": "2685e6f44fdf2ab68bfcb2963981b3e88b08112d088c24160eb9741f963d419e"
+    },
+    {
+      "path": "raw/open_meteo_single_runs/20261030T180000Z_ecmwf_ifs025.json",
+      "point_count": 28,
+      "run_utc": "2026-10-30T18:00:00Z",
+      "sha256": "6a5e95477a8c42797529e4248dc9080351233e1ace2c82a648a775ccfbd17c9a"
+    },
+    {
+      "path": "raw/open_meteo_single_runs/20261031T000000Z_ecmwf_ifs025.json",
+      "point_count": 28,
+      "run_utc": "2026-10-31T00:00:00Z",
+      "sha256": "359fac44ec75b5b67f1a4ace64fc222de321c8ab2bb9a83e2d12a4610008de26"
+    },
+    {
+      "path": "raw/open_meteo_single_runs/20261031T060000Z_ecmwf_ifs025.json",
+      "point_count": 28,
+      "run_utc": "2026-10-31T06:00:00Z",
+      "sha256": "659939e6cda59abe7d1f2281042b6db845dc5f4aa555b9672c17d89f86b87db1"
+    },
+    {
+      "path": "raw/open_meteo_single_runs/20261031T120000Z_ecmwf_ifs025.json",
+      "point_count": 28,
+      "run_utc": "2026-10-31T12:00:00Z",
+      "sha256": "8e951cfb06e6959b604b97ae86c573beb410403b97796a6773c602983e4844e9"
+    },
+    {
+      "path": "raw/open_meteo_single_runs/20261031T180000Z_ecmwf_ifs025.json",
+      "point_count": 28,
+      "run_utc": "2026-10-31T18:00:00Z",
+      "sha256": "f8ea575937488678db4f730a212487b9c0dd85c2e177707ec2cff5ed59ed6a58"
+    },
+    {
+      "path": "raw/open_meteo_single_runs/20261101T000000Z_ecmwf_ifs025.json",
+      "point_count": 28,
+      "run_utc": "2026-11-01T00:00:00Z",
+      "sha256": "72c9eed212b199918b3e6984f9ea74004e507bdaf5ef1fcd348b86ff7c55d3d4"
+    },
+    {
+      "path": "raw/open_meteo_single_runs/20261101T060000Z_ecmwf_ifs025.json",
+      "point_count": 28,
+      "run_utc": "2026-11-01T06:00:00Z",
+      "sha256": "efc4515e97433d084aeba92fdbd16f4566b513c8baf29b4e5b274e50516131d8"
+    },
+    {
+      "path": "raw/open_meteo_single_runs/20261101T120000Z_ecmwf_ifs025.json",
+      "point_count": 28,
+      "run_utc": "2026-11-01T12:00:00Z",
+      "sha256": "dc7c546cc86ff3ba7d82c6a291528a4e5af374a1dc72c20fe611ee4d351e5cb6"
+    },
+    {
+      "path": "raw/open_meteo_single_runs/20261101T180000Z_ecmwf_ifs025.json",
+      "point_count": 28,
+      "run_utc": "2026-11-01T18:00:00Z",
+      "sha256": "c50386282c65402ac2a5359859be51df7865ae4b6287882198e60a6581613bab"
+    }
+  ],
+  "request_latitude": 37.5714,
+  "request_longitude": 126.9658,
+  "requested_end_utc": "2026-11-01T23:50:00Z",
+  "requested_start_utc": "2026-10-19T00:00:00Z",
+  "retrieved_at_utc": "2026-11-06T06:53:57Z",
+  "row_count": 1596,
+  "run_interval_hours": 6,
+  "temporal_meaning": "preceding_hour_mean"
+}
