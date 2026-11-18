@@ -7,6 +7,7 @@
 // from the OS camera instead; drop savedCamera/setupCamera/prepare's fixed size when it ships.
 import { resolveWindow, toSceneFurnitureType } from "./model.ts";
 import type { FurnitureType, Space } from "./model.ts";
+import type { Shape } from "./capturePlan.ts";
 import { pointFailure } from "./captureGuide.ts";
 import { EXPIRED_MESSAGE, notifyUnauthorized } from "./auth.ts";
 
@@ -485,4 +486,106 @@ export async function selectFrames(frames:Frame[],camera:Camera,board:Board,poin
     capture_id:f.capture_id,point_id:pointId,captured_at:f.captured_at,image_sha256:f.image_sha256,
     camera,detections:f.detections,
   }))});
+}
+
+export type VisionEstimatedItem = {
+  occluder: {
+    occluder_id: string;
+    room_id: string;
+    name: string;
+    type: string;
+    base_center_m: [number, number, number];
+    dimensions_m: [number, number, number];
+    yaw_deg_ccw_from_east: number;
+  };
+  protected_region?: { region_id: string; grade: string } | null;
+  confidence: number;
+  calibrated_distance_m: number;
+  clamped_to_room: boolean;
+  detection_source?: "yolov8" | "synthetic_contour" | "client_hint";
+  estimation_quality?: "high" | "medium" | "low_needs_aruco";
+  needs_aruco_refinement?: boolean;
+  uncertainty_reason_ko?: string;
+  aruco_capture_guidance_ko?: string;
+  recommended_capture_shape?: Shape;
+  estimated_corners_enu_m?: [number, number][];
+};
+
+export type VisionEstimateResult = {
+  scene_id: string;
+  scene_revision: number;
+  applied_to_scene: boolean;
+  camera_position_enu_m: [number, number, number];
+  depth_calibration_alpha: number;
+  depth_calibration_beta: number;
+  estimated_items: VisionEstimatedItem[];
+};
+
+export function visionErrorMessage(detail: string): string {
+  if (/ArUco marker.*not detected/i.test(detail)) {
+    return "사진에서 창문 ArUco 마커를 찾지 못했어요. 창문 마커와 가구가 함께 보이게 다시 찍거나 아래에서 모서리를 직접 촬영해 주세요.";
+  }
+  if (/No furniture objects detected/i.test(detail)) {
+    return "사진에서 가구를 찾지 못했어요. 가구 전체가 보이게 다시 찍거나 아래에서 가구 형태를 직접 골라 촬영해 주세요.";
+  }
+  if (/Revision conflict|409/i.test(detail)) {
+    return "다른 곳에서 공간이 바뀌었어요. 목록을 새로고침한 뒤 다시 시도해 주세요.";
+  }
+  if (/module before vision/i.test(detail)) {
+    return "촬영할 창문 필름 칸을 먼저 선택해 주세요.";
+  }
+  return "AI 가구 인식에 실패했어요. 아래에서 가구 형태를 골라 ArUco 모서리 촬영으로 진행해 주세요.";
+}
+
+export async function estimateVisionFurniture(
+  sceneId: string,
+  fileOrImage: File | { width: number; height: number; base64: string },
+  session: CaptureMarker,
+  options: {
+    camera?: Camera | null;
+    applyToScene?: boolean;
+    testMarkerSideM?: number;
+    expectedRevision?: number;
+    signal?: AbortSignal;
+  } = {},
+): Promise<VisionEstimateResult> {
+  const image = "base64" in fileOrImage ? fileOrImage : await prepare(fileOrImage);
+  options.signal?.throwIfAborted();
+  const cam = options.camera;
+  const focal = Math.max(image.width, image.height) * 0.9;
+  const codeId = session.board.ids_by_row[0]?.[0] ?? session.marker.code_id;
+  const sideM = options.testMarkerSideM ?? session.marker.side_length_m;
+  let response: Response;
+  try {
+    response = await fetch(`/api/scenes/${encodeURIComponent(sceneId)}/vision-furniture-estimate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      signal: options.signal,
+      body: JSON.stringify({
+        camera: {
+          width: image.width,
+          height: image.height,
+          fx: cam && cam.width === image.width ? cam.fx : focal,
+          fy: cam && cam.height === image.height ? cam.fy : focal,
+          cx: cam && cam.width === image.width ? cam.cx : image.width / 2,
+          cy: cam && cam.height === image.height ? cam.cy : image.height / 2,
+        },
+        marker_anchor: { code_id: codeId, side_length_m: sideM },
+        image_base64: image.base64,
+        apply_to_scene: options.applyToScene ?? false,
+        auto_create_protected_regions: true,
+        ...(options.expectedRevision !== undefined ? { expected_revision: options.expectedRevision } : {}),
+      }),
+    });
+  } catch {
+    options.signal?.throwIfAborted();
+    throw new MeasureError("서버에 연결하지 못했어요. 네트워크를 확인한 뒤 다시 시도해 주세요.");
+  }
+  if (response.status === 401) throw unauthorized();
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    const detail = typeof data?.detail === "string" ? data.detail : JSON.stringify(data?.detail ?? response.status);
+    throw new MeasureError(visionErrorMessage(detail), response.status);
+  }
+  return data as VisionEstimateResult;
 }

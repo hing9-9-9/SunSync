@@ -29,11 +29,14 @@ from engine.vision_ai.pipeline import (
     VisionRegistrationPipeline,
 )
 from engine.vision_ai.protocols import (
+    CompositeDepthEstimator,
+    CompositeFurnitureDetector,
     DetectedObject2D,
     GeometricSyntheticDepthEstimator,
     GeometricSyntheticDetector,
     MonocularDepthAdapter,
     YoloV8DetectorAdapter,
+    _merge_book_clusters,
 )
 
 EXAMPLES = Path(__file__).resolve().parents[1] / "docs" / "examples"
@@ -792,3 +795,227 @@ def test_vision_estimate_syncs_ui_space_furniture_regions_and_revision(client: T
     assert synced_space["regions"][0]["furnitureId"] == synced_space["furniture"][0]["id"]
     assert synced_space["regions"][1]["furnitureId"] == synced_space["furniture"][1]["id"]
     assert synced_space["regions"][1]["face"] == "상단"
+
+
+def test_merge_book_clusters_combines_nearby_books_into_bookshelf() -> None:
+    """Clustered YOLO book boxes should merge into one bookshelf while keeping isolated items."""
+    detections = [
+        DetectedObject2D(
+            box_xyxy=(100.0, 100.0, 130.0, 160.0),
+            label="bookshelf",
+            confidence=0.70,
+            raw_class_name="book",
+        ),
+        DetectedObject2D(
+            box_xyxy=(140.0, 105.0, 175.0, 165.0),
+            label="bookshelf",
+            confidence=0.85,
+            raw_class_name="book",
+        ),
+        DetectedObject2D(
+            box_xyxy=(700.0, 300.0, 740.0, 360.0),
+            label="bookshelf",
+            confidence=0.60,
+            raw_class_name="book",
+        ),
+        DetectedObject2D(
+            box_xyxy=(500.0, 300.0, 620.0, 480.0),
+            label="chair",
+            confidence=0.90,
+            raw_class_name="chair",
+        ),
+    ]
+    merged = _merge_book_clusters(detections)
+    assert len(merged) == 3
+    assert merged[0].label == "chair"
+
+    clustered = [d for d in merged if d.raw_class_name == "book_cluster_bookshelf"]
+    assert len(clustered) == 1
+    assert clustered[0].box_xyxy == (100.0, 100.0, 175.0, 165.0)
+    assert clustered[0].confidence == pytest.approx(0.85)
+    assert any(d.box_xyxy == (700.0, 300.0, 740.0, 360.0) for d in merged)
+
+
+def test_composite_detector_uses_primary_and_falls_back_gracefully() -> None:
+    """CompositeFurnitureDetector records source and falls back on empty or erroring primary."""
+    dummy_img = np.zeros((480, 640, 3), dtype=np.uint8)
+    yolo_box = DetectedObject2D(
+        box_xyxy=(200.0, 200.0, 360.0, 420.0),
+        label="desk",
+        confidence=0.89,
+        raw_class_name="dining table",
+    )
+    fallback_box = DetectedObject2D(
+        box_xyxy=(50.0, 120.0, 180.0, 400.0),
+        label="bookshelf",
+        confidence=0.72,
+        raw_class_name="contour_fallback",
+    )
+
+    class _StubDetector:
+        def __init__(self, items: list[DetectedObject2D] | None = None, fail: bool = False) -> None:
+            self._items = items or []
+            self._fail = fail
+
+        def detect(
+            self,
+            image_rgb: np.ndarray | None,
+            hints: Any = None,
+        ) -> list[DetectedObject2D]:
+            del image_rgb, hints
+            if self._fail:
+                raise RuntimeError("weights missing")
+            return list(self._items)
+
+    primary_ok = CompositeFurnitureDetector(
+        prefer_yolo=True,
+        primary_detector=_StubDetector(items=[yolo_box]),
+        fallback_detector=GeometricSyntheticDetector(default_detections=[fallback_box]),
+    )
+    out_ok = primary_ok.detect(dummy_img)
+    assert out_ok == [yolo_box]
+    assert primary_ok.last_source == "yolov8"
+
+    primary_empty = CompositeFurnitureDetector(
+        prefer_yolo=True,
+        primary_detector=_StubDetector(items=[]),
+        fallback_detector=GeometricSyntheticDetector(default_detections=[fallback_box]),
+    )
+    out_empty = primary_empty.detect(dummy_img)
+    assert out_empty == [fallback_box]
+    assert primary_empty.last_source == "synthetic_contour"
+
+    primary_fail = CompositeFurnitureDetector(
+        prefer_yolo=True,
+        primary_detector=_StubDetector(fail=True),
+        fallback_detector=GeometricSyntheticDetector(default_detections=[fallback_box]),
+    )
+    out_fail = primary_fail.detect(dummy_img)
+    assert out_fail == [fallback_box]
+    assert primary_fail.last_source == "synthetic_contour"
+
+
+def test_composite_depth_estimator_falls_back_on_runtime_error() -> None:
+    """CompositeDepthEstimator returns geometric depth map if neural backend fails."""
+    dummy_img = np.zeros((64, 64, 3), dtype=np.uint8)
+
+    class _FailingDepth:
+        def estimate_relative_depth(
+            self,
+            image_rgb: np.ndarray | None,
+            width: int,
+            height: int,
+        ) -> np.ndarray:
+            del image_rgb, width, height
+            raise RuntimeError("depth model load failed")
+
+    estimator = CompositeDepthEstimator(
+        prefer_monocular=True,
+        primary=_FailingDepth(),
+        fallback=GeometricSyntheticDepthEstimator(),
+    )
+    depth_map = estimator.estimate_relative_depth(dummy_img, width=64, height=64)
+    assert depth_map.shape == (64, 64)
+    assert depth_map.dtype == np.float32
+
+
+def test_calibrate_monocular_depth_uses_proportional_scale_for_flat_marker_depths() -> None:
+    """Narrow marker depth spread avoids noisy linear slopes and falls back to beta=0."""
+    rel_depths = [3.00, 3.04, 3.02, 3.01]
+    metric_depths = [2.40, 2.45, 2.42, 2.41]
+    res = VisionRegistrationPipeline.calibrate_monocular_depth(rel_depths, metric_depths)
+    assert res.beta == pytest.approx(0.0)
+    assert res.alpha == pytest.approx(float(np.mean(metric_depths) / np.mean(rel_depths)))
+
+
+def test_vision_estimate_returns_quality_uncertainty_guidance_and_corners(
+    client: TestClient,
+) -> None:
+    """Estimate response exposes uncertainty score, Korean ArUco guidance, and 4 ENU corners."""
+    ui_payload = {
+        "id": "vision-guidance-space",
+        "building": "도서관",
+        "floor": "2층",
+        "name": "연구실",
+        "width": 8.0,
+        "depth": 6.0,
+        "height": 3.0,
+        "zone": "구역 1",
+        "zones": ["구역 1"],
+        "source": "manual",
+        "revision": 1,
+        "site": {
+            "latitude": 37.5,
+            "longitude": 127.0,
+            "timezone": "Asia/Seoul",
+            "northConfirmed": True,
+        },
+        "windowDimensions": {
+            "width": 3.0,
+            "height": 2.0,
+            "wall": "north",
+            "offset": 2.5,
+            "sill": 0.8,
+            "captureModule": {"row": 0, "col": 1},
+        },
+        "furniture": [],
+        "regions": [],
+    }
+    created = client.post("/api/ui/spaces", json=ui_payload)
+    assert created.status_code == 201, created.text
+    scene_id = created.json()["serverSceneId"]
+
+    req = {
+        "camera": {
+            "width": 1280,
+            "height": 720,
+            "fx": 900.0,
+            "fy": 900.0,
+            "cx": 640.0,
+            "cy": 360.0,
+        },
+        "marker_anchor": {
+            "code_id": 0,
+            "side_length_m": 0.6,
+            "corners_px": [[550.0, 210.0], [730.0, 210.0], [730.0, 390.0], [550.0, 390.0]],
+            "anchor_depth_rel": 3.0,
+        },
+        "detections": [
+            {
+                "box_xyxy": [180.0, 220.0, 360.0, 520.0],
+                "label": "bookcase",
+                "confidence": 0.52,
+                "observed_depth_rel": 6.2,
+                "protection_grade": "B",
+            },
+            {
+                "box_xyxy": [540.0, 360.0, 740.0, 560.0],
+                "label": "desk",
+                "confidence": 0.92,
+                "observed_depth_rel": 2.2,
+                "protection_grade": "C",
+            },
+        ],
+        "apply_to_scene": False,
+        "auto_create_protected_regions": True,
+    }
+    res = client.post(f"/api/scenes/{scene_id}/vision-furniture-estimate", json=req)
+    assert res.status_code == 200, res.text
+    items = res.json()["estimated_items"]
+    assert len(items) == 2
+
+    uncertain_item, confident_item = items[0], items[1]
+    assert uncertain_item["detection_source"] == "client_hint"
+    assert uncertain_item["estimation_quality"] == "low_needs_aruco"
+    assert uncertain_item["needs_aruco_refinement"] is True
+    assert "신뢰도" in uncertain_item["uncertainty_reason_ko"]
+    assert "P1~P4" in uncertain_item["aruco_capture_guidance_ko"]
+    assert uncertain_item["recommended_capture_shape"] == "rectangle"
+    assert len(uncertain_item["estimated_corners_enu_m"]) == 4
+    assert all(len(pt) == 2 for pt in uncertain_item["estimated_corners_enu_m"])
+
+    assert confident_item["detection_source"] == "client_hint"
+    assert confident_item["estimation_quality"] == "high"
+    assert confident_item["needs_aruco_refinement"] is False
+    assert "P1~P4" in confident_item["aruco_capture_guidance_ko"]
+    assert len(confident_item["estimated_corners_enu_m"]) == 4

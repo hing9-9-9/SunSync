@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { BOARD, captureSelection, captureTargets, resumeCaptureMarker, cancelStoredCapture, boardAlignment, filmBoardAlignment, serverMessage, startCaptureMarker, checkCaptureMarker, endCaptureMarker, checkMeasurement, detectFrame, measureAndRegister, measurementPlanForType, measurementProblem, measurementProblems, setupCamera } from "./measureApi.ts";
+import { BOARD, captureSelection, captureTargets, resumeCaptureMarker, cancelStoredCapture, boardAlignment, filmBoardAlignment, serverMessage, startCaptureMarker, checkCaptureMarker, endCaptureMarker, checkMeasurement, detectFrame, estimateVisionFurniture, measureAndRegister, measurementPlanForType, measurementProblem, measurementProblems, setupCamera, visionErrorMessage } from "./measureApi.ts";
 import { blankSpace } from "./model.ts";
 
 const space = (wall: "south" | "north" | "east" | "west") => ({
@@ -257,4 +257,94 @@ test("measurement plans map selected UI furniture types instead of hardcoding de
     furniture_kind: "desk",
     model_id: "standard_desk",
   });
+});
+
+test("visionErrorMessage translates server failure details into actionable Korean guidance", () => {
+  assert.match(visionErrorMessage("ArUco marker code_id 0 not detected in image."), /창문 ArUco 마커/);
+  assert.match(visionErrorMessage("No furniture objects detected in the image."), /가구를 찾지 못했어요/);
+  assert.match(visionErrorMessage("409 Revision conflict"), /새로고침/);
+  assert.match(visionErrorMessage("Select and pair a film module before vision measurement."), /필름 칸/);
+  assert.match(visionErrorMessage("unexpected internal failure"), /ArUco 모서리 촬영/);
+});
+
+test("estimateVisionFurniture sends marker anchor, intrinsics, and returns guided ArUco metadata", async (t) => {
+  let capturedUrl = "";
+  let capturedMethod = "";
+  let capturedBody: Record<string, unknown> | null = null;
+  const mockItem = {
+    occluder: {
+      occluder_id: "occ_1",
+      room_id: "room_1",
+      name: "책장 1",
+      type: "bookshelf",
+      base_center_m: [2.4, 3.8, 0.0],
+      dimensions_m: [0.9, 0.4, 1.8],
+      yaw_deg_ccw_from_east: 0.0,
+    },
+    protected_region: { region_id: "reg_1", grade: "B" },
+    confidence: 0.58,
+    calibrated_distance_m: 3.6,
+    clamped_to_room: false,
+    detection_source: "synthetic_contour",
+    estimation_quality: "low_needs_aruco",
+    needs_aruco_refinement: true,
+    uncertainty_reason_ko: "객체 검출 신뢰도(58%)가 낮습니다.",
+    aruco_capture_guidance_ko: "추정된 '책장 1' 위치로 이동해 P1~P4에서 창문 ArUco 마커를 촬영해 주세요.",
+    recommended_capture_shape: "rectangle",
+    estimated_corners_enu_m: [
+      [1.95, 3.6],
+      [2.85, 3.6],
+      [2.85, 4.0],
+      [1.95, 4.0],
+    ],
+  };
+
+  t.mock.method(globalThis, "fetch", async (input: string, init?: RequestInit) => {
+    capturedUrl = String(input);
+    capturedMethod = init?.method ?? "GET";
+    capturedBody = JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>;
+    return Response.json({
+      scene_id: "scene-vision",
+      scene_revision: 3,
+      applied_to_scene: false,
+      camera_position_enu_m: [2.5, 1.2, 1.4],
+      depth_calibration_alpha: 0.85,
+      depth_calibration_beta: 0.0,
+      estimated_items: [mockItem],
+    });
+  });
+
+  const result = await estimateVisionFurniture(
+    "scene-vision",
+    { width: 1000, height: 800, base64: "ZmFrZQ==" },
+    {
+      session_id: "sess-1",
+      scene_id: "scene-vision",
+      board: BOARD,
+      marker: { code_id: 0, side_length_m: 0.6 },
+    } as never,
+    { applyToScene: false, testMarkerSideM: 0.1, expectedRevision: 3 },
+  );
+
+  assert.equal(capturedUrl, "/api/scenes/scene-vision/vision-furniture-estimate");
+  assert.equal(capturedMethod, "POST");
+  assert.deepEqual(capturedBody?.camera, {
+    width: 1000,
+    height: 800,
+    fx: 900,
+    fy: 900,
+    cx: 500,
+    cy: 400,
+  });
+  assert.deepEqual(capturedBody?.marker_anchor, { code_id: 0, side_length_m: 0.1 });
+  assert.equal(capturedBody?.apply_to_scene, false);
+  assert.equal(capturedBody?.auto_create_protected_regions, true);
+  assert.equal(capturedBody?.expected_revision, 3);
+
+  assert.equal(result.estimated_items.length, 1);
+  assert.equal(result.estimated_items[0].estimation_quality, "low_needs_aruco");
+  assert.equal(result.estimated_items[0].needs_aruco_refinement, true);
+  assert.match(result.estimated_items[0].aruco_capture_guidance_ko ?? "", /P1~P4/);
+  assert.equal(result.estimated_items[0].recommended_capture_shape, "rectangle");
+  assert.equal(result.estimated_items[0].estimated_corners_enu_m?.length, 4);
 });

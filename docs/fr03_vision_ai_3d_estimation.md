@@ -6,29 +6,26 @@ This document provides the mathematical derivations, architectural design, API s
 
 ## 1. Architectural Overview
 
-Monocular RGB images inherently suffer from depth scale ambiguity: an object in a 2D bounding box can be small and close or large and far away. Standard monocular depth networks (such as *Depth Anything V2* or *MiDaS*) output relative or affine-invariant inverse depth $d_{\text{rel}}$, but lack metric scale (metres).
+Monocular RGB images inherently suffer from depth scale ambiguity: an object in a 2D bounding box can be small and close or large and far away. Standard monocular depth networks (such as *Depth Anything V2* or *MiDaS*) output relative or affine-invariant inverse depth $d_{\text{rel}}$, but lack metric scale (metres). Furthermore, single-view 3D estimation can degrade for partial occlusions, far objects, or fallback contour detections.
 
-SunSync resolves this fundamental ambiguity by utilizing the smart film window's $6 \times 6$ ArUco marker (DICT_4X4_50, side length $s = 0.6\,\text{m}$):
+SunSync pairs monocular Vision AI with a **2-Stage Coarse-to-Fine Hybrid Pipeline** anchored on the smart film window's $6 \times 6$ ArUco marker (DICT_4X4_50, side length $s = 0.6\,\text{m}$):
 1. **Metric Anchor**: The window ArUco marker has confirmed metric dimensions and confirmed ENU transform $T_{\text{ENU}, \text{marker}}$ on the window plane.
-2. **Camera Pose & Metric Depth Extraction**: OpenCV's `cv2.solvePnP` with `SOLVEPNP_IPPE_SQUARE` computes the camera pose in ENU ($T_{\text{ENU}, \text{camera}}$) and exact metric depths $Z_{\text{true}}$ of the marker corners.
-3. **Linear Monocular Calibration**: A least-squares linear calibration maps relative depth to metric depth:
-   $$Z_{\text{metric}}(u, v) = \alpha \cdot d_{\text{rel}}(u, v) + \beta$$
-4. **Floor-Standing 3D Cuboid Unprojection**: 2D bounding boxes are unprojected into 3D, constrained to the room floor ($z_{\text{base}} = 0$), refined with class-specific priors, and clamped to the room boundary polygon.
-5. **Immediate Scene Readiness**: An optical `ProtectedRegion` (Grade B for bookshelves, Grade C for desks) is automatically attached to each estimated piece of furniture.
+2. **Stage 1 — Default Neural Detection & Depth with Safe Fallback**: `VisionRegistrationPipeline` enables `prefer_yolo=True` and `prefer_monocular=True` by default via `CompositeFurnitureDetector` (`YoloV8DetectorAdapter` with expanded indoor classes and `_merge_book_clusters` → fallback `GeometricSyntheticDetector`) and `CompositeDepthEstimator` (`MonocularDepthAdapter` → fallback `GeometricSyntheticDepthEstimator`).
+3. **Camera Pose & Metric Depth Calibration**: OpenCV's `cv2.solvePnP` with `SOLVEPNP_IPPE_SQUARE` computes $T_{\text{ENU}, \text{camera}}$ and exact metric depths $Z_{\text{true}}$ of the marker corners, calibrating $Z_{\text{metric}}(u, v) = \alpha \cdot d_{\text{rel}}(u, v) + \beta$ (falling back to proportional scaling $\beta = 0$ when anchor depth spread is narrow).
+4. **Floor-Standing 3D Cuboid Unprojection & Per-Item Uncertainty Scoring**: 2D bounding boxes are unprojected into 3D, constrained to the floor ($z_{\text{base}} = 0$), clamped via `clamp_cuboid_to_room`, assigned optical `ProtectedRegion`s, and scored via `_assess_estimation_quality` (`estimation_quality`, `needs_aruco_refinement`, `uncertainty_reason_ko`, `aruco_capture_guidance_ko`, `estimated_corners_enu_m`).
+5. **Stage 2 — Guided ArUco Corner Capture (Human-in-the-Loop Refinement)**: In `SpatialCapture.tsx` (*"사진 1장으로 가구 먼저 찾기"*), high-uncertainty or user-selected estimates launch *"이 가구 위치로 가서 ArUco 정밀 촬영"*, guiding the user with an on-screen ENU spatial prompt to walk to the estimated furniture location and capture the window ArUco marker at corners `P1~P4` (or confirm directly as an AI draft via *"AI 추정 치수로 바로 도면에 배치"*).
 
 ```mermaid
 flowchart TD
-    Img[RGB Image / 2D Detections] --> Step1[Step 1: ArUco Window Marker Anchor]
-    Aruco[6x6 ArUco Window Marker] --> Step1
-    Step1 -->|solvePnP IPPE_SQUARE| Pose[Camera Pose T_ENU_cam & Z_true Corners]
-    Pose --> Step2[Step 2: Metric Depth Scale & Shift Calibration]
-    DepthEst[Monocular Relative Depth d_rel] --> Step2
-    Step2 -->|Z_metric = alpha * d_rel + beta| CalibratedDepth[Metric Depth Map Z_metric]
-    CalibratedDepth --> Step3[Step 3: 3D Cuboid Back-Projection]
-    Detections2D[2D Furniture Boxes & Labels] --> Step3
-    RoomPoly[Room Floor Polygon & Height] --> Step3
-    Step3 -->|clamp_cuboid_to_room| Occluders[Valid Occluders & ProtectedRegions]
-    Occluders --> API[POST /api/scenes/:id/vision-furniture-estimate]
+    Img[Single Indoor RGB Photo] --> Stage1[Stage 1: CompositeFurnitureDetector YOLOv8 + CompositeDepthEstimator]
+    Aruco[6x6 ArUco Window Marker] -->|solvePnP IPPE_SQUARE| Pose[Camera Pose T_ENU_cam & Z_true Corners]
+    Stage1 --> Calib[Depth Calibration: Linear or Proportional Scale]
+    Pose --> Calib
+    Calib --> Backproj[3D Cuboid Back-Projection & clamp_cuboid_to_room]
+    Backproj --> Quality[_assess_estimation_quality & ENU Corners]
+    Quality -->|Direct Draft| SceneDraft[Apply AI Estimate to Scene]
+    Quality -->|needs_aruco_refinement / User Choice| GuidedAruco[Stage 2: Guided P1~P4 ArUco Corner Capture in SpatialCapture.tsx]
+    GuidedAruco --> SceneFinal[High-Precision Registered Occluder & ProtectedRegion]
 ```
 
 ---
@@ -57,10 +54,10 @@ $$Z_{\text{true}, i} = \left[R_{c\_m} P_{m, i} + t_{c\_m}\right]_z \quad (i = 0,
 Given relative depth values $d_{\text{rel}, i}$ at anchor points and their true metric depths $Z_{\text{true}, i}$, we formulate the least-squares linear regression:
 $$\min_{\alpha, \beta} \sum_{i=1}^N \left(\alpha \cdot d_{\text{rel}, i} + \beta - Z_{\text{true}, i}\right)^2$$
 
-When $N \ge 2$ and relative depth values have non-zero variance:
+When $N \ge 2$ and relative depth values have sufficient spread ($\text{ptp}(d_{\text{rel}}) > 0.15$ and $\text{ptp}(Z_{\text{true}}) > 0.25\,\text{m}$):
 $$\begin{pmatrix} \alpha \\ \beta \end{pmatrix} = \left(A^T A\right)^{-1} A^T Z_{\text{true}}, \quad A = \begin{pmatrix} d_{\text{rel}, 1} & 1 \\ \vdots & \vdots \\ d_{\text{rel}, N} & 1 \end{pmatrix}$$
 
-For degenerate depth ranges or single-point anchors, scale-only calibration is used ($\beta = 0$, $\alpha = \bar{Z}_{\text{true}} / \bar{d}_{\text{rel}}$).
+For narrow/nearly-flat marker depth ranges or single-point anchors, proportional scale-only calibration is used ($\beta = 0$, $\alpha = \bar{Z}_{\text{true}} / \max(10^{-4}, \bar{d}_{\text{rel}})$) to avoid ill-conditioned regression slopes.
 All calibrated depths are clamped to physical boundaries:
 $$Z_{\text{metric}} = \text{clip}\left(\alpha \cdot d_{\text{rel}} + \beta, 0.3\,\text{m}, 25.0\,\text{m}\right)$$
 
@@ -86,11 +83,17 @@ For each 2D bounding box $(x_1, y_1, x_2, y_2)$ with center $(u_c, v_c)$ and cal
 - **Bookshelf**: Generates vertical front surface facing into the room with **Grade B** (protects books against direct solar UV degradation).
 - **Desk / Table**: Generates horizontal top tabletop surface ($z = h$) with **Grade C** (maintains glare-free reading/work lighting).
 
+### Step 5 — Quality & Uncertainty Scoring and Guided ArUco Fallback
+
+`VisionRegistrationPipeline._assess_estimation_quality(...)` evaluates each estimated item across four signals (`detection_source`, object `confidence`, calibrated distance `z_metric`, and `was_clamped`) to classify single-photo reliability (`"high"`, `"medium"`, or `"low_needs_aruco"`) and emit Korean spatial guidance (`aruco_capture_guidance_ko`, `recommended_capture_shape`, `estimated_corners_enu_m`). When reliability is `"low_needs_aruco"` or `"medium"` (or whenever the user wants higher accuracy), `SpatialCapture.tsx` hands off the item metadata directly into `P1~P4` corner ArUco capture via *"이 가구 위치로 가서 ArUco 정밀 촬영"*.
+
 ---
 
 ## 3. REST API Specification
 
-### Endpoint: `POST /api/scenes/{scene_id}/vision-furniture-estimate`
+### Endpoints:
+- `POST /api/scenes/{scene_id}/vision-furniture-estimate` (JSON payload with optional `image_base64` / `detections`)
+- `POST /api/scenes/{scene_id}/vision-furniture-photo` (`multipart/form-data` photo upload delegating into the same pipeline)
 
 #### Request Payload (`VisionFurnitureEstimateRequest`)
 ```json
@@ -176,7 +179,14 @@ For each 2D bounding box $(x_1, y_1, x_2, y_2)$ with center $(u_c, v_c)$ and cal
       },
       "confidence": 0.95,
       "calibrated_distance_m": 2.5,
-      "clamped_to_room": false
+      "clamped_to_room": false,
+      "detection_source": "yolov8",
+      "estimation_quality": "high",
+      "needs_aruco_refinement": false,
+      "uncertainty_reason_ko": "단일 사진 기준 추정 신뢰도가 양호하지만 정밀 배치가 필요하면 ArUco 촬영을 권장합니다.",
+      "aruco_capture_guidance_ko": "창문에서 약 2.5m 거리(동쪽 3.0m, 북쪽 3.0m)로 추정된 '책상'(1.40×0.70×0.75m) 위치로 이동해 주세요. 해당 가구 네 모서리(P1~P4)에서 창문 ArUco 마커를 촬영하면 정확한 위치와 치수로 등록됩니다.",
+      "recommended_capture_shape": "rectangle",
+      "estimated_corners_enu_m": [[2.3, 2.65], [3.7, 2.65], [3.7, 3.35], [2.3, 3.35]]
     }
   ]
 }
@@ -200,19 +210,20 @@ Output:
 1. **Camera Calibration**: Note your camera's resolution and intrinsics ($f_x, f_y, c_x, c_y$).
 2. **Window Marker**: Use the one `6×6` ArUco `DICT_4X4_50` marker ($s = 0.6\,\text{m}$) that the server shows on the selected film during a capture session (see [fr03_single_marker.md](fr03_single_marker.md)); the request's `marker_anchor` must be that marker.
 3. **Capture Image**: Take an indoor photo where both the window marker and indoor furniture are visible.
-4. **Detect Furniture with YOLOv8**:
+4. **Detect Furniture (Default Composite + Safe Fallback)**:
    ```python
-   from engine.vision_ai.protocols import YoloV8DetectorAdapter
-   detector = YoloV8DetectorAdapter("yolov8m.pt")
+   from engine.vision_ai.protocols import create_default_detector
+   detector = create_default_detector(prefer_yolo=True)  # YOLOv8 -> GeometricSyntheticDetector fallback
    detections = detector.detect(image_rgb)
    ```
-5. **Estimate Relative Depth with Depth Anything V2**:
+   Direct `YoloV8DetectorAdapter("yolov8m.pt", conf_thresh=0.25)` also merges nearby `"book"` detections into unified `"bookshelf"` boxes via `_merge_book_clusters`.
+5. **Estimate Relative Depth (Default Composite + Safe Fallback)**:
    ```python
-   from engine.vision_ai.protocols import MonocularDepthAdapter
-   depth_adapter = MonocularDepthAdapter()
-   depth_map = depth_adapter.estimate_relative_depth(image_rgb, width=1280, height=720)
+   from engine.vision_ai.protocols import create_default_depth_estimator
+   depth_estimator = create_default_depth_estimator(prefer_monocular=True)  # Depth Anything V2 -> Geometric fallback
+   depth_map = depth_estimator.estimate_relative_depth(image_rgb, width=1280, height=720)
    ```
-6. **Execute Pipeline**: Pass the detected boxes and ArUco marker pixel corners to `VisionRegistrationPipeline.run()` or send a request to `POST /api/scenes/{scene_id}/vision-furniture-estimate`.
+6. **Execute Pipeline or Mobile Hybrid Workflow**: Pass the photo/detections to `VisionRegistrationPipeline.run()` or `POST /api/scenes/{scene_id}/vision-furniture-photo`. In the web/mobile UI (`SpatialCapture.tsx`), inspect each candidate's `estimation_quality` and tap *"이 가구 위치로 가서 ArUco 정밀 촬영"* whenever single-photo geometry needs corner verification.
 
 ## Where the anchor comes from on the server (checked 2026-11-11)
 

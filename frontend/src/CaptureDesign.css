@@ -124,6 +124,27 @@
 .app.award-mobile.mode-app.page-capture .spatial-capture > .actions { margin:0; }
 .app.award-mobile.mode-app.page-capture .spatial-capture > p.muted.small:last-child { padding:0; }
 .app.award-mobile.mode-app.page-capture .spatial-capture > .secondary { width:100%; }
+
+/* AI assisted single-photo scan + guided ArUco handoff */
+.vision-assist { display:grid; gap:var(--space-3); padding:var(--space-4); border-radius:var(--radius-card); background:var(--c-white); box-shadow:var(--at-card-shadow); }
+.vision-assist-head h3 { margin:0 0 var(--space-1); font-size:16px; font-weight:600; color:var(--at-ink); }
+.vision-assist-head p { margin:0; line-height:1.6; }
+.vision-assist .file-button { position:relative; display:flex; align-items:center; justify-content:center; width:100%; min-height:48px; cursor:pointer; }
+.vision-assist .file-button input { position:absolute; width:1px; height:1px; opacity:0; }
+.vision-assist .file-button:focus-within { outline:2px solid var(--at-accent-ink); outline-offset:2px; }
+.vision-results { display:grid; gap:var(--space-3); }
+.vision-results > p { margin:0; }
+.vision-item-list { display:grid; gap:var(--space-3); list-style:none; margin:0; padding:0; }
+.vision-item { display:grid; gap:var(--space-2); padding:var(--space-3); border:1px solid var(--c-hairline); border-radius:10px; background:var(--paper); }
+.vision-item > p { margin:0; line-height:1.5; }
+.vision-item-top { display:flex; align-items:center; justify-content:space-between; gap:var(--space-2); flex-wrap:wrap; }
+.vision-quality { display:inline-block; padding:2px 8px; border-radius:6px; font-size:12px; font-weight:600; }
+.vision-quality.high { background:#EFEEFD; color:#554ED0; }
+.vision-quality.medium { background:#FFF7ED; color:#C2520F; border:1px solid #FDBA74; }
+.vision-quality.low_needs_aruco { background:#FFF7ED; color:#C2520F; border:1px solid #FF7426; }
+.vision-uncertainty { color:#C2520F; }
+.vision-guidance-note { color:var(--at-ink); }
+.vision-guidance-banner { margin:0; }
 .app.award-mobile.mode-app.page-capture .capture-end { gap:var(--space-2); margin-top:var(--space-3); }
 .app.award-mobile.mode-app.page-capture .capture-film-line, .app.award-mobile.mode-app.page-capture .capture-test-details { font-size:13px; line-height:1.5; }
 .app.award-mobile.mode-app.page-capture .capture-test-details > summary { min-height:36px; }

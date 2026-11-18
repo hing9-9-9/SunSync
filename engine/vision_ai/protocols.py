@@ -10,6 +10,7 @@ from typing import ClassVar, Literal, Protocol, runtime_checkable
 import numpy as np
 
 FurnitureLabel = Literal["bookshelf", "desk", "chair", "other"]
+DetectionSource = Literal["yolov8", "synthetic_contour", "client_hint"]
 
 
 @dataclass(frozen=True)
@@ -163,6 +164,54 @@ class GeometricSyntheticDepthEstimator:
         return depth_map
 
 
+def _merge_book_clusters(detections: list[DetectedObject2D]) -> list[DetectedObject2D]:
+    """Merge clusters of detected books into unified bookshelf bounding boxes."""
+    books = [det for det in detections if det.raw_class_name == "book"]
+    if len(books) <= 1:
+        return detections
+    non_books = [det for det in detections if det.raw_class_name != "book"]
+
+    visited = [False] * len(books)
+    merged_books: list[DetectedObject2D] = []
+
+    def _near(a: DetectedObject2D, b: DetectedObject2D) -> bool:
+        ax1, ay1, ax2, ay2 = a.box_xyxy
+        bx1, by1, bx2, by2 = b.box_xyxy
+        pad = max(ax2 - ax1, ay2 - ay1, bx2 - bx1, by2 - by1) * 0.4 + 25.0
+        return not (ax2 + pad < bx1 or bx2 + pad < ax1 or ay2 + pad < by1 or by2 + pad < ay1)
+
+    for i in range(len(books)):
+        if visited[i]:
+            continue
+        stack = [i]
+        visited[i] = True
+        cluster: list[DetectedObject2D] = []
+        while stack:
+            cur = stack.pop()
+            cluster.append(books[cur])
+            for j in range(len(books)):
+                if not visited[j] and _near(books[cur], books[j]):
+                    visited[j] = True
+                    stack.append(j)
+        if len(cluster) == 1:
+            merged_books.append(cluster[0])
+        else:
+            x1 = min(d.box_xyxy[0] for d in cluster)
+            y1 = min(d.box_xyxy[1] for d in cluster)
+            x2 = max(d.box_xyxy[2] for d in cluster)
+            y2 = max(d.box_xyxy[3] for d in cluster)
+            conf = float(min(max(max(d.confidence for d in cluster), 0.0), 1.0))
+            merged_books.append(
+                DetectedObject2D(
+                    box_xyxy=(x1, y1, x2, y2),
+                    label="bookshelf",
+                    confidence=conf,
+                    raw_class_name="book_cluster_bookshelf",
+                )
+            )
+    return [*non_books, *merged_books]
+
+
 class YoloV8DetectorAdapter:
     """YOLOv8 adapter for real photo furniture detection experiments.
 
@@ -174,14 +223,19 @@ class YoloV8DetectorAdapter:
         "chair": "chair",
         "couch": "chair",
         "sofa": "chair",
+        "bench": "chair",
         "bed": "desk",
         "dining table": "desk",
         "desk": "desk",
         "book": "bookshelf",
         "bookshelf": "bookshelf",
+        "refrigerator": "other",
+        "tv": "other",
+        "microwave": "other",
+        "oven": "other",
     }
 
-    def __init__(self, model_path: str = "yolov8m.pt", conf_thresh: float = 0.35) -> None:
+    def __init__(self, model_path: str = "yolov8m.pt", conf_thresh: float = 0.25) -> None:
         self.model_path = model_path
         self.conf_thresh = conf_thresh
         self._model = None
@@ -235,7 +289,51 @@ class YoloV8DetectorAdapter:
                             raw_class_name=raw_name,
                         )
                     )
-        return detections
+        return _merge_book_clusters(detections)
+
+
+class CompositeFurnitureDetector:
+    """Primary YOLOv8 detector with automatic fallback to contour heuristics for synthetic/empty scenes."""
+
+    def __init__(
+        self,
+        *,
+        prefer_yolo: bool = True,
+        primary_detector: ObjectDetectorProtocol | None = None,
+        fallback_detector: GeometricSyntheticDetector | None = None,
+    ) -> None:
+        if primary_detector is not None:
+            self._primary: ObjectDetectorProtocol | None = primary_detector
+        elif prefer_yolo and importlib.util.find_spec("ultralytics") is not None:
+            self._primary = YoloV8DetectorAdapter()
+        else:
+            self._primary = None
+        self._fallback = fallback_detector or GeometricSyntheticDetector()
+        self.last_source: DetectionSource = "synthetic_contour"
+
+    def detect(
+        self,
+        image_rgb: np.ndarray | None,
+        hints: Sequence[DetectedObject2D] | None = None,
+        exclude_boxes: Sequence[tuple[float, float, float, float]] | None = None,
+    ) -> list[DetectedObject2D]:
+        if hints is not None and len(hints) > 0:
+            self.last_source = "client_hint"
+            return list(hints)
+
+        if self._primary is not None and image_rgb is not None:
+            try:
+                raw = self._primary.detect(image_rgb)
+                if exclude_boxes:
+                    raw = [d for d in raw if not _overlaps_any_box(d.box_xyxy, exclude_boxes)]
+                if len(raw) > 0:
+                    self.last_source = "yolov8"
+                    return raw
+            except (RuntimeError, OSError, ValueError):
+                pass
+
+        self.last_source = "synthetic_contour"
+        return self._fallback.detect(image_rgb, exclude_boxes=exclude_boxes)
 
 
 class MonocularDepthAdapter:
@@ -302,19 +400,47 @@ class MonocularDepthAdapter:
         return depth_arr.astype(np.float32)
 
 
+class CompositeDepthEstimator:
+    """Monocular neural depth estimator with safe fallback when offline or weights are unavailable."""
+
+    def __init__(
+        self,
+        *,
+        prefer_monocular: bool = True,
+        primary: DepthEstimatorProtocol | None = None,
+        fallback: DepthEstimatorProtocol | None = None,
+    ) -> None:
+        if primary is not None:
+            self._primary: DepthEstimatorProtocol | None = primary
+        elif (
+            prefer_monocular
+            and importlib.util.find_spec("torch") is not None
+            and importlib.util.find_spec("transformers") is not None
+        ):
+            self._primary = MonocularDepthAdapter()
+        else:
+            self._primary = None
+        self._fallback = fallback or GeometricSyntheticDepthEstimator()
+
+    def estimate_relative_depth(
+        self,
+        image_rgb: np.ndarray | None,
+        width: int,
+        height: int,
+    ) -> np.ndarray:
+        if self._primary is not None and image_rgb is not None:
+            try:
+                return self._primary.estimate_relative_depth(image_rgb, width, height)
+            except (RuntimeError, OSError, ValueError):
+                pass
+        return self._fallback.estimate_relative_depth(image_rgb, width, height)
+
+
 def create_default_detector(prefer_yolo: bool = True) -> ObjectDetectorProtocol:
-    """Return YOLOv8 detector when optional extras are installed, else synthetic contour fallback."""
-    if prefer_yolo and importlib.util.find_spec("ultralytics") is not None:
-        return YoloV8DetectorAdapter()
-    return GeometricSyntheticDetector()
+    """Return composite YOLOv8 + contour-fallback detector."""
+    return CompositeFurnitureDetector(prefer_yolo=prefer_yolo)
 
 
 def create_default_depth_estimator(prefer_monocular: bool = True) -> DepthEstimatorProtocol:
-    """Return monocular depth adapter when PyTorch/Transformers are installed, else synthetic fallback."""
-    if (
-        prefer_monocular
-        and importlib.util.find_spec("torch") is not None
-        and importlib.util.find_spec("transformers") is not None
-    ):
-        return MonocularDepthAdapter()
-    return GeometricSyntheticDepthEstimator()
+    """Return composite monocular + geometric-fallback depth estimator."""
+    return CompositeDepthEstimator(prefer_monocular=prefer_monocular)

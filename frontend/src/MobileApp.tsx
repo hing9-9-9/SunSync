@@ -154,6 +154,7 @@ function MobileApp() {
     renameZone,
     zoneTabs,
     finishCapture,
+    completeVisionRegistration,
     addFurniture,
     addManualFurniture,
     registerSubmit,
@@ -1006,6 +1007,7 @@ function MobileApp() {
                             : 0
                         }
                         onFinish={finishCapture}
+                        onVisionRegistered={completeVisionRegistration}
                       />
                     ) : (
                       <Card>
