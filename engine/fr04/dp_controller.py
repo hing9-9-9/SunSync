@@ -215,7 +215,9 @@ def apply_fr04_stabilization(
 
     - FR-04.2 Minimum holding time: holds opaque/dimmed state for at least
       `brightening_hold_seconds`, while allowing immediate darkening when protection requires it.
-    - FR-04.1 Gap filling: fills short transparent gaps < `min_gap_seconds` with opaque state.
+    - FR-04.1 Gap filling: fills transparent gaps shorter than `min_gap_seconds` (strictly: a gap
+      of exactly that length is kept) with opaque state. A gap lasts a whole number of steps, so
+      with steps longer than the limit nothing is filled.
     """
     if not steps:
         return ()
@@ -224,7 +226,7 @@ def apply_fr04_stabilization(
     opacities = [s.opacity for s in steps]
     timestamps = [s.timestamp for s in steps]
     hold_steps = max(1, math.ceil(weights.brightening_hold_seconds / max(1, interval_seconds)))
-    gap_steps = max(1, math.ceil(weights.min_gap_seconds / max(1, interval_seconds)))
+    step_seconds = max(1, interval_seconds)
 
     # Pass 1: FR-04.2 Minimum holding time
     # Darkening is allowed immediately; brightening must hold for at least hold_steps
@@ -261,7 +263,8 @@ def apply_fr04_stabilization(
             left_shaded = (gap_start > 0) and (opacities[gap_start - 1] > 0.0)
             right_shaded = (gap_end < n) and (opacities[gap_end] > 0.0)
 
-            if left_shaded and right_shaded and gap_len <= gap_steps:
+            # Strictly shorter than the limit: a gap as long as the limit stays transparent.
+            if left_shaded and right_shaded and gap_len * step_seconds < weights.min_gap_seconds:
                 # Fill gap with bounded minimum opacity
                 fill_val = min(opacities[gap_start - 1], opacities[gap_end])
                 for k in range(gap_start, gap_end):

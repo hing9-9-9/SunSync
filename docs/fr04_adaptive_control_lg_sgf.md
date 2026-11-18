@@ -68,6 +68,9 @@ flowchart TD
 - **Rule**: If a cell is shaded ($u > 0$), drops to transparent ($u = 0$) for a brief gap $\Delta t < \text{min\_gap\_seconds}$ (default $600\text{s} = 10\text{ min}$), and is shaded again, the gap is filled:
   $$u_t = \min(u_{\text{left}}, u_{\text{right}})$$
 - **Effect**: Eliminates brief flickers when clouds temporarily drift across the sun.
+- **Boundary** (rule of 2026-11-17): the gap must be *strictly* shorter than `min_gap_seconds`; a gap exactly as long as the limit is kept transparent. A gap lasts a whole number of steps, so with 5-minute steps and the default limit a one-step gap (300 s) is filled and a two-step gap (600 s) is not. With the 30-minute steps of the app screens a single step (1800 s) is longer than the default limit, so nothing is filled unless the limit is above 1800 s.
+- **Edges of the day**: a transparent stretch at the very start or end of the plan has no shaded neighbour on both sides and is never filled.
+- **Benchmark**: the synthetic scenarios contain no gap that the old rule (`gap_len <= ceil(limit / step)`) and this one treat differently (compared on all 704 stabilizer calls of each suite run), so the benchmark numbers did not change. Real days are the subject of issue #149.
 
 ### 3.2 FR-04.2 Minimum Holding Time
 - **Rule**: When a cell darkens ($u_t > u_{t-1}$), it must maintain at least that opacity for $\text{brightening\_hold\_seconds}$ (default $600\text{s}$) before it is permitted to brighten.
