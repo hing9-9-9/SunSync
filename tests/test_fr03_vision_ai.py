@@ -612,3 +612,183 @@ def test_api_vision_furniture_estimate_multiple_apply_id_uniqueness(
         assert len(all_ids) == len(set(all_ids)), "All scene IDs must be strictly unique"
         assert occ_id_1 in [occ.occluder_id for occ in persisted_scene.occluders]
         assert occ_id_2 in [occ.occluder_id for occ in persisted_scene.occluders]
+
+
+def _make_synthetic_room_png_bytes() -> bytes:
+    """Create a 1280x720 PNG containing ArUco ID 0 and a rectangular dark desk silhouette."""
+    import cv2
+
+    canvas = np.full((720, 1280, 3), 245, dtype=np.uint8)
+    aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
+    marker_img = cv2.aruco.generateImageMarker(aruco_dict, 0, 180)
+    marker_rgb = cv2.cvtColor(marker_img, cv2.COLOR_GRAY2RGB)
+    # Place white quiet-zone border + 180x180 ArUco marker near upper center
+    canvas[120:300, 550:730] = marker_rgb
+    # Place a dark rectangular desk contour away from the marker box
+    canvas[420:580, 420:780] = (45, 50, 55)
+    ok, encoded = cv2.imencode(".png", cv2.cvtColor(canvas, cv2.COLOR_RGB2BGR))
+    assert ok
+    return encoded.tobytes()
+
+
+def test_api_vision_furniture_photo_base64_and_multipart(
+    client: TestClient,
+    database_engine: Engine,
+    scene_payload: dict[str, Any],
+) -> None:
+    """Direct image_base64 and /vision-furniture-photo endpoints run detection + ArUco estimation."""
+    import base64
+
+    scene_id = scene_payload["scene_id"]
+    with Session(database_engine) as session:
+        session.add(
+            SceneRecord(
+                scene_id=scene_id,
+                revision=scene_payload["revision"],
+                scene_json=json.dumps(scene_payload),
+            )
+        )
+        session.commit()
+
+    png_bytes = _make_synthetic_room_png_bytes()
+    b64_img = base64.b64encode(png_bytes).decode("ascii")
+
+    # 1. JSON with image_base64 and empty detections
+    resp1 = client.post(
+        f"/api/scenes/{scene_id}/vision-furniture-estimate",
+        json={
+            "image_base64": b64_img,
+            "marker_anchor": {"code_id": 0, "side_length_m": 0.6},
+            "apply_to_scene": False,
+        },
+    )
+    assert resp1.status_code == 200, resp1.text
+    data1 = resp1.json()
+    assert data1["applied_to_scene"] is False
+    assert len(data1["estimated_items"]) >= 1
+    assert data1["registration_fragment"] is not None
+    assert data1["registration_fragment"]["schema_version"] == "sunsync.fr06-fragment/1"
+
+    # 2. Multipart/form-data upload to /vision-furniture-photo
+    resp2 = client.post(
+        f"/api/scenes/{scene_id}/vision-furniture-photo?apply_to_scene=true",
+        files={"image": ("room.png", png_bytes, "image/png")},
+    )
+    assert resp2.status_code == 200, resp2.text
+    data2 = resp2.json()
+    assert data2["applied_to_scene"] is True
+    assert data2["scene_revision"] == scene_payload["revision"] + 1
+    assert len(data2["estimated_items"]) >= 1
+
+    # 3. Raw bytes upload to /vision-furniture-photo
+    resp3 = client.post(
+        f"/api/scenes/{scene_id}/vision-furniture-photo?apply_to_scene=false",
+        content=png_bytes,
+        headers={"Content-Type": "image/png"},
+    )
+    assert resp3.status_code == 200, resp3.text
+    assert len(resp3.json()["estimated_items"]) >= 1
+
+
+def test_detection_2d_input_normalizes_ui_aliases() -> None:
+    """Detection2DInput accepts UI labels (bookcase, table, cabinet, display) seamlessly."""
+    assert Detection2DInput(box_xyxy=(0, 0, 100, 200), label="bookcase").label == "bookshelf"  # type: ignore[arg-type]
+    assert Detection2DInput(box_xyxy=(0, 0, 100, 200), label="table").label == "desk"  # type: ignore[arg-type]
+    assert Detection2DInput(box_xyxy=(0, 0, 100, 200), label="cabinet").label == "other"  # type: ignore[arg-type]
+    assert Detection2DInput(box_xyxy=(0, 0, 100, 200), label="chair").label == "chair"
+
+
+def test_vision_estimate_syncs_ui_space_furniture_regions_and_revision(client: TestClient) -> None:
+    """Vision estimation via replace_scene syncs UI furniture (bookcase/chair), regions, and 409 check."""
+    ui_payload = {
+        "id": "vision-ui-space",
+        "building": "도서관",
+        "floor": "1층",
+        "name": "열람실",
+        "width": 8.0,
+        "depth": 6.0,
+        "height": 3.0,
+        "zone": "구역 1",
+        "zones": ["구역 1"],
+        "source": "manual",
+        "revision": 1,
+        "site": {
+            "latitude": 37.5,
+            "longitude": 127.0,
+            "timezone": "Asia/Seoul",
+            "northConfirmed": True,
+        },
+        "windowDimensions": {
+            "width": 3.0,
+            "height": 2.0,
+            "wall": "north",
+            "offset": 2.5,
+            "sill": 0.8,
+            "captureModule": {"row": 0, "col": 1},
+        },
+        "furniture": [],
+        "regions": [],
+    }
+    created = client.post("/api/ui/spaces", json=ui_payload)
+    assert created.status_code == 201, created.text
+    space = created.json()
+    scene_id = space["serverSceneId"]
+
+    # Stale expected_revision is rejected with 409
+    stale_req = {
+        "camera": {
+            "width": 1280,
+            "height": 720,
+            "fx": 900.0,
+            "fy": 900.0,
+            "cx": 640.0,
+            "cy": 360.0,
+        },
+        "marker_anchor": {
+            "code_id": 0,
+            "side_length_m": 0.6,
+            "corners_px": [[550.0, 210.0], [730.0, 210.0], [730.0, 390.0], [550.0, 390.0]],
+            "anchor_depth_rel": 3.0,
+        },
+        "expected_revision": 99,
+        "detections": [
+            {
+                "box_xyxy": [180.0, 220.0, 360.0, 520.0],
+                "label": "bookcase",
+                "confidence": 0.91,
+                "observed_depth_rel": 2.4,
+                "protection_grade": "B",
+            },
+            {
+                "box_xyxy": [860.0, 340.0, 990.0, 520.0],
+                "label": "chair",
+                "confidence": 0.88,
+                "observed_depth_rel": 2.1,
+                "protection_grade": "C",
+            },
+        ],
+        "apply_to_scene": True,
+        "auto_create_protected_regions": True,
+    }
+    assert (
+        client.post(f"/api/scenes/{scene_id}/vision-furniture-estimate", json=stale_req).status_code
+        == 409
+    )
+
+    valid_req = {**stale_req, "expected_revision": 1}
+    res = client.post(f"/api/scenes/{scene_id}/vision-furniture-estimate", json=valid_req)
+    assert res.status_code == 200, res.text
+    body = res.json()
+    assert body["scene_revision"] == 2
+    assert len(body["estimated_items"]) == 2
+    assert body["registration_fragment"]["occluders"][0]["type"] == "bookshelf"
+    assert body["registration_fragment"]["occluders"][1]["type"] == "chair"
+
+    # Verify UI Space projection is immediately synchronized!
+    synced_space = client.get(f"/api/ui/spaces/{space['id']}").json()
+    assert synced_space["serverRevision"] == 2
+    assert [f["type"] for f in synced_space["furniture"]] == ["bookcase", "chair"]
+    assert len(synced_space["regions"]) == 2
+    assert synced_space["regions"][0]["furnitureId"] == synced_space["furniture"][0]["id"]
+    assert synced_space["regions"][1]["furnitureId"] == synced_space["furniture"][1]["id"]
+    assert synced_space["regions"][1]["face"] == "상단"

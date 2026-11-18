@@ -1,0 +1,7 @@
+.capture-title-with-marker { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; min-width: 0; }
+.capture-title-with-marker .test-marker-button { min-height: 36px; padding: 6px 10px; font-size: 12px; white-space: nowrap; }
+.test-marker-dialog { width: min(420px, calc(100vw - 32px)); max-height: calc(100dvh - 48px); overflow: auto; box-sizing: border-box; padding: 24px; }
+.test-marker-dialog::backdrop { background: rgb(0 0 0 / 45%); }
+.test-marker-dialog svg { display: block; width: 100%; height: auto; background: white; margin: 16px 0; }
+.test-marker-dialog p { line-height: 1.6; }
+.test-marker-dialog > button { width: 100%; margin-top: 12px; }

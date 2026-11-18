@@ -9,7 +9,7 @@ from sunsync_registration.core import plan, measure, compose_scene
 from sunsync_registration.fr06 import export_fragment
 
 
-def fixture(single=False):
+def fixture(single=False, single_marker_side_m=0.6):
     camera = Camera(
         width=1920,
         height=1440,
@@ -30,7 +30,7 @@ def fixture(single=False):
         gap_y_m=0.02,
     )
     if single:
-        board = Board(board_id="window_board_01")
+        board = Board(board_id="window_board_01", marker_side_m=single_marker_side_m)
     request = PlanRequest(
         space_id="room_01",
         furniture_id="desk_01",
@@ -48,7 +48,8 @@ def fixture(single=False):
     k, d = camera.matrices()
     for index, position in enumerate(positions):
         pos = np.array(position)
-        f = np.array([0.3, 0.3, 0] if single else [0.125, 0.125, 0]) - pos
+        aim = single_marker_side_m / 2 if single else 0.125
+        f = np.array([aim, aim, 0]) - pos
         f /= np.linalg.norm(f)
         right = np.cross([0, 1, 0], f)
         right /= np.linalg.norm(right)

@@ -432,3 +432,17 @@ test("window normalization retains an explicit film selection across device hand
   assert.deepEqual(resolveWindow(room)?.captureModule,{row:1,col:2});
   assert.equal(resolveWindow({...room,windowDimensions:{width:3,height:2}})?.captureModule,undefined);
 });
+
+test("furniture types round-trip between UI and scene schemas and support chair placement", async () => {
+  const { toSceneFurnitureType, fromSceneFurnitureType, furnitureTypes } = await import("./model.ts");
+  assert.equal(furnitureTypes.chair, "의자");
+  assert.equal(toSceneFurnitureType("bookcase"), "bookshelf");
+  assert.equal(toSceneFurnitureType("table"), "desk");
+  assert.equal(toSceneFurnitureType("chair"), "chair");
+  assert.equal(toSceneFurnitureType("cabinet"), "other");
+  assert.equal(fromSceneFurnitureType("bookshelf"), "bookcase");
+  assert.equal(fromSceneFurnitureType("chair"), "chair");
+  assert.equal(fromSceneFurnitureType("desk"), "desk");
+  const placed = placeCapturedFurniture(fixture(), [{ name: "열람 의자", type: "chair" }]);
+  assert.equal(placed[0].type, "chair");
+});

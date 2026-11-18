@@ -1257,8 +1257,10 @@ export function useSpaceApp() {
         if (!camera) throw new MeasureError("카메라 준비를 완료해 주세요.");
         current = await measureAndRegister(current, camera, {
           checkedMeasurement: item.capture.checkedMeasurement,
+          testMarkerSideM: item.capture.testMarkerSideM,
           session: item.capture.session,
           name: item.name,
+          type: item.type,
           shape: item.capture!.shape,
           vertices: item.capture!.points.map((p) => p.position),
           points: item.capture!.points.map((p) => ({ id: p.id, frames: p.frames! })),

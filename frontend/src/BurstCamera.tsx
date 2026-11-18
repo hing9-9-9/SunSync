@@ -5,13 +5,14 @@ import { detectFrame, setupCamera } from "./measureApi";
 import { analyseImage } from "./captureCheck";
 import { liveHint } from "./captureGuide";
 import type { Hint } from "./captureGuide";
-import type { Camera, CaptureMarker, Frame } from "./measureApi";
+import type { Board, Camera, CaptureMarker, Frame } from "./measureApi";
 
 export type CapturePhase = "idle" | "capturing" | "analyzing";
 
 /** Test-only video stream. Its calibration is deliberately separate from still-photo profiles. */
 export default function BurstCamera({
   session,
+  board,
   active,
   pointLabel,
   actionTarget,
@@ -23,6 +24,7 @@ export default function BurstCamera({
   onBatch,
 }: {
   session: CaptureMarker;
+  board: Board;
   active: boolean;
   pointLabel: string;
   actionTarget: HTMLElement | null;
@@ -148,7 +150,7 @@ export default function BurstCamera({
       const file = await snapshot();
       const frame = await detectFrame(
         file,
-        session.board,
+        board,
         session,
         new Date(file.lastModified).toISOString(),
       );
@@ -157,7 +159,7 @@ export default function BurstCamera({
         throw new Error("마커 전체가 보이도록 각도를 조절해 주세요.");
       next = appendSetupView(views, frame);
       if (next.length >= 12) {
-        const profile = await setupCamera(next, session.board, false);
+        const profile = await setupCamera(next, board, false);
         if (version === generation.current) {
           setViews(next);
           setCamera(profile);
@@ -188,7 +190,7 @@ export default function BurstCamera({
         const file = await snapshot();
         preview.signal.throwIfAborted();
         const [frame, metrics] = await Promise.all([
-          detectFrame(file, session.board, session, new Date(file.lastModified).toISOString(), camera ?? undefined, preview.signal),
+          detectFrame(file, board, session, new Date(file.lastModified).toISOString(), camera ?? undefined, preview.signal),
           analyseImage(file),
         ]);
         if (live) setHint(liveHint(frame, metrics));
@@ -203,7 +205,7 @@ export default function BurstCamera({
       clearTimeout(timer);
       preview.abort();
     };
-  }, [active, running, camera, busy, disabled, session]);
+  }, [active, running, camera, busy, disabled, session, board]);
   async function shoot() {
     if (!active || !camera || busy || disabled) return;
     setBusy(true);

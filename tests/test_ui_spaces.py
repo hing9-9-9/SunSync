@@ -214,6 +214,8 @@ def test_device_handoff_round_trip(client, payload):
     saved = client.post("/api/ui/spaces", json=payload).json()
     handoff = client.post("/api/ui/handoffs", json={"space_id": saved["id"]})
     assert handoff.status_code == 201
+    assert handoff.headers["Deprecation"] == "true"
+    assert "/api/ui/measurements" in handoff.headers["Link"]
     data = handoff.json()
     token = data["token"]
     assert client.get(f"/api/ui/handoffs/{token}").json()["status"] == "waiting"
@@ -821,3 +823,23 @@ def test_protected_face_points_at_the_window_wall_after_rotation(wall, yaw):
     region = NS(furnitureId="f", face="남쪽 전면", x=1, y=1, width=1.5, depth=0.6, bottom=0, top=1)
     _, normal = region_surface(space, region)
     assert normal[0] * toward[0] + normal[1] * toward[1] > 0.8
+
+
+@pytest.mark.parametrize(
+    "floor_text,expected_level",
+    [
+        ("2층 서관", 2),
+        ("지하 1층", -1),
+        ("B2F", -2),
+        ("3F 열람실", 3),
+        ("-1", -1),
+        ("별관 로비", None),
+    ],
+)
+def test_flexible_floor_strings_parse_to_floor_level(client, payload, floor_text, expected_level):
+    payload["id"] = f"floor-test-{abs(hash(floor_text)) % 100000}"
+    payload["floor"] = floor_text
+    saved = client.post("/api/ui/spaces", json=payload)
+    assert saved.status_code == 201, saved.text
+    scene = client.get(f"/api/scenes/{saved.json()['serverSceneId']}").json()
+    assert scene["room"]["floor_level"] == expected_level

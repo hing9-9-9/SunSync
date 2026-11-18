@@ -1,11 +1,22 @@
 """Pydantic schemas for FR-03 & FR-06 Vision AI furniture 3D bounding box estimation."""
 
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.schemas.scene import Occluder, ProtectedRegion
 from engine.vision_ai.protocols import FurnitureLabel
+
+_UI_LABEL_ALIASES: dict[str, FurnitureLabel] = {
+    "bookcase": "bookshelf",
+    "bookshelf": "bookshelf",
+    "desk": "desk",
+    "table": "desk",
+    "chair": "chair",
+    "cabinet": "other",
+    "display": "other",
+    "other": "other",
+}
 
 
 class CameraIntrinsicsInput(BaseModel):
@@ -33,6 +44,13 @@ class Detection2DInput(BaseModel):
     depth_span_rel: float | None = None
     name: str | None = None
     protection_grade: Literal["A", "B", "C", "D"] = "B"
+
+    @field_validator("label", mode="before")
+    @classmethod
+    def _normalize_label(cls, value: Any) -> Any:
+        if isinstance(value, str):
+            return _UI_LABEL_ALIASES.get(value.strip().lower(), value)
+        return value
 
 
 class MarkerAnchorInput(BaseModel):
@@ -63,9 +81,17 @@ class VisionFurnitureEstimateRequest(BaseModel):
     T_ENU_camera: Annotated[list[float], Field(min_length=16, max_length=16)] | None = None
     depth_scale_alpha: float | None = None
     depth_shift_beta: float | None = None
-    detections: Annotated[list[Detection2DInput], Field(min_length=1)]
+    image_base64: str | None = Field(default=None, min_length=1, max_length=16_000_000)
+    detections: list[Detection2DInput] = Field(default_factory=list)
     apply_to_scene: bool = True
     auto_create_protected_regions: bool = True
+    expected_revision: Annotated[int, Field(ge=1)] | None = None
+
+    @model_validator(mode="after")
+    def _require_detections_or_image(self) -> Self:
+        if self.image_base64 is None and len(self.detections) == 0:
+            raise ValueError("Either detections or image_base64 must be provided.")
+        return self
 
 
 class EstimatedFurnitureResult(BaseModel):
@@ -92,3 +118,4 @@ class VisionFurnitureEstimateResponse(BaseModel):
     depth_calibration_alpha: float
     depth_calibration_beta: float
     estimated_items: list[EstimatedFurnitureResult]
+    registration_fragment: dict[str, Any] | None = None

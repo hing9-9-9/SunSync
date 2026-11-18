@@ -5,6 +5,7 @@ export type FurnitureType =
   | "bookcase"
   | "desk"
   | "table"
+  | "chair"
   | "cabinet"
   | "display"
   | "other";
@@ -118,10 +119,25 @@ export const furnitureTypes: Record<FurnitureType, string> = {
   bookcase: "책장",
   desk: "책상",
   table: "열람 테이블",
+  chair: "의자",
   cabinet: "수납장",
   display: "진열장",
   other: "기타",
 };
+export type SceneFurnitureType = "bookshelf" | "desk" | "chair" | "other";
+export function toSceneFurnitureType(type?: FurnitureType | string | null): SceneFurnitureType {
+  if (type === "bookcase" || type === "bookshelf") return "bookshelf";
+  if (type === "desk" || type === "table") return "desk";
+  if (type === "chair") return "chair";
+  return "other";
+}
+export function fromSceneFurnitureType(type?: string | null): FurnitureType {
+  if (type === "bookshelf" || type === "bookcase") return "bookcase";
+  if (type === "desk") return "desk";
+  if (type === "chair") return "chair";
+  if (type && type in furnitureTypes) return type as FurnitureType;
+  return "other";
+}
 export const walls: Record<Wall, string> = {
   south: "남쪽 벽",
   north: "북쪽 벽",
@@ -212,12 +228,13 @@ const typicalSize: Record<FurnitureType, [number, number, number]> = {
   bookcase: [2, 0.6, 1.8],
   desk: [1.2, 0.6, 0.75],
   table: [1.8, 0.9, 0.75],
+  chair: [0.6, 0.6, 0.85],
   cabinet: [1, 0.5, 1.2],
   display: [1.2, 0.6, 1],
   other: [1, 0.6, 1],
 };
 // frames: photos prepared and checked by the measurement server (absent when measuring is skipped).
-export type CapturedFurniture = { name: string; type: FurnitureType; capture?: {checkedMeasurement?: import("./measureApi").CheckedMeasurement; camera?: import("./measureApi").Camera; session?: import("./measureApi").CaptureMarker; shape: string; points: {id: string; position: {x:number;y:number}; photos: File[]; frames?: import("./measureApi").Frame[]}[]} };
+export type CapturedFurniture = { name: string; type: FurnitureType; capture?: {testMarkerSideM?: number; checkedMeasurement?: import("./measureApi").CheckedMeasurement; camera?: import("./measureApi").Camera; session?: import("./measureApi").CaptureMarker; shape: string; points: {id: string; position: {x:number;y:number}; photos: File[]; frames?: import("./measureApi").Frame[]}[]} };
 // Lays captured furniture out in rows inside the room, clamped to its size.
 export function placeCapturedFurniture(
   space: Pick<Space, "width" | "depth" | "height" | "zone">,

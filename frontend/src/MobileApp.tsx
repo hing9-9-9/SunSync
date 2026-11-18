@@ -13,6 +13,8 @@ import { BUILD_LABEL } from "./buildLabel";
 import AdaptiveEffect from "./AdaptiveEffect.tsx";
 import { applyRegionShading, formatMinute } from "./sunlight";
 import SpatialCapture from "./SpatialCapture";
+import TestMarkerPreview, { TestMarkerSize } from "./TestMarkerPreview";
+import type { CaptureMarker } from "./measureApi";
 
 import {
   defaultShadingTime,
@@ -54,6 +56,8 @@ import { Icon, Card, SyncBadge, SyncRetry } from "./ShellParts";
 import { AuthAction, AuthLead } from "./AuthNotice";
 import { GoogleButton } from "./GoogleMark";
 function MobileApp() {
+  const [captureMarker, setCaptureMarker] = useState<CaptureMarker | null>(null);
+  const [markerSizeOverride, setMarkerSizeOverride] = useState<{ sessionId: string; sideM: number }>();
   const {
     isApp,
     handoffLink,
@@ -976,13 +980,24 @@ function MobileApp() {
                 <div className="capture-layout">
                   <div>
                     <div className="capture-intro">
-                      <h2>{addingByQr ? "추가할 가구" : "촬영할 가구"}</h2>
+                      <div className="capture-title-with-marker">
+                        <h2>{addingByQr ? "추가할 가구" : "촬영할 가구"}</h2>
+                        <TestMarkerPreview key={captureMarker?.session_id} session={captureMarker} />
+                        {captureMarker && <TestMarkerSize
+                          key={captureMarker.session_id}
+                          sideM={markerSizeOverride?.sessionId === captureMarker.session_id ? markerSizeOverride?.sideM : undefined}
+                          onApply={sideM => setMarkerSizeOverride(sideM === undefined
+                            ? undefined : { sessionId: captureMarker.session_id, sideM })}
+                        />}
+                      </div>
                       {!addingByQr && <p className="step-label">2/3단계</p>}
                     </div>
                     {zoneTabs}
                     {draft.windowDimensions?.width &&
                     draft.windowDimensions?.height ? (
                       <SpatialCapture
+                        onMarkerChange={setCaptureMarker}
+                        markerSizeOverride={markerSizeOverride}
                         sceneId={draft.serverSceneId}
                         key={`${draft.id}:${draft.zone}`}
                         count={

@@ -3,7 +3,7 @@
 import secrets
 from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Response
 from pydantic import BaseModel, Field
 from sqlmodel import Field as DBField
 from sqlmodel import SQLModel, select
@@ -11,6 +11,11 @@ from sqlmodel import SQLModel, select
 from app.api.ui_spaces import DB, get_space, replace_space
 from app.ownership import CurrentUser, require_space
 from app.ui_scene import UISpace
+
+
+def _mark_deprecated(response: Response) -> None:
+    response.headers["Deprecation"] = "true"
+    response.headers["Link"] = '</api/ui/measurements>; rel="successor-version"'
 
 
 class Handoff(SQLModel, table=True):
@@ -41,8 +46,9 @@ def current(token: str, session: DB) -> Handoff:
     return row
 
 
-@router.post("", status_code=201)
-def start(data: Start, session: DB, user: CurrentUser):
+@router.post("", status_code=201, deprecated=True)
+def start(data: Start, session: DB, user: CurrentUser, response: Response):
+    _mark_deprecated(response)
     require_space(session, data.space_id, user)
     get_space(data.space_id, session)
     code = secrets.token_hex(4).upper()
@@ -60,8 +66,9 @@ def start(data: Start, session: DB, user: CurrentUser):
     return row
 
 
-@router.post("/claim")
-def claim(data: Claim, session: DB, user: CurrentUser):
+@router.post("/claim", deprecated=True)
+def claim(data: Claim, session: DB, user: CurrentUser, response: Response):
+    _mark_deprecated(response)
     row = session.exec(select(Handoff).where(Handoff.code == data.code.upper())).first()
     if row is None:
         raise HTTPException(404, "연결 코드를 확인해 주세요.")
@@ -79,14 +86,16 @@ def claim(data: Claim, session: DB, user: CurrentUser):
     return row
 
 
-@router.get("/{token}")
-def status(token: str, session: DB):
+@router.get("/{token}", deprecated=True)
+def status(token: str, session: DB, response: Response):
+    _mark_deprecated(response)
     row = current(token, session)
     return {**row.model_dump(), "space": get_space(row.space_id, session)}
 
 
-@router.post("/{token}/connect")
-def connect(token: str, session: DB):
+@router.post("/{token}/connect", deprecated=True)
+def connect(token: str, session: DB, response: Response):
+    _mark_deprecated(response)
     row = current(token, session)
     if row.status == "completed":
         raise HTTPException(409, "이미 완료된 연결입니다.")
@@ -97,8 +106,9 @@ def connect(token: str, session: DB):
     return {**row.model_dump(), "space": get_space(row.space_id, session)}
 
 
-@router.post("/{token}/complete")
-def complete(token: str, space: UISpace, session: DB):
+@router.post("/{token}/complete", deprecated=True)
+def complete(token: str, space: UISpace, session: DB, response: Response):
+    _mark_deprecated(response)
     row = current(token, session)
     if row.status != "connected" or space.id != row.space_id:
         raise HTTPException(409, "연결된 공간과 촬영 상태를 확인해 주세요.")
