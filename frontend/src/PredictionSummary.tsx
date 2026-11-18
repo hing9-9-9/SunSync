@@ -5,6 +5,7 @@ import { regionOwners } from "./model.ts";
 import type { Space } from "./model.ts";
 import NowcastComparisonChart from "./NowcastComparisonChart.tsx";
 import { nowcastSourceNote } from "./nowcastSource.ts";
+import { daylightProvenanceSegments, weatherProvenanceMessage } from "./weatherProvenance.ts";
 import "./PredictionSummary.css";
 
 /** The furniture's own name when the area was set for a piece of furniture (the face is chosen
@@ -35,6 +36,8 @@ export default function PredictionSummary({
     }).format(new Date(timestamp));
 
   const sources = new Set(result?.irradiance?.map((p) => p.source));
+  const provenance = daylightProvenanceSegments(result?.irradiance, result?.solar_positions, result?.interval_seconds ?? 1800);
+  const provenanceMessage = weatherProvenanceMessage(provenance, space.site!.timezone);
   const startTime = `${date}T00:00:00Z`;
 
   useEffect(() => {
@@ -70,13 +73,30 @@ export default function PredictionSummary({
   const sourceNote = comparison ? nowcastSourceNote(comparison) : null;
   const owners = result ? regionOwners(space, result.regions.length) ?? result.regions.map((_, i) => i) : [];
 
-  const noWeather = [...sources].some((source) => source.includes("clear_sky"));
+  // The natural-language summary deliberately ignores sub-30-minute gaps; the bar below does not.
+  const noWeather = false;
   const gaps = !!result && (sources.has("unknown") || result.regions.some((r) => r.timeline.some((t) => t.samples?.some((x) => x.direct_irradiance_W_m2 === null))));
 
   return (
     <div className="forecast-panel">
       {comparison && <NowcastComparisonChart data={comparison} />}
       {sourceNote?.tone === "warning" && <p role="note" className="forecast-note">{sourceNote.text}</p>}
+      {provenanceMessage && <p role="note" className="forecast-note">{provenanceMessage}</p>}
+      {provenance.length > 0 && <div className="forecast-provenance" aria-label="시간대별 날씨 예보 적용 상태">
+        <div className="forecast-provenance-bar" aria-hidden="true">
+          {provenance.map((segment) => <span
+            className={`forecast-provenance-segment forecast-provenance-${segment.kind}`}
+            key={`${segment.kind}-${segment.start.toISOString()}`}
+            style={{ flexGrow: segment.end.getTime() - segment.start.getTime() }}
+          />)}
+        </div>
+        <div className="forecast-provenance-legend">
+          <span><i className="forecast-provenance-key forecast-provenance-forecast" />날씨 예보 반영</span>
+          {provenance.some((segment) => segment.kind === "stored") && <span><i className="forecast-provenance-key forecast-provenance-stored" />저장된 날씨 정보</span>}
+          {provenance.some((segment) => segment.kind === "unavailable") && <span><i className="forecast-provenance-key forecast-provenance-unavailable" />예보 미적용</span>}
+          {provenance.some((segment) => segment.kind === "unknown") && <span><i className="forecast-provenance-key forecast-provenance-unknown" />계산 불가</span>}
+        </div>
+      </div>}
       {noWeather && <p role="note" className="forecast-note">날씨 정보 없음, 맑은 날 기준으로 계산.</p>}
       {gaps && <p role="note" className="forecast-note">일부 시간대 일사량 확인 불가.</p>}
 
