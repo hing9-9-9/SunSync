@@ -17,6 +17,8 @@ from engine.vision_ai.protocols import (
     GeometricSyntheticDetector,
     MonocularDepthAdapter,
     ObjectDetectorProtocol,
+    VisionMode,
+    VisionModelUnavailable,
     YoloV8DetectorAdapter,
     _merge_book_clusters,
 )
@@ -35,6 +37,8 @@ __all__ = [
     "GeometricSyntheticDetector",
     "MonocularDepthAdapter",
     "ObjectDetectorProtocol",
+    "VisionMode",
+    "VisionModelUnavailable",
     "VisionRegistrationPipeline",
     "YoloV8DetectorAdapter",
     "_merge_book_clusters",
