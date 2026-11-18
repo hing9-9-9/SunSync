@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import threading
+from collections import OrderedDict
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from math import isfinite
@@ -9,7 +11,7 @@ from typing import Literal, cast
 
 from sqlalchemy import Engine
 
-from app.nowcast.selection import select_and_record
+from app.nowcast.selection import _clear_sky_dni, select_and_record
 from app.schemas.scene import Scene
 from app.schemas.sunpath import (
     BlockerResponse,
@@ -32,8 +34,10 @@ from engine.fr01.models import (
     Cuboid,
     PredictionOptions,
     ProtectedRegion,
+    RegionPrediction,
     Room,
     Site,
+    SolarPosition,
     Vector3,
     Window,
 )
@@ -44,9 +48,16 @@ from engine.fr01.predictor import (
 )
 from engine.fr01.solar import calculate_solar_positions, make_prediction_grid
 from engine.fr01.tiling import tile_centres
+from engine.fr02 import ExposedTile
 
 MAX_SELECTED_SAMPLES = 10_000
 MAX_INTERSECTION_CHECKS = 5_000_000
+_DEFAULT_MAX_SELECTED_SAMPLES = MAX_SELECTED_SAMPLES
+_DEFAULT_MAX_INTERSECTION_CHECKS = MAX_INTERSECTION_CHECKS
+_ORIGINAL_PREDICT_REGION_EXPOSURE = predict_region_exposure
+_GEOMETRY_CACHE_MAX_ENTRIES = 64
+_GEOMETRY_LOCK = threading.Lock()
+_GEOMETRY_CACHE: OrderedDict[tuple[object, ...], SceneRayTrace] = OrderedDict()
 
 
 class SunpathValidationError(ValueError):
@@ -413,152 +424,34 @@ def _scene_dni(
         return "scene_weather_invalid"
 
 
-def _clear_sky_dni(site: Site, timestamp: datetime) -> float:
-    try:
-        import pandas as pd
-        from pvlib.location import Location
+@dataclass(frozen=True, slots=True)
+class SceneRayTrace:
+    """Weather-independent FR-01 solar positions and 3D raycast exposure results."""
 
-        value = (
-            Location(site.latitude_deg, site.longitude_deg, tz="UTC")
-            .get_clearsky(pd.DatetimeIndex([_utc(timestamp)]))["dni"]
-            .iloc[0]
-        )
-        return _valid_dni(float(value)) or 0.0
-    except Exception as error:
-        raise ValueError("clear_sky_error") from error
+    geometry: SceneGeometry
+    regions: tuple[ProtectedRegion, ...]
+    timestamps: tuple[datetime, ...]
+    solar_positions: tuple[SolarPosition, ...]
+    predictions: tuple[RegionPrediction, ...]
 
 
-def predict_scene(
-    scene: Scene,
-    request: SunpathPredictionRequest,
-    request_received_at: datetime | None = None,
-    nowcast_engine: Engine | None = None,
-) -> SunpathPredictionResponse:
-    """Calculate a non-persistent prediction from one validated Scene snapshot."""
-
-    geometry = adapt_scene(scene)
-    regions = _selected_regions(geometry, request.protected_region_ids)
-    start = _start_time(request.start_time)
-    try:
-        options = PredictionOptions(request.duration_minutes, request.interval_seconds)
-        timestamps = make_prediction_grid(start, options)
-    except ValueError as error:
-        raise SunpathValidationError(
-            "INVALID_PREDICTION_REQUEST",
-            "예측 요청값을 확인해 주세요.",
-            target_type="request",
-        ) from error
-    samples = sum(len(tile_centres(region)) for region in regions)
-    if samples > MAX_SELECTED_SAMPLES:
-        raise SunpathValidationError(
-            "SAMPLE_LIMIT_EXCEEDED",
-            "보호 영역의 계산 지점 수가 한도를 초과했습니다.",
-            target_type="request",
-            context={"sample_count": samples, "max_samples": MAX_SELECTED_SAMPLES},
-        )
-    work = PredictionWorkEstimate(
-        timestamp_count=len(timestamps),
-        sample_count=samples,
-        window_count=len(geometry.windows),
-        occluder_count=len(geometry.occluders),
-        room_corner_count=len(geometry.room.floor_vertices_m),
+def is_prediction_hooked() -> bool:
+    """Return True when tests replaced FR-01 internals or tightened resource caps."""
+    return (
+        predict_region_exposure is not _ORIGINAL_PREDICT_REGION_EXPOSURE
+        or MAX_SELECTED_SAMPLES != _DEFAULT_MAX_SELECTED_SAMPLES
+        or MAX_INTERSECTION_CHECKS != _DEFAULT_MAX_INTERSECTION_CHECKS
     )
-    if work.intersection_checks > MAX_INTERSECTION_CHECKS:
-        raise SunpathValidationError(
-            "INTERSECTION_LIMIT_EXCEEDED",
-            "공간이 너무 복잡해 예측 계산 한도를 초과했습니다.",
-            target_type="request",
-            context=work.context(MAX_INTERSECTION_CHECKS),
-        )
+
+
+def _compute_ray_trace(
+    scene: Scene,
+    geometry: SceneGeometry,
+    regions: tuple[ProtectedRegion, ...],
+    timestamps: tuple[datetime, ...],
+) -> tuple[tuple[SolarPosition, ...], tuple[RegionPrediction, ...]]:
     try:
         solar_positions = calculate_solar_positions(geometry.site, timestamps)
-        received_at = _utc(request_received_at or datetime.now(UTC))
-        # Scene weather remains the first-priority source.  Only unresolved
-        # timestamps enter the durable Open-Meteo selector; API requests never
-        # collect from a provider or start a worker.
-        scene_values = [_scene_dni(scene, timestamp, received_at) for timestamp in timestamps]
-        unresolved = [
-            (index, reason) for index, reason in enumerate(scene_values) if isinstance(reason, str)
-        ]
-        if nowcast_engine is not None:
-            run_id, selected = (
-                select_and_record(
-                    nowcast_engine,
-                    geometry.site,
-                    tuple(timestamps[index] for index, _ in unresolved),
-                    received_at,
-                )
-                if unresolved
-                else (None, [])
-            )
-            selected_by_index = dict(zip((index for index, _ in unresolved), selected, strict=True))
-            dni_values = []
-            for index, timestamp in enumerate(timestamps):
-                scene_value = scene_values[index]
-                if isinstance(scene_value, tuple):
-                    value, valid_time, fetched_at = scene_value
-                    dni_values.append(
-                        DniValue(value, "scene_weather", False, None, valid_time, fetched_at)
-                    )
-                    continue
-                item = selected_by_index[index]
-                dni_values.append(
-                    DniValue(
-                        item.value,
-                        cast(Literal["open_meteo", "pvlib_clear_sky", "unknown"], item.source),
-                        item.fallback_used,
-                        item.fallback_reason,
-                        item.valid_time,
-                        item.fetched_at,
-                        run_id,
-                        item.method,
-                        item.snapshot_id,
-                        item.provider,
-                        item.interval_start,
-                        item.interval_end,
-                        item.clear_sky_dni,
-                        item.provenance,
-                    )
-                )
-        else:
-            # Library callers without a database still do not perform network
-            # I/O.  This is deliberately the same final fallback as a missing
-            # durable snapshot, rather than the old request-time provider path.
-            dni_values = []
-            for index, timestamp in enumerate(timestamps):
-                scene_value = scene_values[index]
-                if isinstance(scene_value, tuple):
-                    value, valid_time, fetched_at = scene_value
-                    dni_values.append(
-                        DniValue(value, "scene_weather", False, None, valid_time, fetched_at)
-                    )
-                    continue
-                try:
-                    clear = _clear_sky_dni(geometry.site, timestamp)
-                    dni_values.append(
-                        DniValue(
-                            clear,
-                            "pvlib_clear_sky",
-                            True,
-                            "open_meteo_out_of_coverage",
-                            timestamp,
-                            None,
-                            prediction_method="clear_sky_fallback",
-                            clear_sky_dni=clear,
-                        )
-                    )
-                except ValueError:
-                    dni_values.append(
-                        DniValue(
-                            None,
-                            "unknown",
-                            True,
-                            "clear_sky_error",
-                            None,
-                            None,
-                            prediction_method="clear_sky_fallback",
-                        )
-                    )
         predictions = tuple(
             predict_region_exposure(
                 geometry.room,
@@ -589,13 +482,231 @@ def predict_scene(
             "공간 배치를 계산할 수 없습니다.",
             target_type="scene",
         ) from error
+    return solar_positions, predictions
+
+
+def trace_scene_geometry(
+    scene: Scene,
+    *,
+    start_time: str,
+    duration_minutes: int,
+    interval_seconds: int,
+    protected_region_ids: list[str] | None = None,
+) -> SceneRayTrace:
+    """Validate limits and run (or reuse cached) weather-independent FR-01 geometry raycasting."""
+
+    geometry = adapt_scene(scene)
+    regions = _selected_regions(geometry, protected_region_ids)
+    start = _start_time(start_time)
+    try:
+        options = PredictionOptions(duration_minutes, interval_seconds)
+        timestamps = make_prediction_grid(start, options)
+    except ValueError as error:
+        raise SunpathValidationError(
+            "INVALID_PREDICTION_REQUEST",
+            "예측 요청값을 확인해 주세요.",
+            target_type="request",
+        ) from error
+    samples = sum(len(tile_centres(region)) for region in regions)
+    if samples > MAX_SELECTED_SAMPLES:
+        raise SunpathValidationError(
+            "SAMPLE_LIMIT_EXCEEDED",
+            "보호 영역의 계산 지점 수가 한도를 초과했습니다.",
+            target_type="request",
+            context={"sample_count": samples, "max_samples": MAX_SELECTED_SAMPLES},
+        )
+    work = PredictionWorkEstimate(
+        timestamp_count=len(timestamps),
+        sample_count=samples,
+        window_count=len(geometry.windows),
+        occluder_count=len(geometry.occluders),
+        room_corner_count=len(geometry.room.floor_vertices_m),
+    )
+    if work.intersection_checks > MAX_INTERSECTION_CHECKS:
+        raise SunpathValidationError(
+            "INTERSECTION_LIMIT_EXCEEDED",
+            "공간이 너무 복잡해 예측 계산 한도를 초과했습니다.",
+            target_type="request",
+            context=work.context(MAX_INTERSECTION_CHECKS),
+        )
+
+    hooked = is_prediction_hooked()
+    cache_key: tuple[object, ...] | None = None
+    if not hooked:
+        cache_key = (
+            geometry,
+            tuple(region.region_id for region in regions),
+            timestamps[0],
+            duration_minutes,
+            interval_seconds,
+        )
+        with _GEOMETRY_LOCK:
+            cached = _GEOMETRY_CACHE.get(cache_key)
+            if cached is not None:
+                _GEOMETRY_CACHE.move_to_end(cache_key)
+                return cached
+
+    solar_positions, predictions = _compute_ray_trace(scene, geometry, regions, timestamps)
+    trace = SceneRayTrace(
+        geometry=geometry,
+        regions=regions,
+        timestamps=timestamps,
+        solar_positions=solar_positions,
+        predictions=predictions,
+    )
+    if cache_key is not None:
+        with _GEOMETRY_LOCK:
+            _GEOMETRY_CACHE[cache_key] = trace
+            _GEOMETRY_CACHE.move_to_end(cache_key)
+            while len(_GEOMETRY_CACHE) > _GEOMETRY_CACHE_MAX_ENTRIES:
+                _GEOMETRY_CACHE.popitem(last=False)
+    return trace
+
+
+def resolve_scene_dni(
+    scene: Scene,
+    geometry: SceneGeometry,
+    timestamps: tuple[datetime, ...],
+    received_at: datetime,
+    nowcast_engine: Engine | None = None,
+) -> list[DniValue]:
+    """Resolve request-scoped DNI series from scene.weather, Open-Meteo snapshots, or clear-sky."""
+
+    scene_values = [_scene_dni(scene, timestamp, received_at) for timestamp in timestamps]
+    unresolved = [
+        (index, reason) for index, reason in enumerate(scene_values) if isinstance(reason, str)
+    ]
+    if nowcast_engine is not None:
+        run_id, selected = (
+            select_and_record(
+                nowcast_engine,
+                geometry.site,
+                tuple(timestamps[index] for index, _ in unresolved),
+                received_at,
+            )
+            if unresolved
+            else (None, [])
+        )
+        selected_by_index = dict(zip((index for index, _ in unresolved), selected, strict=True))
+        dni_values: list[DniValue] = []
+        for index, _timestamp in enumerate(timestamps):
+            scene_value = scene_values[index]
+            if isinstance(scene_value, tuple):
+                value, valid_time, fetched_at = scene_value
+                dni_values.append(
+                    DniValue(value, "scene_weather", False, None, valid_time, fetched_at)
+                )
+                continue
+            item = selected_by_index[index]
+            dni_values.append(
+                DniValue(
+                    item.value,
+                    cast(Literal["open_meteo", "pvlib_clear_sky", "unknown"], item.source),
+                    item.fallback_used,
+                    item.fallback_reason,
+                    item.valid_time,
+                    item.fetched_at,
+                    run_id,
+                    item.method,
+                    item.snapshot_id,
+                    item.provider,
+                    item.interval_start,
+                    item.interval_end,
+                    item.clear_sky_dni,
+                    item.provenance,
+                )
+            )
+        return dni_values
+
+    dni_values = []
+    for index, timestamp in enumerate(timestamps):
+        scene_value = scene_values[index]
+        if isinstance(scene_value, tuple):
+            value, valid_time, fetched_at = scene_value
+            dni_values.append(DniValue(value, "scene_weather", False, None, valid_time, fetched_at))
+            continue
+        try:
+            clear = _clear_sky_dni(geometry.site, timestamp)
+            dni_values.append(
+                DniValue(
+                    clear,
+                    "pvlib_clear_sky",
+                    True,
+                    "open_meteo_out_of_coverage",
+                    timestamp,
+                    None,
+                    prediction_method="clear_sky_fallback",
+                    clear_sky_dni=clear,
+                )
+            )
+        except ValueError:
+            dni_values.append(
+                DniValue(
+                    None,
+                    "unknown",
+                    True,
+                    "clear_sky_error",
+                    None,
+                    None,
+                    prediction_method="clear_sky_fallback",
+                )
+            )
+    return dni_values
+
+
+def extract_exposed_tiles(
+    trace: SceneRayTrace,
+    dni_values: list[DniValue],
+) -> list[ExposedTile]:
+    """Project DNI onto raw exposed raycast hits without building diagnostic Pydantic sample trees."""
+
+    tiles: list[ExposedTile] = []
+    for region, prediction in zip(trace.regions, trace.predictions, strict=True):
+        normal = region.receiving_normal
+        for index, entry in enumerate(prediction.timeline):
+            if not entry.exposed:
+                continue
+            sun_dir = trace.solar_positions[index].sun_direction_enu
+            dni = dni_values[index].value
+            ts = entry.timestamp
+            for sample in entry.samples:
+                if sample.exposed and sample.candidate_path is not None:
+                    irradiance = direct_irradiance_W_m2(sample, normal, sun_dir, dni)
+                    tiles.append(
+                        ExposedTile(
+                            ts,
+                            region.region_id,
+                            sample.sample_index,
+                            sample.candidate_path.window_id,
+                            sample.candidate_path.window_hit_m,
+                            irradiance,
+                        )
+                    )
+    return tiles
+
+
+def build_sunpath_prediction_response(
+    scene: Scene,
+    trace: SceneRayTrace,
+    dni_values: list[DniValue],
+    *,
+    interval_seconds: int,
+    received_at: datetime,
+    include_samples: bool,
+) -> SunpathPredictionResponse:
+    """Serialize raw raycast + DNI outputs into the FR-01 API contract."""
+
+    timestamps = trace.timestamps
+    solar_positions = trace.solar_positions
+    regions = trace.regions
+    predictions = trace.predictions
     return SunpathPredictionResponse(
         result_version="0.4.0",
         scene_id=scene.scene_id,
         scene_revision=scene.revision,
         start_time=timestamps[0],
         end_time=timestamps[-1],
-        interval_seconds=request.interval_seconds,
+        interval_seconds=interval_seconds,
         timestamps=list(timestamps),
         solar_positions=[
             SolarPositionResponse(
@@ -674,7 +785,7 @@ def predict_scene(
                         region,
                         solar_positions[index].sun_direction_enu,
                         dni_values[index].value,
-                        request.detail_level == "diagnostic",
+                        include_samples,
                     )
                     for index, entry in enumerate(prediction.timeline)
                 ],
@@ -686,4 +797,37 @@ def predict_scene(
             "Exposure is evaluated only at requested sampled timestamps and sample points.",
             "Exterior shading, reflections, and refraction are excluded.",
         ],
+    )
+
+
+def predict_scene(
+    scene: Scene,
+    request: SunpathPredictionRequest,
+    request_received_at: datetime | None = None,
+    nowcast_engine: Engine | None = None,
+) -> SunpathPredictionResponse:
+    """Calculate a non-persistent prediction from one validated Scene snapshot."""
+
+    trace = trace_scene_geometry(
+        scene,
+        start_time=request.start_time,
+        duration_minutes=request.duration_minutes,
+        interval_seconds=request.interval_seconds,
+        protected_region_ids=request.protected_region_ids,
+    )
+    received_at = _utc(request_received_at or datetime.now(UTC))
+    dni_values = resolve_scene_dni(
+        scene,
+        trace.geometry,
+        trace.timestamps,
+        received_at,
+        nowcast_engine=nowcast_engine,
+    )
+    return build_sunpath_prediction_response(
+        scene,
+        trace,
+        dni_values,
+        interval_seconds=request.interval_seconds,
+        received_at=received_at,
+        include_samples=request.detail_level == "diagnostic",
     )

@@ -37,7 +37,9 @@ from app.services.film import (
 )
 from app.services.shading import _caps, _exposed_tiles, _film_windows, shading_plan_from_prediction
 from app.services.sunpath import SunpathValidationError, predict_scene
-from engine.fr02 import map_tiles_to_cells
+from engine.fr02 import ExposedTile, map_tiles_to_cells
+
+_ORIGINAL_PREDICT_SCENE = predict_scene
 from engine.fr04 import (
     AdaptiveComparisonMetrics,
     AdaptivePolicyTuner,
@@ -98,10 +100,12 @@ def _load_nowcast_uncertainty_timeline(
     session: Session,
     scene: Scene,
     nowcast_engine: Engine | None = None,
+    reference_now: datetime | None = None,
 ) -> list[UncertaintyTimelinePoint]:
     """Read active, site-scoped operational quantiles when available."""
     target_engine = nowcast_engine if nowcast_engine is not None else session.get_bind()
     site_key = f"{scene.site.latitude_deg:.6f},{scene.site.longitude_deg:.6f}"
+    current = (reference_now or datetime.now(UTC)).astimezone(UTC)
 
     try:
         with Session(target_engine) as query_session:
@@ -120,7 +124,7 @@ def _load_nowcast_uncertainty_timeline(
                 ORDER BY nr.created_at DESC
                 LIMIT 1
                 """),
-                {"site_key": site_key, "now": utc_z(datetime.now(UTC))},
+                {"site_key": site_key, "now": utc_z(current)},
             ).first()
 
             if row is None:
@@ -167,41 +171,27 @@ def _change_phrase(label: str, gain_pct: float) -> str:
     return f"{label}은 기준보다 {-gain_pct:.1f}% 나빠졌습니다"
 
 
-def compute_adaptive_shading_plan(
-    session: Session,
-    scene_id: str,
-    request: AdaptiveShadingPlanRequest,
-    nowcast_engine: Engine | None = None,
-) -> AdaptiveShadingPlanResponse:
-    """Compute uncertainty-aware adaptive shading plan and comparison metrics for a scene."""
-    scene_record = session.get(SceneRecord, scene_id)
-    if scene_record is None:
-        raise HTTPException(status_code=404, detail=f"Scene '{scene_id}' not found")
-
-    scene = Scene.model_validate_json(scene_record.scene_json)
-    if not scene.windows:
-        raise HTTPException(status_code=422, detail="Scene has no windows")
-
-    try:
-        caps = _caps(scene)
-    except SunpathValidationError as err:
-        raise HTTPException(status_code=422, detail=str(err)) from err
-
-    # 1. Run FR-01 sunpath prediction once and derive the FR-02 baseline plan from it
-    prediction: SunpathPredictionResponse = predict_scene(
-        scene,
-        SunpathPredictionRequest(
-            start_time=request.start_time,
-            duration_minutes=request.duration_minutes,
-            interval_seconds=request.interval_seconds,
-            # The exposed samples are only returned in diagnostic detail. Without them no cell has
-            # an observation and FR-04 sees no sun at all.
-            detail_level="diagnostic",
-        ),
-        nowcast_engine=nowcast_engine,
+def _is_default_preview_request(request: AdaptiveShadingPlanRequest) -> bool:
+    return (
+        request.mode == "smooth_fr02"
+        and request.hardware_mode == "LG_SGF"
+        and not request.apply_to_virtual_film
+        and not request.uncertainty_timeline
+        and not request.enable_edge_margin
     )
-    baseline_plan: ShadingPlan = shading_plan_from_prediction(scene, prediction)
 
+
+def _build_adaptive_response(
+    session: Session,
+    scene: Scene,
+    request: AdaptiveShadingPlanRequest,
+    baseline_plan: ShadingPlan,
+    tiles: list[ExposedTile],
+    caps: dict[str, float],
+    nowcast_engine: Engine | None = None,
+    reference_now: datetime | None = None,
+) -> AdaptiveShadingPlanResponse:
+    scene_id = scene.scene_id
     optical_profiles = _build_optical_profiles(scene)
     windows_map = {w.window_id: w for w in scene.windows}
     windows_grid = {w.window_id: (w.film_rows, w.film_cols) for w in scene.windows}
@@ -211,12 +201,14 @@ def compute_adaptive_shading_plan(
     effective_timeline: Sequence[Any] = request.uncertainty_timeline
     if not effective_timeline:
         effective_timeline = _load_nowcast_uncertainty_timeline(
-            session=session, scene=scene, nowcast_engine=nowcast_engine
+            session=session,
+            scene=scene,
+            nowcast_engine=nowcast_engine,
+            reference_now=reference_now,
         )
 
     # 2. Map tiles to window cells across timeline
     film_win_objs = _film_windows(scene)
-    tiles = _exposed_tiles(prediction)
     candidates = map_tiles_to_cells(tiles, film_win_objs)
 
     candidate_lookup: dict[tuple[datetime, str, int, int], Any] = {
@@ -431,7 +423,7 @@ def compute_adaptive_shading_plan(
     # 9. Build ShadingPlan and dimming trajectories
     plan_dict = build_shading_plan_from_trajectories(
         scene_id=scene.scene_id,
-        scene_revision=prediction.scene_revision,
+        scene_revision=scene.revision,
         windows_grid=windows_grid,
         trajectories=cell_trajectories,
         start_time=dt_start,
@@ -480,13 +472,100 @@ def compute_adaptive_shading_plan(
 
     return AdaptiveShadingPlanResponse(
         scene_id=scene.scene_id,
-        scene_revision=prediction.scene_revision,
+        scene_revision=scene.revision,
         mode=request.mode,
         hardware_mode=request.hardware_mode,
         baseline_plan=baseline_plan,
         stabilized_plan=stabilized_shading_plan,
         dimming_trajectories=dimming_trajectories,
         metrics=metrics_model,
+    )
+
+
+def compute_adaptive_shading_plan(
+    session: Session,
+    scene_id: str,
+    request: AdaptiveShadingPlanRequest,
+    nowcast_engine: Engine | None = None,
+    request_received_at: datetime | None = None,
+) -> AdaptiveShadingPlanResponse:
+    """Compute uncertainty-aware adaptive shading plan and comparison metrics for a scene."""
+    scene_record = session.get(SceneRecord, scene_id)
+    if scene_record is None:
+        raise HTTPException(status_code=404, detail=f"Scene '{scene_id}' not found")
+
+    scene = Scene.model_validate_json(scene_record.scene_json)
+    if not scene.windows:
+        raise HTTPException(status_code=422, detail="Scene has no windows")
+
+    try:
+        caps = _caps(scene)
+    except SunpathValidationError as err:
+        raise HTTPException(status_code=422, detail=str(err)) from err
+
+    from app.services import scenario_store
+
+    if predict_scene is not _ORIGINAL_PREDICT_SCENE or scenario_store.is_cache_bypassed():
+        prediction: SunpathPredictionResponse = predict_scene(
+            scene,
+            SunpathPredictionRequest(
+                start_time=request.start_time,
+                duration_minutes=request.duration_minutes,
+                interval_seconds=request.interval_seconds,
+                detail_level="diagnostic",
+            ),
+            request_received_at=request_received_at,
+            nowcast_engine=nowcast_engine,
+        )
+        baseline_plan = shading_plan_from_prediction(scene, prediction)
+        return _build_adaptive_response(
+            session,
+            scene,
+            request,
+            baseline_plan,
+            _exposed_tiles(prediction),
+            caps,
+            nowcast_engine=nowcast_engine,
+            reference_now=request_received_at,
+        )
+
+    if _is_default_preview_request(request):
+        return scenario_store.get_or_compute_adaptive_preview(
+            session,
+            scene,
+            request,
+            compute_fn=lambda base_plan, exposed: _build_adaptive_response(
+                session,
+                scene,
+                request,
+                base_plan,
+                exposed,
+                caps,
+                nowcast_engine=nowcast_engine,
+                reference_now=request_received_at,
+            ),
+            request_received_at=request_received_at,
+            nowcast_engine=nowcast_engine,
+        )
+
+    baseline_plan, tiles = scenario_store.get_baseline_and_tiles(
+        session,
+        scene,
+        start_time=request.start_time,
+        duration_minutes=request.duration_minutes,
+        interval_seconds=request.interval_seconds,
+        request_received_at=request_received_at,
+        nowcast_engine=nowcast_engine,
+    )
+    return _build_adaptive_response(
+        session,
+        scene,
+        request,
+        baseline_plan,
+        tiles,
+        caps,
+        nowcast_engine=nowcast_engine,
+        reference_now=request_received_at,
     )
 
 

@@ -125,36 +125,18 @@ def _candidate_windows(
     return sorted(hits, key=lambda hit: (hit.distance_m, hit.object_id)), ambiguous
 
 
-def evaluate_sample(
+def _evaluate_sample_checked(
     sample_index: int,
     point: Vector3,
-    region: ProtectedRegion,
-    solar_position: SolarPosition,
+    direction: Vector3,
     room: Room,
     windows: tuple[Window, ...],
     occluders: tuple[Cuboid, ...],
 ) -> SampleResult:
-    """Classify one sample at one time using a ray toward the sun."""
-
-    direction = solar_position.sun_direction_enu
-    if solar_position.elevation_deg <= 0.0:
-        return _not_exposed(sample_index, point, ExposureReason.SUN_BELOW_HORIZON)
-    if dot(region.receiving_normal, direction) <= ANGULAR_EPSILON:
-        return _not_exposed(sample_index, point, ExposureReason.BACK_FACING)
-    inside = next(
-        (cuboid for cuboid in occluders if point_strictly_inside_cuboid(point, cuboid)),
-        None,
-    )
-    if inside is not None:
-        raise SampleInsideOccluderError(
-            sample_index,
-            region.region_id,
-            inside.occluder_id,
-        )
+    if not windows:
+        return _not_exposed(sample_index, point, ExposureReason.NO_WINDOW)
     candidate_hits, window_ambiguous = _candidate_windows(point, direction, windows)
     if not candidate_hits:
-        if not windows:
-            return _not_exposed(sample_index, point, ExposureReason.NO_WINDOW)
         reason = (
             ExposureReason.BOUNDARY_AMBIGUOUS if window_ambiguous else ExposureReason.WINDOW_MISSED
         )
@@ -201,6 +183,35 @@ def evaluate_sample(
     )
 
 
+def evaluate_sample(
+    sample_index: int,
+    point: Vector3,
+    region: ProtectedRegion,
+    solar_position: SolarPosition,
+    room: Room,
+    windows: tuple[Window, ...],
+    occluders: tuple[Cuboid, ...],
+) -> SampleResult:
+    """Classify one sample at one time using a ray toward the sun."""
+
+    direction = solar_position.sun_direction_enu
+    if solar_position.elevation_deg <= 0.0:
+        return _not_exposed(sample_index, point, ExposureReason.SUN_BELOW_HORIZON)
+    if dot(region.receiving_normal, direction) <= ANGULAR_EPSILON:
+        return _not_exposed(sample_index, point, ExposureReason.BACK_FACING)
+    inside = next(
+        (cuboid for cuboid in occluders if point_strictly_inside_cuboid(point, cuboid)),
+        None,
+    )
+    if inside is not None:
+        raise SampleInsideOccluderError(
+            sample_index,
+            region.region_id,
+            inside.occluder_id,
+        )
+    return _evaluate_sample_checked(sample_index, point, direction, room, windows, occluders)
+
+
 def predict_region_exposure(
     room: Room,
     windows: tuple[Window, ...],
@@ -216,29 +227,56 @@ def predict_region_exposure(
         raise ValueError("window must reference the supplied room")
     if any(cuboid.room_id != room.room_id for cuboid in occluders):
         raise ValueError("occluder must reference the supplied room")
-    timeline = tuple(
-        RegionTimeResult(
-            timestamp=position.timestamp,
-            exposed=any(sample.exposed for sample in samples),
-            samples=samples,
-        )
-        for position in solar_positions
-        for samples in (
-            tuple(
-                evaluate_sample(
-                    sample_index,
-                    point,
-                    region,
-                    position,
+    tiles = tile_centres(region)
+    inside_checked = False
+    first_inside: tuple[int, str] | None = None
+    entries: list[RegionTimeResult] = []
+    for position in solar_positions:
+        direction = position.sun_direction_enu
+        if position.elevation_deg <= 0.0:
+            samples = tuple(
+                _not_exposed(tile.sample_index, tile.point_m, ExposureReason.SUN_BELOW_HORIZON)
+                for tile in tiles
+            )
+        elif dot(region.receiving_normal, direction) <= ANGULAR_EPSILON:
+            samples = tuple(
+                _not_exposed(tile.sample_index, tile.point_m, ExposureReason.BACK_FACING)
+                for tile in tiles
+            )
+        else:
+            if not inside_checked:
+                # Check interior-occluder invariant once per region on first front-facing daylight step.
+                first_inside = next(
+                    (
+                        (tile.sample_index, cuboid.occluder_id)
+                        for tile in tiles
+                        for cuboid in occluders
+                        if point_strictly_inside_cuboid(tile.point_m, cuboid)
+                    ),
+                    None,
+                )
+                inside_checked = True
+            if first_inside is not None:
+                raise SampleInsideOccluderError(first_inside[0], region.region_id, first_inside[1])
+            samples = tuple(
+                _evaluate_sample_checked(
+                    tile.sample_index,
+                    tile.point_m,
+                    direction,
                     room,
                     windows,
                     occluders,
                 )
-                for tile in tile_centres(region)
-                for sample_index, point in ((tile.sample_index, tile.point_m),)
-            ),
+                for tile in tiles
+            )
+        entries.append(
+            RegionTimeResult(
+                timestamp=position.timestamp,
+                exposed=any(sample.exposed for sample in samples),
+                samples=samples,
+            )
         )
-    )
+    timeline = tuple(entries)
     first = next((entry.timestamp for entry in timeline if entry.exposed), None)
     return RegionPrediction(
         region_id=region.region_id,

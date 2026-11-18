@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from functools import lru_cache
 from math import isfinite
 from uuid import uuid4
 
@@ -34,20 +35,29 @@ class SelectedDni:
     provenance: dict[str, object] | None = None
 
 
+@lru_cache(maxsize=4096)
+def _cached_clear_sky_dni(lat_deg: float, lon_deg: float, utc_timestamp: datetime) -> float:
+    import pandas as pd  # type: ignore[import-untyped]
+    from pvlib.location import Location  # type: ignore[import-untyped]
+
+    value = (
+        Location(lat_deg, lon_deg, tz="UTC")
+        .get_clearsky(pd.DatetimeIndex([utc_timestamp]))["dni"]
+        .iloc[0]
+    )
+    parsed = float(value)
+    if not isfinite(parsed) or parsed < 0:
+        raise ValueError("clear_sky_error")
+    return parsed
+
+
 def _clear_sky_dni(site: Site, timestamp: datetime) -> float:
     try:
-        import pandas as pd
-        from pvlib.location import Location
-
-        value = (
-            Location(site.latitude_deg, site.longitude_deg, tz="UTC")
-            .get_clearsky(pd.DatetimeIndex([timestamp.astimezone(UTC)]))["dni"]
-            .iloc[0]
+        return _cached_clear_sky_dni(
+            round(site.latitude_deg, 6),
+            round(site.longitude_deg, 6),
+            timestamp.astimezone(UTC),
         )
-        value = float(value)
-        if not isfinite(value) or value < 0:
-            raise ValueError
-        return value
     except Exception as error:
         raise ValueError("clear_sky_error") from error
 

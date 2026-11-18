@@ -16,7 +16,8 @@ from app.schemas.sunpath import (
     SunpathPredictionRequest,
     SunpathPredictionResponse,
 )
-from app.services.sunpath import SunpathValidationError, predict_scene
+from app.services.scenario_store import get_or_compute_sunpath_summary
+from app.services.sunpath import SunpathValidationError
 
 router = APIRouter(tags=["sunpath"])
 SessionDependency = Annotated[Session, Depends(get_session)]
@@ -61,7 +62,8 @@ def create_sunpath_prediction(
     try:
         bind = session.get_bind()
         nowcast_engine = bind if isinstance(bind, Engine) else bind.engine
-        return predict_scene(
+        return get_or_compute_sunpath_summary(
+            session,
             scene,
             request,
             request_received_at=request_received_at,

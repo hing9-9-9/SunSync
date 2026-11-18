@@ -13,6 +13,7 @@ from app.db import get_session
 from app.models.scene import SceneRecord
 from app.ownership import CurrentUser, owner_of
 from app.schemas.scene import Scene
+from app.services.scenario_store import invalidate_scene_scenarios
 from app.ui_scene import (
     DeletedSpaceRecord,
     UISpace,
@@ -243,6 +244,7 @@ def replace_space(space_id: str, space: UISpace, session: DB) -> UISpace:
     record.scene_revision = revision
     record.payload_json = saved.model_dump_json()
     session.add(record)
+    invalidate_scene_scenarios(session, scene.scene_id)
     session.commit()
     return saved
 
@@ -251,10 +253,12 @@ def replace_space(space_id: str, space: UISpace, session: DB) -> UISpace:
 def delete_space(space_id: str, session: DB, user: CurrentUser) -> None:
     """Removes the space and its Scene; repeating it is harmless."""
     record = session.get(UISpaceRecord, space_id)
-    scene = session.get(SceneRecord, canonical_id("scene", space_id))
+    scene_id = canonical_id("scene", space_id)
+    scene = session.get(SceneRecord, scene_id)
     for row in (record, scene):
         if row is not None:
             session.delete(row)
+    invalidate_scene_scenarios(session, scene_id)
     if session.get(DeletedSpaceRecord, space_id) is None:
         session.add(
             DeletedSpaceRecord(

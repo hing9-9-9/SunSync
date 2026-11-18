@@ -14,6 +14,7 @@ from app.db import DATABASE_URL, init_db
 from app.nowcast.kma_operational import FrozenOperationalNowcaster, floor_to_ten_minutes
 from app.nowcast.repository import SnapshotRepository
 from app.schemas.scene import Scene
+from app.services.scenario_store import run_rolling_scenario_update
 from engine.fr01.models import Site
 
 LEASE_NAME = "fr01_operational_ai_nowcast"
@@ -30,7 +31,14 @@ def run_once(
     owner = owner_id or str(uuid4())
     lease_repository = SnapshotRepository(engine)
     if not lease_repository.acquire_lease(LEASE_NAME, owner, current, ttl_seconds=540):
-        return {"scenes": 0, "stored": 0, "failed": 0, "lease_acquired": 0}
+        return {
+            "scenes": 0,
+            "stored": 0,
+            "failed": 0,
+            "scenarios_updated": 0,
+            "scenarios_failed": 0,
+            "lease_acquired": 0,
+        }
 
     with engine.connect() as connection:
         rows = connection.execute(
@@ -61,10 +69,13 @@ def run_once(
             stored += 1
         except (OSError, RuntimeError, ValueError):
             failed += 1
+    scenario_stats = run_rolling_scenario_update(engine, now=current)
     return {
         "scenes": valid_scenes,
         "stored": stored,
         "failed": failed,
+        "scenarios_updated": scenario_stats["updated"],
+        "scenarios_failed": scenario_stats["failed"],
         "lease_acquired": 1,
     }
 

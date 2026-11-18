@@ -2,14 +2,22 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy import Engine
 
 from app.schemas.scene import Scene
 from app.schemas.shading_plan import ShadingPlan, ShadingPlanRequest
 from app.schemas.sunpath import SunpathPredictionRequest, SunpathPredictionResponse
-from app.services.sunpath import SunpathValidationError, predict_scene
+from app.services.sunpath import (
+    DniValue,
+    SceneRayTrace,
+    SunpathValidationError,
+    extract_exposed_tiles,
+    predict_scene,
+    resolve_scene_dni,
+    trace_scene_geometry,
+)
 from engine.fr02 import (
     ExposedTile,
     FilmWindow,
@@ -18,6 +26,8 @@ from engine.fr02 import (
     grade_bc_needs,
     map_tiles_to_cells,
 )
+
+_ORIGINAL_PREDICT_SCENE = predict_scene
 
 
 def _film_windows(scene: Scene) -> list[FilmWindow]:
@@ -82,6 +92,67 @@ def _exposed_tiles(prediction: SunpathPredictionResponse) -> list[ExposedTile]:
     ]
 
 
+def shading_plan_from_exposed_tiles(
+    scene: Scene,
+    exposed_tiles: list[ExposedTile],
+    *,
+    start_time: datetime,
+    end_time: datetime,
+    interval_seconds: int,
+) -> ShadingPlan:
+    """Build an FR-02 ShadingPlan directly from exposed tiles without diagnostic overhead."""
+
+    windows = _film_windows(scene)
+    candidates = map_tiles_to_cells(exposed_tiles, windows)
+    grades = {region.region_id: region.grade for region in scene.protected_regions}
+    needs = [
+        *grade_a_needs(
+            windows=windows,
+            candidates=candidates,
+            grades=grades,
+            start_time=start_time,
+            end_time=end_time,
+            interval_seconds=interval_seconds,
+        ),
+        *grade_bc_needs(
+            windows=windows,
+            candidates=candidates,
+            grades=grades,
+            caps=_caps(scene),
+            start_time=start_time,
+            end_time=end_time,
+            interval_seconds=interval_seconds,
+        ),
+    ]
+    plan = build_plan(
+        scene_id=scene.scene_id,
+        scene_revision=scene.revision,
+        windows=windows,
+        needs=needs,
+        start_time=start_time,
+        end_time=end_time,
+    )
+    return ShadingPlan.model_validate(plan)
+
+
+def shading_plan_from_trace(
+    scene: Scene,
+    trace: SceneRayTrace,
+    dni_values: list[DniValue],
+    *,
+    interval_seconds: int,
+) -> ShadingPlan:
+    """Build an FR-02 ShadingPlan directly from an FR-01 trace and resolved DNI values."""
+
+    return shading_plan_from_exposed_tiles(
+        scene,
+        extract_exposed_tiles(trace, dni_values),
+        start_time=trace.timestamps[0],
+        end_time=trace.timestamps[-1],
+        interval_seconds=interval_seconds,
+    )
+
+
 def shading_plan_for_scene(
     scene: Scene,
     request: ShadingPlanRequest,
@@ -90,18 +161,40 @@ def shading_plan_for_scene(
 ) -> ShadingPlan:
     """Return the shading plan of one validated Scene snapshot; nothing is stored."""
 
-    prediction = predict_scene(
+    if predict_scene is not _ORIGINAL_PREDICT_SCENE:
+        prediction = predict_scene(
+            scene,
+            SunpathPredictionRequest(
+                start_time=request.start_time,
+                duration_minutes=request.duration_minutes,
+                interval_seconds=request.interval_seconds,
+                detail_level="diagnostic",
+            ),
+            request_received_at=request_received_at,
+            nowcast_engine=nowcast_engine,
+        )
+        return shading_plan_from_prediction(scene, prediction)
+
+    trace = trace_scene_geometry(
         scene,
-        SunpathPredictionRequest(
-            start_time=request.start_time,
-            duration_minutes=request.duration_minutes,
-            interval_seconds=request.interval_seconds,
-            detail_level="diagnostic",
-        ),
-        request_received_at=request_received_at,
+        start_time=request.start_time,
+        duration_minutes=request.duration_minutes,
+        interval_seconds=request.interval_seconds,
+    )
+    received_at = (request_received_at or datetime.now(UTC)).astimezone(UTC)
+    dni_values = resolve_scene_dni(
+        scene,
+        trace.geometry,
+        trace.timestamps,
+        received_at,
         nowcast_engine=nowcast_engine,
     )
-    return shading_plan_from_prediction(scene, prediction)
+    return shading_plan_from_trace(
+        scene,
+        trace,
+        dni_values,
+        interval_seconds=request.interval_seconds,
+    )
 
 
 def shading_plan_from_prediction(
@@ -112,35 +205,10 @@ def shading_plan_from_prediction(
     A caller that needs the prediction as well (FR-04) passes it in instead of predicting twice.
     """
 
-    windows = _film_windows(scene)
-    candidates = map_tiles_to_cells(_exposed_tiles(prediction), windows)
-    grades = {region.region_id: region.grade for region in scene.protected_regions}
-    start, end, interval = prediction.start_time, prediction.end_time, prediction.interval_seconds
-    needs = [
-        *grade_a_needs(
-            windows=windows,
-            candidates=candidates,
-            grades=grades,
-            start_time=start,
-            end_time=end,
-            interval_seconds=interval,
-        ),
-        *grade_bc_needs(
-            windows=windows,
-            candidates=candidates,
-            grades=grades,
-            caps=_caps(scene),
-            start_time=start,
-            end_time=end,
-            interval_seconds=interval,
-        ),
-    ]
-    plan = build_plan(
-        scene_id=prediction.scene_id,
-        scene_revision=prediction.scene_revision,
-        windows=windows,
-        needs=needs,
-        start_time=start,
-        end_time=end,
+    return shading_plan_from_exposed_tiles(
+        scene,
+        _exposed_tiles(prediction),
+        start_time=prediction.start_time,
+        end_time=prediction.end_time,
+        interval_seconds=prediction.interval_seconds,
     )
-    return ShadingPlan.model_validate(plan)
