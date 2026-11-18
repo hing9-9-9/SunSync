@@ -14,6 +14,7 @@ from sqlmodel import Session
 
 from app.api.capture_markers import saved_capture_target
 from app.api.scenes import replace_scene
+from app.config import vision_ai_mode
 from app.db import get_session
 from app.models.scene import SceneRecord
 from app.schemas.scene import GradePolicy, Grades, ManualObservation, ProtectionPolicy, Scene
@@ -24,6 +25,11 @@ from app.schemas.vision_ai import (
 )
 from app.services.stored_scene import load_stored_scene
 from engine.vision_ai.pipeline import VisionRegistrationPipeline
+from engine.vision_ai.protocols import (
+    VisionModelUnavailable,
+    create_default_depth_estimator,
+    create_default_detector,
+)
 
 router = APIRouter(tags=["vision-ai"])
 SessionDependency = Annotated[Session, Depends(get_session)]
@@ -180,7 +186,16 @@ def estimate_furniture_3d(
         | {obs.observation_id for obs in scene.observations}
     )
 
-    pipeline = VisionRegistrationPipeline()
+    try:
+        mode = vision_ai_mode()
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)
+        ) from exc
+    pipeline = VisionRegistrationPipeline(
+        detector=create_default_detector(prefer_yolo=True, mode=mode),
+        depth_estimator=create_default_depth_estimator(prefer_monocular=True, mode=mode),
+    )
     try:
         pose_res, depth_calib, estimated_items = pipeline.run(
             scene_id=scene_id,
@@ -193,6 +208,11 @@ def estimate_furniture_3d(
             policy_id=effective_policy_id,
             existing_ids=existing_scene_ids,
         )
+    except VisionModelUnavailable as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"Vision AI models are not available: {exc}",
+        ) from exc
     except (ValueError, RuntimeError) as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,

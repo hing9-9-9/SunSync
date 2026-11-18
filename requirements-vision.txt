@@ -1,4 +1,6 @@
 # Optional Vision AI runtime dependencies (YOLOv8 + Depth Anything V2 / MiDaS)
+# On a server without a GPU install the CPU build of torch first (see docs/deploy.md);
+# the default torch wheel pulls several GB of CUDA libraries.
 # Install via: pip install -r requirements-vision.txt  (or: pip install ".[vision]")
 ultralytics>=8.0.0
 transformers>=4.40.0

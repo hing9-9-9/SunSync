@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import importlib.util
+import logging
+import os
+import threading
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import ClassVar, Literal, Protocol, runtime_checkable
@@ -11,6 +14,19 @@ import numpy as np
 
 FurnitureLabel = Literal["bookshelf", "desk", "chair", "other"]
 DetectionSource = Literal["yolov8", "synthetic_contour", "client_hint"]
+# auto: use the real models when they are installed and fall back quietly (the default);
+# on: the real models are required and a failure is raised; off: never use them.
+VisionMode = Literal["auto", "on", "off"]
+
+logger = logging.getLogger(__name__)
+
+
+class VisionModelUnavailable(RuntimeError):
+    """The real models are required (mode "on") but are not installed or failed to run."""
+
+
+def _installed(module: str) -> bool:
+    return importlib.util.find_spec(module) is not None
 
 
 @dataclass(frozen=True)
@@ -239,18 +255,22 @@ class YoloV8DetectorAdapter:
         self.model_path = model_path
         self.conf_thresh = conf_thresh
         self._model = None
+        # The adapter is shared by all requests: load once, run one inference at a time.
+        self._lock = threading.RLock()
 
     def _ensure_loaded(self) -> None:
-        if self._model is not None:
-            return
-        if importlib.util.find_spec("ultralytics") is None:
-            raise RuntimeError(
-                "YOLOv8 dependency 'ultralytics' is not installed. "
-                "Install it via `pip install ultralytics` to run real-photo experiments."
-            )
-        from ultralytics import YOLO  # type: ignore[import-untyped]
+        with self._lock:
+            if self._model is not None:
+                return
+            if not _installed("ultralytics"):
+                raise RuntimeError(
+                    "YOLOv8 dependency 'ultralytics' is not installed. "
+                    "Install it via `pip install ultralytics` to run real-photo experiments."
+                )
+            from ultralytics import YOLO  # type: ignore[import-untyped]
 
-        self._model = YOLO(self.model_path)
+            self._model = YOLO(self.model_path)
+            logger.info("vision model loaded: YOLOv8 from %s", self.model_path)
 
     def detect(
         self,
@@ -263,10 +283,10 @@ class YoloV8DetectorAdapter:
         if image_rgb is None:
             return []
 
-        self._ensure_loaded()
-        assert self._model is not None
-
-        results = self._model(image_rgb, conf=self.conf_thresh, verbose=False)
+        with self._lock:
+            self._ensure_loaded()
+            assert self._model is not None
+            results = self._model(image_rgb, conf=self.conf_thresh, verbose=False)
         detections: list[DetectedObject2D] = []
 
         for r in results:
@@ -301,11 +321,13 @@ class CompositeFurnitureDetector:
         prefer_yolo: bool = True,
         primary_detector: ObjectDetectorProtocol | None = None,
         fallback_detector: GeometricSyntheticDetector | None = None,
+        mode: VisionMode = "auto",
     ) -> None:
+        self._mode = mode
         if primary_detector is not None:
             self._primary: ObjectDetectorProtocol | None = primary_detector
-        elif prefer_yolo and importlib.util.find_spec("ultralytics") is not None:
-            self._primary = YoloV8DetectorAdapter()
+        elif mode == "on" or (mode == "auto" and prefer_yolo and _installed("ultralytics")):
+            self._primary = shared_yolo_adapter()
         else:
             self._primary = None
         self._fallback = fallback_detector or GeometricSyntheticDetector()
@@ -329,8 +351,9 @@ class CompositeFurnitureDetector:
                 if len(raw) > 0:
                     self.last_source = "yolov8"
                     return raw
-            except (RuntimeError, OSError, ValueError):
-                pass
+            except (RuntimeError, OSError, ValueError) as error:
+                if self._mode == "on":
+                    raise VisionModelUnavailable(f"YOLOv8 detection failed: {error}") from error
 
         self.last_source = "synthetic_contour"
         return self._fallback.detect(image_rgb, exclude_boxes=exclude_boxes)
@@ -350,25 +373,26 @@ class MonocularDepthAdapter:
         self.model_name = model_name
         self.device = device
         self._pipe = None
+        # The adapter is shared by all requests: load once, run one inference at a time.
+        self._lock = threading.RLock()
 
     def _ensure_loaded(self) -> None:
-        if self._pipe is not None:
-            return
-        if (
-            importlib.util.find_spec("torch") is None
-            or importlib.util.find_spec("transformers") is None
-        ):
-            raise RuntimeError(
-                "PyTorch / HuggingFace Transformers not found. "
-                "Install `torch` and `transformers` to run real monocular depth models."
-            )
-        from transformers import pipeline  # type: ignore[import-untyped]
+        with self._lock:
+            if self._pipe is not None:
+                return
+            if not _installed("torch") or not _installed("transformers"):
+                raise RuntimeError(
+                    "PyTorch / HuggingFace Transformers not found. "
+                    "Install `torch` and `transformers` to run real monocular depth models."
+                )
+            from transformers import pipeline  # type: ignore[import-untyped]
 
-        self._pipe = pipeline(
-            task="depth-estimation",
-            model="depth-anything/Depth-Anything-V2-Small-hf",
-            device=self.device,
-        )
+            self._pipe = pipeline(
+                task="depth-estimation",
+                model="depth-anything/Depth-Anything-V2-Small-hf",
+                device=self.device,
+            )
+            logger.info("vision model loaded: Depth Anything V2 Small")
 
     def estimate_relative_depth(
         self,
@@ -379,13 +403,13 @@ class MonocularDepthAdapter:
         if image_rgb is None:
             return np.ones((height, width), dtype=np.float32)
 
-        self._ensure_loaded()
-        assert self._pipe is not None
-
         from PIL import Image
 
         pil_image = Image.fromarray(image_rgb)
-        result = self._pipe(pil_image)
+        with self._lock:
+            self._ensure_loaded()
+            assert self._pipe is not None
+            result = self._pipe(pil_image)
         depth_pil = result["depth"]
         depth_arr = np.array(depth_pil, dtype=np.float32)
 
@@ -409,15 +433,18 @@ class CompositeDepthEstimator:
         prefer_monocular: bool = True,
         primary: DepthEstimatorProtocol | None = None,
         fallback: DepthEstimatorProtocol | None = None,
+        mode: VisionMode = "auto",
     ) -> None:
+        self._mode = mode
         if primary is not None:
             self._primary: DepthEstimatorProtocol | None = primary
-        elif (
-            prefer_monocular
-            and importlib.util.find_spec("torch") is not None
-            and importlib.util.find_spec("transformers") is not None
+        elif mode == "on" or (
+            mode == "auto"
+            and prefer_monocular
+            and _installed("torch")
+            and _installed("transformers")
         ):
-            self._primary = MonocularDepthAdapter()
+            self._primary = shared_depth_adapter()
         else:
             self._primary = None
         self._fallback = fallback or GeometricSyntheticDepthEstimator()
@@ -431,16 +458,49 @@ class CompositeDepthEstimator:
         if self._primary is not None and image_rgb is not None:
             try:
                 return self._primary.estimate_relative_depth(image_rgb, width, height)
-            except (RuntimeError, OSError, ValueError):
-                pass
+            except (RuntimeError, OSError, ValueError) as error:
+                if self._mode == "on":
+                    raise VisionModelUnavailable(f"Depth estimation failed: {error}") from error
         return self._fallback.estimate_relative_depth(image_rgb, width, height)
 
 
-def create_default_detector(prefer_yolo: bool = True) -> ObjectDetectorProtocol:
+_shared_lock = threading.Lock()
+_shared_yolo: YoloV8DetectorAdapter | None = None
+_shared_depth: MonocularDepthAdapter | None = None
+
+
+def shared_yolo_adapter() -> YoloV8DetectorAdapter:
+    """The one YOLOv8 adapter of the process, so the weights are loaded once and not per request.
+
+    `SUNSYNC_YOLO_WEIGHTS` names the weights file; without it the file `yolov8m.pt` is looked up
+    in the working directory.
+    """
+    global _shared_yolo
+    with _shared_lock:
+        if _shared_yolo is None:
+            weights = os.environ.get("SUNSYNC_YOLO_WEIGHTS", "").strip() or "yolov8m.pt"
+            _shared_yolo = YoloV8DetectorAdapter(model_path=weights)
+        return _shared_yolo
+
+
+def shared_depth_adapter() -> MonocularDepthAdapter:
+    """The one monocular depth adapter of the process (loaded once, one inference at a time)."""
+    global _shared_depth
+    with _shared_lock:
+        if _shared_depth is None:
+            _shared_depth = MonocularDepthAdapter()
+        return _shared_depth
+
+
+def create_default_detector(
+    prefer_yolo: bool = True, mode: VisionMode = "auto"
+) -> ObjectDetectorProtocol:
     """Return composite YOLOv8 + contour-fallback detector."""
-    return CompositeFurnitureDetector(prefer_yolo=prefer_yolo)
+    return CompositeFurnitureDetector(prefer_yolo=prefer_yolo, mode=mode)
 
 
-def create_default_depth_estimator(prefer_monocular: bool = True) -> DepthEstimatorProtocol:
+def create_default_depth_estimator(
+    prefer_monocular: bool = True, mode: VisionMode = "auto"
+) -> DepthEstimatorProtocol:
     """Return composite monocular + geometric-fallback depth estimator."""
-    return CompositeDepthEstimator(prefer_monocular=prefer_monocular)
+    return CompositeDepthEstimator(prefer_monocular=prefer_monocular, mode=mode)

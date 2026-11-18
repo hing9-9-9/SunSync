@@ -205,6 +205,28 @@ The database and its copies hold e-mail addresses once the Google login is on, s
 - A daily timer copies the database to `/var/lib/sunsync/backups` and keeps the 14 newest copies. The copy uses SQLite's own backup, because the database runs in WAL mode and a plain file copy can be broken. Download a copy now and then with `scp`; a backup on the same disk does not survive losing the server.
 - Logs: `journalctl -u sunsync-api -u sunsync-measure -u caddy`.
 
+## Vision AI models
+
+The photo furniture estimate (FR-03) uses YOLOv8 for detection and Depth Anything V2 Small for depth when they are installed. Without them it uses contour and geometric fallbacks. The switch is `SUNSYNC_VISION_AI` in `/etc/sunsync/sunsync.env`:
+
+| Value | Behaviour |
+| --- | --- |
+| `auto` (default) | real models if the packages are installed, quiet fallback if they are not or fail |
+| `on` | real models are required; a failure answers 503 instead of a silent fallback |
+| `off` | never use the real models |
+
+How the code behaves: the models are loaded once per process (first request), one inference runs at a time (a second photo waits), and the load is logged (`journalctl -u sunsync-api | grep "vision model loaded"`). A request that brings its own detections does not need the models. Each item of the response names its `detection_source` (`yolov8`, `synthetic_contour`, `client_hint`); `synthetic_contour` on a real photo means the model did not run or found nothing.
+
+Install on the server (one time, as root; `/opt/sunsync` and the venv are root-owned and the services cannot write there):
+
+1. Check memory first: the server has 1.9 GB of RAM and swap. The two models add roughly 1 GB while loaded; watch `free -m` and `journalctl -k | grep -i oom` after the first photo. If the API gets killed, set `off` and consider a larger instance.
+2. Install the CPU build of torch, then the rest, into the existing venv, with the versions pinned and recorded in the server notes: `/opt/sunsync/.venv/bin/pip install torch --index-url https://download.pytorch.org/whl/cpu`, then `/opt/sunsync/.venv/bin/pip install -r /opt/sunsync/requirements-vision.txt`.
+3. Put the weights and the Hugging Face cache outside `/opt/sunsync`, in a directory the service can read and write, for example `/var/lib/sunsync/models` (owner `sunsync`). Set `SUNSYNC_YOLO_WEIGHTS` to the weights file, and `HF_HOME` to a directory there so the depth model is downloaded once and not into a home directory the service does not have.
+4. Set `SUNSYNC_VISION_AI=on`, restart `sunsync-api`, send one photo and check that `detection_source` is `yolov8` and the load line is in the log.
+5. Roll back by setting `off` (or `auto`) and restarting; nothing else changes.
+
+Security notes: YOLO weights are pickle checkpoints, so use only the official file, record its sha256 and do not accept weights from anyone else. Pin the package versions; an unpinned install at update time can change behaviour. The automatic update does not install these packages; they stay as installed until someone updates them on purpose.
+
 ## Notes
 
 - **Photos are not stored.** The measurement server receives each photo as base64 inside the request, uses it in memory and returns only the detected markers; no code writes it to disk. Requests are limited to 16 MB by the server and 20 MB by Caddy.
