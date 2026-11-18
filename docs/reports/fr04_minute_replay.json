@@ -1,0 +1,314 @@
+{
+  "files": [
+    {
+      "name": "psu23284.dat",
+      "sha256": "c0f1bc20d7f4dd10df7526b4fdd0318915f598fa5d9a114a62a0991b98704eba",
+      "url": "https://gml.noaa.gov/aftp/data/radiation/surfrad/Penn_State_PA/2023/psu23284.dat"
+    },
+    {
+      "name": "psu23275.dat",
+      "sha256": "f66b11657a92df82a2aa635d5f9227c08ba69c32ca555e369a185dd1477c64ac",
+      "url": "https://gml.noaa.gov/aftp/data/radiation/surfrad/Penn_State_PA/2023/psu23275.dat"
+    },
+    {
+      "name": "psu23295.dat",
+      "sha256": "289537f9d104562894a01011cfbbc469c310707f952c2521cda31dfee2fde5c8",
+      "url": "https://gml.noaa.gov/aftp/data/radiation/surfrad/Penn_State_PA/2023/psu23295.dat"
+    },
+    {
+      "name": "psu23279.dat",
+      "sha256": "92f1866b952ea9db758d8671d1e752628250381710789d55024bf4b783eaf466",
+      "url": "https://gml.noaa.gov/aftp/data/radiation/surfrad/Penn_State_PA/2023/psu23279.dat"
+    }
+  ],
+  "results": [
+    {
+      "label": "clear",
+      "station_date": "2023-10-11",
+      "replayed_as": "2026-10-11",
+      "statistics": {
+        "minutes": 531,
+        "mean_dni_W_m2": 829,
+        "crossings_of_100": 1,
+        "jumps_300": 2,
+        "short_dips_under_10_min": 0
+      },
+      "weather_records": {
+        "records": 531,
+        "minutes_without_dni": 0
+      },
+      "cases": [
+        {
+          "interval_seconds": 60,
+          "chunks": 3,
+          "fr02_switches": 164,
+          "fr04_switches": 164,
+          "switch_change_pct": 0.0,
+          "fr02_total_change": 164.0,
+          "fr04_total_change": 164.0,
+          "total_change_reduction_pct": 0.0,
+          "fr02_mean_opacity": 0.0903,
+          "fr04_mean_opacity": 0.0905,
+          "daylight_gain_pct": -0.3,
+          "fr02_above_cap_q50": 0,
+          "fr04_above_cap_q50": 0,
+          "fr02_above_cap_q90": 0,
+          "fr04_above_cap_q90": 0,
+          "never_brighter_than_fr02": true
+        },
+        {
+          "interval_seconds": 300,
+          "chunks": 1,
+          "fr02_switches": 157,
+          "fr04_switches": 157,
+          "switch_change_pct": 0.0,
+          "fr02_total_change": 157.0,
+          "fr04_total_change": 157.0,
+          "total_change_reduction_pct": 0.0,
+          "fr02_mean_opacity": 0.0969,
+          "fr04_mean_opacity": 0.0969,
+          "daylight_gain_pct": 0.0,
+          "fr02_above_cap_q50": 0,
+          "fr04_above_cap_q50": 0,
+          "fr02_above_cap_q90": 0,
+          "fr04_above_cap_q90": 0,
+          "never_brighter_than_fr02": true
+        },
+        {
+          "interval_seconds": 1800,
+          "chunks": 1,
+          "fr02_switches": 140,
+          "fr04_switches": 140,
+          "switch_change_pct": 0.0,
+          "fr02_total_change": 140.0,
+          "fr04_total_change": 140.0,
+          "total_change_reduction_pct": 0.0,
+          "fr02_mean_opacity": 0.1322,
+          "fr04_mean_opacity": 0.1322,
+          "daylight_gain_pct": 0.0,
+          "fr02_above_cap_q50": 0,
+          "fr04_above_cap_q50": 0,
+          "fr02_above_cap_q90": 0,
+          "fr04_above_cap_q90": 0,
+          "never_brighter_than_fr02": true
+        }
+      ]
+    },
+    {
+      "label": "intermittent, sunny",
+      "station_date": "2023-10-02",
+      "replayed_as": "2026-10-02",
+      "statistics": {
+        "minutes": 505,
+        "mean_dni_W_m2": 627,
+        "crossings_of_100": 32,
+        "jumps_300": 26,
+        "short_dips_under_10_min": 16
+      },
+      "weather_records": {
+        "records": 505,
+        "minutes_without_dni": 2
+      },
+      "cases": [
+        {
+          "interval_seconds": 60,
+          "chunks": 3,
+          "fr02_switches": 155,
+          "fr04_switches": 125,
+          "switch_change_pct": 19.4,
+          "fr02_total_change": 155.0,
+          "fr04_total_change": 125.0,
+          "total_change_reduction_pct": 19.4,
+          "fr02_mean_opacity": 0.0757,
+          "fr04_mean_opacity": 0.0762,
+          "daylight_gain_pct": -0.7,
+          "fr02_above_cap_q50": 0,
+          "fr04_above_cap_q50": 0,
+          "fr02_above_cap_q90": 0,
+          "fr04_above_cap_q90": 0,
+          "never_brighter_than_fr02": true
+        },
+        {
+          "interval_seconds": 300,
+          "chunks": 1,
+          "fr02_switches": 123,
+          "fr04_switches": 123,
+          "switch_change_pct": 0.0,
+          "fr02_total_change": 123.0,
+          "fr04_total_change": 123.0,
+          "total_change_reduction_pct": 0.0,
+          "fr02_mean_opacity": 0.0808,
+          "fr04_mean_opacity": 0.0808,
+          "daylight_gain_pct": 0.0,
+          "fr02_above_cap_q50": 0,
+          "fr04_above_cap_q50": 0,
+          "fr02_above_cap_q90": 0,
+          "fr04_above_cap_q90": 0,
+          "never_brighter_than_fr02": true
+        },
+        {
+          "interval_seconds": 1800,
+          "chunks": 1,
+          "fr02_switches": 100,
+          "fr04_switches": 100,
+          "switch_change_pct": 0.0,
+          "fr02_total_change": 100.0,
+          "fr04_total_change": 100.0,
+          "total_change_reduction_pct": 0.0,
+          "fr02_mean_opacity": 0.1112,
+          "fr04_mean_opacity": 0.1112,
+          "daylight_gain_pct": 0.0,
+          "fr02_above_cap_q50": 0,
+          "fr04_above_cap_q50": 0,
+          "fr02_above_cap_q90": 0,
+          "fr04_above_cap_q90": 0,
+          "never_brighter_than_fr02": true
+        }
+      ]
+    },
+    {
+      "label": "intermittent, restless",
+      "station_date": "2023-10-22",
+      "replayed_as": "2026-10-22",
+      "statistics": {
+        "minutes": 531,
+        "mean_dni_W_m2": 334,
+        "crossings_of_100": 83,
+        "jumps_300": 90,
+        "short_dips_under_10_min": 39
+      },
+      "weather_records": {
+        "records": 531,
+        "minutes_without_dni": 0
+      },
+      "cases": [
+        {
+          "interval_seconds": 60,
+          "chunks": 3,
+          "fr02_switches": 604,
+          "fr04_switches": 206,
+          "switch_change_pct": 65.9,
+          "fr02_total_change": 604.0,
+          "fr04_total_change": 206.0,
+          "total_change_reduction_pct": 65.9,
+          "fr02_mean_opacity": 0.0699,
+          "fr04_mean_opacity": 0.0805,
+          "daylight_gain_pct": -15.3,
+          "fr02_above_cap_q50": 0,
+          "fr04_above_cap_q50": 0,
+          "fr02_above_cap_q90": 0,
+          "fr04_above_cap_q90": 0,
+          "never_brighter_than_fr02": true
+        },
+        {
+          "interval_seconds": 300,
+          "chunks": 1,
+          "fr02_switches": 206,
+          "fr04_switches": 206,
+          "switch_change_pct": 0.0,
+          "fr02_total_change": 206.0,
+          "fr04_total_change": 206.0,
+          "total_change_reduction_pct": 0.0,
+          "fr02_mean_opacity": 0.0845,
+          "fr04_mean_opacity": 0.0845,
+          "daylight_gain_pct": 0.0,
+          "fr02_above_cap_q50": 0,
+          "fr04_above_cap_q50": 0,
+          "fr02_above_cap_q90": 0,
+          "fr04_above_cap_q90": 0,
+          "never_brighter_than_fr02": true
+        },
+        {
+          "interval_seconds": 1800,
+          "chunks": 1,
+          "fr02_switches": 140,
+          "fr04_switches": 140,
+          "switch_change_pct": 0.0,
+          "fr02_total_change": 140.0,
+          "fr04_total_change": 140.0,
+          "total_change_reduction_pct": 0.0,
+          "fr02_mean_opacity": 0.1217,
+          "fr04_mean_opacity": 0.1217,
+          "daylight_gain_pct": 0.0,
+          "fr02_above_cap_q50": 0,
+          "fr04_above_cap_q50": 0,
+          "fr02_above_cap_q90": 0,
+          "fr04_above_cap_q90": 0,
+          "never_brighter_than_fr02": true
+        }
+      ]
+    },
+    {
+      "label": "overcast",
+      "station_date": "2023-10-06",
+      "replayed_as": "2026-10-06",
+      "statistics": {
+        "minutes": 531,
+        "mean_dni_W_m2": 0,
+        "crossings_of_100": 0,
+        "jumps_300": 0,
+        "short_dips_under_10_min": 0
+      },
+      "weather_records": {
+        "records": 531,
+        "minutes_without_dni": 0
+      },
+      "cases": [
+        {
+          "interval_seconds": 60,
+          "chunks": 3,
+          "fr02_switches": 0,
+          "fr04_switches": 0,
+          "switch_change_pct": null,
+          "fr02_total_change": 0.0,
+          "fr04_total_change": 0.0,
+          "total_change_reduction_pct": null,
+          "fr02_mean_opacity": 0.0,
+          "fr04_mean_opacity": 0.0,
+          "daylight_gain_pct": null,
+          "fr02_above_cap_q50": 0,
+          "fr04_above_cap_q50": 0,
+          "fr02_above_cap_q90": 0,
+          "fr04_above_cap_q90": 0,
+          "never_brighter_than_fr02": true
+        },
+        {
+          "interval_seconds": 300,
+          "chunks": 1,
+          "fr02_switches": 0,
+          "fr04_switches": 0,
+          "switch_change_pct": null,
+          "fr02_total_change": 0.0,
+          "fr04_total_change": 0.0,
+          "total_change_reduction_pct": null,
+          "fr02_mean_opacity": 0.0,
+          "fr04_mean_opacity": 0.0,
+          "daylight_gain_pct": null,
+          "fr02_above_cap_q50": 0,
+          "fr04_above_cap_q50": 0,
+          "fr02_above_cap_q90": 0,
+          "fr04_above_cap_q90": 0,
+          "never_brighter_than_fr02": true
+        },
+        {
+          "interval_seconds": 1800,
+          "chunks": 1,
+          "fr02_switches": 0,
+          "fr04_switches": 0,
+          "switch_change_pct": null,
+          "fr02_total_change": 0.0,
+          "fr04_total_change": 0.0,
+          "total_change_reduction_pct": null,
+          "fr02_mean_opacity": 0.0,
+          "fr04_mean_opacity": 0.0,
+          "daylight_gain_pct": null,
+          "fr02_above_cap_q50": 0,
+          "fr04_above_cap_q50": 0,
+          "fr02_above_cap_q90": 0,
+          "fr04_above_cap_q90": 0,
+          "never_brighter_than_fr02": true
+        }
+      ]
+    }
+  ]
+}

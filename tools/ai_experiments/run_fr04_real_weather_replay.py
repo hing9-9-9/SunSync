@@ -279,6 +279,41 @@ class ReplayDay:
     day: date
 
 
+def plan_cases(
+    client: TestClient,
+    scene_template: dict[str, Any],
+    scene_prefix: str,
+    site: Site,
+    records: list[dict[str, Any]],
+    start: datetime,
+    end: datetime,
+    intervals: Sequence[int],
+) -> list[dict[str, Any]]:
+    """Run the application's FR-02 and smoothed FR-04 plans on the weather, one case per step."""
+    minutes = int((end - start).total_seconds() // 60)
+    cases = []
+    for interval in intervals:
+        scene_id = f"{scene_prefix}_{interval}"
+        scene = build_scene(
+            scene_template, scene_id, site, records, datetime.now(UTC) - timedelta(seconds=1)
+        )
+        created = client.post("/api/scenes", json=scene)
+        if created.status_code != 201:
+            raise RuntimeError(f"scene rejected: {created.status_code} {created.text[:300]}")
+        request = {
+            "start_time": start.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "duration_minutes": minutes,
+            "interval_seconds": interval,
+            "mode": "smooth_fr02",
+        }
+        response = client.post(f"/api/scenes/{scene_id}/adaptive-shading-plan", json=request)
+        if response.status_code != 200:
+            raise RuntimeError(f"plan failed: {response.status_code} {response.text[:300]}")
+        grid = step_grid(start, minutes, interval)
+        cases.append(case_result(response.json(), interval, grid))
+    return cases
+
+
 def replay(
     csv_path: Path,
     days: Sequence[ReplayDay],
@@ -296,35 +331,16 @@ def replay(
             first = _first_site_row(csv_path)
             site = Site(first["latitude"], first["longitude"], "Asia/Seoul")
             records, counts = to_dni_records(rows, site)
-            minutes = int((end - start).total_seconds() // 60)
-            cases = []
-            for interval in intervals:
-                scene_id = f"replay_{entry.day:%Y%m%d}_{interval}"
-                scene = build_scene(
-                    scene_template,
-                    scene_id,
-                    site,
-                    records,
-                    datetime.now(UTC) - timedelta(seconds=1),
-                )
-                created = client.post("/api/scenes", json=scene)
-                if created.status_code != 201:
-                    raise RuntimeError(
-                        f"scene rejected: {created.status_code} {created.text[:300]}"
-                    )
-                request = {
-                    "start_time": start.strftime("%Y-%m-%dT%H:%M:%SZ"),
-                    "duration_minutes": minutes,
-                    "interval_seconds": interval,
-                    "mode": "smooth_fr02",
-                }
-                response = client.post(
-                    f"/api/scenes/{scene_id}/adaptive-shading-plan", json=request
-                )
-                if response.status_code != 200:
-                    raise RuntimeError(f"plan failed: {response.status_code} {response.text[:300]}")
-                grid = step_grid(start, minutes, interval)
-                cases.append(case_result(response.json(), interval, grid))
+            cases = plan_cases(
+                client,
+                scene_template,
+                f"replay_{entry.day:%Y%m%d}",
+                site,
+                records,
+                start,
+                end,
+                intervals,
+            )
             results.append(
                 {
                     "label": entry.label,
