@@ -18,6 +18,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import sys
 import urllib.request
 from collections.abc import Sequence
@@ -72,18 +73,55 @@ def doy_name(prefix: str, day: date) -> str:
     return f"{prefix}{day:%y}{day.timetuple().tm_yday:03d}.dat"
 
 
+SAFE_NAME = re.compile(r"[A-Za-z0-9_]{1,40}")
+# A daily file is about 350 KB; anything much larger is not what was asked for.
+MAX_DOWNLOAD_BYTES = 2 * 1024 * 1024
+
+
+def safe_name(value: str, what: str) -> str:
+    """Folder and file prefix become part of an address and of a file name: letters, digits and
+    underscores only, so neither can leave the NOAA folder or the cache directory."""
+    if not SAFE_NAME.fullmatch(value):
+        raise ValueError(f"{what} may only hold letters, digits and underscores: {value!r}")
+    return value
+
+
 def surfrad_url(folder: str, prefix: str, day: date) -> str:
-    return f"{SURFRAD_ROOT}/{folder}/{day.year}/{doy_name(prefix, day)}"
+    name = doy_name(safe_name(prefix, "prefix"), day)
+    return f"{SURFRAD_ROOT}/{safe_name(folder, 'folder')}/{day.year}/{name}"
 
 
-def fetch_day(folder: str, prefix: str, day: date, directory: Path) -> Path:
-    """The day's file in `directory`; downloaded from NOAA when it is not there yet."""
-    path = directory / doy_name(prefix, day)
-    if not path.exists():
-        directory.mkdir(parents=True, exist_ok=True)
-        url = surfrad_url(folder, prefix, day)
-        with urllib.request.urlopen(url, timeout=60) as response:
-            path.write_bytes(response.read())
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Fail on a redirect instead of following it to another host (or to plain http)."""
+
+    def redirect_request(self, *args: Any, **kwargs: Any) -> None:
+        return None
+
+
+def fetch_day(folder: str, prefix: str, day: date, directory: Path, opener: Any = None) -> Path:
+    """The day's file in `directory`; downloaded from NOAA when it is not there yet.
+
+    The download is capped in size, checked to be a SURFRAD daily file, and written under its
+    final name only when it passed, so an interrupted or wrong download is never trusted later.
+    """
+    path = directory / doy_name(safe_name(prefix, "prefix"), day)
+    if path.exists():
+        return path
+    url = surfrad_url(folder, prefix, day)
+    opener = opener or urllib.request.build_opener(_NoRedirect)
+    with opener.open(url, timeout=60) as response:
+        data = response.read(MAX_DOWNLOAD_BYTES + 1)
+    if len(data) > MAX_DOWNLOAD_BYTES:
+        raise ValueError(f"{url} is larger than {MAX_DOWNLOAD_BYTES} bytes")
+    directory.mkdir(parents=True, exist_ok=True)
+    partial = path.with_suffix(".part")
+    partial.write_bytes(data)
+    try:
+        read_surfrad(partial)
+    except (ValueError, IndexError, UnicodeDecodeError) as error:
+        partial.unlink()
+        raise ValueError(f"{url} is not a SURFRAD daily file") from error
+    partial.replace(path)
     return path
 
 
@@ -107,6 +145,8 @@ def read_surfrad(path: Path) -> tuple[Station, list[tuple[int, float | None]]]:
         minute = int(token[4]) * 60 + int(token[5])
         value, quality = float(token[12]), int(token[13])
         rows.append((minute, max(0.0, value) if quality == 0 and value > -9000 else None))
+    if not rows:
+        raise ValueError("the file holds no data rows")
     return Station(latitude, longitude), rows
 
 
@@ -314,6 +354,51 @@ LIMITATIONS = (
 )
 
 
+DATA_HANDLING = (
+    (
+        "- **Source and transport.** The files come from `gml.noaa.gov` over https only. A redirect "
+        "is refused, a download is capped at 2 MiB, and it must parse as a SURFRAD daily file "
+        "before it is kept under its final name."
+    ),
+    (
+        "- **Names.** The station folder and the file prefix may hold letters, digits and "
+        "underscores only, so neither can leave the NOAA folder or the cache directory."
+    ),
+    (
+        "- **Untrusted data.** The files are only read as text and parsed as numbers; nothing in "
+        "them is executed. The SHA-256 of each file is recorded above, so a later run can be "
+        "checked against the same input."
+    ),
+    (
+        "- **Not in the repository.** The measurements are public, but the files stay in the "
+        "cache directory of whoever runs the tool; only their hashes and the derived tables are "
+        "committed."
+    ),
+    (
+        "- **No secrets, no personal data.** The tool sends no key and no identity. The KMA "
+        "replay reads a local CSV only. These reports hold no server address and no key."
+    ),
+)
+
+NEXT_STEPS = (
+    "- Measured 1-minute irradiance from Korea instead of a borrowed US sky.",
+    (
+        "- The step of the effect badge: the screens plan with 30-minute steps, where FR-04 "
+        "cannot act (a separate issue)."
+    ),
+    "- Agreed protection caps instead of the demo values, then run again.",
+    "- More Scenes, with long exposures and other orientations.",
+    (
+        "- Re-planning: replay a nowcast that is revised every 10 minutes and check the "
+        "switching of the film across plans."
+    ),
+    (
+        "- Sensitivity of the gap limit and the holding time at the 1-minute step (the API does "
+        "not expose them yet)."
+    ),
+)
+
+
 def finest_versus_coarser(result: dict[str, Any]) -> list[dict[str, Any]]:
     """FR-04 at the finest step against FR-02 planned at each coarser step.
 
@@ -445,6 +530,14 @@ def build_report(
         "",
         *LIMITATIONS,
         "",
+        "## Data handling and security",
+        "",
+        *DATA_HANDLING,
+        "",
+        "## Next steps",
+        "",
+        *NEXT_STEPS,
+        "",
     ]
     return "\n".join(lines)
 
@@ -459,12 +552,19 @@ def _day_argument(text: str) -> MinuteDay:
         raise argparse.ArgumentTypeError(str(error)) from error
 
 
+def _name_argument(text: str) -> str:
+    try:
+        return safe_name(text, "value")
+    except ValueError as error:
+        raise argparse.ArgumentTypeError(str(error)) from error
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--surfrad-dir", type=Path, required=True)
     parser.add_argument("--download", action="store_true", help="fetch missing days from NOAA")
-    parser.add_argument("--folder", default=DEFAULT_FOLDER)
-    parser.add_argument("--prefix", default=DEFAULT_PREFIX)
+    parser.add_argument("--folder", default=DEFAULT_FOLDER, type=_name_argument)
+    parser.add_argument("--prefix", default=DEFAULT_PREFIX, type=_name_argument)
     parser.add_argument("--day", type=_day_argument, action="append")
     parser.add_argument("--intervals", type=int, nargs="+", default=list(DEFAULT_INTERVALS))
     parser.add_argument("--scene", type=Path, default=DEFAULT_SCENE)

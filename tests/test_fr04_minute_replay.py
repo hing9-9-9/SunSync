@@ -200,3 +200,108 @@ def test_a_short_replay_runs_through_the_application(tmp_path):
     assert (fine["interval_seconds"], fine["chunks"]) == (60, 1)
     assert coarse["interval_seconds"] == 1800
     assert fine["never_brighter_than_fr02"] and coarse["never_brighter_than_fr02"]
+
+
+class FakeResponse:
+    def __init__(self, data: bytes):
+        self.data = data
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_args):
+        return False
+
+    def read(self, limit: int = -1) -> bytes:
+        return self.data if limit < 0 else self.data[:limit]
+
+
+class FakeOpener:
+    def __init__(self, data: bytes):
+        self.data, self.urls = data, []
+
+    def open(self, url, timeout):
+        self.urls.append((url, timeout))
+        return FakeResponse(self.data)
+
+
+GOOD_FILE = (
+    b" Penn State\n   40.72  -77.93  376 m version 1\n"
+    b" 2023 284 10 11 13 12 0.000 50.00 500.0 0 50.0 0 600.0 0 100.0 0 280.0 0\n"
+)
+
+
+@pytest.mark.parametrize("value", ["../x", "psu/../..", "a b", "", "x" * 41, "psu.dat", "psü"])
+def test_a_folder_or_prefix_that_could_leave_its_directory_is_refused(value):
+    with pytest.raises(ValueError, match="letters, digits and underscores"):
+        minute.safe_name(value, "prefix")
+    with pytest.raises(ValueError):
+        minute.surfrad_url("Penn_State_PA", value, date(2023, 10, 11))
+    with pytest.raises(ValueError):
+        minute.surfrad_url(value, "psu", date(2023, 10, 11))
+
+
+def test_an_unsafe_prefix_cannot_write_outside_the_cache_directory(tmp_path):
+    with pytest.raises(ValueError):
+        minute.fetch_day("Penn_State_PA", "../../escape", date(2023, 10, 11), tmp_path / "cache")
+    assert not (tmp_path / "escape23284.dat").exists()
+    assert not (tmp_path / "cache").exists()
+
+
+def test_the_command_line_refuses_an_unsafe_name_before_any_download(tmp_path):
+    with pytest.raises(SystemExit):
+        minute.main(["--surfrad-dir", str(tmp_path), "--prefix", "../x", "--download"])
+
+
+def test_a_valid_download_is_kept_under_its_final_name(tmp_path):
+    opener = FakeOpener(GOOD_FILE)
+    path = minute.fetch_day("Penn_State_PA", "psu", date(2023, 10, 11), tmp_path, opener)
+    assert path == tmp_path / "psu23284.dat"
+    assert path.read_bytes() == GOOD_FILE
+    assert not list(tmp_path.glob("*.part"))
+    assert opener.urls == [
+        ("https://gml.noaa.gov/aftp/data/radiation/surfrad/Penn_State_PA/2023/psu23284.dat", 60)
+    ]
+
+
+def test_a_file_that_is_already_there_is_not_downloaded_again(tmp_path):
+    (tmp_path / "psu23284.dat").write_bytes(GOOD_FILE)
+    opener = FakeOpener(b"not used")
+    minute.fetch_day("Penn_State_PA", "psu", date(2023, 10, 11), tmp_path, opener)
+    assert opener.urls == []
+
+
+def test_a_download_that_is_too_large_is_refused_and_not_saved(tmp_path):
+    opener = FakeOpener(b"x" * (minute.MAX_DOWNLOAD_BYTES + 5))
+    with pytest.raises(ValueError, match="larger than"):
+        minute.fetch_day("Penn_State_PA", "psu", date(2023, 10, 11), tmp_path, opener)
+    assert list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        b"<html>Forbidden</html>",
+        b"",
+        b"a\nb\n",
+        b"\xff\xfe\x00bad",
+        b" Penn State\n   40.72  -77.93  376 m version 1\n",
+    ],
+)
+def test_a_download_that_is_not_a_surfrad_file_is_not_kept(tmp_path, content):
+    opener = FakeOpener(content)
+    with pytest.raises(ValueError, match="not a SURFRAD daily file"):
+        minute.fetch_day("Penn_State_PA", "psu", date(2023, 10, 11), tmp_path, opener)
+    assert list(tmp_path.iterdir()) == []  # neither the file nor a partial one is left
+
+
+def test_a_redirect_is_not_followed():
+    handler = minute._NoRedirect()
+    assert handler.redirect_request(None, None, 302, "Found", {}, "http://other.example/") is None
+
+
+def test_the_report_states_data_handling_next_steps_and_no_secrets():
+    report = minute.build_report([], [], "Penn_State_PA (psu)")
+    assert "## Data handling and security" in report and "## Next steps" in report
+    assert "https only" in report and "capped at 2 MiB" in report
+    assert "No secrets, no personal data" in report

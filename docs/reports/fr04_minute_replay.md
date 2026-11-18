@@ -66,3 +66,20 @@ Planning at a coarser step is the plain way to get fewer switches. A positive da
 - **Caps are demo values.** The Scene's protection policy is marked `synthetic_demo_not_agreed`; the caps decide where the plan reacts to the sky.
 - **Chunks.** The application refuses a plan with more than about 200 steps for this Scene, so the 1-minute step is computed in chunks of up to 200 minutes and the counts are summed. A cell exposed across a chunk boundary counts as two exposures in both plans; the comparison between the plans is not affected by this.
 - **Label.** The Scene only accepts the weather sources `synthetic`, `open_meteo` and `pvlib_clear_sky`; the measured values carry `synthetic`.
+
+## Data handling and security
+
+- **Source and transport.** The files come from `gml.noaa.gov` over https only. A redirect is refused, a download is capped at 2 MiB, and it must parse as a SURFRAD daily file before it is kept under its final name.
+- **Names.** The station folder and the file prefix may hold letters, digits and underscores only, so neither can leave the NOAA folder or the cache directory.
+- **Untrusted data.** The files are only read as text and parsed as numbers; nothing in them is executed. The SHA-256 of each file is recorded above, so a later run can be checked against the same input.
+- **Not in the repository.** The measurements are public, but the files stay in the cache directory of whoever runs the tool; only their hashes and the derived tables are committed.
+- **No secrets, no personal data.** The tool sends no key and no identity. The KMA replay reads a local CSV only. These reports hold no server address and no key.
+
+## Next steps
+
+- Measured 1-minute irradiance from Korea instead of a borrowed US sky.
+- The step of the effect badge: the screens plan with 30-minute steps, where FR-04 cannot act (a separate issue).
+- Agreed protection caps instead of the demo values, then run again.
+- More Scenes, with long exposures and other orientations.
+- Re-planning: replay a nowcast that is revised every 10 minutes and check the switching of the film across plans.
+- Sensitivity of the gap limit and the holding time at the 1-minute step (the API does not expose them yet).
