@@ -3,7 +3,7 @@
 **Author**: Track 3 Subagent (Adaptive Control & LG SGF / ThinQ ON Bridge Developer)  
 **Target Teammate**: `0nsetofspring` (FR-02 & FR-04 Selective Shading & Stabilization Specialist)  
 **Branch**: `feature/ai-core-modules`  
-**Status**: Prototype. Checked only on synthetic irradiance (section 7); not connected to the web app or to FR-05.  
+**Status**: Prototype. Checked on synthetic irradiance (section 7) and on four real days (section 7.3); not connected to the web app or to FR-05.  
 
 ---
 
@@ -265,6 +265,25 @@ Recommended starting point, by the rule "no cap exceeded at q50 or q90 in any sc
 | SGF | 20 | 1.0 | +73.2% | +0.0% |
 
 The rule is ours and open to review. `w_damage` (1000) and `w_daylight` (1.0) were not varied. `AdaptivePolicyTuner` has only five candidates and picks per scenario; its choice is a default.
+
+### 7.3 Real-weather replay (issue #149, run of 2026-11-18)
+
+Source: `tools/ai_experiments/run_fr04_real_weather_replay.py`; full tables, the control and the limits in `docs/reports/fr04_real_weather_replay.md`. KMA 10-minute observations of four days in Seoul (08:00 to 16:50 Korean time) are converted to direct irradiance, put into the weather of the example Scene, and the application's own API computes the FR-02 plan and the default FR-04 plan (`smooth_fr02`). The frozen final-test days are not used. Positive is better than FR-02.
+
+| Day (Korean time) | Kind | Switches FR-02 to FR-04, 5-minute step | Same, 30-minute step (app screens) |
+|---|---|---|---|
+| 2026-10-10 | clear | 112 to 112 (+0.0%) | 97 to 97 (+0.0%) |
+| 2026-10-16 | intermittent (15 cloud-cover flips, 4 large DSR jumps) | 116 to 116 (+0.0%) | 101 to 101 (+0.0%) |
+| 2026-10-05 | intermittent, restless (7 flips, 13 large DSR jumps) | 159 to 115 (+27.7%, daylight -7.2%) | 80 to 80 (+0.0%) |
+| 2026-10-18 | overcast | 2 to 2 (+0.0%) | 0 to 0 (n/a) |
+
+- **Protection.** In all eight cases the smoothed plan is never brighter than the FR-02 plan, and no case has a cell-step above the cap at q50 or q90 (FR-02 has none either).
+- **NFR1.2.** The number of switches is lower where there is flicker to remove (2026-10-05, 5-minute step) and equal elsewhere; it is never higher. The observation is treated as a perfect forecast, so this is the most the stabilization can do on those days.
+- **Cost.** On 2026-10-05 the 28% fewer switches cost 7.2% daylight (mean opacity).
+- **The 30-minute step changes nothing.** With the default limit of 600 s a gap of one 30-minute step is not filled (section 3.1), and the holding time is one step. The effect badges of the screens, computed with 30-minute steps, are therefore expected to read about 0%. Whether the badge should use a finer step or the limit should be raised is open and has no evidence yet beyond this one restless day.
+- **Cloud-cover flips did not predict the effect.** 2026-10-16 has the most flips (15) and nothing is removed; the day with the most large DSR jumps (13) is the one where FR-04 acted.
+- **Why the effect is small in this Scene.** A constant-sky control shows that its FR-02 plan reacts to direct irradiance only between about 20 and 300 W/m2 (nothing is shaded at 20, 868 cell-steps from 300 up), and the sunlit patch crosses a cell quickly, so a cloud rarely splits one exposure.
+- **No change to the defaults.** One restless day does not justify new values for the holding time, the gap limit or the margin.
 
 ---
 
