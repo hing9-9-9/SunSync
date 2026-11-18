@@ -47,23 +47,16 @@ def test_scene_recomputes_derived_fields_and_discards_caller_extensions(enu):
     placement = scene["furniture"][0]
     assert placement["furniture_id"] == result["furniture_id"]
     assert placement["reference_id"] == result["reference_id"]
-    assert placement["base_center_board_m"] == pytest.approx(
-        original["base_center_board_m"]
-    )
+    assert placement["base_center_board_m"] == pytest.approx(original["base_center_board_m"])
     assert placement["shape_approximation"] is True
     assert "confirmed" not in placement
     if enu:
-        assert placement["base_center_enu_m"] == pytest.approx(
-            original["base_center_enu_m"]
-        )
+        assert placement["base_center_enu_m"] == pytest.approx(original["base_center_enu_m"])
         assert placement["yaw_deg_ccw_from_east"] == pytest.approx(
             original["yaw_deg_ccw_from_east"]
         )
     else:
-        assert (
-            "base_center_enu_m" not in placement
-            and "yaw_deg_ccw_from_east" not in placement
-        )
+        assert "base_center_enu_m" not in placement and "yaw_deg_ccw_from_east" not in placement
     client = TestClient(app)
     assert client.post("/v1/scenes", json={"measurements": [result]}).json() == scene
 
@@ -104,9 +97,7 @@ def test_published_schemas_are_current():
         json.loads((root / "fr06-fragment.schema.json").read_text(encoding="utf-8"))
         == BoardCameraFragmentV1.model_json_schema()
     )
-    assert (
-        json.loads((root / "openapi.json").read_text(encoding="utf-8")) == app.openapi()
-    )
+    assert json.loads((root / "openapi.json").read_text(encoding="utf-8")) == app.openapi()
 
 
 @pytest.mark.parametrize(
@@ -158,18 +149,13 @@ def test_generated_paths_reference_only_supported_components():
         manual_base_height_m=0.4,
     )
     floating = export_fragment(measure(MeasureRequest.model_validate(request)))
-    assert any(
-        p.endswith(".base_center_m")
-        for p in floating["observations"][0]["derived_fields"]
-    )
+    assert any(p.endswith(".base_center_m") for p in floating["observations"][0]["derived_fields"])
 
 
 def test_fragment_components_match_updated_backend():
     path = Path(__file__).parents[3] / "docs/fr06_scene_schema.json"
     if not path.exists():
-        pytest.skip(
-            "Legacy backend contract is available only in the parent repository"
-        )
+        pytest.skip("Legacy backend contract is available only in the parent repository")
     legacy = json.loads(path.read_text(encoding="utf-8"))
     fragment = export_fragment(measure(example.fixture()))
     for kind, value in [
@@ -178,9 +164,9 @@ def test_fragment_components_match_updated_backend():
     ]:
         schema = {"$defs": legacy["$defs"], "$ref": "#/$defs/" + kind}
         assert not list(Draft202012Validator(schema).iter_errors(value))
-    assert fragment["schema_version"] != legacy.get("properties", {}).get(
-        "schema_version", {}
-    ).get("const")
+    assert fragment["schema_version"] != legacy.get("properties", {}).get("schema_version", {}).get(
+        "const"
+    )
 
 
 def detected(request, capture):
@@ -225,9 +211,7 @@ def test_capture_ticket_mismatch_and_same_point_retake_are_rejected():
     session.retake("P1")
     assert session.current_step["point_id"] == "P1"
     with pytest.raises(ValueError, match="invalidated"):
-        session.accept(
-            "old", ticket["point_id"], capture.camera, detected(request, capture)
-        )
+        session.accept("old", ticket["point_id"], capture.camera, detected(request, capture))
     assert not session.captures
     with pytest.raises(ValueError, match="Duplicate"):
         session.begin_capture("old")
@@ -243,10 +227,7 @@ def test_scene_rejects_dimensions_changed_after_measurement(dimension, manual):
     result["model"]["dimensions_m"][dimension] += 0.2
     with pytest.raises(ValueError, match="dimensions disagree"):
         compose_scene([result])
-    assert (
-        TestClient(app).post("/v1/scenes", json={"measurements": [result]}).status_code
-        == 422
-    )
+    assert TestClient(app).post("/v1/scenes", json={"measurements": [result]}).status_code == 422
 
 
 @pytest.mark.parametrize("component", ["origin", "north", "floor"])
@@ -273,3 +254,17 @@ def test_scene_rejects_different_enu_calibrations_with_same_space_id(component):
     second = measure(MeasureRequest.model_validate(request))
     with pytest.raises(ValueError, match="Different ENU"):
         compose_scene([first, second])
+
+
+@pytest.mark.parametrize("angle", [-1e-16, -90.0, 0.0, 90.0, 179.0])
+def test_yaw_normalization_never_emits_360(angle):
+    import numpy as np
+    from sunsync_registration.core import yaw_degrees
+
+    radians = np.deg2rad(angle)
+    transform = np.eye(4)
+    transform[0, 0] = np.cos(radians)
+    transform[1, 0] = np.sin(radians)
+    result = yaw_degrees(transform)
+    assert 0 <= result < 360
+    assert abs((result - angle + 180) % 360 - 180) < 1e-10

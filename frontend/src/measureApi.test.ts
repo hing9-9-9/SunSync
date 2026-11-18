@@ -120,6 +120,20 @@ test("setup and final measurement use the server-selected ID; mixed session phot
   await assert.rejects(measureAndRegister(room,camera,{...item,points:[{id:"P1",frames:[{...frame,marker_session_id:"old"}]}]}),/섞였어요/);
   assert.equal(recorded.some(r=>r.url.endsWith("/v1/measurements")),false);
 
+  const testItem = { ...item, testMarkerSideM: 0.15 };
+  const scaled = await checkMeasurement("scene", camera, testItem);
+  assert.ok(scaled.checked);
+  const request = recorded.find(r => r.url.endsWith("/v1/measurements"))!.body;
+  assert.deepEqual(request.board, { ...board, marker_side_m: 0.15 });
+  const alignment = request.alignment as { T_enu_board: number[] };
+  const center = apply(alignment.T_enu_board, [0.075, 0.075, 0]);
+  center.forEach((value, i) => assert.ok(Math.abs(value - [3, 0, 1][i]) < 1e-9));
+  await assert.rejects(measureAndRegister(room, camera, { ...item, checkedMeasurement: scaled.checked }), /촬영 기준/);
+  await measureAndRegister(room, camera, { ...testItem, checkedMeasurement: scaled.checked });
+  assert.equal(recorded.filter(r => r.url.endsWith("/v1/measurements")).length, 1);
+  assert.equal(session.board.marker_side_m, 0.6);
+
+
   // A cancelled preview session check must never proceed to image detection.
   const preview = new AbortController();
   const reason = new Error("Preview cancelled");
