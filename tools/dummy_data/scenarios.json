@@ -1128,7 +1128,8 @@
   },
   {
    "key": "S9",
-   "description": "겹치는 가구: 저장은 되지만 예측이 422 (오류 경로)",
+   "description": "겹치는 가구: 저장 단계에서 422로 막힘 (오류 경로)",
+   "expectSaveStatus": 422,
    "space": {
     "id": "dummy-s9-overlap",
     "building": "더미 도서관",
@@ -1211,12 +1212,7 @@
     },
     "revision": 1
    },
-   "checks": [
-    {
-     "date": "2026-12-21",
-     "expect": "error_422"
-    }
-   ]
+   "checks": []
   }
  ]
 }

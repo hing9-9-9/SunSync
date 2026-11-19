@@ -19,7 +19,7 @@ const clock = (h: number) => `${String(Math.floor(h)).padStart(2, "0")}:${String
 const compassWord = (az: number) => ["북", "북동", "동", "남동", "남", "남서", "서", "북서"][Math.round(az / 45) % 8];
 const pct = (v: number) => `${Math.round(v * 100)}%`;
 const utcHours = (offset: string) => { const h = Number(offset.slice(0, 3)); return h + Math.sign(h || 1) * Number(offset.slice(4)) / 60; };
-const dayPart = (h: number) => Math.min(18, Math.max(6, h));
+const dayPart = (h: number) => Math.min(23.99, Math.max(0, h));
 
 type Props = {
   space: Space;
@@ -112,12 +112,12 @@ export default function Space3DView({ space, hour, onHour, date, selected, onSel
     const closed = grid && !previewOpen ? { cells: new Uint8Array(grid.rows * grid.cols), rows: grid.rows, cols: grid.cols } : {};
     setLit(api.current!.setTime(day, hour, d && moment ? { sun: moment.sun, cells: moment.states, rows: d.rows, cols: d.cols } : closed));
   }, [day, hour, serverDay, moment, zoneSpace, previewOpen, grid]);
-  // Per region and FR-01 sample between 06:00 and 18:00: sunlit share and whether the plan closes cells for it.
+  // Per region and FR-01 sample over the whole day: sunlit share and whether the plan closes cells for it.
   const series = useMemo(() => {
     const d = serverDay;
     if (!d) return null;
     const midnight = Date.parse(`${date}T00:00:00${offset}`);
-    const samples = d.times.map((t, k) => ({ t, k, m: (t - midnight) / 60000 })).filter(s => s.m >= 360 && s.m <= 1080);
+    const samples = d.times.map((t, k) => ({ t, k, m: (t - midnight) / 60000 })).filter(s => s.m >= 0 && s.m <= 1440);
     const closed = samples.map(s => cellsAt(d, s.t, space.regions.length, gateAt(s.m), withinShading(shading, s.m)).byRegion);
     return space.regions.map((_, i) => ({
       open: samples.map(s => d.exposure[i]?.share[s.k] ?? 0),
@@ -133,8 +133,8 @@ export default function Space3DView({ space, hour, onHour, date, selected, onSel
     if (!playing) return;
     let frame = 0, last = performance.now();
     const tick = (now: number) => {
-      const next = hourRef.current + ((now - last) / 1000) * 1.1;
-      onHour(next >= 18 || next < 6 ? 6 : next);
+      const next = hourRef.current + ((now - last) / 1000) * 2.2;
+      onHour(next >= 24 || next < 0 ? 0 : next);
       last = now;
       frame = requestAnimationFrame(tick);
     };
@@ -220,8 +220,8 @@ export default function Space3DView({ space, hour, onHour, date, selected, onSel
                 <span>{`${month}월 ${dom}일 · `}{sunNow.altitude > 0 ? `해 높이 ${Math.round(sunNow.altitude)}° · ${compassWord(sunNow.azimuth)}쪽` : "해가 진 시간"}</span>
               </div>
               <input
-                className="s3-range" type="range" min={6} max={18} step={1 / 12} value={time} aria-label="시간"
-                style={{ ["--p" as string]: `${((time - 6) / 12) * 100}%` }}
+                className="s3-range" type="range" min={0} max={24 - 1 / 12} step={1 / 12} value={time} aria-label="시간"
+                style={{ ["--p" as string]: `${(time / 24) * 100}%` }}
                 onChange={e => { setPlaying(false); onHour(Number(e.target.value)); }}
               />
             </div>
@@ -234,13 +234,14 @@ export default function Space3DView({ space, hour, onHour, date, selected, onSel
           <ul className="s3-regions">
             {/* A → D, then by name (same order as the app's furniture list); unassigned furniture counts as D. */}
             {[
-              ...space.regions.flatMap((r, i) => (r.zone === space.zone ? [{ key: r.id, grade: r.grade as Grade, name: r.name, r, i, f: undefined }] : [])),
+              // A region on a piece of furniture is listed under the furniture's name, as in the app.
+              ...space.regions.flatMap((r, i) => (r.zone === space.zone ? [{ key: r.id, grade: r.grade as Grade, name: space.furniture.find((f) => f.id === r.furnitureId)?.name ?? r.name, r, i, f: undefined }] : [])),
               ...space.furniture
                 .filter(f => f.zone === space.zone && !space.regions.some(r => r.furnitureId === f.id))
                 .map(f => ({ key: f.id, grade: "D" as Grade, name: f.name, r: undefined, i: -1, f })),
             ]
               .sort((x, y) => "ABCD".indexOf(x.grade) - "ABCD".indexOf(y.grade) || x.name.localeCompare(y.name, "ko", { numeric: true }))
-              .map(({ key, r, i, f }) => {
+              .map(({ key, r, i, f, name }) => {
                 if (f) {
                   return (
                     <li key={key}>
@@ -258,12 +259,12 @@ export default function Space3DView({ space, hour, onHour, date, selected, onSel
                   <li key={key}>
                     <button className={selected === r.furnitureId ? "on" : ""} onClick={() => r.furnitureId && onSelect(r.furnitureId)}>
                       <span className={`s3-grade g-${r.grade}`}>{r.grade}</span>
-                      <span className="s3-rname">{r.name}<small>{grades[r.grade].split(" · ")[0]}</small></span>
+                      <span className="s3-rname">{name}<small>{grades[r.grade].split(" · ")[0]}</small></span>
                       <span className={`s3-rval ${level === "basic" ? "" : tone}`}>{level === "basic" ? `높이 ${m2(r.bottom)}~${m2(r.top)} m` : text}</span>
                       {bars && (
                         <span className="s3-strip" aria-hidden="true" style={{ gridTemplateColumns: `repeat(${bars.length}, 1fr)` }}>
                           {bars.map((b, j) => <i key={j} className={b.film ? "film" : b.value > 0 ? "" : "none"} style={b.value > 0 ? { opacity: 0.2 + b.value * 0.8 } : undefined} />)}
-                          <b style={{ left: `${((time - 6) / 12) * 100}%` }} />
+                          <b style={{ left: `${(time / 24) * 100}%` }} />
                         </span>
                       )}
                     </button>
@@ -271,14 +272,14 @@ export default function Space3DView({ space, hour, onHour, date, selected, onSel
                 );
               })}
           </ul>
-          {level !== "basic" && series && <p className="s3-axis"><span>6시</span><span>9</span><span>12</span><span>15</span><span>18시</span></p>}
+          {level !== "basic" && series && <p className="s3-axis"><span>0시</span><span>6</span><span>12</span><span>18</span><span>24시</span></p>}
 
           <h2>선택한 가구</h2>
           {chosen ? (
             <dl className="s3-detail">
               <div><dt>이름</dt><dd>{chosen.name}</dd></div>
               <div><dt>종류</dt><dd>{furnitureTypes[chosen.type ?? "other"]}</dd></div>
-              <div><dt>크기</dt><dd>{chosen.width.toFixed(1)} × {chosen.depth.toFixed(1)} × {chosen.height.toFixed(2)} m</dd></div>
+              <div><dt>크기</dt><dd>{m2(chosen.width)} × {m2(chosen.depth)} × {m2(chosen.height)} m</dd></div>
               <div><dt>위치</dt><dd>서쪽 벽에서 {chosen.x.toFixed(1)} m · 북쪽 벽에서 {chosen.y.toFixed(1)} m</dd></div>
               <div><dt>보호</dt><dd>{`${chosenRegion?.grade ?? "D"}등급 · ${grades[chosenRegion?.grade ?? "D"].split(" · ")[1]}` /* no protection area = D */}</dd></div>
             </dl>

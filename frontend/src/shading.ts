@@ -1,4 +1,4 @@
-import { withinShading } from "./model.ts";
+import { timeToMinute, withinShading } from "./model.ts";
 import type { ShadingTime } from "./model.ts";
 
 export type CellState = "opaque" | "transparent" | "infeasible" | "unknown";
@@ -62,4 +62,53 @@ export function filmStatesAt(plan: ShadingPlan, hour: number, setting: ShadingTi
     states.set(c.row * w.film_cols + c.col, { state: s.state, reasons: active.map(r => `${r.grade} 등급`) });
   }
   return states;
+}
+
+/** The plan as the film should follow it: only the stretches inside the chosen block times stay.
+ *  Uses the same rule as `filmStatesAt` (a cell stays while a region that asked for it is inside its own time),
+ *  but cuts the segments at the start and end of each time so a minute-level time is honoured too. */
+export function gatePlan(plan: ShadingPlan, setting: ShadingTime, regionTime?: (regionId: string) => ShadingTime | undefined): ShadingPlan {
+  const t0 = Date.parse(plan.start_time), t1 = Date.parse(plan.end_time);
+  const DAY = 1440;
+  const iso = (ms: number) => new Date(ms).toISOString();
+  const windows = plan.windows.map((w) => ({
+    ...w,
+    cells: w.cells.flatMap((c) => {
+      const segments: typeof c.segments = [];
+      for (const s of c.segments) {
+        const from = Date.parse(s.start_time), to = Date.parse(s.end_time);
+        const times = s.reasons.length ? s.reasons.map((r) => regionTime?.(r.region_id) ?? setting) : [setting];
+        const cuts = new Set<number>([from, to]);
+        for (const t of times) {
+          if (!t.enabled) continue;
+          const a = timeToMinute(t.start), b = timeToMinute(t.end);
+          if (a === null || b === null) continue;
+          for (let day = 0; t0 + day * DAY * 60000 < t1; day++)
+            for (const m of [a, b]) {
+              const at = t0 + (day * DAY + m) * 60000;
+              if (at > from && at < to) cuts.add(at);
+            }
+        }
+        const edges = [...cuts].sort((x, y) => x - y);
+        for (let i = 0; i + 1 < edges.length; i++) {
+          const minute = (((edges[i] - t0) / 60000) % DAY + DAY) % DAY;
+          const active = s.reasons.filter((r) => withinShading(regionTime?.(r.region_id) ?? setting, minute));
+          if (s.reasons.length ? !active.length : !withinShading(setting, minute)) continue;
+          const piece = {
+            ...s,
+            start_time: edges[i] === from ? s.start_time : iso(edges[i]),
+            end_time: edges[i + 1] === to ? s.end_time : iso(edges[i + 1]),
+            reasons: active,
+          };
+          const last = segments[segments.length - 1];
+          if (last && Date.parse(last.end_time) === edges[i] && last.state === piece.state &&
+              last.reasons.map((r) => r.region_id).join() === piece.reasons.map((r) => r.region_id).join())
+            last.end_time = piece.end_time;
+          else segments.push(piece);
+        }
+      }
+      return segments.length ? [{ ...c, segments }] : [];
+    }),
+  }));
+  return { ...plan, windows };
 }

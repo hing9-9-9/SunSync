@@ -175,3 +175,10 @@
 @media(prefers-reduced-motion:reduce) {
  .app.award-app.mode-web.page-spaces .award-room-card:hover { transform:none; }
 }
+
+/* Web detail bottom cards: helper text and axis labels at least 13px. */
+.app.award-app.mode-web.page-detail .detail-shading .muted.small,
+.app.award-app.mode-web.page-detail .film-card .muted.small,
+.app.award-app.mode-web.page-detail .blocking-axis span,
+.app.award-app.mode-web.page-detail .forecast-list-head span,
+.app.award-app.mode-web.page-detail .s3-rname small { font-size: 13px !important; line-height: 1.6; }

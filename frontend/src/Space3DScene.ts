@@ -408,7 +408,7 @@ export function createSpaceScene(host: HTMLElement, space: Space, events: Events
   g.fillRect(0, 0, 128, 128);
   const sunGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(glowCanvas), transparent: true, opacity: 0, depthWrite: false }));
   sunGlow.scale.setScalar(2.6);
-  const sunDisc = new THREE.Mesh(new THREE.SphereGeometry(0.26, 32, 16), new THREE.MeshBasicMaterial({ color: SUN, transparent: true, opacity: 0 }));
+  const sunDisc = new THREE.Mesh(new THREE.SphereGeometry(0.26, 32, 16), new THREE.MeshBasicMaterial({ color: SUN, transparent: true, opacity: 0, depthWrite: false }));
   sunDisc.add(sunGlow);
   scene.add(sunDisc);
   const pathMat = new THREE.LineDashedMaterial({ color: SUN, dashSize: 0.22, gapSize: 0.16, transparent: true, opacity: 0 });

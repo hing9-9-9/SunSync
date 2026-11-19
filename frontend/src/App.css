@@ -2417,3 +2417,6 @@ dialog[open]::backdrop {
 .app .effect-badge strong { font-size: 16px; font-weight: 600; color: #1d1c22; }
 .app .effect-badge.better { background: #efeefd; border-color: #efeefd; }
 .app .effect-badge.better strong { color: #554ed0; }
+
+/* Long names inside messages wrap instead of pushing the banner out of the screen. */
+.error, .app .live-validation { overflow-wrap: anywhere; word-break: break-word; }

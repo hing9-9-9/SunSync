@@ -856,3 +856,7 @@
 .app.app.award-mobile.mode-app.page-home .home-preview-head .text-button { position: relative; min-height: 32px; }
 .app.app.award-mobile.mode-app.page-home .home-preview-head .section-label { margin: 0; }
 .app.award-mobile.mode-app.page-home .home-preview-head .text-button::before { content: ""; position: absolute; inset: -6px -4px; }
+
+/* Home "전체 보기": same look, 44px tap height. */
+.app.mode-app .home-preview-head .text-button { position: relative; }
+.app.mode-app .home-preview-head .text-button::after { content: ""; position: absolute; inset: -8px -10px; }

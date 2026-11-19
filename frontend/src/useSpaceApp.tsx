@@ -123,6 +123,16 @@ export function useSpaceApp() {
           initial.spaces,
         ),
   );
+  // A detail link opened on a device that has not stored the space yet falls back to the list at first;
+  // it is kept here and opened once the server list shows the space.
+  const pendingDetail = useRef<string | null>(
+    !editorExample && initialNavigation.page === "spaces"
+      ? (() => {
+          const wanted = readLocation(window.history.state, window.location.hash);
+          return wanted.page === "detail" && wanted.activeId && !initial.spaces.some((s) => s.id === wanted.activeId) ? wanted.activeId : null;
+        })()
+      : null,
+  );
   // The server session decides who is signed in. The stored account is only what to show until it answers.
   const [authStatus, setAuthStatus] = useState<"checking" | "in" | "out">(editorExample ? "in" : "checking");
   const [authNotice, setAuthNotice] = useState(() => {
@@ -574,8 +584,12 @@ export function useSpaceApp() {
   // It is a normal space: deleting it is final (a flag per account on this browser).
   async function giveExampleSpace(email: string, signal: AbortSignal, existing: Space[]) {
     const example = homeExampleSpace();
-    if (existing.some((x) => x.building === example.building && x.name === example.name)) return;
     const key = `sunsync-example-given:${email || "local"}`;
+    // An account that already has spaces (on any device) never gets the example; remember that on this browser too.
+    if (existing.length > 0) {
+      try { localStorage.setItem(key, "1"); } catch { /* not remembered */ }
+      return;
+    }
     try {
       if (localStorage.getItem(key)) return;
       localStorage.setItem(key, "1");
@@ -597,6 +611,12 @@ export function useSpaceApp() {
         setUnavailable(result.unavailable);
         setServerState("online");
         setServerError("");
+        const wantedId = pendingDetail.current;
+        pendingDetail.current = null;
+        if (wantedId && result.spaces.some((s) => s.id === wantedId)) {
+          setActiveId(wantedId);
+          setPageState((p) => (p === "spaces" ? "detail" : p));
+        }
         void giveExampleSpace(account?.email ?? "", controller.signal, result.spaces);
       })
       .catch((error) => {
@@ -1721,3 +1741,6 @@ export function useSpaceApp() {
     draftSite,
   };
 }
+
+/** What the page components receive: everything the hook returns. */
+export type SpaceApp = ReturnType<typeof useSpaceApp>;

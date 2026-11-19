@@ -7,6 +7,7 @@ import type { Page } from "./navigation";
 import type { HandoffSession } from "./spaceApi";
 import { GuideIllustration } from "./MoodIcons";
 import { guideSteps } from "./guideContent";
+import { GuideMethods } from "./GuideMethods";
 import AwardPreview, { Arrow, Scribble, SunMark } from "./AwardPreview";
 import { SyncBadge, SyncRetry } from "./ShellParts";
 import "./AwardSystem.css";
@@ -312,13 +313,13 @@ export function AwardSpaces({
           <SunMark />
           <h3>
             {spaces.length
-              ? "검색 결과가 없습니다."
-              : "등록한 공간이 없습니다."}
+              ? "검색 결과가 없어요."
+              : "등록한 공간이 없어요."}
           </h3>
           <p>
             {spaces.length
               ? "다른 이름으로 검색하거나 전체 건물을 선택해 보세요."
-              : "공간과 창문의 크기를 입력하면 가구와 보호 영역을 설정할 수 있습니다."}
+              : "공간과 창문의 크기를 입력하면 가구와 보호 영역을 설정할 수 있어요."}
           </p>
           <button
             className="primary"
@@ -440,7 +441,8 @@ export function AwardGuide({
                   <GuideIllustration step={i} />
                 </div>
                 <div className="guide-step-copy">
-                  <p>{step.text}</p>
+                  {!step.methods && <p>{step.text}</p>}
+                  <GuideMethods methods={step.methods} />
                   <ul className="guide-step-notes">
                     {step.detail.split(/(?<=\.)\s+/u).map(note => <li key={note}>{note}</li>)}
                   </ul>
