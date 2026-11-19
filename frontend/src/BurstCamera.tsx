@@ -234,16 +234,29 @@ export default function BurstCamera({
     onClick={() => void (!running ? open() : !camera ? setup() : shoot())}>
     {phase === "analyzing" ? "촬영 완료! 사진 분석 중…" : phase === "capturing" ? "촬영 중…" : busy ? "카메라 준비 중…" : !running ? "카메라 열기" : !camera ? `카메라 준비 사진 촬영 (${Math.min(views.length, 11)}/12)` : `${pointLabel} 촬영`}
   </button>;
+  const stageOpen = running && active;
+  const phaseText = phase === "capturing" ? "촬영 중… 휴대폰 위치를 유지해 주세요." : phase === "analyzing" ? "촬영 완료! 휴대폰을 내려도 돼요. 사진 분석 중…" : "";
+  function closeCamera() {
+    stop();setRunning(false);setCamera(null);onReady?.(null);setViews([]);
+  }
   return (
     <section className="point-camera" style={{display:active?undefined:"none",width:"100%"}}>
-      <video ref={video} autoPlay muted playsInline style={{width:"100%",maxHeight:320,display:running?"block":"none"}} />
-      {running && !camera && <p>처음에는 마커 전체가 보이도록 위치와 기울기를 바꾸며 카메라를 준비해 주세요. ({Math.min(views.length, 11)}/12)</p>}
-      {active && actionTarget && createPortal(action,actionTarget)}
-      {running && <button type="button" className="text-button" disabled={busy||disabled} onClick={()=>{
-        stop();setRunning(false);setCamera(null);onReady?.(null);setViews([]);
-      }}>카메라 닫기</button>}
-      {running && hint && <p role="status" className={`capture-hint ${hint.tone}`}>{hint.text}</p>}
-      {message && <p role="status">{message}</p>}
+      {/* While the camera is open the stage fills the phone screen; closed, it is only the idle video element. */}
+      <div className={`camera-stage${stageOpen ? " open" : ""}`}>
+        <video ref={video} className="camera-video" autoPlay muted playsInline style={{width:"100%",maxHeight:320,display:running?"block":"none"}} />
+        {stageOpen && <div className="camera-stage-top">
+          <strong>{camera ? pointLabel : "카메라 준비"}</strong>
+          <button type="button" className="text-button" disabled={busy||disabled} onClick={closeCamera}>카메라 닫기</button>
+        </div>}
+        {stageOpen && <div className="camera-stage-bottom">
+          {!camera && <p>마커 전체가 보이도록 위치와 기울기를 바꾸며 찍어 주세요. ({Math.min(views.length, 11)}/12)</p>}
+          {phaseText ? <p role="status">{phaseText}</p> : hint && <p role="status" className={`capture-hint ${hint.tone}`}>{hint.text}</p>}
+          {message && <p role="status">{message}</p>}
+          {action}
+        </div>}
+      </div>
+      {active && actionTarget && !stageOpen && createPortal(action,actionTarget)}
+      {!stageOpen && message && <p role="status">{message}</p>}
     </section>
   );
 }

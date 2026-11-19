@@ -260,11 +260,11 @@ test("measurement plans map selected UI furniture types instead of hardcoding de
 });
 
 test("visionErrorMessage translates server failure details into actionable Korean guidance", () => {
-  assert.match(visionErrorMessage("ArUco marker code_id 0 not detected in image."), /창문 ArUco 마커/);
+  assert.match(visionErrorMessage("ArUco marker code_id 0 not detected in image."), /창문 마커/);
   assert.match(visionErrorMessage("No furniture objects detected in the image."), /가구를 찾지 못했어요/);
   assert.match(visionErrorMessage("409 Revision conflict"), /새로고침/);
   assert.match(visionErrorMessage("Select and pair a film module before vision measurement."), /필름 칸/);
-  assert.match(visionErrorMessage("unexpected internal failure"), /ArUco 모서리 촬영/);
+  assert.match(visionErrorMessage("unexpected internal failure"), /모서리를 직접 촬영/);
 });
 
 test("estimateVisionFurniture sends marker anchor, intrinsics, and returns guided ArUco metadata", async (t) => {
@@ -347,4 +347,10 @@ test("estimateVisionFurniture sends marker anchor, intrinsics, and returns guide
   assert.match(result.estimated_items[0].aruco_capture_guidance_ko ?? "", /P1~P4/);
   assert.equal(result.estimated_items[0].recommended_capture_shape, "rectangle");
   assert.equal(result.estimated_items[0].estimated_corners_enu_m?.length, 4);
+});
+
+test("an unknown marker-request failure does not ask for new photos", () => {
+  assert.match(serverMessage("Something new", "/api/scenes/x/capture-marker"), /촬영을 시작하지 못했어요/);
+  assert.match(serverMessage("Something new", "/measure/v1/measurements"), /사진을 다시 찍어/);
+  assert.match(serverMessage("Stored film grid differs from window layout; reconfigure film", "/api/scenes/x/capture-marker"), /창문 정보를 다시 저장/);
 });

@@ -8,7 +8,7 @@
 .app.award-mobile.mode-app.page-capture .capture-layout > div > .step-label { font-size:13px; line-height:1.5; color:var(--at-muted); }
 .app.award-mobile.mode-app.page-capture .zone-tabs { margin:0 0 var(--space-4); gap:var(--space-2); }
 .app.award-mobile.mode-app.page-capture .zone-tabs .chip { min-height:36px; font-size:14px; padding:var(--space-2) var(--space-3); }
-.app.award-mobile.mode-app.page-capture .spatial-capture > .two-fields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:var(--space-3); padding:var(--space-4); border:0; border-radius:var(--radius-card); background:var(--c-white); box-shadow:var(--at-card-shadow); }
+.app.award-mobile.mode-app.page-capture .spatial-capture > .shape-field { display:grid; gap:var(--space-3); padding:var(--space-4); border:0; border-radius:var(--radius-card); background:var(--c-white); box-shadow:var(--at-card-shadow); }
 .app.award-mobile.mode-app.page-capture .field { min-width:0; padding:0; border:0; border-radius:0; background:transparent; gap:var(--space-2); }
 .app.award-mobile.mode-app.page-capture .field > span { font-size:14px; color:var(--at-muted); }
 .app.award-mobile.mode-app.page-capture .field :is(input,select) { width:100%; min-width:0; min-height:44px; padding:var(--space-2) var(--space-3); border:1px solid var(--c-bdbac5); border-radius:8px; background-color:var(--c-white); font-size:16px; color:var(--at-ink); }
@@ -36,9 +36,12 @@
 .app.award-mobile.mode-app.page-capture .capture-action :is(.file-button,.primary) { display:flex; align-items:center; justify-content:center; min-height:44px; padding:var(--space-2) var(--space-4); border:0; border-radius:999px; background:var(--at-accent); color:var(--c-white); font-size:16px; line-height:1.5; font-weight:500; }
 .app.award-mobile.mode-app.page-capture .capture-action .file-button:focus-within { outline:2px solid var(--at-accent-ink); outline-offset:3px; }
 .app.award-mobile.mode-app.page-capture :is(button):focus-visible { outline:2px solid var(--at-accent-ink); outline-offset:2px; }
-.app.award-mobile.mode-app.page-capture .capture-intro { display:flex; align-items:center; justify-content:space-between; gap:var(--space-3); margin-bottom:var(--space-3); }
+.app.award-mobile.mode-app.page-capture .capture-intro { display:flex; flex-direction:column; align-items:flex-start; gap:var(--space-2); margin-bottom:var(--space-1); }
+.app.award-mobile.mode-app.page-capture .capture-intro .capture-title-with-marker:empty { display:none; }
+.app.award-mobile.mode-app.page-capture .capture-intro:has(> .capture-title-with-marker:not(:empty)) { margin-bottom:var(--space-3); }
+.app.award-mobile.mode-app.page-capture .capture-intro .step-label { order:-1; }
 .app.award-mobile.mode-app.page-capture .capture-intro :is(h2,p) { margin:0; }
-.app.award-mobile.mode-app.page-capture .capture-intro .step-label { color:var(--at-muted); font-size:13px; }
+.app.award-mobile.mode-app.page-capture .capture-intro .step-label { color:var(--at-muted); font-size:14px; line-height:1.4; }
 .app.award-mobile.mode-app.page-capture .capture-viewfinder { padding:var(--space-4); gap:var(--space-3); }
 .app.award-mobile.mode-app.page-capture .viewfinder-frame { width:min(100%,180px); }
 /* Capture's bottom action matches every other app action bar: no white card behind it, same 50px raised pill, same spot above the tab bar. */
@@ -72,9 +75,9 @@
 .capture-help .guide-pagination { margin-top: var(--space-2); }
 
 /* Labels carry no inherited outer margin inside the compact input card. */
-.app.award-mobile.mode-app.page-capture .spatial-capture > .two-fields { margin:0; padding:16px; align-items:start; }
-.app.award-mobile.mode-app.page-capture .spatial-capture > .two-fields > .field { margin:0; gap:8px; }
-.app.award-mobile.mode-app.page-capture .spatial-capture > .two-fields > .field > span { margin:0; }
+.app.award-mobile.mode-app.page-capture .spatial-capture > .shape-field { margin:0; padding:16px; align-items:start; }
+.app.award-mobile.mode-app.page-capture .spatial-capture > .shape-field > .field { margin:0; gap:8px; }
+.app.award-mobile.mode-app.page-capture .spatial-capture > .shape-field > .field > span { margin:0; }
 .app.award-mobile.mode-app.page-capture .spatial-capture > p.muted.small:last-child { margin:0; padding:16px 0; }
 .app.award-mobile.mode-app.page-capture .capture-layout { gap:0; }
 
@@ -96,14 +99,14 @@
 .app.award-mobile.mode-app.page-capture .capture-end > p { margin:0; font-size:13px; line-height:1.5; color:var(--at-muted); }
 
 /* Once the shape is confirmed the screen is for shooting: the plan shrinks to a summary and the camera, the points and the shutter share one phone screen. */
-.app.award-mobile.mode-app.page-capture .shape-plan.compact { display:grid; grid-template-columns:56px minmax(0,1fr); align-items:center; gap:var(--space-4); margin:var(--space-3) 0 var(--space-3); padding:var(--space-2) var(--space-4); }
-.app.award-mobile.mode-app.page-capture .shape-plan.compact svg { height:56px; }
+.app.award-mobile.mode-app.page-capture .shape-plan.compact { display:grid; grid-template-columns:44px minmax(0,1fr); align-items:center; gap:var(--space-3); margin:var(--space-3) 0 var(--space-3); padding:var(--space-2) var(--space-4); }
+.app.award-mobile.mode-app.page-capture .shape-plan.compact svg { height:44px; }
 .shape-plan-body { display:grid; gap:2px; justify-items:start; min-width:0; }
-.shape-plan.compact .shape-plan-body { grid-template-columns:minmax(0,1fr) auto; grid-template-areas:"name edit" "meta edit"; align-items:center; column-gap:var(--space-3); justify-items:stretch; }
-.shape-plan.compact .shape-plan-name { grid-area:name; }
+.shape-plan.compact .shape-plan-body { grid-template-columns:minmax(0,1fr) auto; grid-template-areas:"meta edit"; align-items:center; column-gap:var(--space-3); justify-items:stretch; }
 .shape-plan.compact .shape-plan-body > p { grid-area:meta; }
 .shape-plan.compact .shape-plan-body > .text-button { grid-area:edit; justify-self:end; }
 .shape-plan-body > p { margin:0; font-size:14px; line-height:1.5; color:var(--at-muted); }
+.shape-plan.compact .shape-plan-body > p { font-size:16px; font-weight:500; color:var(--at-ink); }
 .shape-plan.compact .shape-plan-body > .text-button { min-height:44px; padding:0; }
 .shape-plan-name { max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:16px; font-weight:500; color:var(--at-ink); }
 .app.award-mobile.mode-app.page-capture .capture-viewfinder { margin:var(--space-3) 0; }
@@ -125,34 +128,34 @@
 .app.award-mobile.mode-app.page-capture .spatial-capture > p.muted.small:last-child { padding:0; }
 .app.award-mobile.mode-app.page-capture .spatial-capture > .secondary { width:100%; }
 
-/* AI assisted single-photo scan + guided ArUco handoff */
-.vision-assist { display:grid; gap:var(--space-3); padding:var(--space-4); border-radius:var(--radius-card); background:var(--c-white); box-shadow:var(--at-card-shadow); }
-.vision-assist-head h3 { margin:0 0 var(--space-1); font-size:16px; font-weight:600; color:var(--at-ink); }
+/* Photo-assisted furniture finder */
+.vision-assist { display:grid; gap:var(--space-3); padding:var(--space-4); border:0; border-radius:var(--radius-card); background:var(--c-white); box-shadow:var(--at-card-shadow); }
+.vision-assist-head h3 { margin:0 0 var(--space-1); font-size:16px; font-weight:500; color:var(--at-ink); }
 .vision-assist-head p { margin:0; line-height:1.6; }
-.vision-assist .file-button { position:relative; display:flex; align-items:center; justify-content:center; width:100%; min-height:48px; cursor:pointer; }
-.vision-assist .file-button input { position:absolute; width:1px; height:1px; opacity:0; }
-.vision-assist .file-button:focus-within { outline:2px solid var(--at-accent-ink); outline-offset:2px; }
 .vision-results { display:grid; gap:var(--space-3); }
 .vision-results > p { margin:0; }
 .vision-item-list { display:grid; gap:var(--space-3); list-style:none; margin:0; padding:0; }
-.vision-item { display:grid; gap:var(--space-2); padding:var(--space-3); border:1px solid var(--c-hairline); border-radius:10px; background:var(--paper); }
+.vision-item { display:grid; gap:var(--space-2); padding:var(--space-3) 0 0; border-top:1px solid var(--c-hairline); }
+.vision-item:first-child { padding-top:0; border-top:0; }
+.vision-badge { justify-self:start; padding:2px 8px; border-radius:6px; background:var(--c-fff1f0); color:var(--danger); font-size:12px; font-weight:500; line-height:1.5; }
 .vision-item > p { margin:0; line-height:1.5; }
-.vision-item-top { display:flex; align-items:center; justify-content:space-between; gap:var(--space-2); flex-wrap:wrap; }
-.vision-quality { display:inline-block; padding:2px 8px; border-radius:6px; font-size:12px; font-weight:600; }
-.vision-quality.high { background:#EFEEFD; color:#554ED0; }
-.vision-quality.medium { background:#FFF7ED; color:#C2520F; border:1px solid #FDBA74; }
-.vision-quality.low_needs_aruco { background:#FFF7ED; color:#C2520F; border:1px solid #FF7426; }
-.vision-uncertainty { color:#C2520F; }
-.vision-guidance-note { color:var(--at-ink); }
+.vision-item-top { display:flex; align-items:baseline; justify-content:space-between; gap:var(--space-2); }
+.vision-item-top > strong { font-size:16px; font-weight:500; color:var(--at-ink); }
+.vision-facts { display:grid; gap:4px; margin:0; }
+.vision-facts > div { display:flex; justify-content:space-between; gap:var(--space-3); font-size:14px; line-height:1.5; }
+.vision-facts dt { color:var(--at-muted); }
+.vision-facts dd { margin:0; color:var(--at-ink); font-weight:500; }
 .vision-guidance-banner { margin:0; }
-.app.award-mobile.mode-app.page-capture .capture-end { gap:var(--space-2); margin-top:var(--space-3); }
+.app.award-mobile.mode-app.page-capture .capture-end { gap:var(--space-2); margin-top:0; }
 .app.award-mobile.mode-app.page-capture .capture-film-line, .app.award-mobile.mode-app.page-capture .capture-test-details { font-size:13px; line-height:1.5; }
 .app.award-mobile.mode-app.page-capture .capture-test-details > summary { min-height:36px; }
 .app.award-mobile.mode-app.page-capture .spatial-capture > .shape-plan.compact { margin:0; }
 
 /* Before the shape is confirmed: a smaller plan, the caption centred under it, and the action as wide as the other buttons. */
-.app.award-mobile.mode-app.page-capture .shape-plan:not(.compact) svg { height:132px; }
-.app.award-mobile.mode-app.page-capture .shape-plan:not(.compact) .shape-plan-body { justify-items:stretch; gap:var(--space-3); margin-top:var(--space-2); }
+.app.award-mobile.mode-app.page-capture .shape-plan:not(.compact) svg { height:136px; }
+.app.award-mobile.mode-app.page-capture .shape-plan:not(.compact) svg text { font-size:9px; font-weight:500; }
+.app.award-mobile.mode-app.page-capture .shape-plan.compact svg text { display:none; }
+.app.award-mobile.mode-app.page-capture .shape-plan:not(.compact) .shape-plan-body { justify-items:stretch; gap:var(--space-3); margin-top:0; }
 .app.award-mobile.mode-app.page-capture .shape-plan:not(.compact) .shape-plan-body > p { text-align:center; }
 .app.award-mobile.mode-app.page-capture .shape-plan:not(.compact) .actions { display:grid; gap:var(--space-2); margin:0; }
 .app.award-mobile.mode-app.page-capture .shape-plan:not(.compact) .actions > button { width:100%; }
@@ -174,3 +177,37 @@
   .app.award-mobile.mode-app.page-capture .page-heading > .capture-help-button { transition:none; }
   .app.award-mobile.mode-app.page-capture .page-heading > .capture-help-button:is(:hover,:active) { transform:none; }
 }
+
+/* Marker preview + test marker size: one even row under the title, same pill as the other secondary buttons. */
+.app.award-mobile.mode-app.page-capture .capture-title-with-marker { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:var(--space-2); align-items:stretch; }
+.app.award-mobile.mode-app.page-capture .capture-title-with-marker > h2 { grid-column:1 / -1; }
+.app.award-mobile.mode-app.page-capture .capture-title-with-marker .test-marker-button { width:100%; min-height:44px; padding:0 12px; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+/* Opening the camera fills the whole phone screen: the live view, the point, the hint and the shutter. */
+.camera-stage.open { position:fixed; inset:0; z-index:1000; display:flex; flex-direction:column; background:#000; color:#fff; }
+.camera-stage.open > video { position:absolute; inset:0; width:100% !important; height:100% !important; max-height:none !important; object-fit:contain; background:#000; }
+.camera-stage-top { position:relative; z-index:1; display:flex; align-items:center; justify-content:space-between; gap:var(--space-3); padding:calc(var(--space-3) + env(safe-area-inset-top)) var(--space-4) var(--space-4); background:linear-gradient(rgba(0,0,0,.6),transparent); }
+.camera-stage-top strong { font-size:18px; font-weight:600; }
+.app.award-mobile.mode-app.page-capture .camera-stage-top button.text-button { min-height:44px; padding:0 var(--space-2); color:#fff !important; background:transparent !important; border:0 !important; }
+.camera-stage-bottom { position:relative; z-index:1; margin-top:auto; display:grid; gap:var(--space-3); padding:var(--space-6) var(--space-4) calc(var(--space-4) + env(safe-area-inset-bottom)); background:linear-gradient(transparent,rgba(0,0,0,.7)); }
+.camera-stage-bottom > p { margin:0; font-size:15px; line-height:1.5; color:#fff; text-align:center; }
+.camera-stage-bottom > .capture-hint { padding:var(--space-2) var(--space-3); border-radius:12px; color:var(--c-ink); }
+.app.award-mobile.mode-app.page-capture .shape-field-title { margin:0; font-size:16px; font-weight:500; color:var(--at-ink); }
+/* Before the shape is confirmed, the shape choice, its plan and the start button are one card. */
+.app.award-mobile.mode-app.page-capture .spatial-capture > .shape-card { display:grid; gap:var(--space-4); padding:var(--space-4); border-radius:var(--radius-card); background:var(--c-white); box-shadow:var(--at-card-shadow); }
+.app.award-mobile.mode-app.page-capture .shape-card .shape-field-head { display:grid; gap:var(--space-1); }
+.app.award-mobile.mode-app.page-capture .shape-card .shape-field-head p { margin:0; line-height:1.6; color:var(--at-muted); }
+.app.award-mobile.mode-app.page-capture .shape-card .field { margin:0; gap:var(--space-2); }
+.app.award-mobile.mode-app.page-capture .shape-card .shape-plan { margin:0; padding:0; border-radius:0; background:transparent; box-shadow:none; }
+.app.award-mobile.mode-app.page-capture .shape-card > .shape-field { display:grid; gap:var(--space-3); }
+.app.award-mobile.mode-app.page-capture .spatial-capture > .shape-card { gap:var(--space-3); }
+
+.app.award-mobile.mode-app.page-capture .capture-viewfinder > .point-camera { display:contents; }
+/* Film choice: the error sits under the choice (nothing below it moves), text first, then the one action. */
+.app.award-mobile.mode-app.page-capture .film-select .film-error { display:grid; gap:var(--space-3); padding:var(--space-4); border-radius:12px; background:var(--c-fff1f0); color:var(--danger); }
+.app.award-mobile.mode-app.page-capture .film-select .film-error > p { margin:0; font-size:14px; line-height:1.5; text-align:left; }
+.app.award-mobile.mode-app.page-capture .film-select .film-error > button { justify-self:start; width:auto; min-height:0; height:auto; padding:0; border:0 !important; border-radius:0; background:transparent !important; color:inherit !important; box-shadow:none; font-size:14px; font-weight:400; text-decoration:underline; text-underline-offset:3px; }
+
+/* Film choice: a firmer border on every tile (the fill stays as is), so the grid reads against the page and the marker stays the loudest thing. */
+.app.award-mobile.mode-app.page-capture .film-select .module { border-width:1.5px; }
+.app.award-mobile.mode-app.page-capture .film-select .module:not(.on):not(.partial) { border-color:#CFCCE0; }

@@ -294,6 +294,20 @@ def end_capture(scene_id: str, session_id: UUID, db: DB) -> dict:
     row = db.get(CaptureMarkerSession, scene_id)
     if row is None or row.session_id != str(session_id):
         raise HTTPException(409, "Capture marker session changed; cannot end another session")
+    return _end_row(scene_id, row, db)
+
+
+@router.post("/end-active")
+def end_active_capture(scene_id: str, db: DB) -> dict:
+    """End whatever capture session is active for the scene, e.g. one left by another tab or device."""
+    lock_scene(scene_id, db)
+    row = db.get(CaptureMarkerSession, scene_id)
+    if row is None:
+        return {"status": "ended"}
+    return _end_row(scene_id, row, db)
+
+
+def _end_row(scene_id: str, row: CaptureMarkerSession, db: Session) -> dict:
     if row.active and film_matches(row, db):
         set_marker_mode(
             db,

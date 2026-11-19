@@ -281,7 +281,7 @@ export function AwardSpaces({
                     <SyncBadge space={s} />
                     <div>
                       <span>
-                        구역 {s.zones.length}개, 보호 영역 {regionCount}개
+                        보호 영역 {regionCount}개
                       </span>
                     </div>
                   </div>

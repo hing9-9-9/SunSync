@@ -383,7 +383,7 @@ function subjectParticle(name: string): string {
 }
 /** Messages that only mean a box is still empty or half typed; they belong to the moment the person moves on, not to typing. */
 const UNFILLED = [
-  "건물, 층, 공간과 구역 이름을 입력해 주세요.",
+  "건물, 층, 공간 이름을 입력해 주세요.",
   "공간 치수는 0보다 큰 숫자로 입력해 주세요.",
   "창문 가로와 높이를 0보다 큰 숫자로 입력해 주세요.",
   "창문 위치는 0 이상의 숫자로 입력해 주세요.",
@@ -404,7 +404,7 @@ export function validateSpace(s: Space, options?: { allowOverlap?: boolean }): s
   )
     return "건물의 위도·경도를 확인해 주세요.";
   if (![s.building, s.floor, s.name, s.zone].every((v) => v.trim()))
-    return "건물, 층, 공간과 구역 이름을 입력해 주세요.";
+    return "건물, 층, 공간 이름을 입력해 주세요.";
   if (
     !s.zones.includes(s.zone) ||
     new Set(s.zones).size !== s.zones.length ||
@@ -646,3 +646,6 @@ export function localFrontFace(f: Furniture, wall: Wall = "south"): Face {
   const choices: [Face,number,number][]=f.width>=f.depth ? [["남쪽 전면",0,-1],["북쪽 후면",0,1]] : [["동쪽 측면",1,0],["서쪽 측면",-1,0]];
   return choices.sort((a,b)=>((c*b[1]-s*b[2])*tx+(s*b[1]+c*b[2])*ty)-((c*a[1]-s*a[2])*tx+(s*a[1]+c*a[2])*ty))[0][0];
 }
+
+/** Metres shown to people: at most two decimals, no trailing zeros. */
+export const m2 = (n: number) => (Number.isFinite(n) ? +n.toFixed(2) : n);

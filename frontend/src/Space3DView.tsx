@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { filmGrid, furnitureTypes, grades, regionOwners, resolveWindow, walls, withinShading } from "./model.ts";
+import { filmGrid, furnitureTypes, grades, m2, regionOwners, resolveWindow, walls, withinShading } from "./model.ts";
 import type { Grade, Region, ShadingTime, Space } from "./model.ts";
 import { createSpaceScene } from "./Space3DScene.ts";
 import type { Level, Lit, SceneApi } from "./Space3DScene.ts";
@@ -259,7 +259,7 @@ export default function Space3DView({ space, hour, onHour, date, selected, onSel
                     <button className={selected === r.furnitureId ? "on" : ""} onClick={() => r.furnitureId && onSelect(r.furnitureId)}>
                       <span className={`s3-grade g-${r.grade}`}>{r.grade}</span>
                       <span className="s3-rname">{r.name}<small>{grades[r.grade].split(" · ")[0]}</small></span>
-                      <span className={`s3-rval ${level === "basic" ? "" : tone}`}>{level === "basic" ? `높이 ${r.bottom}~${r.top} m` : text}</span>
+                      <span className={`s3-rval ${level === "basic" ? "" : tone}`}>{level === "basic" ? `높이 ${m2(r.bottom)}~${m2(r.top)} m` : text}</span>
                       {bars && (
                         <span className="s3-strip" aria-hidden="true" style={{ gridTemplateColumns: `repeat(${bars.length}, 1fr)` }}>
                           {bars.map((b, j) => <i key={j} className={b.film ? "film" : b.value > 0 ? "" : "none"} style={b.value > 0 ? { opacity: 0.2 + b.value * 0.8 } : undefined} />)}

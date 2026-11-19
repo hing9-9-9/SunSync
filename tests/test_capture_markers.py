@@ -137,6 +137,26 @@ def test_end_restores_cells_and_old_session_cannot_end_new_one(client):
     assert client.post(end).status_code == 409
 
 
+def test_end_active_ends_whichever_session_is_running(client):
+    scene = make_scene(client, "north", False)
+    base = f"/api/scenes/{scene['scene_id']}"
+    client.post(base + "/film-commands", json={"commands": [{"row": 3, "col": 3, "opacity": 0.5}]})
+    first = start(client, scene).json()
+    stale_end = base + f"/capture-marker/{first['session_id']}/end"
+    assert client.post(base + "/capture-marker/end-active").status_code == 200
+    with TestClient(client.app) as reader:
+        film = reader.get(base + "/film-state").json()["windows"][0]
+        assert film["marker_mode_active"] is False
+        assert film["cells"][3][3] == 0.5
+    assert client.get(base + f"/capture-marker/{first['session_id']}").status_code == 410
+    assert client.post(base + "/capture-marker/end-active").status_code == 200
+    second = start(client, scene)
+    assert second.status_code == 200, second.text
+    assert client.post(stale_end).status_code == 409
+    assert client.post(base + "/capture-marker/end-active").status_code == 200
+    assert client.get(base + f"/capture-marker/{second.json()['session_id']}").status_code == 410
+
+
 def test_marker_display_failure_rolls_back_geometry_and_session(
     client, database_engine, monkeypatch
 ):

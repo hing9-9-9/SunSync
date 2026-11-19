@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { blankSpace } from "./model.ts";
 import {
   saveServerSpace,
+  oneZone,
   mergeServerSpaces,
   listServerSpaces,
   predictSunpath,
@@ -296,4 +297,21 @@ test("handoff clients fall back to legacy /api/ui/handoffs on 404 and support cl
     "/api/ui/handoffs/tok-1/complete",
     "/api/ui/handoffs/claim",
   ]);
+});
+
+test("oneZone merges a space with several zones into its first zone", () => {
+  const base = blankSpace();
+  const space = {
+    ...base,
+    zone: "구역 02",
+    zones: ["구역 01", "구역 02"],
+    furniture: [{ id: "a", zone: "구역 01" }, { id: "b", zone: "구역 02" }],
+    regions: [{ id: "r", zone: "구역 02" }],
+  } as unknown as typeof base;
+  const merged = oneZone(space);
+  assert.deepEqual(merged.zones, ["구역 01"]);
+  assert.equal(merged.zone, "구역 01");
+  assert.ok(merged.furniture.every((f) => f.zone === "구역 01"));
+  assert.ok(merged.regions.every((r) => r.zone === "구역 01"));
+  assert.equal(oneZone(base), base);
 });

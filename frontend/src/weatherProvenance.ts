@@ -96,5 +96,5 @@ export function weatherProvenanceMessage(segments: ProvenanceSegment[], timeZone
   const stored = sentence.filter((segment) => segment.kind === "stored");
   if (stored.length === 1 && sentence.length === 1) return "오늘 일조 예측 전체에는 저장된 날씨 정보를 반영했어요.";
   if (stored.length) return `${formatRange(stored[0], timeZone)}는 저장된 날씨 정보를 반영했어요.`;
-  return "현재 날씨 예보를 적용할 수 없었어요.";
+  return "현재 날씨 예보를 적용할 수 없어요.";
 }

@@ -131,7 +131,6 @@ function App() {
     patchRegion,
     protectFurniture,
     save,
-    renameZone,
     zoneTabs,
     finishCapture,
     completeVisionRegistration,
@@ -400,14 +399,6 @@ function App() {
                           />
                         </label>
                       </div>
-                      <label className="field">
-                        <span>측정 구역</span>
-                        <input
-                          required
-                          value={draft.zone}
-                          onChange={(e) => renameZone(e.target.value)}
-                        />
-                      </label>
                     </Card>
                     <Card>
                       <h3>

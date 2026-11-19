@@ -21,6 +21,7 @@ import {
   furnitureTypes,
   grades,
   isWidthWall,
+  m2,
   margin,
   wallLength,
   upsertSpace,
@@ -151,10 +152,10 @@ function MobileApp() {
     patchRegion,
     protectFurniture,
     save,
-    renameZone,
     zoneTabs,
     finishCapture,
     completeVisionRegistration,
+    namePrompt,
     addFurniture,
     addManualFurniture,
     registerSubmit,
@@ -179,6 +180,7 @@ function MobileApp() {
   const settingsOpen = settings.page === page && settings.open;
   const openSettings = () => setSettings({ page, open: true });
   const closeSettings = () => setSettings({ page, open: false });
+  useEffect(() => { if (namePrompt) setSettings({ page, open: true }); }, [namePrompt]);
   const editorPointer = useRef<{x:number;y:number;furnitureId:string|null;regionId:string|null} | null>(null);
   // WEB APP TEST ONLY: camera setup state for 더보기 › 카메라 준비.
   // Home shows whether blocking is on right now, so the clock ticks once a minute.
@@ -725,14 +727,6 @@ function MobileApp() {
                           />
                         </label>
                       </div>
-                      <label className="field">
-                        <span>측정 구역</span>
-                        <input
-                          required
-                          value={draft.zone}
-                          onChange={(e) => renameZone(e.target.value)}
-                        />
-                      </label>
                     </Card>
                     <Card>
                       <h3>
@@ -982,9 +976,8 @@ function MobileApp() {
                   <div>
                     <div className="capture-intro">
                       <div className="capture-title-with-marker">
-                        <h2>{addingByQr ? "추가할 가구" : "촬영할 가구"}</h2>
                         <TestMarkerPreview key={captureMarker?.session_id} session={captureMarker} />
-                        {captureMarker && <TestMarkerSize
+                        {import.meta.env.DEV && new URLSearchParams(location.search).has("test") && captureMarker && <TestMarkerSize
                           key={captureMarker.session_id}
                           sideM={markerSizeOverride?.sessionId === captureMarker.session_id ? markerSizeOverride?.sideM : undefined}
                           onApply={sideM => setMarkerSizeOverride(sideM === undefined
@@ -1362,7 +1355,7 @@ function MobileApp() {
                             : "보호 설정 전"}
                         </strong>
                         <p className="muted small">
-                          {active.floor} {active.zone}, 보호 영역{" "}
+                          {active.floor}, 보호 영역{" "}
                           {activeRegionCount}개
                         </p>
                       </div>
@@ -1372,9 +1365,9 @@ function MobileApp() {
                       {plan}
                       {(furniture || region) && <div className="plan-selection-summary" aria-live="polite">
                         <strong>{furniture?.name ?? region?.name}</strong>
-                        {furniture && <p className="selection-dimensions">{furniture.width} × {furniture.depth} × {furniture.height} m</p>}
+                        {furniture && <p className="selection-dimensions">{m2(furniture.width)} × {m2(furniture.depth)} × {m2(furniture.height)} m</p>}
                         {region && <div className="selection-protection">
-                          <p>{region.name} · {region.bottom}–{region.top} m</p>
+                          <p>{region.name} · {m2(region.bottom)}–{m2(region.top)} m</p>
                           <p>{region.grade} : {grades[region.grade]}</p>
                         </div>}
                       </div>}

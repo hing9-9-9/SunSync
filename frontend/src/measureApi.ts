@@ -69,7 +69,7 @@ async function postRaw(url: string, body: string, signal?: AbortSignal): Promise
   if (!response.ok) {
     const detail = typeof data?.detail === "string" ? data.detail : JSON.stringify(data?.detail ?? response.status);
     console.warn("[measure]", url, detail); // the person sees serverMessage; developers need the raw reason
-    throw new MeasureError(serverMessage(detail), response.status);
+    throw new MeasureError(serverMessage(detail, url), response.status);
   }
   return text;
 }
@@ -80,18 +80,19 @@ async function get<T>(url: string, signal?: AbortSignal): Promise<T> {
   if (response.status === 401) throw unauthorized();
   if (!response.ok) {
     const detail = JSON.stringify((await response.json().catch(() => null))?.detail ?? response.status);
-    throw new MeasureError(serverMessage(detail), response.status);
+    throw new MeasureError(serverMessage(detail, url), response.status);
   }
   return response.json() as Promise<T>;
 }
 
 // The server answers in English; the person sees what to do next.
-export function serverMessage(detail: string): string {
+export function serverMessage(detail: string, url = ""): string {
   const rules: [RegExp, string][] = [
     [/선택한 필름이 변경됐어요/, "선택한 필름이 변경됐어요. 이전 촬영을 끝내고 촬영 화면을 다시 열어 주세요."],
     [/complete 1m film module/i, "마커를 표시하려면 창문에 가로·높이 1m인 필름이 한 장 이상 있어야 해요."],
     [/Film module outside/i, "선택한 필름이 창의 배치 범위를 벗어났어요."],
-    [/Another capture session/i, "이 공간에서 다른 촬영이 진행 중이에요. 먼저 완료하거나 취소해 주세요."],
+    [/Another capture session/i, "이 공간에서 다른 촬영이 진행 중이에요."],
+    [/Stored film grid differs/i, "창문 크기를 바꾼 뒤 필름 설정이 맞지 않아요. 창문 정보를 다시 저장해 주세요."],
     [/Capture marker|Capture request/i, "촬영 마커가 바뀌었거나 시간이 만료됐어요. 촬영을 다시 시작해 주세요."],
     [/Move the phone|repeated viewpoints/i, "같은 자리에서 찍은 사진이 있어요. 휴대폰 위치를 바꿔 가며 찍어 주세요."],
     [/across more of the screen/i, "보드가 화면 가장자리에도 오도록 위치를 바꿔 가며 찍어 주세요."],
@@ -104,7 +105,10 @@ export function serverMessage(detail: string): string {
     [/Revision conflict|409/i, "다른 곳에서 공간이 바뀌었어요. 목록을 새로고침한 뒤 다시 시도해 주세요."],
     [/repeat|spread|residual|reprojection|insufficient|not enough/i, "같은 지점 사진끼리 위치가 많이 달라요. 지점에 렌즈를 정확히 맞추고 다시 찍어 주세요."],
   ];
-  return rules.find(([pattern]) => pattern.test(detail))?.[1] ?? "측정하지 못했어요. 사진을 다시 찍어 주세요.";
+  const known = rules.find(([pattern]) => pattern.test(detail))?.[1];
+  if (known) return known;
+  // Before any photo is taken, the marker request itself failed: do not tell the person to retake photos.
+  return url.includes("/capture-marker") ? "촬영을 시작하지 못했어요. 잠시 뒤 다시 시도해 주세요." : "측정하지 못했어요. 사진을 다시 찍어 주세요.";
 }
 
 /** The measurement server answers 200 even when the photos do not add up (the failure only surfaces
@@ -449,7 +453,12 @@ export async function checkCaptureMarker(session: CaptureMarker, signal?: AbortS
   return current;
 }
 export async function endCaptureMarker(session: CaptureMarker): Promise<void> {
-  await post(`${markerUrl(session.scene_id)}/${session.session_id}/end`, {});
+  try { await post(`${markerUrl(session.scene_id)}/${session.session_id}/end`,{}); }
+  catch (e) {
+    // The server no longer knows this session (409): end whatever it holds instead of leaving the user stuck.
+    if (e instanceof MeasureError && e.status === 409) await post(`${markerUrl(session.scene_id)}/end-active`,{});
+    else throw e;
+  }
   if (sessionStorage.getItem(markerKey(session.scene_id)) === session.session_id) sessionStorage.removeItem(markerKey(session.scene_id));
 }
 
@@ -469,15 +478,16 @@ export async function resumeCaptureMarker(sceneId:string):Promise<CaptureMarker|
     if(e instanceof MeasureError && (e.status===404 || e.status===410)) {
       sessionStorage.removeItem(markerKey(sceneId)); return null;
     }
+    // 409: the film layout changed under this session, so it cannot continue. End it and start fresh.
+    if(e instanceof MeasureError && e.status===409) { await cancelStoredCapture(sceneId); return null; }
     throw e;
   }
 }
 export async function cancelStoredCapture(sceneId:string):Promise<void> {
-  const id=sessionStorage.getItem(markerKey(sceneId));
-  if(id) await post(`${markerUrl(sceneId)}/${id}/end`,{});
-  sessionStorage.removeItem(markerKey(sceneId));
+  // Ends whatever session the server still holds for this space, including one left by another tab or device.
+  try { await post(`${markerUrl(sceneId)}/end-active`,{}); }
+  finally { sessionStorage.removeItem(markerKey(sceneId)); }
 }
-
 
 export type Selection = {status:"ok"|"retake";raw_samples:number;selected_samples:number;
   selected_capture_ids:string[];quality:{uncertainty_m?:number;reason:string};diagnostics?:{status:string}[]};
@@ -523,10 +533,10 @@ export type VisionEstimateResult = {
 
 export function visionErrorMessage(detail: string): string {
   if (/ArUco marker.*not detected/i.test(detail)) {
-    return "사진에서 창문 ArUco 마커를 찾지 못했어요. 창문 마커와 가구가 함께 보이게 다시 찍거나 아래에서 모서리를 직접 촬영해 주세요.";
+    return "사진에서 창문 마커를 찾지 못했어요. 창문 마커와 가구가 같이 보이게 다시 찍거나, 아래에서 모서리를 직접 촬영해 주세요.";
   }
   if (/No furniture objects detected/i.test(detail)) {
-    return "사진에서 가구를 찾지 못했어요. 가구 전체가 보이게 다시 찍거나 아래에서 가구 형태를 직접 골라 촬영해 주세요.";
+    return "사진에서 가구를 찾지 못했어요. 가구 전체가 보이게 다시 찍거나, 아래에서 형태를 골라 촬영해 주세요.";
   }
   if (/Revision conflict|409/i.test(detail)) {
     return "다른 곳에서 공간이 바뀌었어요. 목록을 새로고침한 뒤 다시 시도해 주세요.";
@@ -534,7 +544,7 @@ export function visionErrorMessage(detail: string): string {
   if (/module before vision/i.test(detail)) {
     return "촬영할 창문 필름 칸을 먼저 선택해 주세요.";
   }
-  return "AI 가구 인식에 실패했어요. 아래에서 가구 형태를 골라 ArUco 모서리 촬영으로 진행해 주세요.";
+  return "가구를 찾지 못했어요. 아래에서 형태를 골라 모서리를 직접 촬영해 주세요.";
 }
 
 export async function estimateVisionFurniture(
