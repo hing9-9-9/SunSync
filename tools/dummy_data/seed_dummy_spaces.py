@@ -176,6 +176,9 @@ def main() -> int:
         elif status == 409:
             print(f"SKIP 409 {label}  (exists or was deleted: use another --suffix)")
             continue
+        elif status == scenario.get("expectSaveStatus"):
+            print(f"OK   {status} {label}  (rejected at save, as expected)")
+            continue
         else:
             print(f"FAIL {status} {label}\n     {str(saved)[:200]}")
             failures += 1

@@ -45,7 +45,7 @@ function FurnitureSymbol({ f, ox, oy }: { f: Furniture; ox: number; oy: number }
       return <><line {...line} x1={x} y1={y} x2={x + f.width} y2={y + f.depth} /><line {...line} x1={x + f.width} y1={y} x2={x} y2={y + f.depth} /></>;
     case "display": {
       const inset = Math.min(0.08, f.width / 4, f.depth / 4);
-      return <rect {...line} fill="none" x={x + inset} y={y + inset} width={f.width - inset * 2} height={f.depth - inset * 2} />;
+      return <rect {...line} fill="none" x={x + inset} y={y + inset} width={Math.max(0, f.width - inset * 2)} height={Math.max(0, f.depth - inset * 2)} />;
     }
     default:
       return null;
@@ -328,8 +328,8 @@ export default function Plan({
                 data-furniture={f.id}
                 x={left + f.x}
                 y={top + f.y}
-                width={f.width}
-                height={f.depth}
+                width={Math.max(0, f.width)}
+                height={Math.max(0, f.depth)}
                 fill={f.id === selectedFurniture ? "var(--c-d8dbe3)" : "var(--c-e4e8ef)"}
                 stroke={f.id === selectedFurniture ? "var(--c-action)" : "var(--c-a6adba)"}
                 strokeWidth="1pt"
@@ -379,8 +379,8 @@ export default function Plan({
                 data-linked={r.furnitureId ? "" : undefined}
                 x={left + r.x}
                 y={top + r.y}
-                width={r.width}
-                height={r.depth}
+                width={Math.max(0, r.width)}
+                height={Math.max(0, r.depth)}
                 fill={exposedRegionIds.includes(r.id) ? "var(--c-e8ad33)" : "var(--c-8b7ef4)"}
                 // A region on furniture is shown by its protected face line, not by tinting the furniture.
                 fillOpacity={r.furnitureId ? "0" : r.id === selectedRegion ? ".28" : ".18"}

@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { filmStatesAt } from "./shading";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { filmStatesAt, gatePlan } from "./shading";
 import type { ShadingResult } from "./shading";
 import { CELL_SIZE, filmCellEdges, filmGrid, resolveWindow, timeToMinute, validateShadingTime, validateWindow, walls } from "./model";
 import { defaultShadingTime, m2 } from "./model";
@@ -29,12 +29,12 @@ export function FilmGrid({ space, schedule, hour, marker = false, prediction, se
     return <figure className="film-grid">{loading && <div className="film-grid-skeleton" style={{ aspectRatio: `${cols} / ${rows}` }} aria-hidden="true" />}<p className={prediction.error ? "error" : "muted small"} role={prediction.error ? "alert" : "status"}>{prediction.error ?? (prediction.empty ? "아직 이 공간의 차광 계획이 없습니다." : "차광 계획을 계산하는 중…")}</p></figure>;
   }
   if (serverWindow && (serverWindow.film_cols !== cols || serverWindow.film_rows !== rows))
-    return <p className="error" role="alert">저장된 창문 규격과 차광 계획이 다릅니다. 최신 공간 정보를 불러와 주세요.</p>;
+    return <p className="error" role="alert">저장된 창문 규격과 차광 계획이 달라요. 최신 공간 정보를 불러와 주세요.</p>;
   let states: ReturnType<typeof filmStatesAt> | undefined;
   try {
     if (prediction?.plan && hour !== undefined) states = filmStatesAt(prediction.plan, hour, setting, (id) => space.regions.find((r) => r.id === id)?.shadingSchedule);
   } catch {
-    return <p className="error" role="alert">선택한 시각의 차광 계획을 확인할 수 없습니다. 다시 계산해 주세요.</p>;
+    return <p className="error" role="alert">선택한 시각의 차광 계획을 확인할 수 없어요. 다시 계산해 주세요.</p>;
   }
   const counts = { infeasible: 0, unknown: 0 };
   for (const cell of states?.values() ?? []) {
@@ -79,8 +79,8 @@ export function FilmGrid({ space, schedule, hour, marker = false, prediction, se
       {walls[win.wall]} · {m2(win.width)} × {m2(win.height)} m · {cols}×{rows}칸
       {showShading && ` · 가림 ${shaded.size}칸`}
       {showShading && <span className="example-note">{prediction ? " · 계산된 차단 계획" : " · 예시 칸 배치"}</span>}
-      {counts.infeasible > 0 && <p role="status">보호 조건 충족 불가 {counts.infeasible}칸: 필름을 가장 어둡게 해도 보호 조건을 만족하지 못합니다.</p>}
-      {counts.unknown > 0 && <p role="status">판단 불가 {counts.unknown}칸: 일사량 정보가 부족합니다.</p>}
+      {counts.infeasible > 0 && <p role="status">보호 조건 충족 불가 {counts.infeasible}칸: 필름을 가장 어둡게 해도 보호 조건을 만족하지 못해요.</p>}
+      {counts.unknown > 0 && <p role="status">판단 불가 {counts.unknown}칸: 일사량 정보가 부족해요.</p>}
     </figcaption>
   </figure>;
 }
@@ -162,7 +162,7 @@ export function ShadingTimeControl({ space, value, onChange, sunSchedule, hour, 
       </label>
     </div>
     {!compact && <p className="muted small">
-      {value.enabled ? "설정한 시간 안에서 햇빛이 보호 영역에 닿을 때만 필름을 가립니다. 가구마다 따로 정하지 않은 가구는 이 시간을 따릅니다." : "꺼져 있으면 필름을 가리지 않습니다. 켜고 차단할 시간을 정해 주세요."}
+      {value.enabled ? "설정한 시간 안에서 햇빛이 보호 영역에 닿을 때만 필름을 가려요. 가구마다 따로 정하지 않은 가구는 이 시간을 따라요." : "꺼져 있으면 필름을 가리지 않아요. 켜고 차단할 시간을 정해 주세요."}
     </p>}
     <div className="two-fields">
       <TimeSelect label="시작" value={value.start} disabled={!value.enabled} onChange={(start) => onChange({ ...value, start })} />
@@ -209,7 +209,7 @@ function unmetByTime(logs: FilmApplicationLogEntry[], timezone?: string) {
  * The film as its own card: what is covered at the chosen time, and one button that sends the plan on.
  * The unmet-times list appears only when the film could not reach the wanted cover.
  */
-export function VirtualFilmControl({ space, prediction, hour, children }: { space: Space; prediction?: ShadingResult; hour: number; children?: ReactNode }) {
+export function VirtualFilmControl({ space, prediction, hour, setting, children }: { space: Space; prediction?: ShadingResult; hour: number; setting: ShadingTime; children?: ReactNode }) {
   const sceneId = space.serverSceneId;
   const win = resolveWindow(space);
   const [busy, setBusy] = useState(false);
@@ -223,7 +223,20 @@ export function VirtualFilmControl({ space, prediction, hour, children }: { spac
   const latest = useRef(0);
   const [loadedFor, setLoadedFor] = useState<string | undefined>();
 
-  const plan = prediction?.plan;
+  // The film follows the block times: stretches outside them are cut from the plan before it is read or applied.
+  const rawPlan = prediction?.plan;
+  const plan = useMemo(() => {
+    if (!rawPlan) return undefined;
+    try { return gatePlan(rawPlan, setting, (id) => space.regions.find((r) => r.id === id)?.shadingSchedule); } catch { return rawPlan; }
+  }, [rawPlan, setting, space.regions]);
+  // What the plan covers at the chosen time: the same count the film preview above shows.
+  const planned = useMemo(() => {
+    if (!rawPlan) return undefined;
+    try {
+      const states = filmStatesAt(rawPlan, hour, setting, (id) => space.regions.find((r) => r.id === id)?.shadingSchedule);
+      return [...states.values()].filter((c) => c.state === "opaque").length;
+    } catch { return undefined; }
+  }, [rawPlan, hour, setting, space.regions]);
   const simulatedAt = plan ? new Date(Date.parse(plan.start_time) + Math.round(hour * 60) * 60_000).toISOString() : undefined;
   const timezone = space.site?.timezone;
 
@@ -305,6 +318,9 @@ export function VirtualFilmControl({ space, prediction, hour, children }: { spac
   const total = windowState ? windowState.film_rows * windowState.film_cols : 0;
   const covered = windowState ? windowState.states.reduce((sum, row) => sum + row.filter((cell) => cell === "opaque").length, 0) : 0;
   const pending = !!plan && !error && loadedFor !== simulatedAt;
+  // The server holds what was applied to the film; the plan is what the film should do. They differ until the plan is applied.
+  const shown = planned ?? covered;
+  const notApplied = !pending && planned !== undefined && planned !== covered;
 
   return (
     <section className="film-card" aria-label="필름">
@@ -314,8 +330,9 @@ export function VirtualFilmControl({ space, prediction, hour, children }: { spac
           ? <>
               {pending
                 ? <p>{formatTimeLabel(simulatedAt!, timezone)} 기준 <span className="muted">계산 중…</span></p>
-                : <p>{formatTimeLabel(windowState.evaluated_at, timezone)} 기준 <strong>{total}칸 중 {covered}칸</strong> 가림</p>}
-              <div className={pending ? "film-meter is-pending" : "film-meter"} role="img" aria-label={`전체 ${total}칸 중 ${covered}칸 가림`}><span style={{ width: `${total ? (covered / total) * 100 : 0}%` }} /></div>
+                : <p>{formatTimeLabel(windowState.evaluated_at, timezone)} 기준 <strong>{total}칸 중 {shown}칸</strong> 가림</p>}
+              <div className={pending ? "film-meter is-pending" : "film-meter"} role="img" aria-label={`전체 ${total}칸 중 ${shown}칸 가림`}><span style={{ width: `${total ? (shown / total) * 100 : 0}%` }} /></div>
+              {notApplied && <p className="muted small">아직 필름에 적용하지 않았어요. 아래 버튼을 누르면 반영돼요.</p>}
             </>
           : <p className="muted small">{!plan ? "아직 계산된 차단 계획이 없어요." : busy ? "불러오는 중…" : "필름 상태를 불러오지 못했어요."}</p>}
       </div>

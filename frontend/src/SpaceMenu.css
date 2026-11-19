@@ -76,3 +76,11 @@
 .app.app.award-mobile.mode-app.page-spaces .room-entry > .room-card:not(:last-child) { border-bottom-left-radius: 0 !important; border-bottom-right-radius: 0 !important; }
 .app.app.award-mobile.mode-app.page-spaces .room-entry > .space-measurement-status { margin: 0 16px; padding: 8px 0; background: transparent; border-top: 1px solid var(--c-hairline); }
 .app.app.award-mobile.mode-app.page-spaces .room-entry > .space-measurement-status > button { min-width: 0; padding: var(--space-2) var(--space-4); font-size: 14px; }
+
+/* Touch target: keep the 36px look, extend the tappable area to 44px. */
+.app.mode-app .rp-room-wrap > .space-menu .space-menu-trigger,
+.app.mode-app .room-entry > .space-menu .space-menu-trigger,
+.app.mode-app .award-room-card > .space-menu .space-menu-trigger { position: relative; }
+.app.mode-app .rp-room-wrap > .space-menu .space-menu-trigger::after,
+.app.mode-app .room-entry > .space-menu .space-menu-trigger::after,
+.app.mode-app .award-room-card > .space-menu .space-menu-trigger::after { content: ""; position: absolute; inset: -4px; }

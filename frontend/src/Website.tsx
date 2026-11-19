@@ -1,4 +1,5 @@
 import { guideSteps } from "./guideContent";
+import { GuideMethods } from "./GuideMethods";
 import type { Account } from "./model";
 import { grades } from "./model";
 import "./Website.css";
@@ -359,7 +360,8 @@ export function WebsiteGuide({
             <div className="website-guide-detail-art">
               <GuideArt step={index} />
             </div>
-            <p className="website-guide-lead">{guideSteps[index].text}</p>
+            {!guideSteps[index].methods && <p className="website-guide-lead">{guideSteps[index].text}</p>}
+            <GuideMethods methods={guideSteps[index].methods} />
             <p className="website-guide-detail-text">
               {guideSteps[index].detail}
             </p>

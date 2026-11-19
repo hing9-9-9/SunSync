@@ -1,13 +1,15 @@
 import { useState } from "react";
 import { guideSteps } from "./guideContent";
 import { GuideIllustration } from "./MoodIcons";
+import { GuideMethods } from "./GuideMethods";
 
 // Guide step opened in a sheet over the capture screen. Closing returns to the capture exactly as it was
 // (photos, shape and current point stay), so reading help never ends or interrupts the measurement.
 const CAPTURE_STEP = 2;
 
-export function CaptureHelp({ onClose }: { onClose: () => void }) {
-  const [index, setIndex] = useState(CAPTURE_STEP);
+// `initialStep` lets the capture screen open the page that fits its stage (picking the film cell vs. photographing).
+export function CaptureHelp({ onClose, initialStep = CAPTURE_STEP }: { onClose: () => void; initialStep?: number }) {
+  const [index, setIndex] = useState(initialStep);
   const step = guideSteps[index];
   return (
     <section className="capture-help" aria-labelledby="capture-help-title">
@@ -18,7 +20,8 @@ export function CaptureHelp({ onClose }: { onClose: () => void }) {
       <div className="mobile-guide-visual" aria-hidden="true">
         <GuideIllustration step={index} />
       </div>
-      <p>{step.text}</p>
+      {!step.methods && <p>{step.text}</p>}
+      <GuideMethods methods={step.methods} />
       <p className="muted">{step.detail}</p>
       <div className="guide-pagination">
         <button type="button" className="secondary" disabled={index === 0} onClick={() => setIndex((i) => i - 1)}>

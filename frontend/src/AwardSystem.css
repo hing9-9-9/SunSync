@@ -2395,3 +2395,14 @@
 .app.award-mobile.mode-app.page-register .zone-tabs::-webkit-scrollbar { display: none; }
 .app.award-mobile.mode-app.page-register .zone-tabs > * { flex: 0 0 auto; }
 .app.award-mobile.mode-app.page-register .zone-tabs .zone-action { padding: 0 10px; }
+
+/* Web registration: left = space info and size, then location; right = window and film. Mobile keeps DOM order. */
+@media (min-width: 1101px) {
+  .app.award-app:not(.mode-app) .registration .two-column { grid-template-rows: auto 1fr; }
+  .app.award-app:not(.mode-app) .registration .two-column > .reg-info { grid-column: 1; grid-row: 1; }
+  .app.award-app:not(.mode-app) .registration .two-column > .reg-location { grid-column: 1; grid-row: 2; }
+  .app.award-app:not(.mode-app) .registration .two-column > .reg-window { grid-column: 2; grid-row: 1 / span 2; }
+}
+.app.award-app:not(.mode-app) .registration { max-width: none; margin: 0; }
+.app.award-app:not(.mode-app) .registration .two-column > .reg-info,
+.app.award-app:not(.mode-app) .registration .two-column > .reg-location { padding-bottom: var(--space-6); }

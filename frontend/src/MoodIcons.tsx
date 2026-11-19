@@ -112,15 +112,15 @@ export function GuideIllustration({ step }: { step: number }) {
           <path d="M80 51v12l10-6" {...line} />
           <circle cx="80" cy="63" r="2" fill={iris} />
           <g fill={ink} fontFamily="inherit">
-            <text x="116" y="50" fontSize="10" fontWeight="500">차단 시간</text>
+            <text x="116" y="49" fontSize="12" fontWeight="500">차단 시간</text>
             <text x="116" y="71" fontSize="13" fontWeight="700">14:00 — 17:00</text>
           </g>
           <rect x="58" y="98" width="164" height="8" rx="4" fill={block} />
           <rect x="153.67" y="98" width="20.5" height="8" rx="4" fill={iris} />
           <path d="M153.67 93v18m20.5-18v18" stroke={iris} strokeWidth="1.2" />
-          <g fill={ink} fontFamily="inherit" fontSize="9">
-            <text x="58" y="123">00:00</text>
-            <text x="222" y="123" textAnchor="end">24:00</text>
+          <g fill={ink} fontFamily="inherit" fontSize="11">
+            <text x="58" y="124">00:00</text>
+            <text x="222" y="124" textAnchor="end">24:00</text>
           </g>
         </>
       )}

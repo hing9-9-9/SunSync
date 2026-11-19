@@ -468,7 +468,7 @@ export default function AwardPreview({
             <div className="ap-hero-note">
               <p>
                 가구와 보호 영역을 지정하고,
-                <br />햇빛을 막을 시간을 설정하세요.
+                <br />햇빛을 막을 시간을 설정해요.
               </p>
               <button className="ap-round-link" onClick={studio}>
                 <Scribble />
@@ -520,7 +520,7 @@ export default function AwardPreview({
             <SunMark />
             <p>
               보호가 필요한 곳만 가리고,
-              <br />나머지 공간에는 자연광을 남깁니다.
+              <br />나머지 공간에는 자연광을 남겨요.
             </p>
             <button className="ap-text-link" onClick={studio}>
               내 공간 열기 <Arrow />
@@ -564,17 +564,17 @@ export default function AwardPreview({
             {[
               {
                 title: "QR로 공간 인식",
-                text: "상판 형태에 맞춰 각 지점에서 창문 QR 마커를 보며 촬영 버튼을 한 번 누릅니다.",
+                text: "가구를 방 한 장으로 찾거나, 마커를 보며 지점마다 한 번씩 찍어 정확히 재요.",
                 art: "scan",
               },
               {
                 title: "보호 영역 지정",
-                text: "보호할 곳을 선택하고 위치·치수·등급을 설정합니다.",
+                text: "보호할 곳을 고르고 위치·치수·등급을 정해요.",
                 art: "select",
               },
               {
                 title: "차단 시간 설정",
-                text: "햇빛을 막을 시간을 설정합니다.",
+                text: "햇빛을 막을 시간을 정해요.",
                 art: "time",
               },
             ].map((step, i) => (

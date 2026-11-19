@@ -1,37 +1,26 @@
 import { lazy, Suspense } from "react";
 import { WebLoginGoogleStep } from "./WebLoginStep";
-import NumberField from "./NumberField";
-import RotateField from "./RotateField";
-import { FilmLayout } from "./FilmModulePicker";
 import FurnitureTable from "./FurnitureTable";
 import "./ReferencePreview.css";
 import "./WorkspaceDesign.css";
-import { DeviceHandoff } from "./DeviceHandoff";
-import { CaptureHelp } from "./CaptureHelp";
-import { RegionTimeField, ShadingTimeControl, VirtualFilmControl } from "./ShadingPlan";
+import { ShadingTimeControl, VirtualFilmControl } from "./ShadingPlan";
 import { SpaceMenu, SpaceMenuGlyph } from "./SpaceMenu";
 import AdaptiveEffect from "./AdaptiveEffect.tsx";
 import SpatialCapture from "./SpatialCapture";
 import {
   defaultShadingTime,
-  furnitureTypes,
-  grades,
-  isWidthWall,
-  margin,
-  wallLength,
-  walls,
 } from "./model";
 import type {
-  FurnitureType,
-  Grade,
-  Wall,
 } from "./model";
 import "./App.css";
 
 import { AwardHeader, AwardLanding, AwardSpaces, AwardGuide, AwardFooter } from "./AwardSystem";
 import { AccountOverview, AuthPanel } from "./AccountPage";
 import { useSpaceApp, titles } from "./useSpaceApp";
-import { clearFieldIssue } from "./formIssues";
+import { RegisterForm } from "./RegisterForm";
+import { InspectorFields } from "./InspectorFields";
+import { DialogBodies } from "./DialogBodies";
+import { ProcessingCard, QrWebGuide, TempDraftsSection } from "./SharedSections";
 import { Icon, Card } from "./ShellParts";
 // The web detail plan (2D top view and 3D) is a three.js scene, loaded with the detail page only.
 // Start fetching the 3D view at once, so the detail page rarely waits on it.
@@ -42,17 +31,14 @@ const Space3DView = lazy(load3D);
 import "./Space3DView.css";
 
 function App() {
+  const app = useSpaceApp();
   const {
     isApp,
-    handoffLink,
-    deviceSession,
     measurementJobs,
-    measurementReady,
     account,
     authStatus,
     authNotice,
     startLogin,
-    signOut,
     spaces,
     page,
     draft,
@@ -60,8 +46,6 @@ function App() {
     selectedFurniture,
     selectedRegion,
     chooseRegion,
-    setSelectedFurniture,
-    setSelectedRegion,
     tool,
     setTool,
     modal,
@@ -72,16 +56,11 @@ function App() {
     savedOverlapWarning,
     setPage,
     toast,
-    pendingDelete,
-    confirmDelete,
-    askDelete,
     guideIndex,
     setGuideIndex,
     addingByQr,
     setAddingByQr,
     rememberQrReturn,
-    progress,
-    setProgress,
     hour,
     setHour,
     storageError,
@@ -90,11 +69,7 @@ function App() {
     serverError,
     unavailable,
     conflict,
-    locationStatus,
-    locating,
-    receiveMeasurement,
     joinMeasurement,
-    locateBuilding,
     modalRef,
     errorRef,
     active,
@@ -104,19 +79,11 @@ function App() {
     shadingEdit,
     setShadingEdit,
     detailShading,
-    furniture,
     region,
     refreshServer,
-    reloadServerDraft,
-    transferSpace,
     unsaved,
     leaveUnsaved,
     tempDrafts,
-    tempDeleteId,
-    askDeleteTempDraft,
-    confirmDeleteTempDraft,
-    resumeTempDraft,
-    leaveEditor,
     navigate,
     requireAccount,
     dismissModal,
@@ -126,10 +93,7 @@ function App() {
     editSpace,
     setActiveId,
     change,
-    changeFurniture,
     chooseFurniture,
-    patchRegion,
-    protectFurniture,
     save,
     zoneTabs,
     finishCapture,
@@ -137,25 +101,18 @@ function App() {
     addFurniture,
     addManualFurniture,
     confirmReview,
-    registerSubmit,
     plan,
     navItems,
     isActive,
     actionBar,
-    draftWindow,
-    changeWindow,
-    draftSite,
     syncFailed,
     retryUpload,
     sunSource,
     filmPrediction,
-    continueManually,
-    deleteSpace,
-    deleting,
     predictionDate,
     predictionKey,
     sunpathResult,
-  } = useSpaceApp();
+  } = app;
   // Home, guide and the example need no login; everything else waits for the session answer.
   const publicPage = page === "home" || page === "guide";
   const checking = authStatus === "checking" && !publicPage;
@@ -316,27 +273,7 @@ function App() {
                       {serverError} 기존 브라우저 자료는 유지됩니다.
                     </p>
                   )}</>} spaces={spaces} jobs={measurementJobs} syncFailed={syncFailed} onRetrySync={retryUpload} onSelect={selectSpace} onEdit={(s, at) => editSpace(s, at)} onDelete={(s) => { setActiveId(s.id); setModal("delete-space"); }} onStart={begin} onMeasurement={job=>{const s=spaces.find(s=>s.id===job.space_id);if(isApp && job.status!=="completed")joinMeasurement(job);else if(s){selectSpace(s);if(job.status!=="completed"){setDraft(structuredClone(s));setPage("capture");}}}}/>}
-                  {page === "spaces" && tempDrafts.length > 0 && (
-                    <section className="temp-drafts" aria-labelledby="temp-drafts-title">
-                      <h2 id="temp-drafts-title">작성 중인 공간</h2>
-                      {tempDrafts.map((t) => (
-                        <div className="row" key={t.space.id}>
-                          <button type="button" className="temp-draft-open" onClick={() => resumeTempDraft(t)}>
-                            <span>
-                              {t.space.name || "이름 없는 공간"}
-                              <small>
-                                {[t.space.building, t.space.floor].filter(Boolean).join(" ") || "건물 정보 없음"} · {new Date(t.savedAt).toLocaleDateString("ko-KR", { month: "long", day: "numeric" })} 임시 저장
-                              </small>
-                            </span>
-                            <span className="status-pill todo">작성 중</span>
-                          </button>
-                          <button type="button" className="text-button destructive-text" onClick={() => askDeleteTempDraft(t.space.id)}>
-                            삭제
-                          </button>
-                        </div>
-                      ))}
-                    </section>
-                  )}
+                  {page === "spaces" && tempDrafts.length > 0 && <TempDraftsSection app={app} />}
                   {unavailable.length > 0 && (
                     <section className="external-spaces">
                       <h2>다른 형식의 공간</h2>
@@ -354,295 +291,8 @@ function App() {
                   )}
                 </div>
               )}
-              {page === "register" && draft && (
-                <form id="register-form" noValidate onSubmit={registerSubmit} onInput={(e) => clearFieldIssue(e.target)} className="registration">
-                  <p className="step-label">1/3단계, 공간 정보</p>
-                  <h2>건물과 공간 등록</h2>
-                  <div className="two-column">
-                    <Card>
-                      <h3>공간 정보</h3>
-                      {zoneTabs}
-                      <label className="field">
-                        <span>건물 이름</span>
-                        <input
-                          required
-                          list="buildings"
-                          value={draft.building}
-                          placeholder="예: 햇살도서관"
-                          onChange={(e) => change({ building: e.target.value })}
-                        />
-                      </label>
-                      <datalist id="buildings">
-                        {[...new Set(spaces.map((s) => s.building))].map(
-                          (b) => (
-                            <option key={b} value={b} />
-                          ),
-                        )}
-                      </datalist>
-                      <div className="two-fields">
-                        <label className="field">
-                          <span>층 / 위치</span>
-                          <input
-                            required
-                            value={draft.floor}
-                            placeholder="예: 1층"
-                            onChange={(e) => change({ floor: e.target.value })}
-                          />
-                        </label>
-                        <label className="field">
-                          <span>공간 이름</span>
-                          <input
-                            required
-                            value={draft.name}
-                            placeholder="예: 열람실"
-                            onChange={(e) => change({ name: e.target.value })}
-                          />
-                        </label>
-                      </div>
-                    </Card>
-                    <Card>
-                      <h3>
-                        공간 크기 <small>m</small>
-                      </h3>
-                      <div className="dimensions">
-                        <NumberField
-                          label="공간 가로"
-                          value={draft.width}
-                          min={0.1}
-                          onChange={(width) => change({ width })}
-                        />
-                        <NumberField
-                          label="공간 세로"
-                          value={draft.depth}
-                          min={0.1}
-                          onChange={(depth) => change({ depth })}
-                        />
-                        <NumberField
-                          label="공간 높이"
-                          value={draft.height}
-                          min={0.1}
-                          onChange={(height) => change({ height })}
-                        />
-                      </div>
-                      <h3>
-                        창문 규격·위치 <small>m</small>
-                      </h3>
-                      <div className="two-fields">
-                        <NumberField
-                          label="창문 가로"
-                          value={draft.windowDimensions?.width ?? NaN}
-                          min={0.1}
-                          onChange={(width) => changeWindow({ width })}
-                        />
-                        <NumberField
-                          label="창문 높이"
-                          value={draft.windowDimensions?.height ?? NaN}
-                          min={0.1}
-                          onChange={(height) => changeWindow({ height })}
-                        />
-                      </div>
-                      <label className="field">
-                        <span>창문이 있는 벽</span>
-                        <select
-                          value={draftWindow?.wall ?? "south"}
-                          disabled={!draftWindow}
-                          onChange={(e) =>
-                            changeWindow({ wall: e.target.value as Wall, offset: undefined })
-                          }
-                        >
-                          {(Object.keys(walls) as Wall[]).map((w) => (
-                            <option key={w} value={w}>
-                              {walls[w]}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      {draftWindow && (
-                        <>
-                          {/* Right and top margins are derived: editing them rewrites offset/sill, the stored values. */}
-                          <div className="two-fields">
-                            <NumberField
-                              label={
-                                isWidthWall(draftWindow.wall)
-                                  ? "왼쪽 여백 · 서쪽 끝부터"
-                                  : "왼쪽 여백 · 북쪽 끝부터"
-                              }
-                              value={draftWindow.offset}
-                              onChange={(offset) => changeWindow({ offset })}
-                            />
-                            <NumberField
-                              label={
-                                isWidthWall(draftWindow.wall)
-                                  ? "오른쪽 여백 · 동쪽 끝까지"
-                                  : "오른쪽 여백 · 남쪽 끝까지"
-                              }
-                              value={margin(wallLength(draft, draftWindow.wall) - draftWindow.offset - draftWindow.width)}
-                              onChange={(right) =>
-                                changeWindow({ offset: margin(wallLength(draft, draftWindow.wall) - draftWindow.width - right) })
-                              }
-                            />
-                            <NumberField
-                              label="위 여백 · 천장까지"
-                              value={margin(draft.height - draftWindow.sill - draftWindow.height)}
-                              onChange={(top) =>
-                                changeWindow({ sill: margin(draft.height - draftWindow.height - top) })
-                              }
-                            />
-                            <NumberField
-                              label="아래 여백 · 바닥부터"
-                              value={draftWindow.sill}
-                              onChange={(sill) => changeWindow({ sill })}
-                            />
-                          </div>
-                          <FilmLayout space={draft} onChange={(row, col) => changeWindow({ captureModule: { row, col, rowOrigin: "bottom" } })} />
-                        </>
-                      )}
-                      <div className="divider" />
-                      <div className="section-row location-heading">
-                        <h3>건물 위치</h3>
-                        <button
-                          type="button"
-                          className="secondary"
-                          disabled={locating}
-                          onClick={() =>
-                            draft && locateBuilding(draft.id, true)
-                          }
-                        >
-                          {locating ? "위치 확인 중…" : "현재 위치로 입력"}
-                        </button>
-                      </div>
-                      {locationStatus && (
-                        <p className="muted small" role="status">
-                          {locationStatus}
-                        </p>
-                      )}
-                      <div className="two-fields">
-                        <NumberField
-                          label="위도"
-                          value={draftSite.latitude}
-                          min={-90}
-                          max={90}
-                          step={0.000001}
-                          precision={6}
-                          onChange={(latitude) =>
-                            change({ site: { ...draftSite, latitude } })
-                          }
-                        />
-                        <NumberField
-                          label="경도"
-                          value={draftSite.longitude}
-                          min={-180}
-                          max={180}
-                          step={0.000001}
-                          precision={6}
-                          onChange={(longitude) =>
-                            change({ site: { ...draftSite, longitude } })
-                          }
-                        />
-                      </div>
-                      <label className="field">
-                        <span>시간대</span>
-                        <input
-                          required
-                          value={draftSite.timezone}
-                          onChange={(e) =>
-                            change({
-                              site: { ...draftSite, timezone: e.target.value },
-                            })
-                          }
-                        />
-                      </label>
-                    </Card>
-                  </div>
-                  <div className="actions">
-                    {/* In the app the primary of these two lives in the bottom action bar. */}
-                    {!isApp && spaces.some((s) => s.id === draft.id) && (
-                      <button
-                        type="button"
-                        className="primary"
-                        disabled={saving || !!draftWarning}
-                        onClick={save}
-                      >
-                        {saving ? "저장 중…" : "변경사항 저장"}
-                      </button>
-                    )}
-                    {(!isApp || spaces.some((s) => s.id === draft.id)) && (
-                    <button
-                      type="submit"
-                      className={
-                        spaces.some((s) => s.id === draft.id)
-                          ? "secondary"
-                          : "primary"
-                      }
-                    >
-                      {isApp ? "QR 인식으로 계속" : "QR 촬영 안내로 계속"}
-                    </button>
-                    )}
-                    {(
-                      <button
-                        type="button"
-                        className="secondary"
-                        onClick={(e) => continueManually(e.currentTarget.form)}
-                      >
-                        직접 가구 추가·수정
-                      </button>
-                    )}
-                  </div>
-                </form>
-              )}
-              {page === "capture" && draft && !isApp && (
-                <Card className="qr-web-guide">
-                  <h2>앱에서 공간 인식</h2>
-                  <ol className="instruction-list">
-                    <li>창문 규격·위치 입력 후 필름에 QR 마커 표시</li>
-                    <li>앱에서 가구 이름과 상판 형태 선택</li>
-                    <li>형태별 촬영 지점에서 창문 QR 마커를 지점마다 촬영 버튼을 한 번 누르기</li>
-                    <li>마커가 다 보이지 않거나 흔들리면 앱이 재촬영 안내</li>
-                    <li>촬영이 끝나면 웹에서 도면 확인 후 가구·보호 영역 편집</li>
-                  </ol>
-                  <button
-                    className="primary"
-                    onClick={() => transferSpace("app")}
-                  >
-                    휴대폰에서 촬영
-                  </button>
-                  {deviceSession && (
-                    <DeviceHandoff
-                      session={deviceSession}
-                      onComplete={receiveMeasurement}
-                    />
-                  )}
-                  {measurementReady && (
-                    <button
-                      className="primary"
-                      onClick={() => setPage("protect")}
-                    >
-                      측정 완료, 도면 확인
-                    </button>
-                  )}
-                  {handoffLink && (
-                    <>
-                      <a className="secondary handoff-link" href={handoffLink}>
-                        앱 촬영 화면 열기
-                      </a>
-                      <label className="field">
-                        <span>휴대폰에서 열 링크</span>
-                        <input
-                          readOnly
-                          value={handoffLink}
-                          onFocus={(e) => e.target.select()}
-                        />
-                      </label>
-                    </>
-                  )}
-                  <button
-                    className="secondary"
-                    onClick={() => setPage("protect")}
-                  >
-                    직접 가구 추가·도면 편집
-                  </button>
-                </Card>
-              )}
+              {page === "register" && draft && <RegisterForm app={app} split />}
+              {page === "capture" && draft && !isApp && <QrWebGuide app={app} />}
               {page === "capture" && draft && isApp && (
                 <div className="capture-layout">
                   <div>
@@ -696,31 +346,7 @@ function App() {
                   </Card>
                 </div>
               )}
-              {page === "processing" && (
-                <Card className="processing">
-                  <p className="step-label">2/3단계, 휴대폰 사진 분석</p>
-                  <h2>측정 도면 생성 중</h2>
-                  <strong className="progress-number">
-                    {progress}
-                    <small>%</small>
-                  </strong>
-                  <progress
-                    aria-label="도면 생성 진행률"
-                    value={progress}
-                    max={100}
-                  />
-                  <p className="muted small">촬영한 가구를 도면에 배치하는 중</p>
-                  <button
-                    className="secondary"
-                    onClick={() => {
-                      setProgress(0);
-                      setPage("capture");
-                    }}
-                  >
-                    분석 취소
-                  </button>
-                </Card>
-              )}
+              {page === "processing" && <ProcessingCard app={app} />}
               {(page === "review" || page === "protect") && draft && (
                 <>
                   {!isApp && <div className="editor-command-bar">
@@ -798,224 +424,7 @@ function App() {
                       <h2>
                         {region ? "선택한 보호 영역 설정" : "선택한 가구 설정"}
                       </h2>
-                      {furniture ? (
-                        <>
-                          <label className="field">
-                            <span>가구 이름</span>
-                            <input
-                              value={furniture.name}
-                              onChange={(e) =>
-                                changeFurniture({
-                                  ...furniture,
-                                  name: e.target.value,
-                                })
-                              }
-                            />
-                          </label>
-                          <label className="field">
-                            <span>가구 종류</span>
-                            <select
-                              value={furniture.type ?? "other"}
-                              onChange={(e) =>
-                                changeFurniture({
-                                  ...furniture,
-                                  type: e.target.value as FurnitureType,
-                                })
-                              }
-                            >
-                              {(Object.keys(furnitureTypes) as FurnitureType[]).map((t) => (
-                                <option key={t} value={t}>
-                                  {furnitureTypes[t]}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
-                          <p className="muted small">
-                            {draft.source === "sample"
-                              ? "종류별 기본 치수예요. 실제 치수로 고쳐 주세요."
-                              : "직접 입력한 치수예요."}{" "}
-                            단위는 m예요.
-                          </p>
-                          <RotateField value={furniture.yaw ?? 0} onChange={(yaw) => changeFurniture({ ...furniture, yaw })} />
-                          <div className="dimensions">
-                            {(["width", "depth", "height"] as const).map(
-                              (key, i) => (
-                                <NumberField
-                                  key={key}
-                                  label={["가로", "세로", "높이"][i]}
-                                  value={furniture[key]}
-                                  min={0.01}
-                                  onChange={(n) =>
-                                    changeFurniture({ ...furniture, [key]: n })
-                                  }
-                                />
-                              ),
-                            )}
-                          </div>
-                          <div className="two-fields">
-                            <NumberField
-                              label="가구 X 위치"
-                              value={furniture.x}
-                              onChange={(x) =>
-                                changeFurniture({ ...furniture, x })
-                              }
-                            />
-                            <NumberField
-                              label="가구 Y 위치"
-                              value={furniture.y}
-                              onChange={(y) =>
-                                changeFurniture({ ...furniture, y })
-                              }
-                            />
-                          </div>
-                          <div className="furniture-actions">
-                            {page === "protect" && !region && (
-                              <button
-                                className="secondary"
-                                onClick={protectFurniture}
-                              >
-                                보호 영역 지정
-                              </button>
-                            )}
-                            <button
-                              className="text-button furniture-delete"
-                              onClick={() => {
-                                const linked = draft.regions.filter((r) => r.furnitureId === furniture.id).length;
-                                askDelete(
-                                  {
-                                    ...draft,
-                                    revision: draft.revision + 1,
-                                    furniture: draft.furniture.filter(
-                                      (f) => f.id !== furniture.id,
-                                    ),
-                                    regions: draft.regions.filter(
-                                      (r) => r.furnitureId !== furniture.id,
-                                    ),
-                                  },
-                                  `'${furniture.name}'을 삭제할까요?`,
-                                  linked ? `이 가구에 지정한 보호 영역 ${linked}개도 함께 삭제됩니다.` : undefined,
-                                  () => {
-                                    setSelectedFurniture(null);
-                                    setSelectedRegion(null);
-                                  },
-                                );
-                              }}
-                            >
-                              가구 삭제
-                            </button>
-                          </div>
-                        </>
-                      ) : (
-                        !region && (
-                          <p className="muted">
-                            도면에서 가구 선택 또는 가구 추가
-                          </p>
-                        )
-                      )}
-                      {page === "protect" && region && (
-                        <>
-                          <div className="divider" />
-                          <label className="field">
-                            <span>보호 영역 이름</span>
-                            <input
-                              value={region.name}
-                              onChange={(e) =>
-                                patchRegion({ name: e.target.value })
-                              }
-                            />
-                          </label>
-                          <div className="two-fields">
-                            <NumberField
-                              label="시작 높이 (m)"
-                              value={region.bottom}
-                              onChange={(bottom) => patchRegion({ bottom })}
-                            />
-                            <NumberField
-                              label="끝 높이 (m)"
-                              disabled={region.face === "상단" && !!furniture}
-                              value={region.top}
-                              min={0.01}
-                              max={furniture?.height ?? draft.height}
-                              onChange={(top) => patchRegion({ top })}
-                            />
-                          </div>
-                          {!region.furnitureId && (
-                            <>
-                              <h3>
-                                영역 위치·크기 <small>m</small>
-                              </h3>
-                              <div className="two-fields">
-                                <NumberField
-                                  label="영역 X"
-                                  value={region.x}
-                                  onChange={(x) => patchRegion({ x })}
-                                />
-                                <NumberField
-                                  label="영역 Y"
-                                  value={region.y}
-                                  onChange={(y) => patchRegion({ y })}
-                                />
-                                <NumberField
-                                  label="영역 가로"
-                                  value={region.width}
-                                  min={0.1}
-                                  onChange={(width) => patchRegion({ width })}
-                                />
-                                <NumberField
-                                  label="영역 세로"
-                                  value={region.depth}
-                                  min={0.1}
-                                  onChange={(depth) => patchRegion({ depth })}
-                                />
-                              </div>
-                            </>
-                          )}
-                          <fieldset className="grade-picker">
-                            <legend>보호 등급</legend>
-                            {(Object.keys(grades) as Grade[]).map((g) => (
-                              <button
-                                key={g}
-                                aria-pressed={region.grade === g}
-                                className={`chip ${region.grade === g ? "active" : ""}`}
-                                onClick={() => patchRegion({ grade: g })}
-                              >
-                                {g}
-                              </button>
-                            ))}
-                          </fieldset>
-                          <p className="grade-description" aria-live="polite">
-                            {grades[region.grade]}
-                          </p>
-                          {region.grade !== "D" && (
-                            <RegionTimeField
-                              base={draft.shadingSchedule ?? defaultShadingTime}
-                              value={region.shadingSchedule}
-                              onChange={(shadingSchedule) => patchRegion({ shadingSchedule })}
-                            />
-                          )}
-                          <div className="furniture-actions">
-                            <button
-                              className="text-button furniture-delete region-delete"
-                              onClick={() => {
-                                askDelete(
-                                  {
-                                    ...draft,
-                                    revision: draft.revision + 1,
-                                    regions: draft.regions.filter(
-                                      (r) => r.id !== region.id,
-                                    ),
-                                  },
-                                  `'${region.name}'을 삭제할까요?`,
-                                  undefined,
-                                  () => setSelectedRegion(null),
-                                );
-                              }}
-                            >
-                              보호 영역 삭제
-                            </button>
-                          </div>
-                        </>
-                      )}
+                      <InspectorFields app={app} compact={false} />
                       <div className="actions">
                         {page === "review" ? (
                           <>
@@ -1113,7 +522,7 @@ function App() {
                       />
                     </Card>
                     <Card className="detail-film">
-                      <VirtualFilmControl space={active} prediction={filmPrediction} hour={hour}>
+                      <VirtualFilmControl key={active.id} space={active} prediction={filmPrediction} hour={hour} setting={detailShading}>
                         {filmPrediction?.plan && <AdaptiveEffect space={active} start={filmPrediction.plan.start_time} />}
                       </VirtualFilmControl>
                     </Card>
@@ -1197,79 +606,7 @@ function App() {
               <WebLoginGoogleStep notice={authNotice} onGoogle={startLogin} onCancel={dismissModal} />
             </form>
           )}
-          {modal === "delete-space" && active && (
-            <>
-              <h2>'{active.name}'을 삭제할까요?</h2>
-              <p className="muted">
-                이 공간의 가구·보호 영역 정보도 함께 사라지고 되돌릴 수 없습니다.
-              </p>
-              <button className="primary destructive" disabled={deleting} onClick={deleteSpace}>
-                {deleting ? "삭제 중…" : "삭제"}
-              </button>
-              <button className="secondary" onClick={dismissModal}>
-                취소
-              </button>
-            </>
-          )}
-          {modal === "delete-item" && pendingDelete && (
-            <>
-              <h2>{pendingDelete.title}</h2>
-              <p className="muted">
-                {pendingDelete.body ? `${pendingDelete.body} ` : ""}삭제한 내용은 저장할 때 반영됩니다.
-              </p>
-              <button className="primary destructive" onClick={confirmDelete}>
-                삭제
-              </button>
-              <button className="secondary" onClick={dismissModal}>
-                취소
-              </button>
-            </>
-          )}
-          {modal === "delete-temp" && (
-            <>
-              <h2>
-                '{tempDrafts.find((t) => t.space.id === tempDeleteId)?.space.name || "이름 없는 공간"}'의 작성 중인 내용을 삭제할까요?
-              </h2>
-              <p className="muted">
-                이 기기에 임시 저장한 내용이 사라지고 되돌릴 수 없습니다. 서버에 저장된 공간은 그대로 남습니다.
-              </p>
-              <button className="primary destructive" onClick={confirmDeleteTempDraft}>
-                삭제
-              </button>
-              <button className="secondary" onClick={dismissModal}>
-                취소
-              </button>
-            </>
-          )}
-          {modal === "reload-server" && (
-            <>
-              <h2>서버의 최신 내용으로 바꿀까요?</h2>
-              <p className="muted">
-                저장하지 않은 현재 수정 내용은 사라집니다.
-              </p>
-              <button className="primary" onClick={reloadServerDraft}>
-                최신 내용 불러오기
-              </button>
-              <button className="secondary" onClick={dismissModal}>
-                계속 편집
-              </button>
-            </>
-          )}
-          {modal === "logout" && (
-            <>
-              <h2>로그아웃하시겠어요?</h2>
-              <button
-                className="primary destructive"
-                onClick={() => void signOut()}
-              >
-                로그아웃
-              </button>
-              <button className="secondary" onClick={() => setModal(null)}>
-                취소
-              </button>
-            </>
-          )}
-          {modal === "add-furniture" && (
+          <DialogBodies app={app} addFurniture={(
             <div className="furniture-add-content">
               <h2>가구 추가</h2>
               <button className="primary" onClick={addManualFurniture}>
@@ -1292,25 +629,7 @@ function App() {
                 취소
               </button>
             </div>
-          )}
-          {modal === "capture-help" && <CaptureHelp onClose={() => setModal(null)} />}
-          {modal === "discard" && (
-            <>
-              <button type="button" className="dialog-close" aria-label="계속 편집" onClick={() => setModal(null)}>
-                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
-              </button>
-              <h2>저장하지 않은 변경 내용이 있습니다</h2>
-              <p className="muted">
-                임시 저장하면 입력한 데까지 이 기기에 남고, 내 공간의 작성 중인 공간에서 이어서 편집할 수 있습니다.
-              </p>
-              <button className="primary" onClick={() => leaveEditor(true)}>
-                임시 저장하고 나가기
-              </button>
-              <button className="primary destructive" onClick={() => leaveEditor(false)}>
-                저장하지 않고 나가기
-              </button>
-            </>
-          )}
+          )} />
         </dialog>
         {toast && (
           <div className="toast" role="status">
