@@ -33,35 +33,55 @@ The film is simulated in software (a virtual film, FR-05). Connecting a real fil
 Places where daylight is welcome but direct sunlight should be avoided, such as libraries, offices and museums, could use it instead of curtains.
 
 ## Documents
-- Reports: [requirements](docs/reports/SunSync_Requirements.pdf), [specification](docs/reports/SunSync_Specification.pdf) (LaTeX sources in `docs/reports/requirements` and `docs/reports/specification`)
-- [Functional requirements](docs/features.md): FR-01 to FR-07, owners and sub-requirements
-- [Decisions](docs/decisions.md): one line per team decision
-- [Architecture](docs/architecture.md): modules and data flow
-- [UI flow](docs/ui-flow.md): screens, login and the APIs they call
-- [Project proposal](docs/ai_applications/README.md) (ITE 351)
 
-<details>
-<summary>All documents</summary>
-
-- [Functional requirements](docs/features.md): FR-01 to FR-07, owners and sub-requirements
-- [Decisions](docs/decisions.md): one line per team decision
-- [Architecture](docs/architecture.md): modules and data flow
-- [FR-06 space data](docs/fr06_design.md) and [JSON schema](docs/fr06_scene_schema.json)
-- FR-01 sunlight prediction: [FR-01.1 pvlib path design](docs/fr01_1_pvlib_design.md), [FR-01.4 KMA AI implementation guide](docs/fr01_4_README.md), [FR-01.4 Open-Meteo DNI design](docs/fr01_4_open_meteo_dni_design.md), [prediction errors (FR-01-7)](docs/fr01_7_prediction_error_implementation.md), [large spaces (FR-01-8)](docs/fr01_8_large_space_implementation.md), [API](docs/fr01_api.md), [FR-01 → FR-02 tile contract](docs/fr01_fr02_tile_contract.md), [mock test plan](docs/fr01_mock_test_plan.md)
-- FR-02 & FR-04 shading plan & adaptive control: [format](docs/fr02_schedule.md), [design](docs/fr02_design.md), [API](docs/fr02_api.md), [FR-04 uncertainty-aware adaptive control & LG SGF](docs/fr04_adaptive_control_lg_sgf.md)
-- FR-03 measurement: [single 60 cm marker](docs/fr03_single_marker.md), [measurement workflow](docs/fr03_measurement_workflow.md), [robust estimation](docs/fr03_robust_measurement.md), [selected film](docs/fr03_selected_film.md)
-- FR-03 & FR-06 Vision AI 3D furniture estimation: [ArUco-calibrated depth & 3D bounding box pipeline](docs/fr03_vision_ai_3d_estimation.md)
-- FR-05 film control: [protocol](docs/fr05_protocol.md)
-- [Database](docs/db.md): tables, migrations and persistence
-- [UI flow](docs/ui-flow.md): screens, login and the APIs they call
-- [Deployment on one server](docs/deploy.md): https address, services, backup
-- [Google login](docs/auth.md): how it works, the settings, the Google console and how to switch it on
-- [AI & Applications Proposal](docs/ai_applications/README.md): Project proposal blog for ITE 351 (Task 1 & Task 3)
-- Requirement document: `docs/reports/SunSync_Requirements.pdf` (LaTeX source in `docs/reports/requirements`); specification report: `docs/reports/SunSync_Specification.pdf` (source in `docs/reports/specification`)
-- Records of past work (not kept up to date): [UI and FR-06 integration](docs/ui-fr06-integration.md) and [UI data integration](docs/ui-data-integration.md) (2026-11-01), [Award example integration](docs/award-integration.md) and [design specification](docs/design-spec-2026-10-23.md) (October), [hero image record](docs/hero-asset.md)
+**Reports**
+- [Requirements report (PDF)](docs/reports/SunSync_Requirements.pdf): what the system must do (LaTeX source in `docs/reports/requirements`)
+- [Specification report (PDF)](docs/reports/SunSync_Specification.pdf): how the system is designed (LaTeX source in `docs/reports/specification`)
+- [AI & Applications proposal](docs/ai_applications/README.md): project proposal blog for ITE 351 (Task 1 & Task 3)
 - Meeting notes: shared Google document (not in the repository)
 
-</details>
+**Overview**
+- [Functional requirements](docs/features.md): FR-01 to FR-07, owners and sub-requirements
+- [Decisions](docs/decisions.md): one line per team decision
+- [Architecture](docs/architecture.md): modules and data flow
+- [Scenario precomputation](docs/scenario-precomputation.md): how predictions and shading scenarios are computed ahead of time and cached
+- [Database](docs/db.md): tables, migrations and persistence
+- [UI flow](docs/ui-flow.md): screens, login and the APIs they call
+- [Measurement flow with an account](docs/device-handoff.md): how a phone and a PC share one measurement session
+- [Deployment on one server](docs/deploy.md): https address, services, backup
+- [Google login](docs/auth.md): how it works, the settings, the Google console and how to switch it on
+
+**Space data and measurement (FR-06, FR-03)**
+- [FR-06 space data](docs/fr06_design.md) and [JSON schema](docs/fr06_scene_schema.json): how rooms, windows, furniture and protected regions are stored (examples: [full scene](docs/examples/fr06_scene_example.json), [room only](docs/examples/fr06_manual_room.json))
+- [Single 60 cm marker](docs/fr03_single_marker.md): the one printed marker used for measuring
+- [Measurement workflow](docs/fr03_measurement_workflow.md): how photo results become furniture in the room
+- [Robust estimation](docs/fr03_robust_measurement.md): choosing good photos and fitting shapes to reduce measurement error
+- [Selected film](docs/fr03_selected_film.md): connecting the film chosen for the window to the photo session
+- [Vision AI 3D furniture estimation](docs/fr03_vision_ai_3d_estimation.md): estimating furniture size from a photo with the marker as a reference
+
+**Sunlight prediction (FR-01)**
+- [FR-01.1 pvlib path design](docs/fr01_1_pvlib_design.md): how the sun path into the room is calculated
+- [API](docs/fr01_api.md): the request and response of the prediction endpoint
+- [FR-01 to FR-02 tile contract](docs/fr01_fr02_tile_contract.md): the 5 cm tile output that the shading step reads
+- [Prediction errors (FR-01-7)](docs/fr01_7_prediction_error_implementation.md): how failures are reported in a structured way
+- [Large spaces (FR-01-8)](docs/fr01_8_large_space_implementation.md): response size and calculation limits for big rooms
+- [FR-01.4 Open-Meteo DNI design](docs/fr01_4_open_meteo_dni_design.md): predicting future direct sunlight from forecast data
+- [FR-01.4 KMA AI guide](docs/fr01_4_README.md): overview of the KMA-data AI extension
+- [KMA data analysis](docs/fr01_4_ai_kma_analysis.md): record of the KMA data analysis
+- [KMA AI model](docs/fr01_4_ai_model_implementation.md): the frozen specification of the direct-sunlight model
+- [Mock test plan](docs/fr01_mock_test_plan.md): how prediction is checked with mock rooms
+
+**Shading and film (FR-02, FR-04, FR-05)**
+- [Shading plan format](docs/fr02_schedule.md) and [JSON schema](docs/fr02_shading_plan_schema.json): what a `ShadingPlan` contains
+- [FR-02 design](docs/fr02_design.md): how the plan is built from the prediction
+- [FR-02 API](docs/fr02_api.md): the request and response of the plan endpoint
+- [FR-04 adaptive control & LG SGF](docs/fr04_adaptive_control_lg_sgf.md): keeping the film stable against short changes, and the LG integration guide
+- [FR-05 film protocol](docs/fr05_protocol.md): how the server controls the virtual film and the simulation clock
+
+**Records of past work** (not kept up to date)
+- [UI and FR-06 integration](docs/ui-fr06-integration.md) and [UI data integration](docs/ui-data-integration.md): how the screens were first connected to saved space data (2026-11-01)
+- [Award example integration](docs/award-integration.md) and [design specification](docs/design-spec-2026-10-23.md): the reference project and the screen design written in October
+- [Hero image record](docs/hero-asset.md): how the introduction image was made
 
 ## Architecture
 ```text
