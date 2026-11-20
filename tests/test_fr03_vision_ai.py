@@ -354,6 +354,59 @@ def test_backproject_box_bookshelf_front_region() -> None:
     assert abs(pr.receiving_normal[2]) <= 1e-4
 
 
+def test_backprojection_records_depth_patch_fallback_and_background_mixing_evidence() -> None:
+    camera = CameraIntrinsicsInput(width=100, height=100, fx=100.0, fy=100.0, cx=50.0, cy=50.0)
+    room_floor_poly = Polygon([(0.0, 0.0), (8.0, 0.0), (8.0, 8.0), (0.0, 8.0)])
+    det = Detection2DInput(box_xyxy=(20.0, 20.0, 80.0, 80.0), label="desk", confidence=0.9)
+    kwargs = {
+        "detection": det,
+        "camera": camera,
+        "T_ENU_camera": [
+            1.0,
+            0.0,
+            0.0,
+            4.0,
+            0.0,
+            1.0,
+            0.0,
+            4.0,
+            0.0,
+            0.0,
+            1.0,
+            1.5,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+        ],
+        "depth_calibration": DepthCalibrationResult(alpha=1.0, beta=0.0),
+        "room_floor_poly": room_floor_poly,
+        "room_height_m": 3.0,
+        "room_id": "room_1",
+        "occluder_id": "occ_diag",
+        "observation_id": "obs_diag",
+    }
+
+    invalid = VisionRegistrationPipeline.backproject_box_to_3d_cuboid(
+        **kwargs, depth_map_metric=np.full((100, 100), np.nan, dtype=np.float32)
+    )
+    assert invalid.diagnostics is not None
+    assert invalid.diagnostics.depth_fallback_reason == "non_finite_depth_patch"
+    assert invalid.diagnostics.valid_depth_pixel_count == 0
+    assert invalid.diagnostics.dimension_sources["depth"] == "prior"
+
+    depth_map = np.full((100, 100), 1.0, dtype=np.float32)
+    depth_map[32:68, 50:68] = 5.0
+    mixed = VisionRegistrationPipeline.backproject_box_to_3d_cuboid(
+        **(kwargs | {"occluder_id": "occ_mixed"}), depth_map_metric=depth_map
+    )
+    assert mixed.diagnostics is not None
+    assert mixed.diagnostics.representative_depth_rule == "central_60_percent_median"
+    assert mixed.diagnostics.background_pixel_mixing_risk == "high"
+    assert mixed.diagnostics.depth_iqr_m is not None
+    assert set(mixed.diagnostics.dimension_sources) == {"width", "depth", "height", "position"}
+
+
 # =============================================================================
 # 5. REST API Integration Tests
 # =============================================================================

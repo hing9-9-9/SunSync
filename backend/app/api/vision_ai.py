@@ -22,10 +22,12 @@ from app.schemas.vision_ai import (
     MarkerAnchorInput,
     VisionFurnitureEstimateRequest,
     VisionFurnitureEstimateResponse,
+    VisionRequestMode,
 )
 from app.services.stored_scene import load_stored_scene
 from engine.vision_ai.pipeline import VisionRegistrationPipeline
 from engine.vision_ai.protocols import (
+    VisionMode,
     VisionModelUnavailable,
     create_default_depth_estimator,
     create_default_detector,
@@ -33,6 +35,16 @@ from engine.vision_ai.protocols import (
 
 router = APIRouter(tags=["vision-ai"])
 SessionDependency = Annotated[Session, Depends(get_session)]
+
+
+def _effective_vision_model_mode(request_mode: VisionRequestMode) -> VisionMode:
+    """Translate the public request mode to the internal model-runtime mode.
+
+    ``experiment`` always requires both real model adapters.  The normal path
+    deliberately keeps the deployment-level switch so existing installations
+    can choose automatic fallback or disable models altogether.
+    """
+    return "on" if request_mode == "experiment" else vision_ai_mode()
 
 
 def _build_vision_fragment(
@@ -187,7 +199,7 @@ def estimate_furniture_3d(
     )
 
     try:
-        mode = vision_ai_mode()
+        mode = _effective_vision_model_mode(request.mode)
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)
@@ -315,6 +327,7 @@ def estimate_furniture_3d(
         depth_calibration_beta=depth_calib.beta,
         estimated_items=estimated_items,
         registration_fragment=registration_fragment,
+        diagnostics=pipeline.last_diagnostics,
     )
 
 
@@ -341,6 +354,7 @@ async def estimate_furniture_3d_from_photo(
     session: SessionDependency,
     code_id: Annotated[int, Query(ge=0, lt=50)] = 0,
     side_length_m: Annotated[float, Query(gt=0.0, le=5.0)] = 0.6,
+    mode: VisionRequestMode = "normal",
     apply_to_scene: Annotated[bool, Query()] = True,
     auto_create_protected_regions: Annotated[bool, Query()] = True,
     expected_revision: Annotated[int | None, Query(ge=1)] = None,
@@ -358,6 +372,7 @@ async def estimate_furniture_3d_from_photo(
         request = VisionFurnitureEstimateRequest(
             image_base64=image_b64,
             marker_anchor=MarkerAnchorInput(code_id=code_id, side_length_m=side_length_m),
+            mode=mode,
             apply_to_scene=apply_to_scene,
             auto_create_protected_regions=auto_create_protected_regions,
             expected_revision=expected_revision,
