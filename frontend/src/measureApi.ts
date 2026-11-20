@@ -508,7 +508,7 @@ export type VisionEstimatedItem = {
     dimensions_m: [number, number, number];
     yaw_deg_ccw_from_east: number;
   };
-  protected_region?: { region_id: string; grade: string } | null;
+  protected_region?: { region_id: string; grade: string; receiving_normal?: [number, number, number] } | null;
   confidence: number;
   calibrated_distance_m: number;
   clamped_to_room: boolean;

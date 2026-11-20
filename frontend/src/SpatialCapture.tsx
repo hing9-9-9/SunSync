@@ -7,6 +7,8 @@ import type { PhotoIssue } from "./captureCheck";
 import { shapes, validPolygon, nextCapturePoint, photosPerPoint } from "./capturePlan";
 import type { Shape, CapturePoint } from "./capturePlan";
 import { fromSceneFurnitureType, furnitureTypes } from "./model";
+import type { Space } from "./model";
+import VisionPreview from "./VisionPreview";
 import type { CapturedFurniture, FurnitureType } from "./model";
 import { browserCaptureEnabled } from "./captureEnvironment";
 import { measurementBoard, checkMeasurement, selectFrames, detectFrame, captureSelection, resumeCaptureMarker, cancelStoredCapture, startCaptureMarker, endCaptureMarker, prepare, savedCamera, estimateVisionFurniture } from "./measureApi";
@@ -16,7 +18,7 @@ import type { CheckedMeasurement, Camera, Frame, CaptureMarker, FilmTargetWindow
 type Photo = { file: File; url: string; issue: PhotoIssue | null; metrics: { brightness: number; sharpness: number }; frame?: Frame };
 
 // MAR3.2: stand at each of the four corners of one piece of furniture and photograph the window marker.
-type SpatialCaptureProps = { sceneId?: string; markerSizeOverride?: { sessionId: string; sideM: number }; count: number; onFinish: (items: CapturedFurniture[]) => void; onMarkerChange?: (session: CaptureMarker | null) => void; onVisionRegistered?: (addedCount: number) => Promise<void> | void };
+type SpatialCaptureProps = { sceneId?: string; markerSizeOverride?: { sessionId: string; sideM: number }; count: number; onFinish: (items: CapturedFurniture[]) => void; onMarkerChange?: (session: CaptureMarker | null) => void; onVisionRegistered?: (addedCount: number) => Promise<void> | void; space?: Space };
 
 export default function SpatialCapture(props: SpatialCaptureProps) {
   if (!browserCaptureEnabled) return <section role="status">
@@ -113,8 +115,8 @@ function SessionSpatialCapture(props: SpatialCaptureProps) {
   </section>;
 }
 
-function TestSpatialCapture({ count, onFinish, session, testMarkerSideM, onVisionRegistered }: {
-  count: number; onFinish: (items: CapturedFurniture[]) => void; session: CaptureMarker; testMarkerSideM?: number; onVisionRegistered?: (addedCount: number) => Promise<void> | void;
+function TestSpatialCapture({ count, onFinish, session, testMarkerSideM, onVisionRegistered, space }: {
+  count: number; onFinish: (items: CapturedFurniture[]) => void; session: CaptureMarker; testMarkerSideM?: number; onVisionRegistered?: (addedCount: number) => Promise<void> | void; space?: Space;
 }) {
   const board = useMemo(() => measurementBoard(session, testMarkerSideM), [session, testMarkerSideM]);
   const [items, setItems] = useState<CapturedFurniture[]>([]);
@@ -131,6 +133,7 @@ function TestSpatialCapture({ count, onFinish, session, testMarkerSideM, onVisio
   const [visionBusy, setVisionBusy] = useState(false);
   const [visionError, setVisionError] = useState("");
   const [visionItems, setVisionItems] = useState<VisionEstimatedItem[]>([]);
+  const [pickedVision, setPickedVision] = useState<number | null>(null);
   const [lastVisionImage, setLastVisionImage] = useState<{ width: number; height: number; base64: string } | null>(null);
   const [activeGuidance, setActiveGuidance] = useState("");
   const points = shape === 'polygon' ? custom : shapes[shape].points;
@@ -249,6 +252,7 @@ function TestSpatialCapture({ count, onFinish, session, testMarkerSideM, onVisio
       });
       setLastVisionImage(prepared);
       setVisionItems(result.estimated_items);
+      setPickedVision(null);
     } catch (e) {
       setVisionItems([]);
       setVisionError(e instanceof Error ? e.message : String(e));
@@ -288,11 +292,6 @@ function TestSpatialCapture({ count, onFinish, session, testMarkerSideM, onVisio
     }
   }
 
-  function visionNote(item: VisionEstimatedItem): string {
-    if (item.estimation_quality === "high" || item.estimation_quality === "low_needs_aruco") return "";
-    return "마커로 정밀 촬영하면 더 정확해요.";
-  }
-
   return <div className="spatial-capture corner-capture">
     {!confirmed && <section className="vision-assist" aria-label="사진으로 가구 찾기">
       <div className="vision-assist-head">
@@ -318,18 +317,17 @@ function TestSpatialCapture({ count, onFinish, session, testMarkerSideM, onVisio
       {visionError && <p role="alert" className="error">{visionError}</p>}
       {visionItems.length > 0 && <div className="vision-results">
         <p className="muted small">가구 {visionItems.length}개를 찾았어요.</p>
+        {space && space.width > 0 && space.depth > 0 && <VisionPreview space={space} items={visionItems} selected={pickedVision} onSelect={(i) => setPickedVision((cur) => cur === i ? null : i)} />}
         <ul className="vision-item-list">
           {visionItems.map((item, idx) => {
             const kind = fromSceneFurnitureType(item.occluder.type);
             const [w, d, h] = item.occluder.dimensions_m;
-            const note = visionNote(item);
-            return <li key={item.occluder.occluder_id} className="vision-item">
-              <div className="vision-item-top">
+            return <li key={item.occluder.occluder_id} className="vision-item" data-selected={pickedVision === idx ? "" : undefined}>
+              <button type="button" className="vision-item-top vision-item-pick" aria-pressed={pickedVision === idx} onClick={() => setPickedVision((cur) => cur === idx ? null : idx)}>
                 <strong>{furnitureTypes[kind]} {idx + 1}</strong>
                 <span className="muted small">신뢰도 {Math.round(item.confidence * 100)}%</span>
-              </div>
+              </button>
               {item.estimation_quality === "low_needs_aruco" && <span className="vision-badge">정확도 낮음 · 마커 촬영 필요</span>}
-              {note && <p className="muted small">{note}</p>}
               <dl className="vision-facts">
                 <div><dt>크기</dt><dd>{w.toFixed(2)}×{d.toFixed(2)}×{h.toFixed(2)}m</dd></div>
                 <div><dt>창문과의 거리</dt><dd>{item.calibrated_distance_m.toFixed(1)}m</dd></div>
