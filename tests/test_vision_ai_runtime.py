@@ -10,6 +10,7 @@ from typing import Any
 
 import numpy as np
 import pytest
+from app.api import vision_ai as vision_api
 from app.config import vision_ai_mode
 from app.models.scene import SceneRecord
 from fastapi.testclient import TestClient
@@ -26,6 +27,7 @@ from engine.vision_ai import protocols
 from engine.vision_ai.protocols import (
     CompositeDepthEstimator,
     CompositeFurnitureDetector,
+    DetectedObject2D,
     MonocularDepthAdapter,
     VisionModelUnavailable,
     YoloV8DetectorAdapter,
@@ -82,6 +84,12 @@ def test_mode_auto_follows_what_is_installed(monkeypatch):
     assert isinstance(CompositeDepthEstimator(mode="auto")._primary, MonocularDepthAdapter)
 
 
+def test_mode_on_always_selects_real_adapters_even_before_they_are_loaded(monkeypatch):
+    monkeypatch.setattr(protocols, "_installed", lambda _name: False)
+    assert isinstance(CompositeFurnitureDetector(mode="on")._primary, YoloV8DetectorAdapter)
+    assert isinstance(CompositeDepthEstimator(mode="on")._primary, MonocularDepthAdapter)
+
+
 def test_auto_falls_back_quietly_but_on_reports_the_failure():
     quiet = CompositeFurnitureDetector(primary_detector=Failing(), mode="auto")
     assert quiet.detect(IMAGE) is not None
@@ -94,6 +102,16 @@ def test_auto_falls_back_quietly_but_on_reports_the_failure():
     ).shape == (32, 32)
     with pytest.raises(VisionModelUnavailable):
         CompositeDepthEstimator(primary=Failing(), mode="on").estimate_relative_depth(IMAGE, 32, 32)
+
+
+def test_mode_on_does_not_turn_an_empty_yolo_result_into_a_synthetic_detection():
+    class Empty:
+        def detect(self, *_args):
+            return []
+
+    detector = CompositeFurnitureDetector(primary_detector=Empty(), mode="on")
+    assert detector.detect(IMAGE) == []
+    assert detector.last_source == "yolov8"
 
 
 def test_mode_on_without_the_packages_fails_visibly_at_use(monkeypatch):
@@ -174,6 +192,72 @@ def test_the_api_answers_503_when_the_required_models_are_missing(
     assert "not available" in response.json()["detail"]
 
 
+def test_request_experiment_mode_requires_real_models_without_an_environment_switch(
+    client: TestClient, database_engine, scene_payload, monkeypatch
+):
+    scene_id = stored_scene(database_engine, scene_payload)
+    monkeypatch.setattr(protocols, "_installed", lambda _name: False)
+    response = client.post(
+        f"/api/scenes/{scene_id}/vision-furniture-photo?mode=experiment&apply_to_scene=false",
+        content=_make_synthetic_room_png_bytes(),
+        headers={"Content-Type": "image/png"},
+    )
+    assert response.status_code == 503
+    assert "not available" in response.json()["detail"]
+
+
+def test_experiment_dry_run_reports_real_model_sources_with_stubbed_adapters(
+    client: TestClient, database_engine, scene_payload, monkeypatch
+):
+    """The field-only mode must not be mistaken for a synthetic fallback in the response."""
+    scene_id = stored_scene(database_engine, scene_payload)
+
+    class RealYoloStub:
+        def detect(self, _image):
+            return [
+                DetectedObject2D(
+                    box_xyxy=(420.0, 420.0, 780.0, 580.0),
+                    label="desk",
+                    confidence=0.91,
+                    raw_class_name="dining table",
+                )
+            ]
+
+    class RealDepthStub:
+        def estimate_relative_depth(self, _image, width, height):
+            return np.full((height, width), 2.0, dtype=np.float32)
+
+    detector = CompositeFurnitureDetector(primary_detector=RealYoloStub(), mode="on")
+    depth = CompositeDepthEstimator(primary=RealDepthStub(), mode="on")
+    selected_modes: list[str] = []
+
+    def detector_factory(*, prefer_yolo, mode):
+        assert prefer_yolo is True
+        selected_modes.append(mode)
+        return detector
+
+    def depth_factory(*, prefer_monocular, mode):
+        assert prefer_monocular is True
+        selected_modes.append(mode)
+        return depth
+
+    monkeypatch.setattr(vision_api, "create_default_detector", detector_factory)
+    monkeypatch.setattr(vision_api, "create_default_depth_estimator", depth_factory)
+    response = client.post(
+        f"/api/scenes/{scene_id}/vision-furniture-photo?mode=experiment&apply_to_scene=false",
+        content=_make_synthetic_room_png_bytes(),
+        headers={"Content-Type": "image/png"},
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert selected_modes == ["on", "on"]
+    assert body["diagnostics"]["model"]["detector_source"] == "yolov8"
+    assert body["diagnostics"]["model"]["depth_source"] == "depth_anything_v2"
+    assert body["diagnostics"]["model"]["yolo_adapter_selected"] is True
+    assert body["diagnostics"]["model"]["depth_anything_adapter_selected"] is True
+    assert body["applied_to_scene"] is False
+
+
 def test_the_api_keeps_working_in_off_mode_and_reports_the_source(
     client: TestClient, database_engine, scene_payload, monkeypatch
 ):
@@ -187,6 +271,30 @@ def test_the_api_keeps_working_in_off_mode_and_reports_the_source(
     assert response.status_code == 200, response.text
     sources = {item["detection_source"] for item in response.json()["estimated_items"]}
     assert sources == {"synthetic_contour"}
+
+
+def test_dry_run_response_contains_model_aruco_depth_and_furniture_diagnostics(
+    client: TestClient, database_engine, scene_payload, monkeypatch
+):
+    scene_id = stored_scene(database_engine, scene_payload)
+    monkeypatch.setenv("SUNSYNC_VISION_AI", "off")
+    response = client.post(
+        f"/api/scenes/{scene_id}/vision-furniture-photo?apply_to_scene=false",
+        content=_make_synthetic_room_png_bytes(),
+        headers={"Content-Type": "image/png"},
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    diagnostics = body["diagnostics"]
+    assert diagnostics["model"]["detector_source"] == "synthetic_contour"
+    assert diagnostics["model"]["depth_source"] == "synthetic_geometric"
+    assert diagnostics["aruco"]["marker_corners_px"] is not None
+    assert diagnostics["depth"]["anchor_relative_depths"]
+    furniture = body["estimated_items"][0]["diagnostics"]
+    assert furniture["representative_depth_rule"] == "central_60_percent_median"
+    assert furniture["representative_depth_region_xyxy_px"] is not None
+    assert furniture["valid_depth_pixel_count"] > 0
+    assert set(furniture["dimension_sources"]) == {"width", "depth", "height", "position"}
 
 
 def test_a_bad_switch_value_is_a_visible_server_error(

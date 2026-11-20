@@ -14,6 +14,7 @@ import numpy as np
 
 FurnitureLabel = Literal["bookshelf", "desk", "chair", "other"]
 DetectionSource = Literal["yolov8", "synthetic_contour", "client_hint"]
+DepthEstimationSource = Literal["depth_anything_v2", "synthetic_geometric"]
 # auto: use the real models when they are installed and fall back quietly (the default);
 # on: the real models are required and a failure is raised; off: never use them.
 VisionMode = Literal["auto", "on", "off"]
@@ -355,6 +356,13 @@ class CompositeFurnitureDetector:
                 if self._mode == "on":
                     raise VisionModelUnavailable(f"YOLOv8 detection failed: {error}") from error
 
+        # Strict mode is used by a field experiment.  An empty genuine YOLO
+        # result must remain empty so a contour-derived object cannot be
+        # mistaken for an AI result.
+        if self._mode == "on":
+            self.last_source = "yolov8"
+            return []
+
         self.last_source = "synthetic_contour"
         return self._fallback.detect(image_rgb, exclude_boxes=exclude_boxes)
 
@@ -448,6 +456,7 @@ class CompositeDepthEstimator:
         else:
             self._primary = None
         self._fallback = fallback or GeometricSyntheticDepthEstimator()
+        self.last_source: DepthEstimationSource = "synthetic_geometric"
 
     def estimate_relative_depth(
         self,
@@ -457,10 +466,13 @@ class CompositeDepthEstimator:
     ) -> np.ndarray:
         if self._primary is not None and image_rgb is not None:
             try:
-                return self._primary.estimate_relative_depth(image_rgb, width, height)
+                result = self._primary.estimate_relative_depth(image_rgb, width, height)
+                self.last_source = "depth_anything_v2"
+                return result
             except (RuntimeError, OSError, ValueError) as error:
                 if self._mode == "on":
                     raise VisionModelUnavailable(f"Depth estimation failed: {error}") from error
+        self.last_source = "synthetic_geometric"
         return self._fallback.estimate_relative_depth(image_rgb, width, height)
 
 

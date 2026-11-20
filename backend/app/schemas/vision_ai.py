@@ -9,6 +9,8 @@ from engine.vision_ai.protocols import DetectionSource, FurnitureLabel
 
 EstimationQuality = Literal["high", "medium", "low_needs_aruco"]
 CaptureShapeHint = Literal["rectangle", "circle", "ellipse", "l-shape"]
+VisionRequestMode = Literal["normal", "experiment"]
+DepthEstimationSource = Literal["depth_anything_v2", "synthetic_geometric", "provided_metric_map"]
 
 _UI_LABEL_ALIASES: dict[str, FurnitureLabel] = {
     "bookcase": "bookshelf",
@@ -86,6 +88,7 @@ class VisionFurnitureEstimateRequest(BaseModel):
     depth_shift_beta: float | None = None
     image_base64: str | None = Field(default=None, min_length=1, max_length=16_000_000)
     detections: list[Detection2DInput] = Field(default_factory=list)
+    mode: VisionRequestMode = "normal"
     apply_to_scene: bool = True
     auto_create_protected_regions: bool = True
     expected_revision: Annotated[int, Field(ge=1)] | None = None
@@ -116,6 +119,67 @@ class EstimatedFurnitureResult(BaseModel):
     estimated_corners_enu_m: Annotated[list[tuple[float, float]], Field(strict=False)] = Field(
         default_factory=list
     )
+    diagnostics: "FurnitureDiagnostics | None" = None
+
+
+class FurnitureDiagnostics(BaseModel):
+    """Per-furniture evidence used to derive a 3D cuboid."""
+
+    model_config = ConfigDict(extra="forbid", strict=True, allow_inf_nan=False)
+
+    box_xyxy_px: tuple[float, float, float, float]
+    representative_depth_rule: str
+    representative_depth_region_xyxy_px: tuple[int, int, int, int] | None = None
+    representative_depth_median_m: float | None = None
+    valid_depth_pixel_count: int = 0
+    depth_source: Literal["depth_map", "detection_hint", "default"]
+    depth_fallback_reason: str | None = None
+    depth_iqr_m: float | None = None
+    background_pixel_mixing_risk: Literal["low", "high", "not_evaluated"]
+    dimension_sources: dict[str, Literal["measured", "prior", "clamped"]]
+    prior_dimensions_m: tuple[float, float, float]
+    unclamped_base_center_enu_m: tuple[float, float, float]
+    unclamped_dimensions_m: tuple[float, float, float]
+    room_clamp_reason: str | None = None
+
+
+class VisionModelDiagnostics(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    request_mode: VisionRequestMode
+    detector_source: DetectionSource
+    depth_source: DepthEstimationSource
+    yolo_adapter_selected: bool
+    depth_anything_adapter_selected: bool
+
+
+class ArucoDiagnostics(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True, allow_inf_nan=False)
+
+    pose_method: str
+    marker_corners_px: list[tuple[float, float]] | None = None
+    reprojection_error_mean_px: float | None = None
+    reprojection_error_max_px: float | None = None
+
+
+class DepthCalibrationDiagnostics(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True, allow_inf_nan=False)
+
+    anchor_relative_depths: list[float]
+    anchor_metric_depths_m: list[float]
+    alpha: float
+    beta: float
+    residual_rmse_m: float | None = None
+
+
+class VisionDiagnostics(BaseModel):
+    """Optional, non-persistent evidence for field-test dry-runs."""
+
+    model_config = ConfigDict(extra="forbid", strict=True, allow_inf_nan=False)
+
+    model: VisionModelDiagnostics
+    aruco: ArucoDiagnostics
+    depth: DepthCalibrationDiagnostics
 
 
 class VisionFurnitureEstimateResponse(BaseModel):
@@ -131,3 +195,4 @@ class VisionFurnitureEstimateResponse(BaseModel):
     depth_calibration_beta: float
     estimated_items: list[EstimatedFurnitureResult]
     registration_fragment: dict[str, Any] | None = None
+    diagnostics: VisionDiagnostics | None = None

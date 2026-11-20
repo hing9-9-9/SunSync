@@ -7,7 +7,7 @@ import math
 import re
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 import cv2
 import numpy as np
@@ -16,6 +16,7 @@ from app.services.film import clamp_cuboid_to_room
 from shapely.geometry import Polygon
 
 from engine.vision_ai.protocols import (
+    CompositeDepthEstimator,
     CompositeFurnitureDetector,
     DepthEstimatorProtocol,
     DetectionSource,
@@ -64,6 +65,9 @@ class CameraPoseResult:
     camera_position_enu_m: tuple[float, float, float]
     marker_corner_depths_metric: list[float]  # Depth Z_c of 4 corners in camera frame
     T_camera_marker: np.ndarray  # 4x4 matrix
+    pose_method: str
+    reprojection_error_mean_px: float | None
+    reprojection_error_max_px: float | None
 
 
 @dataclass(frozen=True)
@@ -94,6 +98,7 @@ class VisionRegistrationPipeline:
         self.depth_estimator = depth_estimator or create_default_depth_estimator(
             prefer_monocular=True
         )
+        self.last_diagnostics: dict[str, Any] | None = None
 
     @staticmethod
     def decode_image_base64(image_base64: str) -> np.ndarray:
@@ -169,6 +174,9 @@ class VisionRegistrationPipeline:
                 camera_position_enu_m=cam_pos,
                 marker_corner_depths_metric=corner_depths,
                 T_camera_marker=T_c_m,
+                pose_method="pre_solved_transform",
+                reprojection_error_mean_px=None,
+                reprojection_error_max_px=None,
             )
 
         # Branch B: Solve PnP from corner pixels
@@ -213,11 +221,16 @@ class VisionRegistrationPipeline:
             corner_depths.append(float(p_c[2]))
 
         cam_pos = (float(t_enu_c[0]), float(t_enu_c[1]), float(t_enu_c[2]))
+        projected, _ = cv2.projectPoints(obj_pts, rvec, tvec, K, dist_coeffs)
+        reprojection_errors = np.linalg.norm(projected.reshape(-1, 2) - img_pts, axis=1)
         return CameraPoseResult(
             T_ENU_camera=[round(float(v), 6) for v in T_enu_c.flatten()],
             camera_position_enu_m=cam_pos,
             marker_corner_depths_metric=corner_depths,
             T_camera_marker=T_c_m,
+            pose_method="solvepnp_ippe_or_iterative",
+            reprojection_error_mean_px=float(np.mean(reprojection_errors)),
+            reprojection_error_max_px=float(np.max(reprojection_errors)),
         )
 
     @staticmethod
@@ -385,21 +398,47 @@ class VisionRegistrationPipeline:
         u_c = (x1 + x2) / 2.0
         v_c = (y1 + y2) / 2.0
 
-        # Determine metric distance to object
+        # Determine metric distance to object.  Preserve the patch evidence so
+        # field tests can distinguish object pixels from mixed background depth.
+        depth_region: tuple[int, int, int, int] | None = None
+        depth_median: float | None = None
+        valid_depth_pixels = 0
+        depth_source: Literal["depth_map", "detection_hint", "default"] = "default"
+        depth_fallback_reason: str | None = None
+        depth_iqr_m: float | None = None
+        background_pixel_mixing_risk: Literal["low", "high", "not_evaluated"] = "not_evaluated"
         if depth_map_metric is not None:
             ix1 = int(max(0, min(depth_map_metric.shape[1] - 1, x1 + 0.2 * w_px)))
             ix2 = int(max(0, min(depth_map_metric.shape[1], x2 - 0.2 * w_px)))
             iy1 = int(max(0, min(depth_map_metric.shape[0] - 1, y1 + 0.2 * h_px)))
             iy2 = int(max(0, min(depth_map_metric.shape[0], y2 - 0.2 * h_px)))
             patch = depth_map_metric[iy1:iy2, ix1:ix2]
+            depth_region = (ix1, iy1, ix2, iy2)
             if patch.size > 0:
-                z_metric = float(np.median(patch))
+                finite_patch = patch[np.isfinite(patch)]
+                valid_depth_pixels = int(finite_patch.size)
+                if finite_patch.size > 0:
+                    z_metric = float(np.median(finite_patch))
+                    depth_median = z_metric
+                    depth_iqr_m = float(
+                        np.percentile(finite_patch, 75) - np.percentile(finite_patch, 25)
+                    )
+                    background_pixel_mixing_risk = (
+                        "high" if depth_iqr_m > max(0.25, abs(z_metric) * 0.20) else "low"
+                    )
+                else:
+                    z_metric = 2.5
+                    depth_fallback_reason = "non_finite_depth_patch"
+                depth_source = "depth_map"
             else:
                 z_metric = 2.5
+                depth_fallback_reason = "empty_depth_patch"
         elif detection.observed_depth_rel is not None:
             z_metric = float(depth_calibration.to_metric_depth(detection.observed_depth_rel))
+            depth_source = "detection_hint"
         else:
             z_metric = 2.5
+            depth_fallback_reason = "no_depth_map_or_detection_hint"
 
         z_metric = float(np.clip(z_metric, MIN_METRIC_DEPTH_M, MAX_METRIC_DEPTH_M))
 
@@ -423,6 +462,11 @@ class VisionRegistrationPipeline:
         lateral_vec = np.array([p_right_enu[0] - p_left_enu[0], p_right_enu[1] - p_left_enu[1]])
         measured_width = float(np.linalg.norm(lateral_vec))
         width_m = max(0.2, min(5.0, measured_width)) if measured_width > 0.1 else 0.8
+        width_source: Literal["measured", "prior", "clamped"] = "measured"
+        if measured_width <= 0.1:
+            width_source = "prior"
+        elif not math.isclose(width_m, measured_width):
+            width_source = "clamped"
 
         yaw_rad = math.atan2(float(lateral_vec[1]), float(lateral_vec[0]))
         yaw_deg = math.degrees(yaw_rad) % 360.0
@@ -435,19 +479,28 @@ class VisionRegistrationPipeline:
             measured_depth = float(detection.depth_span_rel * depth_calibration.alpha)
             if 0.2 <= measured_depth <= 2.5:
                 depth_m = measured_depth
+                depth_dimension_source: Literal["measured", "prior", "clamped"] = "measured"
             else:
                 depth_m = prior["depth"]
+                depth_dimension_source = "prior"
         else:
             depth_m = prior["depth"]
+            depth_dimension_source = "prior"
 
         measured_height = float(p_top_enu[2] - p_bot_enu[2])
         if prior["min_height"] <= measured_height <= prior["max_height"]:
             height_m = measured_height
+            height_source: Literal["measured", "prior", "clamped"] = "measured"
         elif p_top_enu[2] > 0.3:
             height_m = float(min(p_top_enu[2], room_height_m * 0.95))
+            height_source = "measured"
         else:
             height_m = prior["height"]
+            height_source = "prior"
+        unconstrained_height_m = height_m
         height_m = max(0.1, min(room_height_m * 0.98, height_m))
+        if not math.isclose(height_m, unconstrained_height_m):
+            height_source = "clamped"
 
         front_center = 0.5 * (p_left_enu + p_right_enu)
         view_dir_xy = np.array([front_center[0] - t_enu_c[0], front_center[1] - t_enu_c[1], 0.0])
@@ -469,6 +522,20 @@ class VisionRegistrationPipeline:
             floor_poly=room_floor_poly,
             room_height=room_height_m,
         )
+        dimension_sources = {
+            "width": "clamped" if was_clamped and clamped_dims[0] != width_m else width_source,
+            "depth": "clamped"
+            if was_clamped and clamped_dims[1] != depth_m
+            else depth_dimension_source,
+            "height": "clamped" if was_clamped and clamped_dims[2] != height_m else height_source,
+            "position": "clamped" if was_clamped and clamped_base != base_center else "measured",
+        }
+        clamp_changes: list[str] = []
+        if clamped_base != base_center:
+            clamp_changes.append("position_outside_room")
+        if clamped_dims != dimensions:
+            clamp_changes.append("dimensions_exceed_room")
+        room_clamp_reason = ",".join(clamp_changes) if clamp_changes else None
 
         display_name = detection.name or f"{detection.label.capitalize()} (Vision AI)"
 
@@ -584,6 +651,22 @@ class VisionRegistrationPipeline:
             aruco_capture_guidance_ko=guidance_ko,
             recommended_capture_shape="rectangle",
             estimated_corners_enu_m=estimated_corners,
+            diagnostics={
+                "box_xyxy_px": detection.box_xyxy,
+                "representative_depth_rule": "central_60_percent_median",
+                "representative_depth_region_xyxy_px": depth_region,
+                "representative_depth_median_m": depth_median,
+                "valid_depth_pixel_count": valid_depth_pixels,
+                "depth_source": depth_source,
+                "depth_fallback_reason": depth_fallback_reason,
+                "depth_iqr_m": depth_iqr_m,
+                "background_pixel_mixing_risk": background_pixel_mixing_risk,
+                "dimension_sources": dimension_sources,
+                "prior_dimensions_m": (0.8, prior["depth"], prior["height"]),
+                "unclamped_base_center_enu_m": base_center,
+                "unclamped_dimensions_m": dimensions,
+                "room_clamp_reason": room_clamp_reason,
+            },
         )
 
     # -------------------------------------------------------------------------
@@ -726,6 +809,21 @@ class VisionRegistrationPipeline:
                 MAX_METRIC_DEPTH_M,
             )
 
+        if depth_map is not None and rel_depth_map is None:
+            depth_runtime_source = "provided_metric_map"
+        elif isinstance(self.depth_estimator, CompositeDepthEstimator):
+            depth_runtime_source = self.depth_estimator.last_source
+        else:
+            depth_runtime_source = "depth_anything_v2"
+
+        if anchor_rel:
+            residuals = np.asarray(pose_res.marker_corner_depths_metric, dtype=np.float64) - (
+                depth_calib.alpha * np.asarray(anchor_rel, dtype=np.float64) + depth_calib.beta
+            )
+            residual_rmse = float(np.sqrt(np.mean(np.square(residuals))))
+        else:
+            residual_rmse = None
+
         room_floor_poly = Polygon(room_floor_vertices)
         estimated_items: list[EstimatedFurnitureResult] = []
         used_ids = set(existing_ids or ())
@@ -755,5 +853,36 @@ class VisionRegistrationPipeline:
                 detection_source=detection_source,
             )
             estimated_items.append(res)
+
+        self.last_diagnostics = {
+            "model": {
+                "request_mode": request.mode,
+                "detector_source": detection_source,
+                "depth_source": depth_runtime_source,
+                "yolo_adapter_selected": bool(
+                    isinstance(self.detector, CompositeFurnitureDetector)
+                    and self.detector._primary is not None
+                ),
+                "depth_anything_adapter_selected": bool(
+                    isinstance(self.depth_estimator, CompositeDepthEstimator)
+                    and self.depth_estimator._primary is not None
+                ),
+            },
+            "aruco": {
+                "pose_method": pose_res.pose_method,
+                "marker_corners_px": marker_corners,
+                "reprojection_error_mean_px": pose_res.reprojection_error_mean_px,
+                "reprojection_error_max_px": pose_res.reprojection_error_max_px,
+            },
+            "depth": {
+                "anchor_relative_depths": [float(value) for value in anchor_rel],
+                "anchor_metric_depths_m": [
+                    float(value) for value in pose_res.marker_corner_depths_metric
+                ],
+                "alpha": depth_calib.alpha,
+                "beta": depth_calib.beta,
+                "residual_rmse_m": residual_rmse,
+            },
+        }
 
         return pose_res, depth_calib, estimated_items
