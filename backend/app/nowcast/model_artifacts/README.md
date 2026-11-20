@@ -1,5 +1,7 @@
 # FR-01 운영 모델 artifact
 
+> `data/fr01/…` 경로의 실험 데이터는 저장소에서 삭제했다. 마지막으로 존재한 커밋은 `f628bc7`이며 `git show f628bc7:<경로>`로 열 수 있다. 운영 모델 파일은 `backend/app/nowcast/model_artifacts/`에 그대로 있다.
+
 이 디렉터리는 FR-01.4 backend가 추론할 때 직접 읽는 **작고 동결된 운영 모델**을 보관한다.
 Stage 6에서 10·30·60분 모델의 저장·검증·로드와 Validation 구간 평가를 구현했다.
 

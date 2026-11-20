@@ -50,7 +50,7 @@ python seed_dummy_spaces.py --base-url https://서버주소 --allow-remote --suf
 
 - `scenarios.json`은 그대로 쓴다.
 - 로그인이 켜진 서버에서는 쿠키 없는 요청이 401이다. 쿠키로 넣은 공간은 그 계정의 것이고, 다른 계정에는 보이지 않는다.
-- 로그인 전에 넣은 공간은 "소유자 없음"이 되어 어느 목록에도 안 보인다. 옮기지 말고 새 `--suffix`로 다시 넣는다. 한 계정에 한꺼번에 주려면 `python -m app.assign_owner` ([auth.md](../../docs/auth.md))를 쓴다.
+- 로그인 전에 넣은 공간은 "소유자 없음"이 되어 어느 목록에도 안 보인다. 옮기지 말고 새 `--suffix`로 다시 넣는다. 한 계정에 한꺼번에 주려면 `python -m app.assign_owner` ([ops/auth.md](../../docs/ops/auth.md))를 쓴다.
 
 ## 알려진 한계
 

@@ -731,7 +731,7 @@ def build_report(
         (
             "- The film values (glazing 0.85, film 0.03 to 0.72) are assumptions. No SGF datasheet "
             "with transmittance, haze or response time was found (see "
-            "`docs/fr04_adaptive_control_lg_sgf.md`)."
+            "`docs/fr04/adaptive_control_lg_sgf.md`)."
         ),
         (
             "- The model treats a film as lowering direct irradiance. A scattering film (PDLC) "

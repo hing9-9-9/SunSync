@@ -10,16 +10,10 @@ venv/
 *.db
 .env
 .env.*
-# Mock-validation output (keep the directory marker only)
-artifacts/mock_validation/*
-!artifacts/mock_validation/.gitkeep
-# Local external-source diagnostic captures are never committed.
-artifacts/local/
-# Finalized FR-01 experimental inputs and results are shared with the team.
-# Exclude obsolete, rejected, and diagnostic-only outputs.
-data/fr01/archive/previous_work/
-data/fr01/model/stage5/validation_experiments/
-data/fr01/model/**/diagnostic_*_predictions.csv
+# Local run output (mock validation, diagnostic captures, experiment results); created on demand
+artifacts/
+# FR-01 experiment data was removed from the tree (see docs/fr01/kma_ai_overview.md); runs recreate it
+data/
 # Node
 node_modules/
 dist/

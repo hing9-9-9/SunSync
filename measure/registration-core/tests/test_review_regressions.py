@@ -153,7 +153,7 @@ def test_generated_paths_reference_only_supported_components():
 
 
 def test_fragment_components_match_updated_backend():
-    path = Path(__file__).parents[3] / "docs/fr06_scene_schema.json"
+    path = Path(__file__).parents[3] / "docs/fr06/scene_schema.json"
     if not path.exists():
         pytest.skip("Legacy backend contract is available only in the parent repository")
     legacy = json.loads(path.read_text(encoding="utf-8"))

@@ -8,4 +8,4 @@ Results written by the tools in `tools/ai_experiments`. Each `.md` file is a rep
 | [fr04_real_weather_replay.md](fr04_real_weather_replay.md) | `run_fr04_real_weather_replay.py` | FR-02 and FR-04 on real KMA days (10-minute data) |
 | [fr04_minute_replay.md](fr04_minute_replay.md) | `run_fr04_minute_replay.py` | FR-02 and FR-04 on measured 1-minute irradiance |
 
-The submitted course reports are in [`docs/reports/`](../reports/). How FR-04 works and what these results mean: [FR-04 document](../fr04_adaptive_control_lg_sgf.md).
+The submitted course reports are in [`docs/reports/`](../reports/). How FR-04 works and what these results mean: [FR-04 document](../fr04/adaptive_control_lg_sgf.md).

@@ -172,7 +172,7 @@ The same four scenarios run with one setting changed at a time. Each cell is the
 - The 'FR-02 rule baseline' here is a three-line rule (opaque above the cap), not the real FR-02 planner. The API in `backend/app/api/adaptive_control.py` does compare against the real FR-02 plan.
 - The forecast band (q10, q50, q90) is made up; the sensitivity table shows what a narrower or wider band does. The real band comes from the FR-01.4 model.
 - Only a Grade B cap is simulated (30 W/m2, the app policy). Grade C (70 W/m2) is not.
-- The film values (glazing 0.85, film 0.03 to 0.72) are assumptions. No SGF datasheet with transmittance, haze or response time was found (see `docs/fr04_adaptive_control_lg_sgf.md`).
+- The film values (glazing 0.85, film 0.03 to 0.72) are assumptions. No SGF datasheet with transmittance, haze or response time was found (see `docs/fr04/adaptive_control_lg_sgf.md`).
 - The model treats a film as lowering direct irradiance. A scattering film (PDLC) turns direct light into diffuse light and may block much less total energy than this assumes.
 - Daylight is judged by opacity and by the sun-weighted film transmittance. Neither is measured illuminance.
 - Neighbouring cells are controlled one at a time; the edge margin is off.
