@@ -100,45 +100,7 @@ Places where daylight is welcome but direct sunlight should be avoided, such as 
 </details>
 
 ## Architecture
-```mermaid
-flowchart TB
-  PC["PC browser (PWA)"]
-  PH["Phone (PWA, app layout)"]
-  PC -->|https| CADDY
-  PH -->|https| CADDY
-  CADDY["Caddy (https)"]
-
-  CADDY -->|"/"| WEB["Web app<br/>React + Vite, Three.js 3D"]
-  CADDY -->|"/api/*"| API
-  CADDY -->|"/measure/*"| MEAS["Measurement server<br/>OpenCV ArUco, photos kept in memory only"]
-
-  subgraph API["Backend (FastAPI)"]
-    direction TB
-    SCENE["FR-06 Space data (Scene)"]
-    SUN["FR-01 Sunlight prediction (pvlib)"]
-    PLAN["FR-02 Shading plan"]
-    SMOOTH["FR-04 Smoothing"]
-    FILM["FR-05 Virtual film"]
-    VIS["Vision AI<br/>YOLOv8 + depth, SUNSYNC_VISION_AI"]
-    AUTH["FR-07 Google login"]
-    SCENE --> SUN --> PLAN --> FILM
-    PLAN --> SMOOTH -.->|"apply_to_virtual_film"| FILM
-    VIS -->|"estimated furniture"| SCENE
-  end
-
-  API <--> DB[("SQLite<br/>scenes, forecasts, scenario snapshots")]
-
-  subgraph TIMERS["Timers (systemd)"]
-    W1["Forecast worker"]
-    W2["KMA AI nowcast workers<br/>every 10 min"]
-  end
-  W1 --> DB
-  W2 --> DB
-  OM["Open-Meteo"] --> W1
-  OM --> W2
-  KMA["KMA data"] --> W2
-  GOOGLE["Google account"] --> AUTH
-```
+![SunSync architecture: user, frontend, backend pipeline, measurement server, workers and database](docs/images/architecture.png)
 
 How the parts work together: [Architecture](docs/architecture.md).
 

@@ -1,44 +1,6 @@
 # Architecture
 
-```mermaid
-flowchart TB
-  PC["PC browser (PWA)"]
-  PH["Phone (PWA, app layout)"]
-  PC -->|https| CADDY
-  PH -->|https| CADDY
-  CADDY["Caddy (https)"]
-
-  CADDY -->|"/"| WEB["Web app<br/>React + Vite, Three.js 3D"]
-  CADDY -->|"/api/*"| API
-  CADDY -->|"/measure/*"| MEAS["Measurement server<br/>OpenCV ArUco, photos kept in memory only"]
-
-  subgraph API["Backend (FastAPI)"]
-    direction TB
-    SCENE["FR-06 Space data (Scene)"]
-    SUN["FR-01 Sunlight prediction (pvlib)"]
-    PLAN["FR-02 Shading plan"]
-    SMOOTH["FR-04 Smoothing"]
-    FILM["FR-05 Virtual film"]
-    VIS["Vision AI<br/>YOLOv8 + depth, SUNSYNC_VISION_AI"]
-    AUTH["FR-07 Google login"]
-    SCENE --> SUN --> PLAN --> FILM
-    PLAN --> SMOOTH -.->|"apply_to_virtual_film"| FILM
-    VIS -->|"estimated furniture"| SCENE
-  end
-
-  API <--> DB[("SQLite<br/>scenes, forecasts, scenario snapshots")]
-
-  subgraph TIMERS["Timers (systemd)"]
-    W1["Forecast worker"]
-    W2["KMA AI nowcast workers<br/>every 10 min"]
-  end
-  W1 --> DB
-  W2 --> DB
-  OM["Open-Meteo"] --> W1
-  OM --> W2
-  KMA["KMA data"] --> W2
-  GOOGLE["Google account"] --> AUTH
-```
+![SunSync architecture: user, frontend, backend pipeline, measurement server, workers and database](images/architecture.png)
 
 - **Space data (FR-06).** A shared Pydantic `Scene` contract at `backend/app/schemas/scene.py` holds metric ENU geometry and observation provenance. FastAPI validates it before storing it in SQLModel `SceneRecord` rows. `POST /api/scenes` imports, `GET` reads/lists, and `PUT` replaces with an atomic revision check. The UI keeps its own data (building, floor, zones) in `ui_spaces` in the same transaction. See [FR-06](fr06_design.md) and [database](db.md).
 - **Prediction (FR-01).** `engine/fr01/` calculates solar positions with pvlib and traces direct-sun paths from protected sample points through windows. `POST /api/scenes/{scene_id}/sunpath-predictions` combines this with DNI selection. Its default response is an aggregate summary; sample-level path diagnostics (`detail_level: "diagnostic"`) are opt-in, and FR-02 and FR-04 ask for them. A worker stores Open-Meteo hourly DNI snapshots in SQLite; each request chooses `Scene.weather`, then a durable snapshot, then pvlib clear-sky. Two more workers (every 10 minutes) store the KMA AI x Open-Meteo quantile nowcast, read-only at `GET /api/scenes/{scene_id}/ai-nowcast/latest`. See [FR-01.4 design](fr01_4_open_meteo_dni_design.md), [AI guide](fr01_4_README.md) and [API](fr01_api.md).
