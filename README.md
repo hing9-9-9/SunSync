@@ -51,7 +51,9 @@ Places where daylight is welcome but direct sunlight should be avoided, such as 
 - [Deployment on one server](docs/deploy.md): https address, services, backup
 - [Google login](docs/auth.md): how it works, the settings, the Google console and how to switch it on
 
-**Space data and measurement (FR-06, FR-03)**
+<details>
+<summary><b>Space data and measurement (FR-06, FR-03) · 6 docs</b></summary>
+
 - [FR-06 space data](docs/fr06_design.md) and [JSON schema](docs/fr06_scene_schema.json): how rooms, windows, furniture and protected regions are stored (examples: [full scene](docs/examples/fr06_scene_example.json), [room only](docs/examples/fr06_manual_room.json))
 - [Single 60 cm marker](docs/fr03_single_marker.md): the one printed marker used for measuring
 - [Measurement workflow](docs/fr03_measurement_workflow.md): how photo results become furniture in the room
@@ -59,7 +61,11 @@ Places where daylight is welcome but direct sunlight should be avoided, such as 
 - [Selected film](docs/fr03_selected_film.md): connecting the film chosen for the window to the photo session
 - [Vision AI 3D furniture estimation](docs/fr03_vision_ai_3d_estimation.md): estimating furniture size from a photo with the marker as a reference
 
-**Sunlight prediction (FR-01)**
+</details>
+
+<details>
+<summary><b>Sunlight prediction (FR-01) · 10 docs</b></summary>
+
 - [FR-01.1 pvlib path design](docs/fr01_1_pvlib_design.md): how the sun path into the room is calculated
 - [API](docs/fr01_api.md): the request and response of the prediction endpoint
 - [FR-01 to FR-02 tile contract](docs/fr01_fr02_tile_contract.md): the 5 cm tile output that the shading step reads
@@ -71,17 +77,27 @@ Places where daylight is welcome but direct sunlight should be avoided, such as 
 - [KMA AI model](docs/fr01_4_ai_model_implementation.md): the frozen specification of the direct-sunlight model
 - [Mock test plan](docs/fr01_mock_test_plan.md): how prediction is checked with mock rooms
 
-**Shading and film (FR-02, FR-04, FR-05)**
+</details>
+
+<details>
+<summary><b>Shading and film (FR-02, FR-04, FR-05) · 5 docs</b></summary>
+
 - [Shading plan format](docs/fr02_schedule.md) and [JSON schema](docs/fr02_shading_plan_schema.json): what a `ShadingPlan` contains
 - [FR-02 design](docs/fr02_design.md): how the plan is built from the prediction
 - [FR-02 API](docs/fr02_api.md): the request and response of the plan endpoint
 - [FR-04 adaptive control & LG SGF](docs/fr04_adaptive_control_lg_sgf.md): keeping the film stable against short changes, and the LG integration guide
 - [FR-05 film protocol](docs/fr05_protocol.md): how the server controls the virtual film and the simulation clock
 
-**Records of past work** (not kept up to date)
+</details>
+
+<details>
+<summary><b>Records of past work · 5 docs (not kept up to date)</b></summary>
+
 - [UI and FR-06 integration](docs/ui-fr06-integration.md) and [UI data integration](docs/ui-data-integration.md): how the screens were first connected to saved space data (2026-11-01)
 - [Award example integration](docs/award-integration.md) and [design specification](docs/design-spec-2026-10-23.md): the reference project and the screen design written in October
 - [Hero image record](docs/hero-asset.md): how the introduction image was made
+
+</details>
 
 ## Architecture
 ```text
