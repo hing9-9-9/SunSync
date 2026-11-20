@@ -29,6 +29,7 @@ void load3D();
 const Space3DView = lazy(load3D);
 // Its stylesheet loads with the page so the placeholder below has the stage's exact frame.
 import "./Space3DView.css";
+import { HeadingSkeleton, SubtitleSkeleton, DetailPlanSkeleton } from "./SpaceSkeleton";
 
 function App() {
   const app = useSpaceApp();
@@ -40,6 +41,7 @@ function App() {
     authNotice,
     startLogin,
     spaces,
+    spacesPending,
     page,
     draft,
     setDraft,
@@ -202,8 +204,9 @@ function App() {
                     draft &&
                     spaces.some((s) => s.id === draft.id)
                       ? "공간 정보 수정"
-                      : page === "detail" && active ? active.name : titles[page]}
+                      : page === "detail" && spacesPending ? <HeadingSkeleton /> : page === "detail" && active ? active.name : titles[page]}
                   </h1>
+                  {page === "detail" && spacesPending && <SubtitleSkeleton />}
                   {page === "detail" && active && <p className="page-subtitle">{active.building} {active.floor}</p>}
                 </div>
                 {["home", "spaces"].includes(page) && (
@@ -252,7 +255,7 @@ function App() {
               {(page === "spaces") && (
                 <div className="list-content">
                   {<AwardSpaces status={<>{/* Show connection feedback only while loading or when attention is needed. */}
-                  {serverState !== "online" && (
+                  {serverState !== "online" && !(serverState === "loading" && spacesPending) && (
                   <div className="server-sync-row">
                     <span>
                       {serverState === "loading"
@@ -272,7 +275,7 @@ function App() {
                     <p className="notice" role="status">
                       {serverError} 기존 브라우저 자료는 유지됩니다.
                     </p>
-                  )}</>} spaces={spaces} jobs={measurementJobs} syncFailed={syncFailed} onRetrySync={retryUpload} onSelect={selectSpace} onEdit={(s, at) => editSpace(s, at)} onDelete={(s) => { setActiveId(s.id); setModal("delete-space"); }} onStart={begin} onMeasurement={job=>{const s=spaces.find(s=>s.id===job.space_id);if(isApp && job.status!=="completed")joinMeasurement(job);else if(s){selectSpace(s);if(job.status!=="completed"){setDraft(structuredClone(s));setPage("capture");}}}}/>}
+                  )}</>} loading={spacesPending} spaces={spaces} jobs={measurementJobs} syncFailed={syncFailed} onRetrySync={retryUpload} onSelect={selectSpace} onEdit={(s, at) => editSpace(s, at)} onDelete={(s) => { setActiveId(s.id); setModal("delete-space"); }} onStart={begin} onMeasurement={job=>{const s=spaces.find(s=>s.id===job.space_id);if(isApp && job.status!=="completed")joinMeasurement(job);else if(s){selectSpace(s);if(job.status!=="completed"){setDraft(structuredClone(s));setPage("capture");}}}}/>}
                   {page === "spaces" && tempDrafts.length > 0 && <TempDraftsSection app={app} />}
                   {unavailable.length > 0 && (
                     <section className="external-spaces">
@@ -483,6 +486,7 @@ function App() {
                   </div>
                 </>
               )}
+              {page === "detail" && spacesPending && <DetailPlanSkeleton />}
               {page === "detail" && active && (
                 <div className="detail-3d">
                   {active.zones.length > 1 && zoneTabs}

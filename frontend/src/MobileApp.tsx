@@ -48,6 +48,7 @@ import { ProcessingCard, QrWebGuide, TempDraftsSection } from "./SharedSections"
 import { Icon, Card, SyncBadge, SyncRetry } from "./ShellParts";
 import { AuthAction, AuthLead } from "./AuthNotice";
 import { GoogleButton } from "./GoogleMark";
+import { HeadingSkeleton, SubtitleSkeleton, AppListSkeleton, AppDetailSkeleton, AppHomeSkeleton } from "./SpaceSkeleton";
 function MobileApp() {
   const [captureMarker, setCaptureMarker] = useState<CaptureMarker | null>(null);
   const [markerSizeOverride, setMarkerSizeOverride] = useState<{ sessionId: string; sideM: number }>();
@@ -60,6 +61,7 @@ function MobileApp() {
     authNotice,
     startLogin,
     spaces,
+    spacesPending,
     setSpaces,
     page,
     draft,
@@ -263,7 +265,9 @@ function MobileApp() {
   );
   const spaceList = (
     <>
-      {!spaces.length ? (
+      {spacesPending ? (
+        <AppListSkeleton />
+      ) : !spaces.length ? (
         <Card className="empty">
           <h2>등록된 공간 없음</h2>
           <button className="primary" onClick={begin}>
@@ -485,7 +489,7 @@ function MobileApp() {
                         navigate(page !== "detail" && draft && spaces.some((s) => s.id === draft.id) ? "detail" : "spaces")
                       }
                     >
-                      <span aria-hidden="true">‹</span>
+                      <svg viewBox="0 0 12 20" width="12" height="20" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M10 2 2 10l8 8" /></svg>
                       {page !== "detail" && draft && spaces.some((s) => s.id === draft.id) ? "공간 현황" : "내 공간"}
                     </button>
                   )}
@@ -494,8 +498,9 @@ function MobileApp() {
                     draft &&
                     spaces.some((s) => s.id === draft.id)
                       ? "공간 정보 수정"
-                      : page === "detail" && active ? active.name : titles[page]}
+                      : page === "detail" && spacesPending ? <HeadingSkeleton /> : page === "detail" && active ? active.name : titles[page]}
                   </h1>
+                  {page === "detail" && spacesPending && <SubtitleSkeleton />}
                   {page === "detail" && active && <p className="page-subtitle">{active.building} {active.floor} </p>}
                 </div>
                 {(isApp ? page === "spaces" : ["home", "spaces"].includes(page)) && (
@@ -551,10 +556,10 @@ function MobileApp() {
                   </button>
                 </div>
               )}
-              {page === "home" && !isApp && account && <WorkspaceHome spaces={spaces} selectSpace={selectSpace} navigate={navigate} onStart={begin} />}
+              {page === "home" && !isApp && account && <WorkspaceHome loading={spacesPending} spaces={spaces} selectSpace={selectSpace} navigate={navigate} onStart={begin} />}
               {(page === "spaces" || (isApp && page === "home")) && (
                 <div className="list-content">
-                  {page === "home" && isApp && (homeDashboard ?? spaceList)}
+                  {page === "home" && isApp && (spacesPending ? <AppHomeSkeleton /> : (homeDashboard ?? spaceList))}
                   {page === "home" && !isApp && (
                     <>
                       {/* Summary strip (one card, three figures), then the list it summarises. */}
@@ -581,7 +586,7 @@ function MobileApp() {
                   )}
 
                   {/* App home stays quiet while the server is fine; the status shows when it needs attention. */}
-                  {(!isApp || serverState !== "online") && (
+                  {(!isApp || serverState !== "online") && !(serverState === "loading" && spacesPending) && (
                   <div className="server-sync-row" data-state={serverState}>
                     <span>
                       {serverState === "loading"
@@ -604,7 +609,7 @@ function MobileApp() {
                       {serverError} 기존 브라우저 자료는 유지됩니다.
                     </p>
                   )}
-                  {!isApp ? <WorkspaceCards spaces={spaces} selectSpace={selectSpace} onStart={begin} onEdit={(s, at) => editSpace(s, at)} onDelete={(s) => { setActiveId(s.id); setModal("delete-space"); }} /> : page === "home" ? null : spaceList}
+                  {!isApp ? <WorkspaceCards loading={spacesPending} spaces={spaces} selectSpace={selectSpace} onStart={begin} onEdit={(s, at) => editSpace(s, at)} onDelete={(s) => { setActiveId(s.id); setModal("delete-space"); }} /> : page === "home" ? null : spaceList}
                   {page === "spaces" && tempDrafts.length > 0 && <TempDraftsSection app={app} />}
                   {unavailable.length > 0 && (
                     <section className="external-spaces">
@@ -760,6 +765,7 @@ function MobileApp() {
                   </div>
                 </>
               )}
+              {page === "detail" && spacesPending && <AppDetailSkeleton />}
               {page === "detail" && active && (
                 <div className="workspace">
                   <div className="workspace-main">
@@ -1025,11 +1031,11 @@ function MobileApp() {
           <DialogBodies app={app} captureHelpStep={captureMarker ? 2 : 1} addFurniture={(
             <>
               <h2>가구 추가</h2>
-              <button className="primary" onClick={()=>{addManualFurniture();openSettings();}}>
+              <button className="secondary" onClick={()=>{addManualFurniture();openSettings();}}>
                 직접 추가하고 위치·치수 입력
               </button>
               <button
-                className="secondary"
+                className="primary"
                 onClick={() => {
                   rememberQrReturn(page);
                   setAddingByQr(true);

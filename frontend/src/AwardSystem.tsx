@@ -11,6 +11,7 @@ import { GuideMethods } from "./GuideMethods";
 import AwardPreview, { Arrow, Scribble, SunMark } from "./AwardPreview";
 import { SyncBadge, SyncRetry } from "./ShellParts";
 import "./AwardSystem.css";
+import { RoomGridSkeleton } from "./SpaceSkeleton";
 
 type Destination = "home" | "spaces" | "guide" | "account";
 export function AwardHeader({
@@ -179,7 +180,9 @@ export function AwardSpaces({
   onRetrySync,
   onEdit,
   onDelete,
+  loading,
 }: {
+  loading?: boolean;
   status?: ReactNode;
   spaces: Space[];
   jobs: HandoffSession[];
@@ -247,7 +250,9 @@ export function AwardSpaces({
           ＋ 공간 등록
         </button>
       </div>
-      {filtered.length ? (
+      {loading ? (
+        <RoomGridSkeleton />
+      ) : filtered.length ? (
         <div className="award-room-grid">
           {filtered.map((s, i) => {
             const regionCount = s.regions.filter((r) => r.grade !== "D").length,

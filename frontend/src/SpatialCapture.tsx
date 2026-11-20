@@ -9,6 +9,7 @@ import type { Shape, CapturePoint } from "./capturePlan";
 import { fromSceneFurnitureType, furnitureTypes } from "./model";
 import type { Space } from "./model";
 import VisionPreview from "./VisionPreview";
+import VisionCamera from "./VisionCamera";
 import type { CapturedFurniture, FurnitureType } from "./model";
 import { browserCaptureEnabled } from "./captureEnvironment";
 import { measurementBoard, checkMeasurement, selectFrames, detectFrame, captureSelection, resumeCaptureMarker, cancelStoredCapture, startCaptureMarker, endCaptureMarker, prepare, savedCamera, estimateVisionFurniture } from "./measureApi";
@@ -134,6 +135,7 @@ function TestSpatialCapture({ count, onFinish, session, testMarkerSideM, onVisio
   const [visionError, setVisionError] = useState("");
   const [visionItems, setVisionItems] = useState<VisionEstimatedItem[]>([]);
   const [pickedVision, setPickedVision] = useState<number | null>(null);
+  const [visionCamera, setVisionCamera] = useState(false);
   const [lastVisionImage, setLastVisionImage] = useState<{ width: number; height: number; base64: string } | null>(null);
   const [activeGuidance, setActiveGuidance] = useState("");
   const points = shape === 'polygon' ? custom : shapes[shape].points;
@@ -298,7 +300,7 @@ function TestSpatialCapture({ count, onFinish, session, testMarkerSideM, onVisio
         <h3>사진으로 가구 찾기</h3>
         <p className="muted small">창문 마커와 가구가 같이 보이게 한 장 찍어 주세요.</p>
       </div>
-      <button type="button" className="primary vision-shoot" aria-label={visionBusy ? undefined : "사진으로 촬영 시작"} disabled={visionBusy || checking} onClick={() => visionInput.current?.click()}>
+      <button type="button" className="primary vision-shoot" aria-label={visionBusy ? undefined : "사진으로 촬영 시작"} disabled={visionBusy || checking} onClick={() => typeof navigator.mediaDevices?.getUserMedia === "function" ? setVisionCamera(true) : visionInput.current?.click()}>
         {visionBusy ? "사진 분석 중…" : "촬영 시작"}
       </button>
       <input
@@ -353,6 +355,7 @@ function TestSpatialCapture({ count, onFinish, session, testMarkerSideM, onVisio
         </button>}
       </div>}
     </section>}
+    {visionCamera && <VisionCamera session={session} board={board} onClose={() => setVisionCamera(false)} onPhoto={(file) => { setVisionCamera(false); void scanRoomWithVision(file); }} />}
     {(() => {
       const plan = (
     <section className={`shape-plan${confirmed?" compact":""}`} aria-label="형태별 촬영 계획">
