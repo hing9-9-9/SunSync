@@ -127,6 +127,8 @@
 .app.award-mobile.mode-app.page-capture .spatial-capture > .actions { margin:0; }
 .app.award-mobile.mode-app.page-capture .spatial-capture > p.muted.small:last-child { padding:0; }
 .app.award-mobile.mode-app.page-capture .spatial-capture > .secondary { width:100%; }
+/* Secondary buttons that sit straight on the page gradient follow the cards: no outline, the card shadow. The border stays as 1px transparent so the size does not move. Buttons inside cards and dialogs keep the 1px #E9E9E9 line (white on white needs it). */
+.app.award-mobile.mode-app.page-capture :is(.spatial-capture > .secondary, .spatial-capture > .actions > .secondary, .capture-end > .secondary, .capture-title-with-marker .test-marker-button) { border-color:transparent !important; box-shadow:var(--shadow-card); }
 
 /* Photo-assisted furniture finder */
 .vision-assist { display:grid; gap:var(--space-3); padding:var(--space-4); border:0; border-radius:var(--radius-card); background:var(--c-white); box-shadow:var(--at-card-shadow); }
@@ -187,8 +189,8 @@
 .camera-stage.open { position:fixed; inset:0; z-index:1000; display:flex; flex-direction:column; background:#000; color:#fff; }
 .camera-stage.open > video { position:absolute; inset:0; width:100% !important; height:100% !important; max-height:none !important; object-fit:contain; background:#000; }
 .camera-stage-top { position:relative; z-index:1; display:flex; align-items:center; justify-content:space-between; gap:var(--space-3); padding:calc(var(--space-3) + env(safe-area-inset-top)) var(--space-4) var(--space-4); background:linear-gradient(rgba(0,0,0,.6),transparent); }
-.camera-stage-top strong { font-size:18px; font-weight:600; }
-.app.award-mobile.mode-app.page-capture .camera-stage-top button.text-button { min-height:44px; padding:0 var(--space-2); color:#fff !important; background:transparent !important; border:0 !important; }
+.camera-stage-top strong { font-size:16px; font-weight:600; line-height:1.4; }
+.app.award-mobile.mode-app.page-capture .camera-stage-top button.text-button { min-height:44px; padding:0 var(--space-2); font-size:16px !important; font-weight:500; line-height:1.4; color:#fff !important; background:transparent !important; border:0 !important; }
 .camera-stage-bottom { position:relative; z-index:1; margin-top:auto; display:grid; gap:var(--space-3); padding:var(--space-6) var(--space-4) calc(var(--space-4) + env(safe-area-inset-bottom)); background:linear-gradient(transparent,rgba(0,0,0,.7)); }
 .camera-stage-bottom > p { margin:0; font-size:15px; line-height:1.5; color:#fff; text-align:center; }
 .camera-stage-bottom > .capture-hint { padding:var(--space-2) var(--space-3); border-radius:12px; color:var(--c-ink); }

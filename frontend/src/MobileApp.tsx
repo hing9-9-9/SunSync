@@ -655,6 +655,7 @@ function MobileApp() {
                         }
                         onFinish={finishCapture}
                         onVisionRegistered={completeVisionRegistration}
+                        space={draft}
                       />
                     ) : (
                       <Card>

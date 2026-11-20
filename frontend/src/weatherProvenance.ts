@@ -91,7 +91,7 @@ export function weatherProvenanceMessage(segments: ProvenanceSegment[], timeZone
       return "오늘 일조 예측 전체에는 날씨 예보를 반영했어요.";
     const ranges = forecasts.map((segment) => formatRange(segment, timeZone));
     const joined = ranges.length === 1 ? ranges[0] : `${ranges.slice(0, -1).join("와 ")}와 ${ranges.at(-1)}`;
-    return `${joined}는 날씨 예보를 반영했어요.`;
+    return `${joined}의 날씨 예보를 반영했어요.`;
   }
   const stored = sentence.filter((segment) => segment.kind === "stored");
   if (stored.length === 1 && sentence.length === 1) return "오늘 일조 예측 전체에는 저장된 날씨 정보를 반영했어요.";

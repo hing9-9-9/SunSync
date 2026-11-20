@@ -1,0 +1,15 @@
+/* Preview of furniture found from one photo. Same plan language as the editor plan: angular, one purple accent. */
+.vision-preview { margin: 0; display: grid; gap: var(--space-2); }
+.vision-preview svg { display: block; width: 100%; height: auto; max-height: 280px; background: var(--c-white); }
+.vision-preview .vp-room { fill: var(--c-white); stroke: var(--c-a6adba); stroke-width: 0.04; }
+.vision-preview .vp-window { stroke: var(--c-6861e8); stroke-width: 0.07; }
+.vision-preview .vp-item { cursor: pointer; outline: none; }
+.vision-preview .vp-box { fill: var(--c-e4e8ef); stroke: var(--c-a6adba); stroke-width: 1pt; transition: fill var(--dur-fade) var(--ease-out), stroke var(--dur-fade) var(--ease-out); }
+.vision-preview .vp-top { fill: var(--c-protect-fill); pointer-events: none; }
+.vision-preview .vp-face { stroke: var(--c-action); stroke-width: 3px; stroke-linecap: butt; pointer-events: none; }
+.vision-preview .vp-no { fill: var(--c-52596a); pointer-events: none; }
+.vision-preview .is-selected .vp-box { fill: var(--c-d8dbe3); stroke: var(--c-action); stroke-width: 2px; }
+.vision-preview .vp-item:focus-visible .vp-box { stroke: var(--c-action); stroke-width: 2px; }
+.vision-item-pick { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2); width: 100%; padding: 0; border: 0; background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.vision-item[data-selected] .vision-item-pick strong { color: var(--c-action-ink); }
+.vision-item-pick:focus-visible { outline: 2px solid var(--c-action); outline-offset: 2px; border-radius: 4px; }

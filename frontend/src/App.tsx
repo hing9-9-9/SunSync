@@ -315,6 +315,7 @@ function App() {
                         }
                         onFinish={finishCapture}
                         onVisionRegistered={completeVisionRegistration}
+                        space={draft}
                       />
                     ) : (
                       <Card>
