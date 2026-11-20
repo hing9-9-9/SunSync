@@ -8,14 +8,14 @@ FR-01.1 MVP는 구현 완료 상태다. 저장된 FR-06 `Scene`을 읽어 각 �
 
 | 경로 | 책임 |
 |---|---|
-| `engine/fr01/models.py` | FastAPI·DB와 독립적인 immutable DTO와 prediction result |
-| `engine/fr01/tiling.py` | 직사각형 보호영역의 deterministic 5 cm 중심 타일 생성 |
-| `engine/fr01/solar.py` | UTC timestamp grid, `pvlib` 태양 위치, ENU 태양 방향 |
-| `engine/fr01/geometry.py` | window, room boundary, yaw cuboid ray intersection |
-| `engine/fr01/predictor.py` | sample·timestamp 순회, path 판정, region 집계 |
-| `backend/app/services/sunpath.py` | FR-06 `Scene` → FR-01 DTO adapter와 calculation resource limit |
-| `backend/app/api/sunpath.py` | `POST /api/scenes/{scene_id}/sunpath-predictions` |
-| `backend/app/schemas/sunpath.py` | request·response Pydantic contract |
+| `server/engine/fr01/models.py` | FastAPI·DB와 독립적인 immutable DTO와 prediction result |
+| `server/engine/fr01/tiling.py` | 직사각형 보호영역의 deterministic 5 cm 중심 타일 생성 |
+| `server/engine/fr01/solar.py` | UTC timestamp grid, `pvlib` 태양 위치, ENU 태양 방향 |
+| `server/engine/fr01/geometry.py` | window, room boundary, yaw cuboid ray intersection |
+| `server/engine/fr01/predictor.py` | sample·timestamp 순회, path 판정, region 집계 |
+| `server/backend/app/services/sunpath.py` | FR-06 `Scene` → FR-01 DTO adapter와 calculation resource limit |
+| `server/backend/app/api/sunpath.py` | `POST /api/scenes/{scene_id}/sunpath-predictions` |
+| `server/backend/app/schemas/sunpath.py` | request·response Pydantic contract |
 
 ## 공간 입력과 좌표계
 
@@ -39,7 +39,7 @@ FR-01은 입력 시각을 UTC로 정규화하고 시작과 종료를 포함하�
 
 ## 태양 위치 계산
 
-`engine/fr01/solar.py`는 `pvlib.solarposition.get_solarposition()`을 다음 고정 조건으로 호출한다.
+`server/engine/fr01/solar.py`는 `pvlib.solarposition.get_solarposition()`을 다음 고정 조건으로 호출한다.
 
 ```text
 method="nrel_numpy"
@@ -92,15 +92,15 @@ s = (cos(h) * sin(a), cos(h) * cos(a), sin(h))
 
 ## 구현 단계와 코드 경로
 
-1. **입력 변환:** `backend/app/services/sunpath.py`가 검증·저장된 FR-06 Scene을 FR-01 DTO로 변환하고 요청의 시간·리소스 한계를 확인한다.
-2. **타일 생성:** `engine/fr01/tiling.py`가 보호영역 꼭짓점에서 deterministic 5 cm 중심 타일을 row-major로 만든다.
-3. **태양 위치:** `engine/fr01/solar.py`가 timezone-aware 요청 시각을 UTC grid로 변환하고 pvlib로 고도각·방위각과 ENU 방향 벡터를 계산한다.
-4. **경로 판정:** `engine/fr01/predictor.py`와 `geometry.py`가 각 타일·시각마다 창 aperture, room boundary, cuboid occluder를 평가한다.
+1. **입력 변환:** `server/backend/app/services/sunpath.py`가 검증·저장된 FR-06 Scene을 FR-01 DTO로 변환하고 요청의 시간·리소스 한계를 확인한다.
+2. **타일 생성:** `server/engine/fr01/tiling.py`가 보호영역 꼭짓점에서 deterministic 5 cm 중심 타일을 row-major로 만든다.
+3. **태양 위치:** `server/engine/fr01/solar.py`가 timezone-aware 요청 시각을 UTC grid로 변환하고 pvlib로 고도각·방위각과 ENU 방향 벡터를 계산한다.
+4. **경로 판정:** `server/engine/fr01/predictor.py`와 `geometry.py`가 각 타일·시각마다 창 aperture, room boundary, cuboid occluder를 평가한다.
 5. **요약·응답:** predictor가 timeline, 최초 노출 및 `exposure_intervals`를 만들고, API가 이 기하 결과와 FR-01.4 DNI 선택 결과를 응답에 조합한다.
 
 ## 서울시청 인근 mock validation
 
-`tools/mock_validation/fixtures/valid/mock_scene_seoul_multi_sample_temporal.json`은 서울시청 인근 site(`37.5665`, `126.9780`, `Asia/Seoul`)의 합성 FR-06 Scene을 사용한다. runner는 temporary SQLite와 `TestClient(create_app(engine))`를 사용하므로 repository의 `sunsync.db`를 사용하지 않는다.
+`server/tools/mock_validation/fixtures/valid/mock_scene_seoul_multi_sample_temporal.json`은 서울시청 인근 site(`37.5665`, `126.9780`, `Asia/Seoul`)의 합성 FR-06 Scene을 사용한다. runner는 temporary SQLite와 `TestClient(create_app(engine))`를 사용하므로 repository의 `sunsync.db`를 사용하지 않는다.
 
 이 scenario는 보호영역 꼭짓점에서 생성한 5 cm 타일 중심을 사용한다. timestamp spacing, row-major `sample_index`, 타일별 window aperture 교점, 노출 타일 수 변화와 최초 sampled exposure를 검증한다. 타일 수와 노출 수는 보호영역 크기와 현재 타일링 규칙에 따라 달라지므로 문서에 고정 수치로 기록하지 않는다. runner는 응답을 이용해 expected 값을 다시 계산하지 않는다.
 
@@ -109,13 +109,13 @@ s = (cos(h) * sin(a), cos(h) * cos(a), sin(h))
 PowerShell에서 repository root와 활성화한 virtual environment 기준:
 
 ```powershell
-$env:PYTHONPATH = "backend"
-python tools/mock_validation/run_fr01_mock_validation.py
-python tools/mock_validation/run_fr01_mock_validation.py --scenario mock_scene_seoul_multi_sample_temporal --verbose
+$env:PYTHONPATH = "server/backend"
+python server/tools/mock_validation/run_fr01_mock_validation.py
+python server/tools/mock_validation/run_fr01_mock_validation.py --scenario mock_scene_seoul_multi_sample_temporal --verbose
 python -m pytest -q
-python -m ruff check backend/app engine/fr01 tests tools/mock_validation
-python -m ruff format --check backend/app engine/fr01 tests tools/mock_validation
-python -m mypy backend/app engine/fr01 tools/mock_validation
+python -m ruff check server/backend/app server/engine/fr01 server/tests server/tools/mock_validation
+python -m ruff format --check server/backend/app server/engine/fr01 server/tests server/tools/mock_validation
+python -m mypy server/backend/app server/engine/fr01 server/tools/mock_validation
 ```
 
 ## MVP 범위 밖

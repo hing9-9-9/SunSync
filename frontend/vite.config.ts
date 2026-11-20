@@ -26,7 +26,7 @@ function offlineShell() {
   };
 }
 
-// The measurement server (measure/registration-core) runs beside the backend; the web reaches it as /measure.
+// The measurement server (server/measure) runs beside the backend; the web reaches it as /measure.
 const proxies = {
   "/api": process.env.SUNSYNC_API_TARGET || "http://127.0.0.1:8000",
   "/measure": {

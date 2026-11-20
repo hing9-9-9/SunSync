@@ -1,6 +1,6 @@
 # FR-01.4 KMA AI 확장 — PR 대표 문서
 
-> `data/fr01/…` 경로의 실험 데이터는 저장소에서 삭제했다. 마지막으로 존재한 커밋은 `f628bc7`이며 `git show f628bc7:<경로>`로 열 수 있다. 운영 모델 파일은 `backend/app/nowcast/model_artifacts/`에 그대로 있다.
+> `data/fr01/…` 경로의 실험 데이터는 저장소에서 삭제했다. 마지막으로 존재한 커밋은 `f628bc7`이며 `git show f628bc7:<경로>`로 열 수 있다. 운영 모델 파일은 `server/backend/app/nowcast/model_artifacts/`에 그대로 있다.
 
 > **PR에서 가장 먼저 연결할 문서다.** 현재 구현을 설명하는 팀 공유용 확정 문서와
 > 검증 결과의 진입점을 제공한다.
@@ -40,23 +40,23 @@ Open-Meteo 흐름의 팀 공용 설계다. 이번 KMA AI PR의 대표 문서는 
 계약을 이해할 때 참고한다.
 
 문서가 충돌하면 팀 공유 문서의 2·3·4번과
-`backend/app/nowcast/model_artifacts/fr01_kma_quantile_v1/manifest.json`을 우선한다.
+`server/backend/app/nowcast/model_artifacts/fr01_kma_quantile_v1/manifest.json`을 우선한다.
 
 ## 구현 산출물
 
 ```text
-수집·정규화       backend/app/nowcast/kma_adapter.py
-durable queue     backend/app/nowcast/kma_collection_queue.py
-데이터 계약       backend/app/nowcast/kma_model_dataset.py
-선형 분위수 모델  backend/app/nowcast/kma_linear_model.py
-artifact loader   backend/app/nowcast/kma_model_artifact.py
-운영 추론         backend/app/nowcast/kma_operational.py
-운영 저장소       backend/app/nowcast/kma_operational_repository.py
-운영 worker       backend/app/nowcast/operational_nowcast_worker.py
-Final 입력 검사   backend/app/nowcast/kma_final_test.py
-Final 준비 명령   tools/ai_experiments/prepare_fr01_final_test.py
-Final 평가 명령   tools/ai_experiments/evaluate_fr01_kma_final_test.py
-운영 모델         backend/app/nowcast/model_artifacts/fr01_kma_quantile_v1/
+수집·정규화       server/backend/app/nowcast/kma_adapter.py
+durable queue     server/backend/app/nowcast/kma_collection_queue.py
+데이터 계약       server/backend/app/nowcast/kma_model_dataset.py
+선형 분위수 모델  server/backend/app/nowcast/kma_linear_model.py
+artifact loader   server/backend/app/nowcast/kma_model_artifact.py
+운영 추론         server/backend/app/nowcast/kma_operational.py
+운영 저장소       server/backend/app/nowcast/kma_operational_repository.py
+운영 worker       server/backend/app/nowcast/operational_nowcast_worker.py
+Final 입력 검사   server/backend/app/nowcast/kma_final_test.py
+Final 준비 명령   server/tools/ai_experiments/prepare_fr01_final_test.py
+Final 평가 명령   server/tools/ai_experiments/evaluate_fr01_kma_final_test.py
+운영 모델         server/backend/app/nowcast/model_artifacts/fr01_kma_quantile_v1/
 개발 평가 결과    data/fr01/model/stage6/validation_segment_evaluation.json
 ```
 

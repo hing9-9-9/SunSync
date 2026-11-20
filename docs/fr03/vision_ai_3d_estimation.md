@@ -199,7 +199,7 @@ For each 2D bounding box $(x_1, y_1, x_2, y_2)$ with center $(u_c, v_c)$ and cal
 ### Running the Synthetic Benchmark
 Execute the automated 3D benchmark tool:
 ```bash
-.venv/bin/python tools/ai_experiments/run_fr03_vision_3d_experiment.py --noise-pct 2.0 --json-out /tmp/fr03_benchmark.json
+.venv/bin/python server/tools/ai_experiments/run_fr03_vision_3d_experiment.py --noise-pct 2.0 --json-out /tmp/fr03_benchmark.json
 ```
 Output:
 - Exact camera pose recovery error (typically $0.0\,\text{cm}$)

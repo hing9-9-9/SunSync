@@ -3,7 +3,7 @@ import type { Furniture, Wall } from "./model.ts";
 
 /**
  * The open front of a bookcase in the 3D scene. The server protects the side of furniture that
- * looks at the window (backend/app/ui_scene.py protected_face; the scene mirrors it as WINDOW_FACE),
+ * looks at the window (server/backend/app/ui_scene.py protected_face; the scene mirrors it as WINDOW_FACE),
  * so the open front looks the same way. Without a window the front stays south, as before.
  * Plan furniture has no rotation, so the window wall alone decides.
  */

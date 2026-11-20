@@ -1,6 +1,6 @@
 # FR-01.4 KMA 데이터 분석 기록
 
-> `data/fr01/…` 경로의 실험 데이터는 저장소에서 삭제했다. 마지막으로 존재한 커밋은 `f628bc7`이며 `git show f628bc7:<경로>`로 열 수 있다. 운영 모델 파일은 `backend/app/nowcast/model_artifacts/`에 그대로 있다.
+> `data/fr01/…` 경로의 실험 데이터는 저장소에서 삭제했다. 마지막으로 존재한 커밋은 `f628bc7`이며 `git show f628bc7:<경로>`로 열 수 있다. 운영 모델 파일은 `server/backend/app/nowcast/model_artifacts/`에 그대로 있다.
 
 > **문서 역할:** 실제 데이터 품질, Stage 4~6과 Final test 결과를 기록하는 기준 문서다.
 > 계획보다 확인된 수치를 우선한다.
@@ -68,7 +68,7 @@ Final test 기간은 feature, 전처리, 가중치, 물리 제약, 결측 처리
 |---|---|
 | 분석 실행일 | `2026-11-06 KST` |
 | Git commit | `c3615d3` |
-| 분석 코드 | `tools/ai_experiments/analyze_fr01_kma_data.py` |
+| 분석 코드 | `server/tools/ai_experiments/analyze_fr01_kma_data.py` |
 | 입력 SHA-256 | `28fb1796e5eb036397fabcf69845967e35ce546f0d3a32c9e57cd797c52d9a49` |
 | 결과 | 터미널 출력, 아래 요약에 기록 |
 
@@ -593,7 +593,7 @@ data/fr01/model/stage5/
 
 ```text
 모델 버전       fr01_kma_quantile_v1
-운영 경로       backend/app/nowcast/model_artifacts/fr01_kma_quantile_v1/
+운영 경로       server/backend/app/nowcast/model_artifacts/fr01_kma_quantile_v1/
 평가 결과       data/fr01/model/stage6/validation_segment_evaluation.json
 factor 최대 오차 0.0 (허용 1e-10)
 DNI 최대 오차    0.0 W/m² (허용 1e-6)

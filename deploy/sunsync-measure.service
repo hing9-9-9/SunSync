@@ -4,7 +4,7 @@ After=network.target
 
 [Service]
 User=sunsync
-WorkingDirectory=/opt/sunsync/measure/registration-core
+WorkingDirectory=/opt/sunsync/server/measure
 Environment=PYTHONDONTWRITEBYTECODE=1
 ExecStart=/opt/sunsync/.venv/bin/uvicorn sunsync_registration.api:app --host 127.0.0.1 --port 8001
 Restart=on-failure

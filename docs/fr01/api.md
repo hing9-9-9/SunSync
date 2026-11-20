@@ -104,7 +104,7 @@ timestamp_count × sample_count × (window_count + occluder_count + room_corner_
 
 기본 한도는 sample 10,000개, 교차 검사 5,000,000회다. 한도를 넘으면 `INTERSECTION_LIMIT_EXCEEDED` 또는 `SAMPLE_LIMIT_EXCEEDED`와 실제값·한도를 반환한다. 사용자는 `interval_seconds`를 늘리거나 보호 영역 또는 가구 수를 줄일 수 있다.
 
-운영 목표는 12×8×3.5 m, 서가 4개 기준 summary 응답 1 MB 이하, warm-run 중앙값 7초 이하다. 2026-11-09 Windows 개발 환경 측정 결과는 74,132 bytes, 3회 4.744~6.890초, 중앙값 5.833초였다. `tools/measure_fr01_large_space.py`로 재현할 수 있다. 서가 9개 시나리오는 예상 5,080,320회로 현재 5,000,000회 한도를 넘으며 구조화된 422를 반환한다.
+운영 목표는 12×8×3.5 m, 서가 4개 기준 summary 응답 1 MB 이하, warm-run 중앙값 7초 이하다. 2026-11-09 Windows 개발 환경 측정 결과는 74,132 bytes, 3회 4.744~6.890초, 중앙값 5.833초였다. `server/tools/measure_fr01_large_space.py`로 재현할 수 있다. 서가 9개 시나리오는 예상 5,080,320회로 현재 5,000,000회 한도를 넘으며 구조화된 422를 반환한다.
 
 ## 오류
 

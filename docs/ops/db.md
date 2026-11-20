@@ -136,4 +136,4 @@ DB 파일 위치는 환경변수 `SUNSYNC_DATABASE_URL`이고 기본값은 `sqli
 
 - 서버 프로세스가 종료되거나 재시작되어도 DB 파일(기본 `sqlite:///./sunsync.db`, 서버는 `SUNSYNC_DATABASE_URL`이 가리키는 파일)에 저장된 모든 테이블 데이터는 그대로 유지됩니다.
 - 가상 필름의 현재 셀 상태(`cells_json`), 활성 스케줄(`active_plan_json`), 마커 모드 상태 및 백업(`marker_backup_json`)이 모두 복원되므로 서버 재시작 후에도 `GET /api/scenes/{scene_id}/film-state` 및 `GET /api/scenes/{scene_id}/film-logs` 엔드포인트를 통해 재시작 전과 100% 동일한 상태를 조회할 수 있습니다.
-- `tests/test_fr05_api.py::test_server_restart_persistence` 단위/통합 테스트를 통해 동일한 DB 파일 위에서 앱 인스턴스를 재생성하고 영속성을 엄격하게 검증합니다.
+- `server/tests/test_fr05_api.py::test_server_restart_persistence` 단위/통합 테스트를 통해 동일한 DB 파일 위에서 앱 인스턴스를 재생성하고 영속성을 엄격하게 검증합니다.

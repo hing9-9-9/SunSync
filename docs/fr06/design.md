@@ -11,7 +11,7 @@ ArUco 검출, UI 화면 개발은 각 담당 모듈의 후속 작업이다.
 - [FR06 설계](https://docs.google.com/document/d/1EIlqPKcd9ibQDjtm9UPqc6R-lqO6-LaJq1HS6M_27Cc/edit?tab=t.vp7o25nkajaw): `0.2.0` 형상·출처·순간 보호 정책.
 - Library `SunSync_FR06_JSON_검증묶음.zip` v2의 전체 합성 예제를 유지한다.
 - 공유 문서의 SQLModel 검토 상태보다 저장소 [결정](../overview/decisions.md)의 명시적 선택을 적용한다.
-- `engine/`에는 아직 좌표 구현이 없다. ENU는 FR01 담당자와 연결 시 확인할 계약이다.
+- `server/engine/`에는 아직 좌표 구현이 없다. ENU는 FR01 담당자와 연결 시 확인할 계약이다.
 
 전체 예제의 필드를 모두 요구하면 방 하나를 입력하는 데도 예보와 시나리오가
 필요해진다. 이 구현은 `windows`, `occluders`, `protected_regions`, `markers`,
@@ -165,9 +165,9 @@ scenario.scene_revision을 3으로 바꾸어 PUT한다. 서버가 DB의 이전 r
 ## 검증과 스키마 갱신
 
 ```bash
-PYTHONPATH=backend python -m app.scene_cli validate docs/examples/fr06_scene_example.json
-PYTHONPATH=backend python -m app.scene_cli validate docs/examples/fr06_manual_room.json
-PYTHONPATH=backend python -m app.scene_cli schema
+PYTHONPATH=server/backend python -m app.scene_cli validate docs/examples/fr06_scene_example.json
+PYTHONPATH=server/backend python -m app.scene_cli validate docs/examples/fr06_manual_room.json
+PYTHONPATH=server/backend python -m app.scene_cli schema
 pytest -q
 ```
 

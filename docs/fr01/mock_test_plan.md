@@ -26,7 +26,7 @@ runner는 `tempfile.TemporaryDirectory()` 아래의 고유 SQLite file로 engine
 ## 디렉터리와 삭제 경계
 
 ```text
-tools/
+server/tools/
   mock_validation/
     README.md
     run_fr01_mock_validation.py
@@ -52,7 +52,7 @@ artifacts/
         failure.txt
 ```
 
-`tools/mock_validation/`, `artifacts/mock_validation/`, 이 문서는 mock validation의 전체 삭제 경계다. production source와 `docs/examples/`에는 mock fixture나 mock 분기를 추가하지 않는다.
+`server/tools/mock_validation/`, `artifacts/mock_validation/`, 이 문서는 mock validation의 전체 삭제 경계다. production source와 `docs/examples/`에는 mock fixture나 mock 분기를 추가하지 않는다.
 
 `artifacts/`는 Git에서 무시하며 실행할 때 만들어진다. run ID는 `YYYYMMDDTHHMMSSZ-<uuid8>` 형식이다. 이미 존재하는 run directory는 덮어쓰지 않고 실패한다.
 
@@ -139,14 +139,14 @@ Summary: 4 PASS, 0 SETUP_FAIL, 0 API_FAIL, 0 NUMERICAL_FAIL
 ## 실행 명령
 
 ```powershell
-$env:PYTHONPATH = "backend"
-python tools/mock_validation/run_fr01_mock_validation.py
-python tools/mock_validation/run_fr01_mock_validation.py --scenario mock_scene_clear_path --verbose
+$env:PYTHONPATH = "server/backend"
+python server/tools/mock_validation/run_fr01_mock_validation.py
+python server/tools/mock_validation/run_fr01_mock_validation.py --scenario mock_scene_clear_path --verbose
 
 python -m pytest -q
-python -m ruff check backend/app engine/fr01 tests tools/mock_validation
-python -m ruff format --check backend/app engine/fr01 tests tools/mock_validation
-python -m mypy backend/app engine/fr01
+python -m ruff check server/backend/app server/engine/fr01 server/tests server/tools/mock_validation
+python -m ruff format --check server/backend/app server/engine/fr01 server/tests server/tools/mock_validation
+python -m mypy server/backend/app server/engine/fr01
 ```
 
 ## Production defect 보고 규칙

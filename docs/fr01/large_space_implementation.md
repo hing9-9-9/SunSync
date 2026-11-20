@@ -87,7 +87,7 @@ len(json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8
 
 ## 5. 요청 계약
 
-`backend/app/schemas/sunpath.py`의 `SunpathPredictionRequest`에 다음 필드를 추가한다.
+`server/backend/app/schemas/sunpath.py`의 `SunpathPredictionRequest`에 다음 필드를 추가한다.
 
 ```python
 detail_level: Literal["summary", "diagnostic"] = "summary"
@@ -214,7 +214,7 @@ Pydantic 모델에서 `samples=None`을 사용한다면 API route의 response se
 
 ## 7. 서비스 집계 구현
 
-현재 `backend/app/services/sunpath.py`의 `_sample_response`와 region response 생성 부분을 변경한다.
+현재 `server/backend/app/services/sunpath.py`의 `_sample_response`와 region response 생성 부분을 변경한다.
 
 각 engine `RegionTimeResult`에 대해 sample 결과를 한 번 순회해 다음을 계산한다.
 
@@ -408,8 +408,8 @@ maxW: r.timeline.map(t => t.max_direct_irradiance_W_m2)
 
 `predict_scene`은 sunpath API 외에도 다음 경로에서 사용된다.
 
-- `backend/app/services/shading.py`
-- `backend/app/services/adaptive_control.py`
+- `server/backend/app/services/shading.py`
+- `server/backend/app/services/adaptive_control.py`
 
 점검 규칙:
 
@@ -422,15 +422,15 @@ FR-02 shading 응답의 의미나 결과를 바꾸면 안 된다.
 
 ## 11. 성능 측정 도구
 
-`tools/` 아래에 재현 가능한 측정 스크립트를 추가하거나 기존 dummy data 실행 도구를 확장한다. 예시 이름:
+`server/tools/` 아래에 재현 가능한 측정 스크립트를 추가하거나 기존 dummy data 실행 도구를 확장한다. 예시 이름:
 
 ```text
-tools/measure_fr01_large_space.py
+server/tools/measure_fr01_large_space.py
 ```
 
 입력:
 
-- `tools/dummy_data/scenarios.json`의 서가 4개 기준 시나리오
+- `server/tools/dummy_data/scenarios.json`의 서가 4개 기준 시나리오
 - 같은 파일의 S6b 서가 9개 시나리오
 - warm-up 횟수 1
 - 측정 횟수 기본 3
@@ -468,16 +468,16 @@ tools/measure_fr01_large_space.py
 ## 12. 파일별 구현 순서
 
 1. #114 문서의 구조화 오류 계약 구현
-2. `backend/app/schemas/sunpath.py`
+2. `server/backend/app/schemas/sunpath.py`
    - request `detail_level`
    - timeline summary 필드
    - `result_version="0.4.0"`
-3. `backend/app/services/sunpath.py`
+3. `server/backend/app/services/sunpath.py`
    - `PredictionWorkEstimate`
    - 한도 context
    - sample 단일 순회 집계
    - summary/diagnostic response 생성
-4. `backend/app/api/sunpath.py`
+4. `server/backend/app/api/sunpath.py`
    - summary에서 `None` 필드 제외 확인
 5. `frontend/src/spaceApi.ts`
    - summary 요청과 타입 갱신
@@ -491,7 +491,7 @@ tools/measure_fr01_large_space.py
 
 ### 13.1 API 계약 테스트
 
-`tests/test_sunpath_api.py`:
+`server/tests/test_sunpath_api.py`:
 
 1. 기본 요청
    - `result_version == "0.4.0"`
@@ -546,7 +546,7 @@ tools/measure_fr01_large_space.py
 ### 13.4 회귀 테스트
 
 ```powershell
-python -m pytest -q tests/test_fr01_prediction.py tests/test_sunpath_api.py tests/test_shading_plans_api.py tests/test_ui_spaces.py
+python -m pytest -q server/tests/test_fr01_prediction.py server/tests/test_sunpath_api.py server/tests/test_shading_plans_api.py server/tests/test_ui_spaces.py
 cd frontend
 npm test
 ```

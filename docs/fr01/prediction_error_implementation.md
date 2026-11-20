@@ -15,14 +15,14 @@
 
 ### 서버
 
-`backend/app/services/sunpath.py`의 `SunpathValidationError`는 메시지만 가진 `ValueError`다. 다음처럼 원인이 다른 실패가 모두 문자열로 전달된다.
+`server/backend/app/services/sunpath.py`의 `SunpathValidationError`는 메시지만 가진 `ValueError`다. 다음처럼 원인이 다른 실패가 모두 문자열로 전달된다.
 
 - 계산 한도: `prediction exceeds the intersection-check limit`
 - 보호 타일과 가구 겹침: `sample 20 of ui_region_<hash> is inside occluder ui_furniture_<hash>`
 - 샘플 수 한도: `selected regions exceed the sample-point limit`
 - 그 밖의 Scene 기하 및 요청 오류
 
-`backend/app/api/sunpath.py`는 위 예외와 `pydantic.ValidationError`를 모두 다음과 같은 422로 바꾼다.
+`server/backend/app/api/sunpath.py`는 위 예외와 `pydantic.ValidationError`를 모두 다음과 같은 422로 바꾼다.
 
 ```json
 {
@@ -61,7 +61,7 @@
 
 ### 5.1 오류 코드
 
-`backend/app/schemas/sunpath.py`에 다음 literal 타입과 응답 모델을 추가한다.
+`server/backend/app/schemas/sunpath.py`에 다음 literal 타입과 응답 모델을 추가한다.
 
 ```python
 SunpathErrorCode = Literal[
@@ -167,7 +167,7 @@ FR-01 도메인 오류는 HTTP 422와 다음 형태를 사용한다.
 
 ### 6.1 `SunpathValidationError`
 
-`backend/app/services/sunpath.py`에서 예외를 다음 정보가 있는 타입으로 바꾼다.
+`server/backend/app/services/sunpath.py`에서 예외를 다음 정보가 있는 타입으로 바꾼다.
 
 ```python
 class SunpathValidationError(ValueError):
@@ -192,7 +192,7 @@ API 계층은 `str(error)`를 사용하지 않고 `error.detail.model_dump(mode=
 
 ### 6.2 엔진 예외
 
-문자열 정규식으로 `sample ... is inside occluder ...`를 영구 파싱하지 않는다. `engine/fr01/predictor.py`에 엔진 전용 타입 예외를 추가한다.
+문자열 정규식으로 `sample ... is inside occluder ...`를 영구 파싱하지 않는다. `server/engine/fr01/predictor.py`에 엔진 전용 타입 예외를 추가한다.
 
 ```python
 class SampleInsideOccluderError(ValueError):
@@ -248,7 +248,7 @@ FastAPI가 먼저 거르는 body schema 오류는 기존 Pydantic 오류로 남�
 
 ## 7. API 계층 변경
 
-`backend/app/api/sunpath.py`의 예외 처리를 분리한다.
+`server/backend/app/api/sunpath.py`의 예외 처리를 분리한다.
 
 ```python
 except SunpathValidationError as error:
@@ -268,7 +268,7 @@ except ValidationError as error:
 
 주의: 요청 body의 `RequestValidationError`는 이 함수에 진입하기 전에 FastAPI가 처리하므로 위 `ValidationError`와 다르다.
 
-`backend/app/api/shading.py`도 같은 `SunpathValidationError`를 잡는다. 최소 변경 원칙은 다음과 같다.
+`server/backend/app/api/shading.py`도 같은 `SunpathValidationError`를 잡는다. 최소 변경 원칙은 다음과 같다.
 
 - 예외 생성자 변경으로 shading 경로가 깨지지 않게 한다.
 - shading endpoint도 동일한 `detail` 객체를 반환해 일관성을 유지한다.
@@ -324,19 +324,19 @@ type SunpathErrorDetail = {
 
 ## 9. 파일별 구현 순서
 
-1. `engine/fr01/predictor.py`
+1. `server/engine/fr01/predictor.py`
    - `SampleInsideOccluderError` 추가
    - 기존 `ValueError` 발생 지점을 타입 예외로 변경
-2. `backend/app/schemas/sunpath.py`
+2. `server/backend/app/schemas/sunpath.py`
    - 오류 코드, 대상 타입, `SunpathErrorDetail` 추가
-3. `backend/app/services/sunpath.py`
+3. `server/backend/app/services/sunpath.py`
    - 구조화된 `SunpathValidationError` 구현
    - 기존 모든 발생 지점에 코드 부여
    - 엔진 오류를 ID와 이름이 포함된 API 오류로 변환
-4. `backend/app/api/sunpath.py`
+4. `server/backend/app/api/sunpath.py`
    - 구조화된 detail 반환
    - 저장 Scene `ValidationError`를 Scene 오류로 변환
-5. `backend/app/api/shading.py`
+5. `server/backend/app/api/shading.py`
    - 공유 예외의 detail 객체 반환
 6. `frontend/src/spaceApi.ts`
    - 타입 가드와 코드별 문구 추가
@@ -346,7 +346,7 @@ type SunpathErrorDetail = {
 
 ### 10.1 엔진 단위 테스트
 
-`tests/test_fr01_prediction.py`:
+`server/tests/test_fr01_prediction.py`:
 
 - 타일이 occluder 안에 있으면 `SampleInsideOccluderError` 발생
 - `sample_index`, `region_id`, `occluder_id` 속성이 정확함
@@ -354,7 +354,7 @@ type SunpathErrorDetail = {
 
 ### 10.2 API 테스트
 
-`tests/test_sunpath_api.py`:
+`server/tests/test_sunpath_api.py`:
 
 1. 가구 겹침
    - status 422
@@ -391,7 +391,7 @@ type SunpathErrorDetail = {
 ### 10.4 실행 명령
 
 ```powershell
-python -m pytest -q tests/test_fr01_prediction.py tests/test_sunpath_api.py tests/test_shading_plans_api.py
+python -m pytest -q server/tests/test_fr01_prediction.py server/tests/test_sunpath_api.py server/tests/test_shading_plans_api.py
 cd frontend
 npm test
 ```

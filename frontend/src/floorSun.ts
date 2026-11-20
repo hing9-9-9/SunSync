@@ -70,7 +70,7 @@ function clip(poly: Point[], w: number, h: number): Point[] {
 
 /**
  * Floor patch and furniture shadows in plan coordinates (x east, y down = south), or null when
- * the sun is down or behind the window's wall. ENU room frame as backend/app/ui_scene.py: south wall at y = 0.
+ * the sun is down or behind the window's wall. ENU room frame as server/backend/app/ui_scene.py: south wall at y = 0.
  */
 export function floorSunlight(space: Space, hour: number, date: Date = new Date()) {
   const w = resolveWindow(space);

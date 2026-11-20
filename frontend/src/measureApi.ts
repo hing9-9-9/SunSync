@@ -1,9 +1,9 @@
-// Phone web capture → measurement server (measure/registration-core, reached as /measure) →
+// Phone web capture → measurement server (server/measure, reached as /measure) →
 // FR-06 registration on the backend.
 //
 // WEB APP TEST ONLY parts are marked below: browsers expose no camera intrinsics, so phones testing
 // through the web app run a one-time guided setup (더보기 › 카메라 준비, the installed board seen
-// from many angles) and keep the result on the device. The native app (mobile/) reads intrinsics
+// from many angles) and keep the result on the device. The native app (server/measure/mobile/) reads intrinsics
 // from the OS camera instead; drop savedCamera/setupCamera/prepare's fixed size when it ships.
 import { resolveWindow, toSceneFurnitureType } from "./model.ts";
 import type { FurnitureType, Space } from "./model.ts";
@@ -235,7 +235,7 @@ const add = (a: Vec, b: Vec, k = 1): Vec => [a[0] + b[0] * k, a[1] + b[1] * k, a
 const cross = (a: Vec, b: Vec): Vec => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
 
 /** Board pose in the room's ENU frame, from the window and the marker centre the space stores.
- *  Window frames match backend/app/ui_scene.py; the board is centred on the marker, read from inside. */
+ *  Window frames match server/backend/app/ui_scene.py; the board is centred on the marker, read from inside. */
 export function boardAlignment(space: Space) {
   const w = resolveWindow(space);
   if (!w) return null;
