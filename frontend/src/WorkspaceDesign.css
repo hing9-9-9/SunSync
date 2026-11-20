@@ -83,7 +83,7 @@
 .app.mode-app > .main { display:block !important; }
 .app.mode-app > .app-header { display:flex !important; }
 @media (min-width:761px) {
- .app.mode-app { max-width:480px; width:100%; margin:auto; min-height:100svh; display:block; background:linear-gradient(120deg,var(--c-edf1fb) 0,var(--c-f5f8fa) 42%,var(--c-e4f2ec) 100%); padding-bottom:84px; }
+ .app.mode-app { max-width:480px; width:100%; margin:auto; min-height:100svh; min-height:100dvh; display:block; background:linear-gradient(120deg,var(--c-edf1fb) 0,var(--c-f5f8fa) 42%,var(--c-e4f2ec) 100%); padding-bottom:84px; }
  .app.mode-app > .app-header { height:66px; padding:0 var(--space-5); gap:var(--space-3); }
 
  .app.mode-app .desktop-only { display:none !important; }
@@ -245,3 +245,6 @@
 .actual-workspace svg.plan { max-height:70vh; }
 
 /* Web space detail 공간 관리: grouped row list + grey destructive button (2026-11-06). */ /* one containment layer: rows sit in the card between hairlines */
+
+/* App mode: the page behind the app column carries the same gradient, so overscroll and a short page never reveal white below it. */
+@media (max-width:480px) { html:has(.app.mode-app) { min-height:100dvh; background:var(--c-e4f2ec) linear-gradient(120deg,var(--c-edf1fb) 0,var(--c-f5f8fa) 42%,var(--c-e4f2ec) 100%); } }
