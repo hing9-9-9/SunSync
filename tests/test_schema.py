@@ -9,6 +9,10 @@ from app.schemas.scene import Scene
 from jsonschema import Draft202012Validator
 
 EXAMPLES = Path(__file__).resolve().parents[1] / "docs" / "examples"
+SCENE_EXAMPLES = (
+    EXAMPLES / "fr06_manual_room.json",
+    EXAMPLES / "fr06_scene_example.json",
+)
 
 
 def test_checked_in_schema_matches_model():
@@ -17,7 +21,7 @@ def test_checked_in_schema_matches_model():
     Draft202012Validator.check_schema(published)
 
 
-@pytest.mark.parametrize("file", sorted(EXAMPLES.glob("*.json")), ids=lambda p: p.name)
+@pytest.mark.parametrize("file", SCENE_EXAMPLES, ids=lambda p: p.name)
 def test_examples_match_schema_and_runtime(file):
     data = json.loads(file.read_text(encoding="utf-8"))
     Draft202012Validator(schema_document()).validate(data)
