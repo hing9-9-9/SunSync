@@ -26,7 +26,7 @@ export type ServerMoment = { sun?: [number, number, number] | null; cells?: Uint
 
 const INK = "#1d1c22", ACTION = "#6660e5", SUN = "#ff7426";
 // Cell state codes from space3dServer STATE_CODE: 1 opaque, 2 infeasible (darkest film is not enough). Unknown (3) cells are counted, not drawn.
-// Same rule as the server (backend/app/ui_scene.py protected_face): furniture protects the side facing the window.
+// Same rule as the server (server/backend/app/ui_scene.py protected_face): furniture protects the side facing the window.
 const STATE_COLOR: Record<number, string> = { 1: "#4b45c6", 2: "#2a2833" };
 const closes = (code: number) => code === 1 || code === 2;
 const TYPE_COLOR: Record<string, string> = { bookcase: "#f2f0ea", desk: "#ececf0", table: "#f3f3f5", cabinet: "#e4e4e9", display: "#f3f3f5", other: "#ececec" };

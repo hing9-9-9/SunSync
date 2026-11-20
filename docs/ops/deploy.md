@@ -131,7 +131,7 @@ sudo systemctl enable --now sunsync-autoupdate.timer
 
 - **Use the single 60 cm marker** (a black outer square of 0.6 m x 0.6 m, 6 x 6 cells of 10 cm; [fr03/single_marker.md](../fr03/single_marker.md)). Nothing else is printed. A marker that is printed or shown on a screen must have the size and the ID that the capture session reports, and the measurement server stops when the saved marker size is not 0.6 m. The film display is virtual in this term.
 - **Prepare each phone camera once.** The app prepares the camera from 12 to 30 different views of the whole marker. The result is saved on that phone for this address only, so it has to be repeated when the address changes, in another browser, or after the browser data is cleared.
-- **Taking photos in the browser is a development test and is off in production builds** ([README](../../README.md)); a demo capture needs the native app ([mobile/README.md](../../mobile/README.md)).
+- **Taking photos in the browser is a development test and is off in production builds** ([README](../../README.md)); a demo capture needs the native app ([server/measure/mobile/README.md](../../server/measure/mobile/README.md)).
 - **Not verified on the server yet:** the capture with the single marker and the camera preparation (issue #112).
 - Allow the camera when the browser asks.
 - Do the whole flow once on every phone that will be used, with the real address, a day before the demo (code freeze: 11/19 and 12/10).
@@ -174,7 +174,7 @@ sites=11 stored=5 failed=6 lease_acquired=1 reasons=kma_transport_error:6
 ```
 
 - `lease_acquired=0` means another run was still holding the lock; nothing is wrong.
-- `reasons` names why sites failed, with fixed words and counts only (never a response, an address or a key). Open-Meteo: `open_meteo_timeout`, `open_meteo_transport_error`, `open_meteo_invalid_response`. KMA: `kma_transport_error`, or a `kma_invalid_*` / `kma_empty_response` word when the answer cannot be used (the full list is in `backend/app/nowcast/kma_adapter.py`).
+- `reasons` names why sites failed, with fixed words and counts only (never a response, an address or a key). Open-Meteo: `open_meteo_timeout`, `open_meteo_transport_error`, `open_meteo_invalid_response`. KMA: `kma_transport_error`, or a `kma_invalid_*` / `kma_empty_response` word when the answer cannot be used (the full list is in `server/backend/app/nowcast/kma_adapter.py`).
 - **Retry and time limits.** Open-Meteo: 5 seconds per request and one more try after 2 seconds for a network failure (not for a bad response). KMA: 90 seconds per request and three tries with a growing pause.
 - **When a run counts as failed.** The service is marked failed only when it tried and stored nothing. A run that stored some sites and failed on others (for example a site the provider cannot serve) is reported in the line but stays successful, so `systemctl --failed` shows real outages. There is no e-mail or message alert: look at `systemctl --failed` or the lines below.
 

@@ -622,7 +622,7 @@ export function gradeCounts(space: Pick<Space, "furniture" | "regions">): Record
 /**
  * A protection area on furniture guards the side that looks at the window, and also the furniture's top
  * (decided 2026-11-13). The server gets that top as one more protected area, listed after all the
- * regular ones, in the order of this list. Same rule as top_companions in backend/app/ui_scene.py.
+ * regular ones, in the order of this list. Same rule as top_companions in server/backend/app/ui_scene.py.
  */
 export function topCompanions(space: Pick<Space, "regions" | "furniture">): number[] {
   return space.regions.flatMap((r, i) =>

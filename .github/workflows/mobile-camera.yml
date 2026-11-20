@@ -1,10 +1,10 @@
 name: Native camera adapters
 on:
   pull_request:
-    paths: ['mobile/**', 'frontend/src/capturePolicy*', '.github/workflows/mobile-camera.yml']
+    paths: ['server/measure/mobile/**', 'frontend/src/capturePolicy*', '.github/workflows/mobile-camera.yml']
   push:
     branches: [main, 'feature/**']
-    paths: ['mobile/**', 'frontend/src/capturePolicy*', '.github/workflows/mobile-camera.yml']
+    paths: ['server/measure/mobile/**', 'frontend/src/capturePolicy*', '.github/workflows/mobile-camera.yml']
 permissions:
   contents: read
 jobs:
@@ -15,7 +15,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - run: node --experimental-strip-types --test mobile/MeasurementClient.test.ts frontend/src/capturePolicy.test.ts
+      - run: node --experimental-strip-types --test server/measure/mobile/MeasurementClient.test.ts frontend/src/capturePolicy.test.ts
   android:
     runs-on: ubuntu-latest
     steps:
@@ -27,9 +27,9 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.11.1'
-      - run: gradle -p mobile/android assembleDebug --no-daemon
+      - run: gradle -p server/measure/mobile/android assembleDebug --no-daemon
   ios:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-      - run: xcrun swiftc -typecheck -sdk "$(xcrun --sdk iphoneos --show-sdk-path)" -target arm64-apple-ios17.0 mobile/ios/NativeMeasurementCapture.swift
+      - run: xcrun swiftc -typecheck -sdk "$(xcrun --sdk iphoneos --show-sdk-path)" -target arm64-apple-ios17.0 server/measure/mobile/ios/NativeMeasurementCapture.swift

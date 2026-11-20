@@ -74,7 +74,7 @@ on (`sudo journalctl -u sunsync-api | grep 'Google login'`).
 
 **Spaces belong to the account that created them.** A logged-in user sees, opens, changes and
 deletes only their own spaces; another user's space answers 404, as if it did not exist. The same
-account on the PC and on the phone sees the same spaces. One check in `backend/app/ownership.py`
+account on the PC and on the phone sees the same spaces. One check in `server/backend/app/ownership.py`
 looks at the `scene_id`, `space_id` or hand-off/measurement token of every request. The owner is
 stored in `scenes.owner_id`.
 
@@ -85,7 +85,7 @@ Spaces made before the accounts existed have no owner and appear in no list. To 
 account (that person must have logged in once), on the server:
 
 ```bash
-cd /opt/sunsync/backend && sudo -u sunsync env SUNSYNC_DATABASE_URL=sqlite:////var/lib/sunsync/sunsync.db \
+cd /opt/sunsync/server/backend && sudo -u sunsync env SUNSYNC_DATABASE_URL=sqlite:////var/lib/sunsync/sunsync.db \
   /opt/sunsync/.venv/bin/python -m app.assign_owner --email someone@example.com          # report only
 # add --apply to write the change
 ```

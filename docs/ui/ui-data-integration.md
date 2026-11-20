@@ -14,7 +14,7 @@ This branch combines the local UI branch with main at `741617d`; newer remote co
 - The plan's decorative sunlight polygon is hidden during real prediction. FR01 does not provide a whole-floor polygon; the actual results appear in the region summary. Film mapping remains an explicitly labeled FR02 simulation.
 - Existing stored scenes using the older sample_points_m schema are not migrated by this change. Use a fresh development database or migrate old data separately; do not delete a real database.
 - External/native Scenes without a matching UI projection remain listed as unavailable; this implementation does not import arbitrary polygonal rooms into the rectangular UI.
-- Weather collection is a separate worker (`PYTHONPATH=backend python -m app.nowcast.open_meteo_worker`); the prediction request never invokes it. Without a saved forecast, the UI identifies the clear-sky fallback.
+- Weather collection is a separate worker (`PYTHONPATH=server/backend python -m app.nowcast.open_meteo_worker`); the prediction request never invokes it. Without a saved forecast, the UI identifies the clear-sky fallback.
 - The FR-01.4 AI panel reads `/api/scenes/{scene_id}/ai-nowcast/latest`; production UI does not substitute demo data when no worker result exists. KMA, Open-Meteo and operational inference run as separate background workers, with shadow rollout as the default.
 
 Run backend from this directory:

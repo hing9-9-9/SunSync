@@ -13,7 +13,7 @@ git fetch origin "$BRANCH"
 git checkout "$BRANCH"
 git merge --ff-only "origin/$BRANCH"
 
-"$ROOT/.venv/bin/pip" install --quiet -r requirements.txt -e "measure/registration-core[api]"
+"$ROOT/.venv/bin/pip" install --quiet -r requirements.txt -e "server/measure[api]"
 
 # Install new or changed systemd units before they are restarted below (a timer that was added to
 # deploy/ after the server was set up would otherwise stop this script).

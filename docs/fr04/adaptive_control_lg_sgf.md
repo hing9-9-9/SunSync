@@ -83,7 +83,7 @@ flowchart TD
 
 ### 3.4 FR-04.4 Cell-Edge Margin
 - **Requirement**: the neighbouring cell is shaded when a light path crosses a cell boundary.
-- **Where it is met**: in FR-02.1. `cells_for_hit` (`engine/fr02/cell_mapping.py`) widens each window crossing to one tile and shades every cell that tile overlaps.
+- **Where it is met**: in FR-02.1. `cells_for_hit` (`server/engine/fr02/cell_mapping.py`) widens each window crossing to one tile and shades every cell that tile overlaps.
 - **The `enable_edge_margin` option** (replace mode only, off by default) is a second, cruder margin: it also shades the four orthogonal neighbours of every cell that is hit, whether or not the path is near a boundary (`edge_margin_threshold_m` is defined but not used). Turning it on shades neighbours twice. It is ignored in smoothing mode.
 
 ---
@@ -163,7 +163,7 @@ The numbers in this payload (for example "75.0%" and "1.2%" in `decision_summary
 ### 6.1 Running the Experiment CLI
 Run the standalone experiment simulator from repository root:
 ```bash
-.venv/bin/python tools/ai_experiments/run_fr04_adaptive_control_experiment.py
+.venv/bin/python server/tools/ai_experiments/run_fr04_adaptive_control_experiment.py
 ```
 This script generates:
 - Terminal formatted benchmark tables
@@ -194,7 +194,7 @@ See section 7. The full tables are in `docs/experiments/fr04_adaptive_control_ex
 
 ## 7. Experiment results (run of 2026-11-10)
 
-Source: `tools/ai_experiments/run_fr04_adaptive_control_experiment.py`; full tables in `docs/experiments/fr04_adaptive_control_experiment_benchmark.md`. Four synthetic days (Sunny, Partly Cloudy Rapid-Flicker, High Uncertainty Squall, Overcast Low Irradiance), one 4x4 window (1 Grade A cell, 3 Grade B cells with a 30 W/m2 cap as in the app policy, 12 Grade D cells), 5-minute steps. Ranges are over the four scenarios. Positive means better than the rule baseline; nothing is clipped at zero.
+Source: `server/tools/ai_experiments/run_fr04_adaptive_control_experiment.py`; full tables in `docs/experiments/fr04_adaptive_control_experiment_benchmark.md`. Four synthetic days (Sunny, Partly Cloudy Rapid-Flicker, High Uncertainty Squall, Overcast Low Irradiance), one 4x4 window (1 Grade A cell, 3 Grade B cells with a 30 W/m2 cap as in the app policy, 12 Grade D cells), 5-minute steps. Ranges are over the four scenarios. Positive means better than the rule baseline; nothing is clipped at zero.
 
 | Mode | Flicker (total opacity change) | Switch count | Daylight, all 16 cells (opacity) | Daylight, Grade B cells (opacity) | Daylight, Grade B cells (sun-weighted) |
 |---|---|---|---|---|---|
@@ -268,7 +268,7 @@ The rule is ours and open to review. `w_damage` (1000) and `w_daylight` (1.0) we
 
 ### 7.3 Real-weather replay (issue #149, run of 2026-11-18)
 
-Source: `tools/ai_experiments/run_fr04_real_weather_replay.py`; full tables, the control and the limits in `docs/experiments/fr04_real_weather_replay.md`. KMA 10-minute observations of four days in Seoul (08:00 to 16:50 Korean time) are converted to direct irradiance, put into the weather of the example Scene, and the application's own API computes the FR-02 plan and the default FR-04 plan (`smooth_fr02`). The frozen final-test days are not used. Switches are shown as FR-02 to FR-04.
+Source: `server/tools/ai_experiments/run_fr04_real_weather_replay.py`; full tables, the control and the limits in `docs/experiments/fr04_real_weather_replay.md`. KMA 10-minute observations of four days in Seoul (08:00 to 16:50 Korean time) are converted to direct irradiance, put into the weather of the example Scene, and the application's own API computes the FR-02 plan and the default FR-04 plan (`smooth_fr02`). The frozen final-test days are not used. Switches are shown as FR-02 to FR-04.
 
 | Day (Korean time) | Kind | 5-minute step (interpolated) | 10-minute step (the data's own) | 30-minute step (app screens) |
 |---|---|---|---|---|
@@ -287,7 +287,7 @@ Source: `tools/ai_experiments/run_fr04_real_weather_replay.py`; full tables, the
 
 ### 7.4 Measured 1-minute irradiance (issue #149, run of 2026-11-18)
 
-Source: `tools/ai_experiments/run_fr04_minute_replay.py`; full tables, the file hashes and the limits in `docs/experiments/fr04_minute_replay.md`. KMA's 10-minute values cannot contain the flicker that the 10-minute rules are for, so this run uses direct normal irradiance measured every minute (NOAA SURFRAD, Penn State, four days of October 2023, quality flag 0 only). A day is placed by solar time on the same month and day of 2026 in the example Scene in Seoul, and the application computes the plans. The sky is borrowed from a US station; the geometry is Seoul's. Switches are shown as FR-02 to FR-04.
+Source: `server/tools/ai_experiments/run_fr04_minute_replay.py`; full tables, the file hashes and the limits in `docs/experiments/fr04_minute_replay.md`. KMA's 10-minute values cannot contain the flicker that the 10-minute rules are for, so this run uses direct normal irradiance measured every minute (NOAA SURFRAD, Penn State, four days of October 2023, quality flag 0 only). A day is placed by solar time on the same month and day of 2026 in the example Scene in Seoul, and the application computes the plans. The sky is borrowed from a US station; the geometry is Seoul's. Switches are shown as FR-02 to FR-04.
 
 | Station day | Kind (from the numbers) | 1-minute step | 5-minute step | 30-minute step (app screens) |
 |---|---|---|---|---|
@@ -300,7 +300,7 @@ Source: `tools/ai_experiments/run_fr04_minute_replay.py`; full tables, the file 
 - **At the 5-minute and the 30-minute step it changes nothing on any day.** A plan with a coarser step already misses the short breaks, and the rules of 10 minutes are not longer than the step.
 - **It does about what a coarser plan step does.** FR-04 at 1 minute ends at 206 and 125 switches; FR-02 planned at 5 minutes has 206 and 123. FR-04 shades 4.7% and 5.7% less than that 5-minute plan on those days (more daylight) and keeps the 1-minute protection grid.
 - **NFR1.2.** Fewer switches than without stabilization is shown at the 1-minute step on days with flicker. It is not shown at the 30-minute step of the screens.
-- **Test through the application.** `tests/test_fr04_flicker_integration.py` puts one break into a steady sky and checks the whole chain at a 1-minute step: a 5-minute break splits the FR-02 plan (28 to 78 switches) and FR-04 closes it again (28); a 15-minute break is longer than the limit and stays open (76 to 72); at the 30-minute step a 5-minute break is not seen at all.
+- **Test through the application.** `server/tests/test_fr04_flicker_integration.py` puts one break into a steady sky and checks the whole chain at a 1-minute step: a 5-minute break splits the FR-02 plan (28 to 78 switches) and FR-04 closes it again (28); a 15-minute break is longer than the limit and stays open (76 to 72); at the 30-minute step a 5-minute break is not seen at all.
 - **Limits.** Borrowed sky, perfect forecast, one plan per day, one Scene, demo caps, and a plan of more than about 200 steps is refused by the application, so the 1-minute step is computed in chunks and summed.
 - **Data handling.** The tool makes no network request: the four NOAA daily files are downloaded by hand from the addresses in the report and checked against the SHA-256 listed there. They are only parsed as numbers, never executed, and are not committed (public data, terms of use not checked). The tools send no key and no identity, and the KMA replay reads a local CSV only.
 - **Next steps.** Measured 1-minute irradiance from Korea; the step of the effect badge (the screens plan with 30-minute steps, where FR-04 cannot act); agreed protection caps; more Scenes; replaying a nowcast that is revised every 10 minutes to check the switching across plans; the sensitivity of the gap limit and the holding time at the 1-minute step (the API does not expose them yet).
@@ -345,7 +345,7 @@ Consequences for this project:
 | 11 | Metrics are honest | The engine metric and the tuner clipped negative values and counted a violation only relative to the baseline | Done in this change (section 10) |
 | 12 | Cells are independent | FR-04.4 (neighbour cell when a path crosses a cell boundary) is already met by FR-02.1: `cells_for_hit` widens each hit to one tile and shades every cell it overlaps. The FR-04 `enable_edge_margin` option is a cruder second margin (it shades the four neighbours of every hit cell; `edge_margin_threshold_m` is not used) | Keep it off by default and in smoothing mode, where it is ignored. Turning it on would shade neighbours twice |
 | 13 | The API shows the sun to FR-04 | `adaptive-shading-plan` asked FR-01 for the prediction without diagnostic detail, so no exposed samples came back: in `replace` mode FR-04 saw no sun and shaded nothing (FR-02 shaded 68 cells in the same test scene), smoothing had no irradiance for its hysteresis, and every violation count was a meaningless 0 | Fixed (`detail_level="diagnostic"`), with a regression test. Results of the API before the fix must not be quoted |
-| 14 | The experiment tests the API | It calls the engine directly and never the API, so it could not catch item 13 | Done on 2026-11-18: `tools/ai_experiments/run_fr04_real_weather_replay.py`, `run_fr04_minute_replay.py` and `tests/test_fr04_flicker_integration.py` go through the API with a real Scene |
+| 14 | The experiment tests the API | It calls the engine directly and never the API, so it could not catch item 13 | Done on 2026-11-18: `server/tools/ai_experiments/run_fr04_real_weather_replay.py`, `run_fr04_minute_replay.py` and `server/tests/test_fr04_flicker_integration.py` go through the API with a real Scene |
 | 15 | "Switch change" is always a ratio | When FR-02 has no switch at all (for example a day that is overcast from morning to night) there is no percentage; the engine and the API give 0.0 and the report prints n/a | Read `baseline_total_change` and `adaptive_total_change` in that case |
 | 16 | The API can predict the sun path twice | The service predicted it and then `shading_plan_for_scene` predicted it again for the FR-02 baseline, which doubled the time (4.8 s and 19.7 s for 3 and 12 hours at 5-minute steps) | Fixed: the baseline plan is built from the same prediction (`shading_plan_from_prediction`, 2.4 s and 11.9 s); the plans of the API and of `/shading-plans` were compared before and after and are identical. The 12-hour case is still slow for a screen |
 | 17 | Real clouds flicker at the scale of the FR-04 rules | KMA's 10-minute values cannot contain flicker under 10 minutes, and on them the default smoothing changed nothing. Measured 1-minute irradiance does show it: there FR-04 removes 19% and 66% of the switches at the 1-minute step | Done (sections 7.3, 7.4). Measured 1-minute data from Korea is still missing |

@@ -120,13 +120,13 @@ FR-01에서 FR-02로 전달하는 필드와 좌표 규칙의 상세 내용은 [F
 
 | 단계 | 담당 코드 | 하는 일 |
 | --- | --- | --- |
-| DB 준비 | `backend/app/migrations/runner.py` | weather snapshot, weather point, worker lease 테이블을 만든다. |
-| Open-Meteo 요청·검증 | `backend/app/nowcast/adapters.py` | API를 호출하고 DNI·구름량·시간 구간·좌표를 검증한다. |
-| 저장 | `backend/app/nowcast/repository.py` | 중복 응답을 피하고 snapshot을 SQLite에 저장한다. |
-| worker 실행 | `backend/app/nowcast/open_meteo_worker.py` | 저장된 Scene의 고유 위치마다 예보를 한 번 수집한다. |
-| DNI 선택 | `backend/app/services/sunpath.py`, `backend/app/nowcast/selection.py` | Scene 날씨, snapshot, clear-sky 순서로 timestamp별 최종 DNI를 정한다. |
-| 타일 계산 | `engine/fr01/predictor.py` | 햇빛 경로와 최종 DNI를 결합해 타일별 직접일사량을 계산한다. |
-| API 반환 | `backend/app/schemas/sunpath.py`, `backend/app/services/sunpath.py` | DNI 출처와 타일별 결과를 FR-01 API 응답으로 만든다. |
+| DB 준비 | `server/backend/app/migrations/runner.py` | weather snapshot, weather point, worker lease 테이블을 만든다. |
+| Open-Meteo 요청·검증 | `server/backend/app/nowcast/adapters.py` | API를 호출하고 DNI·구름량·시간 구간·좌표를 검증한다. |
+| 저장 | `server/backend/app/nowcast/repository.py` | 중복 응답을 피하고 snapshot을 SQLite에 저장한다. |
+| worker 실행 | `server/backend/app/nowcast/open_meteo_worker.py` | 저장된 Scene의 고유 위치마다 예보를 한 번 수집한다. |
+| DNI 선택 | `server/backend/app/services/sunpath.py`, `server/backend/app/nowcast/selection.py` | Scene 날씨, snapshot, clear-sky 순서로 timestamp별 최종 DNI를 정한다. |
+| 타일 계산 | `server/engine/fr01/predictor.py` | 햇빛 경로와 최종 DNI를 결합해 타일별 직접일사량을 계산한다. |
+| API 반환 | `server/backend/app/schemas/sunpath.py`, `server/backend/app/services/sunpath.py` | DNI 출처와 타일별 결과를 FR-01 API 응답으로 만든다. |
 
 API 요청은 Open-Meteo HTTP 호출이나 worker 실행을 하지 않는다. 이미 저장된 snapshot만 읽으므로, 외부 API가 일시적으로 실패해도 각 timestamp에서 clear-sky fallback으로 응답할 수 있다.
 
@@ -136,16 +136,16 @@ API 요청은 Open-Meteo HTTP 호출이나 worker 실행을 하지 않는다. �
 
 ```powershell
 pip install -r requirements.txt
-$env:PYTHONPATH = "backend"
+$env:PYTHONPATH = "server/backend"
 
 # 운영 DB에 저장된 Scene 위치들의 예보를 한 번 수집한다.
 python -m app.nowcast.open_meteo_worker
 
 # 실제 Open-Meteo 응답을 이용하되, 별도 임시 SQLite DB에서 전체 흐름을 확인한다.
-python tools/run_fr01_4_open_meteo_integration.py
+python server/tools/run_fr01_4_open_meteo_integration.py
 
 # 외부 네트워크 없이 실행되는 단위·API 회귀 검증이다.
-python -m pytest -q tests/test_nowcast_open_meteo_worker.py tests/test_nowcast_persistence.py tests/test_nowcast_selection.py tests/test_sunpath_api.py
+python -m pytest -q server/tests/test_nowcast_open_meteo_worker.py server/tests/test_nowcast_persistence.py server/tests/test_nowcast_selection.py server/tests/test_sunpath_api.py
 ```
 
 smoke test는 `artifacts/local/fr01_4_open_meteo/<run-id>/`에 임시 SQLite DB와 `summary.json`을 만든다. 이 파일과 raw provider 응답은 Git에 올리지 않는다. worker의 정기 실행 주기, 재시도, 데이터 보존 기간, 장애 알림은 배포 환경에서 정한다.

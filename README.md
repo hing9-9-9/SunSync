@@ -126,20 +126,21 @@ phone / PC (PWA) --https--> Caddy ---- /api/*      --> FastAPI backend --> SQLit
 
 ## Structure
 ```
-backend/    FastAPI + SQLModel + SQLite
-frontend/   React + Vite (TypeScript)
-engine/     sunlight prediction (FR-01), shading plan (FR-02), stable control (FR-04), Vision AI
-measure/    ArUco measurement server (/measure) and its registration core
-mobile/     native camera adapters (Android, iOS)
-deploy/     server files: Caddy, systemd units, update, backup
-tools/      experiments, mock validation and dummy data scripts
-tests/      backend tests
-docs/       documents by topic: overview, ops, ui, fr01 to fr06, experiments, reports (index: docs/README.md)
+server/
+  backend/          FastAPI + SQLModel + SQLite
+  engine/           sunlight prediction (FR-01), shading plan (FR-02), stable control (FR-04), Vision AI
+  measure/          ArUco measurement server (/measure) and its registration core
+    mobile/         native camera adapters (Android, iOS)
+  tests/            tests of the Python code
+  tools/            experiments, mock validation and dummy data scripts
+frontend/           React + Vite (TypeScript)
+deploy/             server files: Caddy, systemd units, update, backup
+docs/               documents by topic: overview, ops, ui, fr01 to fr06, experiments, reports (index: docs/README.md)
 ```
 
-Guided furniture registration: [measurement core and API](measure/registration-core/README.md),
-[mobile integration contract](measure/registration-core/integration/CONTRACT.md).
-Native camera adapters and automatic camera setup: [mobile/README.md](mobile/README.md).
+Guided furniture registration: [measurement core and API](server/measure/README.md),
+[mobile integration contract](server/measure/integration/CONTRACT.md).
+Native camera adapters and automatic camera setup: [server/measure/mobile/README.md](server/measure/mobile/README.md).
 Browser photo capture is an opt-in development test and is disabled in production builds.
 
 ## Setup
@@ -152,7 +153,7 @@ Requirements: Python 3.11+, Node.js 22 or newer (CI uses 24, the server 22)
 python -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-cd backend
+cd server/backend
 uvicorn app.main:app --reload
 ```
 API docs: http://localhost:8000/docs. Login is off unless `SUNSYNC_AUTH=google` is set ([auth](docs/ops/auth.md)).
@@ -169,12 +170,12 @@ App: http://localhost:5173
 From the repository root, after activating the venv:
 ```bash
 pip install -r requirements-dev.txt
-PYTHONPATH=backend python -m app.scene_cli validate docs/examples/fr06_scene_example.json
+PYTHONPATH=server/backend python -m app.scene_cli validate docs/examples/fr06_scene_example.json
 pytest -q
-ruff check backend tests
-ruff format --check backend tests
-mypy backend/app
-PYTHONPATH=backend python -m app.scene_cli schema --check
+ruff check server/backend server/tests
+ruff format --check server/backend server/tests
+mypy server/backend/app
+PYTHONPATH=server/backend python -m app.scene_cli schema --check
 ```
 Frontend: `cd frontend && npm ci && npm test && npm run lint && npm run build`.
 GitHub Actions runs the backend checks on Python 3.11/3.12 and the frontend checks.

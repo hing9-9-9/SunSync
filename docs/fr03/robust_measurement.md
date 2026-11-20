@@ -32,11 +32,11 @@
 실행:
 
 ```sh
-python measure/registration-core/tools/run_robust_benchmark.py --output benchmark.json
-python measure/registration-core/tools/compare_measurement_modes.py request_json_folder --truth dimensions.json --output comparison.json
+python server/measure/tools/run_robust_benchmark.py --output benchmark.json
+python server/measure/tools/compare_measurement_modes.py request_json_folder --truth dimensions.json --output comparison.json
 ```
 
-`dimensions.json`은 파일명→`[가로, 세로, 높이]`(m) 대응이다. 모든 입력의 성공·거절 수를 함께 기록하며 잘 맞는 조합만 선택하지 않는다. 저장소의 `measure/registration-core/examples/robust-benchmark.json`은 합성 결과 요약이다.
+`dimensions.json`은 파일명→`[가로, 세로, 높이]`(m) 대응이다. 모든 입력의 성공·거절 수를 함께 기록하며 잘 맞는 조합만 선택하지 않는다. 저장소의 `server/measure/examples/robust-benchmark.json`은 합성 결과 요약이다.
 
 잡음만 있는 직사각형 20세트의 평균 절대 오차(가로/세로)는 중앙값 0.125/0.080cm, 가중 통합 0.105/0.067cm, 공동 최적화 0.095/0.061cm였다. 이상치 조건에서는 기존 방식이 20세트 모두 거절했고 두 새 방식은 정상 다수 관측을 선별했다. 타원·다각형의 일부 축은 공동 최적화가 가중 통합보다 소폭 나빠졌으므로 일률적인 성능 향상으로 해석하지 않는다. 합성 데이터 수치는 실제 휴대폰의 5% 정확도 달성 근거가 아니다.
 

@@ -1,6 +1,6 @@
 # FR-01.4 KMA AI DNI 선형 분위수 모델 구현·동결 사양
 
-> `data/fr01/…` 경로의 실험 데이터는 저장소에서 삭제했다. 마지막으로 존재한 커밋은 `f628bc7`이며 `git show f628bc7:<경로>`로 열 수 있다. 운영 모델 파일은 `backend/app/nowcast/model_artifacts/`에 그대로 있다.
+> `data/fr01/…` 경로의 실험 데이터는 저장소에서 삭제했다. 마지막으로 존재한 커밋은 `f628bc7`이며 `git show f628bc7:<경로>`로 열 수 있다. 운영 모델 파일은 `server/backend/app/nowcast/model_artifacts/`에 그대로 있다.
 
 > **상태:** 2026-11-08에 Stage 1~6, V1 동결과 Final test 1회 평가를 완료했다.
 > **분류:** PR·팀 공유용 기준 문서다. V1 재튜닝은 금지한다. 운영 연결 코드는 구현됐으며
@@ -14,7 +14,7 @@
 입력             현재 KMA DSR·CA, 당시 이용 가능한 Open-Meteo DNI, 태양 위치
 출력             10·30·60분 뒤 DSR 환산 DNI의 P10·P50·P90
 개발 데이터      2026-10-05 ~ 2026-11-01
-운영 artifact    backend/app/nowcast/model_artifacts/fr01_kma_quantile_v1/
+운영 artifact    server/backend/app/nowcast/model_artifacts/fr01_kma_quantile_v1/
 Final test       2026-11-02 ~ 2026-11-05, 1회 평가 완료
 ```
 
@@ -347,7 +347,7 @@ Open-Meteo final test 자료도 동일 기간의 archived run으로 별도 수�
 ### 신규 파일
 
 ```text
-backend/app/nowcast/kma_model_dataset.py
+server/backend/app/nowcast/kma_model_dataset.py
 ```
 
 책임:
@@ -360,7 +360,7 @@ backend/app/nowcast/kma_model_dataset.py
 - 시간순 split 생성
 
 ```text
-tools/ai_experiments/train_fr01_kma_quantile_model.py
+server/tools/ai_experiments/train_fr01_kma_quantile_model.py
 ```
 
 책임:
@@ -375,7 +375,7 @@ tools/ai_experiments/train_fr01_kma_quantile_model.py
 ### 수정 파일
 
 ```text
-backend/app/nowcast/kma_ml.py
+server/backend/app/nowcast/kma_ml.py
 ```
 
 수정 범위:
@@ -555,7 +555,7 @@ P50만 구현하는 이유는 feature와 정답이 잘못된 상태에서 P10·P
 #### 4단계 실행 결과 — 2026-11-08
 
 ```text
-실행 파일    tools/ai_experiments/train_fr01_kma_quantile_model.py
+실행 파일    server/tools/ai_experiments/train_fr01_kma_quantile_model.py
 artifact     data/fr01/archive/previous_work/legacy_pre_20261005_extension/model/quantile_stage4/
 학습 행      503
 validation    97
@@ -774,10 +774,10 @@ final test                               미사용
 
 ### 6단계 — 저장·로드와 전체 평가 추가
 
-Stage 6 운영 모델 위치는 `backend/app/nowcast/model_artifacts/`로 확정했다. 이 경로에는
+Stage 6 운영 모델 위치는 `server/backend/app/nowcast/model_artifacts/`로 확정했다. 이 경로에는
 검증된 작은 JSON 모델만 Git으로 관리하고, 학습 CSV·예측 CSV·기각 후보 등 실험 근거는
 `data/fr01/model/`에 유지한다. 상세 구조, 필수 계약, 구현 순서와 완료 조건은
-`backend/app/nowcast/model_artifacts/README.md`에 기록했다.
+`server/backend/app/nowcast/model_artifacts/README.md`에 기록했다.
 
 - [x] P10·P50·P90 weight와 feature 계약을 horizon별 `model.json`에 저장했다.
 - [x] 저장한 모델을 다시 load했을 때 factor와 DNI 예측값이 동일한지 검증했다.
@@ -789,10 +789,10 @@ Stage 6 운영 모델 위치는 `backend/app/nowcast/model_artifacts/`로 확정
 #### Stage 6 구현 결과 — 2026-11-08
 
 ```text
-운영 모델      backend/app/nowcast/model_artifacts/fr01_kma_quantile_v1/
-loader         backend/app/nowcast/kma_model_artifact.py
-패키징 도구    tools/ai_experiments/package_fr01_kma_models.py
-평가 도구      tools/ai_experiments/evaluate_fr01_kma_models.py
+운영 모델      server/backend/app/nowcast/model_artifacts/fr01_kma_quantile_v1/
+loader         server/backend/app/nowcast/kma_model_artifact.py
+패키징 도구    server/tools/ai_experiments/package_fr01_kma_models.py
+평가 도구      server/tools/ai_experiments/evaluate_fr01_kma_models.py
 평가 결과      data/fr01/model/stage6/validation_segment_evaluation.json
 
 10·30·60분 schema/hash 검증     PASS
@@ -894,7 +894,7 @@ Final-test 구현 완료 조건을 모두 충족했다. 결과를 근거로 V1 f
 | 공개 지연 | 모든 run에 `available_at = issued_at + 7시간` 적용 |
 | 시간 커버리지 | 10분 575행, 30분 573행, 60분 570행 |
 | 완전성 기록 | `data/fr01/archive/frozen_final_test/final_test_20261102_20261105/input_readiness_manifest.json` |
-| 평가기 | `tools/ai_experiments/evaluate_fr01_kma_final_test.py` |
+| 평가기 | `server/tools/ai_experiments/evaluate_fr01_kma_final_test.py` |
 | 실행 안전장치 | 명시적 `--confirm-one-time-final-evaluation`, 기존 결과 경로 덮어쓰기 금지 |
 | 준비 검사 당시 상태 | `ready_for_one_time_evaluation`; 이후 1회 평가 완료 |
 

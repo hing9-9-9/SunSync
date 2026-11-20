@@ -1,6 +1,6 @@
 # Experiments
 
-Results written by the tools in `tools/ai_experiments`. Each `.md` file is a report and the `.json` file next to it holds the numbers. Every file is overwritten when its tool runs again, so do not edit them by hand.
+Results written by the tools in `server/tools/ai_experiments`. Each `.md` file is a report and the `.json` file next to it holds the numbers. Every file is overwritten when its tool runs again, so do not edit them by hand.
 
 | Report | Tool | What it compares |
 |---|---|---|

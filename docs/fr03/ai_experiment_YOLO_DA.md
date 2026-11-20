@@ -79,7 +79,7 @@ apply_to_scene=false로 사진을 분석하고 JSON 결과를 저장할 수 있�
 
 ### Step 1. 실험 모드와 모델 실행 정책
 
-대상: `backend/app/config.py`, `backend/app/api/vision_ai.py`, `engine/vision_ai/protocols.py`, `engine/vision_ai/pipeline.py`
+대상: `server/backend/app/config.py`, `server/backend/app/api/vision_ai.py`, `server/engine/vision_ai/protocols.py`, `server/engine/vision_ai/pipeline.py`
 
 - 요청에서 `mode=experiment`를 선택할 수 있게 한다. 기존 요청은 일반 모드로 유지한다.
 - 일반 모드는 실제 모델이 사용 가능하면 사용하고, 불가능하거나 추론에 실패하면 기존 synthetic fallback을 유지한다.
@@ -95,7 +95,7 @@ apply_to_scene=false로 사진을 분석하고 JSON 결과를 저장할 수 있�
 
 ### Step 2. 진단 데이터 모델과 API 응답
 
-대상: `backend/app/schemas/vision_ai.py`, `engine/vision_ai/pipeline.py`, `engine/vision_ai/protocols.py`, `backend/app/api/vision_ai.py`
+대상: `server/backend/app/schemas/vision_ai.py`, `server/engine/vision_ai/pipeline.py`, `server/engine/vision_ai/protocols.py`, `server/backend/app/api/vision_ai.py`
 
 - 기존 응답 필드는 호환성을 위해 유지하고, 선택적 `diagnostics` 객체를 추가한다.
 - 전체 진단에는 요청 모드, 실제/fallback 모델 출처, 모델명·가중치 식별자·라이브러리 버전·device·추론 시간, 이미지 해상도와 사용 카메라 내부 파라미터를 담는다.
@@ -112,7 +112,7 @@ apply_to_scene=false로 사진을 분석하고 JSON 결과를 저장할 수 있�
 
 ### Step 3. 3D 추정 진단 연결
 
-대상: `engine/vision_ai/pipeline.py`, `engine/vision_ai/protocols.py`
+대상: `server/engine/vision_ai/pipeline.py`, `server/engine/vision_ai/protocols.py`
 
 - YOLO의 검출 결과와 Depth Anything의 깊이 맵이 동일한 검출 박스를 기준으로 연결되도록 한다.
 - 대표 깊이 추출은 현 구현의 "검출 박스 가장자리 20%를 제외한 내부 영역의 중앙값"을 초기 규칙으로 사용하고, 이 규칙을 진단에 명시한다.
@@ -127,7 +127,7 @@ apply_to_scene=false로 사진을 분석하고 JSON 결과를 저장할 수 있�
 
 ### Step 4. 실측 비교 도구와 실험 레코드
 
-대상: `tools/ai_experiments/`, `docs/`, 필요 시 `tests/`
+대상: `server/tools/ai_experiments/`, `docs/`, 필요 시 `tests/`
 
 - 현장 원본 사진 식별자, API dry-run JSON, 줄자 실측값을 같은 `experiment_id`로 연결하는 CSV 양식을 제공한다.
 - 비교 스크립트는 중심 위치 오차(cm), 폭·깊이·높이 오차(cm/%), yaw 절대 오차(°), 검출/3D 생성 성공 여부, clamp 여부를 계산한다.
@@ -141,7 +141,7 @@ apply_to_scene=false로 사진을 분석하고 JSON 결과를 저장할 수 있�
 - 실행 명령:
 
   ```powershell
-  python tools/ai_experiments/compare_fr03_field_measurements.py `
+  python server/tools/ai_experiments/compare_fr03_field_measurements.py `
     --measurements-csv path/to/measurements.csv `
     --output-csv docs/reports/fr03_field_comparison.csv `
     --summary-json docs/reports/fr03_field_comparison_summary.json
@@ -157,7 +157,7 @@ apply_to_scene=false로 사진을 분석하고 JSON 결과를 저장할 수 있�
 
 ### Step 5. 자동화 검증 및 현장 준비
 
-대상: `tests/test_fr03_vision_ai.py`, 필요 시 모델 어댑터 테스트 및 문서
+대상: `server/tests/test_fr03_vision_ai.py`, 필요 시 모델 어댑터 테스트 및 문서
 
 - 실제 모델 선택/실패, 일반 모드 fallback, 진단 출력, dry-run 비저장, Scene 등록을 테스트한다.
 - 실제 모델 테스트는 외부 다운로드에 의존하지 않도록 어댑터를 대체한 단위/API 테스트로 고정한다.
@@ -168,7 +168,7 @@ apply_to_scene=false로 사진을 분석하고 JSON 결과를 저장할 수 있�
 1. Python 3.11+ 가상환경에서 기본 의존성을 설치한 뒤, `pip install -r requirements-vision.txt`를 실행한다. CPU 환경이면 먼저 `torch` CPU wheel을 설치한다.
 2. YOLO 가중치 파일을 서비스가 읽을 수 있는 위치에 두고 `SUNSYNC_YOLO_WEIGHTS`에 절대 경로를 설정한다. 가중치 SHA-256과 `ultralytics`, `torch`, `transformers` 버전을 실험 CSV에 기록한다.
 3. Depth Anything 다운로드 캐시 경로는 쓰기 가능한 `HF_HOME`으로 지정한다. 첫 실행은 모델을 내려받고 로드하므로 네트워크·디스크·메모리를 사전에 확인한다.
-4. API를 실행한다. 로컬 개발 환경에서는 `cd backend` 후 `uvicorn app.main:app --reload`를 사용한다.
+4. API를 실행한다. 로컬 개발 환경에서는 `cd server/backend` 후 `uvicorn app.main:app --reload`를 사용한다.
 5. 창문 ArUco와 가구가 함께 나온 사진 한 장을 먼저 dry-run으로 보낸다. `mode=experiment`와 `apply_to_scene=false`를 반드시 함께 쓴다.
 
    ```powershell
@@ -183,7 +183,7 @@ apply_to_scene=false로 사진을 분석하고 JSON 결과를 저장할 수 있�
 
 **AC**
 
-- [x] 기존 `tests/test_fr03_vision_ai.py`와 추가 테스트가 모두 통과한다.
+- [x] 기존 `server/tests/test_fr03_vision_ai.py`와 추가 테스트가 모두 통과한다.
 - [x] 테스트는 실제 모델 미설치 환경에서도 안정적으로 실행된다.
 - [ ] 현장 장비에서 `mode=experiment`, `apply_to_scene=false` 요청이 실제 모델 출처를 포함해 성공한다.
 - [ ] 정확도 기준을 통과한 사례만 `apply_to_scene=true`로 Scene 등록을 확인한다.

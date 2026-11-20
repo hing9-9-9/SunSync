@@ -7,7 +7,7 @@ Type=oneshot
 User=sunsync
 WorkingDirectory=/opt/sunsync
 EnvironmentFile=/etc/sunsync/sunsync.env
-Environment=PYTHONPATH=/opt/sunsync/backend:/opt/sunsync PYTHONDONTWRITEBYTECODE=1
+Environment=PYTHONPATH=/opt/sunsync/server/backend:/opt/sunsync/server PYTHONDONTWRITEBYTECODE=1
 ExecStart=/opt/sunsync/.venv/bin/python -m app.nowcast.kma_worker --output-dir /var/lib/sunsync/fr01
 NoNewPrivileges=true
 PrivateTmp=true

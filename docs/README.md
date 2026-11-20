@@ -13,7 +13,7 @@ Documents are grouped by topic. Each feature folder (`fr01` to `fr06`) holds the
 | [`fr04/`](fr04/) | [Adaptive control and LG SGF](fr04/adaptive_control_lg_sgf.md) |
 | [`fr05/`](fr05/) | [Virtual film protocol](fr05/protocol.md) |
 | [`fr06/`](fr06/) | [Space data design](fr06/design.md), [JSON schema](fr06/scene_schema.json) |
-| [`experiments/`](experiments/) | Results of the experiment scripts in `tools/ai_experiments/` |
+| [`experiments/`](experiments/) | Results of the experiment scripts in `server/tools/ai_experiments/` |
 | [`examples/`](examples/) | Sample Scene, plan and measurement files that the tests and tools read |
 | [`reports/`](reports/) | Submitted course reports (PDF and LaTeX source) |
 | [`ai_applications/`](ai_applications/) | Course proposal blog |
