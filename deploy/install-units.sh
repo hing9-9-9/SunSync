@@ -5,7 +5,7 @@
 # - A unit that differs from deploy/ is replaced (deploy/ is the source of truth).
 # - daemon-reload runs only when something changed.
 # - The automatic update (sunsync-autoupdate.timer) is never enabled here: it is turned on by hand
-#   together with its switch file (docs/deploy.md).
+#   together with its switch file (docs/ops/deploy.md).
 # SUNSYNC_UNIT_SRC and SUNSYNC_UNIT_DIR exist for the tests.
 set -euo pipefail
 

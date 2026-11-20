@@ -1,6 +1,6 @@
-# Copy to /etc/caddy/Caddyfile and replace YOUR_NAME (see docs/deploy.md).
+# Copy to /etc/caddy/Caddyfile and replace YOUR_NAME (see docs/ops/deploy.md).
 
-# The Google login is the lock (docs/auth.md). The API checks the login itself. /measure is a
+# The Google login is the lock (docs/ops/auth.md). The API checks the login itself. /measure is a
 # separate program, so Caddy asks the API who is logged in before a request reaches it.
 # /api/auth/check answers 401 also when the login is off, so a server whose login is not switched
 # on yet keeps /measure closed instead of open.

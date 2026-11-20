@@ -17,7 +17,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 from app.schemas.geometry import require
 from app.schemas.scene import Identifier, Timestamp
 
-SCHEMA_PATH = Path(__file__).resolve().parents[3] / "docs" / "fr02_shading_plan_schema.json"
+SCHEMA_PATH = Path(__file__).resolve().parents[3] / "docs" / "fr02" / "shading_plan_schema.json"
 
 CellState = Literal["opaque", "transparent", "infeasible", "unknown"]
 Grade = Literal["A", "B", "C", "D"]

@@ -366,7 +366,7 @@ def analyze(args: argparse.Namespace) -> int:
         [
             ("timestamp contract", "FAIL" if has_time_error else "PASS"),
             ("review required", "daylight DSR gaps and CA outliers"),
-            ("next", "record findings in docs/fr01_4_ai_kma_analysis.md"),
+            ("next", "record findings in docs/fr01/kma_ai_analysis.md"),
         ]
     )
     return 1 if has_time_error else 0
