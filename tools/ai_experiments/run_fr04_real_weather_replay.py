@@ -608,7 +608,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument(
         "--end", default="16:50", help="Korean time of day, HH:MM (KMA has DSR until 16:50)"
     )
-    parser.add_argument("--output-dir", type=Path, default=WORKSPACE_ROOT / "docs" / "reports")
+    parser.add_argument("--output-dir", type=Path, default=WORKSPACE_ROOT / "docs" / "experiments")
     args = parser.parse_args(argv)
 
     days = args.day or [ReplayDay(label, parse_day(value)) for label, value in DEFAULT_DAYS]

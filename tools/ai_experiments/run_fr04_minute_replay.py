@@ -505,7 +505,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--scene", type=Path, default=DEFAULT_SCENE)
     parser.add_argument("--start", default="08:00", help="solar time of day, HH:MM")
     parser.add_argument("--end", default="16:50", help="solar time of day, HH:MM")
-    parser.add_argument("--output-dir", type=Path, default=WORKSPACE_ROOT / "docs" / "reports")
+    parser.add_argument("--output-dir", type=Path, default=WORKSPACE_ROOT / "docs" / "experiments")
     args = parser.parse_args(argv)
 
     days = args.day or [
