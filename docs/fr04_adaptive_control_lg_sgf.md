@@ -167,12 +167,12 @@ Run the standalone experiment simulator from repository root:
 ```
 This script generates:
 - Terminal formatted benchmark tables
-- `docs/reports/fr04_adaptive_control_experiment_benchmark.md`
-- `docs/reports/fr04_adaptive_control_experiment_results.json`
+- `docs/experiments/fr04_adaptive_control_experiment_benchmark.md`
+- `docs/experiments/fr04_adaptive_control_experiment_results.json`
 
 ### 6.2 Experiment results
 
-See section 7. The full tables are in `docs/reports/fr04_adaptive_control_experiment_benchmark.md`, written by the CLI on every run.
+See section 7. The full tables are in `docs/experiments/fr04_adaptive_control_experiment_benchmark.md`, written by the CLI on every run.
 
 ### 6.3 Interfacing in Backend Code
 - **Engine Package**:
@@ -194,7 +194,7 @@ See section 7. The full tables are in `docs/reports/fr04_adaptive_control_experi
 
 ## 7. Experiment results (run of 2026-11-10)
 
-Source: `tools/ai_experiments/run_fr04_adaptive_control_experiment.py`; full tables in `docs/reports/fr04_adaptive_control_experiment_benchmark.md`. Four synthetic days (Sunny, Partly Cloudy Rapid-Flicker, High Uncertainty Squall, Overcast Low Irradiance), one 4x4 window (1 Grade A cell, 3 Grade B cells with a 30 W/m2 cap as in the app policy, 12 Grade D cells), 5-minute steps. Ranges are over the four scenarios. Positive means better than the rule baseline; nothing is clipped at zero.
+Source: `tools/ai_experiments/run_fr04_adaptive_control_experiment.py`; full tables in `docs/experiments/fr04_adaptive_control_experiment_benchmark.md`. Four synthetic days (Sunny, Partly Cloudy Rapid-Flicker, High Uncertainty Squall, Overcast Low Irradiance), one 4x4 window (1 Grade A cell, 3 Grade B cells with a 30 W/m2 cap as in the app policy, 12 Grade D cells), 5-minute steps. Ranges are over the four scenarios. Positive means better than the rule baseline; nothing is clipped at zero.
 
 | Mode | Flicker (total opacity change) | Switch count | Daylight, all 16 cells (opacity) | Daylight, Grade B cells (opacity) | Daylight, Grade B cells (sun-weighted) |
 |---|---|---|---|---|---|
@@ -268,7 +268,7 @@ The rule is ours and open to review. `w_damage` (1000) and `w_daylight` (1.0) we
 
 ### 7.3 Real-weather replay (issue #149, run of 2026-11-18)
 
-Source: `tools/ai_experiments/run_fr04_real_weather_replay.py`; full tables, the control and the limits in `docs/reports/fr04_real_weather_replay.md`. KMA 10-minute observations of four days in Seoul (08:00 to 16:50 Korean time) are converted to direct irradiance, put into the weather of the example Scene, and the application's own API computes the FR-02 plan and the default FR-04 plan (`smooth_fr02`). The frozen final-test days are not used. Switches are shown as FR-02 to FR-04.
+Source: `tools/ai_experiments/run_fr04_real_weather_replay.py`; full tables, the control and the limits in `docs/experiments/fr04_real_weather_replay.md`. KMA 10-minute observations of four days in Seoul (08:00 to 16:50 Korean time) are converted to direct irradiance, put into the weather of the example Scene, and the application's own API computes the FR-02 plan and the default FR-04 plan (`smooth_fr02`). The frozen final-test days are not used. Switches are shown as FR-02 to FR-04.
 
 | Day (Korean time) | Kind | 5-minute step (interpolated) | 10-minute step (the data's own) | 30-minute step (app screens) |
 |---|---|---|---|---|
@@ -287,7 +287,7 @@ Source: `tools/ai_experiments/run_fr04_real_weather_replay.py`; full tables, the
 
 ### 7.4 Measured 1-minute irradiance (issue #149, run of 2026-11-18)
 
-Source: `tools/ai_experiments/run_fr04_minute_replay.py`; full tables, the file hashes and the limits in `docs/reports/fr04_minute_replay.md`. KMA's 10-minute values cannot contain the flicker that the 10-minute rules are for, so this run uses direct normal irradiance measured every minute (NOAA SURFRAD, Penn State, four days of October 2023, quality flag 0 only). A day is placed by solar time on the same month and day of 2026 in the example Scene in Seoul, and the application computes the plans. The sky is borrowed from a US station; the geometry is Seoul's. Switches are shown as FR-02 to FR-04.
+Source: `tools/ai_experiments/run_fr04_minute_replay.py`; full tables, the file hashes and the limits in `docs/experiments/fr04_minute_replay.md`. KMA's 10-minute values cannot contain the flicker that the 10-minute rules are for, so this run uses direct normal irradiance measured every minute (NOAA SURFRAD, Penn State, four days of October 2023, quality flag 0 only). A day is placed by solar time on the same month and day of 2026 in the example Scene in Seoul, and the application computes the plans. The sky is borrowed from a US station; the geometry is Seoul's. Switches are shown as FR-02 to FR-04.
 
 | Station day | Kind (from the numbers) | 1-minute step | 5-minute step | 30-minute step (app screens) |
 |---|---|---|---|---|

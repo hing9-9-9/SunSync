@@ -841,7 +841,7 @@ def main() -> None:
     results = primary
 
     # Save artifacts
-    reports_dir = WORKSPACE_ROOT / "docs" / "reports"
+    reports_dir = WORKSPACE_ROOT / "docs" / "experiments"
     reports_dir.mkdir(parents=True, exist_ok=True)
     report_file = reports_dir / "fr04_adaptive_control_experiment_benchmark.md"
     report_file.write_text(report_md, encoding="utf-8")
