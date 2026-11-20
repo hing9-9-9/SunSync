@@ -7,7 +7,7 @@ import math
 import re
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Literal
 
 import cv2
 import numpy as np
@@ -34,6 +34,7 @@ if TYPE_CHECKING:
         EstimatedFurnitureResult,
         EstimationQuality,
         MarkerAnchorInput,
+        VisionDiagnostics,
         VisionFurnitureEstimateRequest,
     )
 
@@ -98,7 +99,7 @@ class VisionRegistrationPipeline:
         self.depth_estimator = depth_estimator or create_default_depth_estimator(
             prefer_monocular=True
         )
-        self.last_diagnostics: dict[str, Any] | None = None
+        self.last_diagnostics: VisionDiagnostics | None = None
 
     @staticmethod
     def decode_image_base64(image_base64: str) -> np.ndarray:
@@ -390,7 +391,7 @@ class VisionRegistrationPipeline:
         detection_source: DetectionSource = "client_hint",
     ) -> EstimatedFurnitureResult:
         """Unproject 2D box + calibrated depth into floor-standing 3D cuboid and generate ProtectedRegion."""
-        from app.schemas.vision_ai import EstimatedFurnitureResult
+        from app.schemas.vision_ai import EstimatedFurnitureResult, FurnitureDiagnostics
 
         x1, y1, x2, y2 = detection.box_xyxy
         w_px = max(1.0, x2 - x1)
@@ -522,7 +523,7 @@ class VisionRegistrationPipeline:
             floor_poly=room_floor_poly,
             room_height=room_height_m,
         )
-        dimension_sources = {
+        dimension_sources: dict[str, Literal["measured", "prior", "clamped"]] = {
             "width": "clamped" if was_clamped and clamped_dims[0] != width_m else width_source,
             "depth": "clamped"
             if was_clamped and clamped_dims[1] != depth_m
@@ -651,22 +652,22 @@ class VisionRegistrationPipeline:
             aruco_capture_guidance_ko=guidance_ko,
             recommended_capture_shape="rectangle",
             estimated_corners_enu_m=estimated_corners,
-            diagnostics={
-                "box_xyxy_px": detection.box_xyxy,
-                "representative_depth_rule": "central_60_percent_median",
-                "representative_depth_region_xyxy_px": depth_region,
-                "representative_depth_median_m": depth_median,
-                "valid_depth_pixel_count": valid_depth_pixels,
-                "depth_source": depth_source,
-                "depth_fallback_reason": depth_fallback_reason,
-                "depth_iqr_m": depth_iqr_m,
-                "background_pixel_mixing_risk": background_pixel_mixing_risk,
-                "dimension_sources": dimension_sources,
-                "prior_dimensions_m": (0.8, prior["depth"], prior["height"]),
-                "unclamped_base_center_enu_m": base_center,
-                "unclamped_dimensions_m": dimensions,
-                "room_clamp_reason": room_clamp_reason,
-            },
+            diagnostics=FurnitureDiagnostics(
+                box_xyxy_px=detection.box_xyxy,
+                representative_depth_rule="central_60_percent_median",
+                representative_depth_region_xyxy_px=depth_region,
+                representative_depth_median_m=depth_median,
+                valid_depth_pixel_count=valid_depth_pixels,
+                depth_source=depth_source,
+                depth_fallback_reason=depth_fallback_reason,
+                depth_iqr_m=depth_iqr_m,
+                background_pixel_mixing_risk=background_pixel_mixing_risk,
+                dimension_sources=dimension_sources,
+                prior_dimensions_m=(0.8, prior["depth"], prior["height"]),
+                unclamped_base_center_enu_m=base_center,
+                unclamped_dimensions_m=dimensions,
+                room_clamp_reason=room_clamp_reason,
+            ),
         )
 
     # -------------------------------------------------------------------------
@@ -687,7 +688,14 @@ class VisionRegistrationPipeline:
         existing_ids: set[str] | None = None,
     ) -> tuple[CameraPoseResult, DepthCalibrationResult, list[EstimatedFurnitureResult]]:
         """Run full 3-step registration pipeline."""
-        from app.schemas.vision_ai import CameraIntrinsicsInput, Detection2DInput
+        from app.schemas.vision_ai import (
+            ArucoDiagnostics,
+            CameraIntrinsicsInput,
+            DepthCalibrationDiagnostics,
+            Detection2DInput,
+            VisionDiagnostics,
+            VisionModelDiagnostics,
+        )
 
         if image_rgb is None and request.image_base64 is not None:
             image_rgb = self.decode_image_base64(request.image_base64)
@@ -809,6 +817,9 @@ class VisionRegistrationPipeline:
                 MAX_METRIC_DEPTH_M,
             )
 
+        depth_runtime_source: Literal[
+            "depth_anything_v2", "synthetic_geometric", "provided_metric_map"
+        ]
         if depth_map is not None and rel_depth_map is None:
             depth_runtime_source = "provided_metric_map"
         elif isinstance(self.depth_estimator, CompositeDepthEstimator):
@@ -854,35 +865,33 @@ class VisionRegistrationPipeline:
             )
             estimated_items.append(res)
 
-        self.last_diagnostics = {
-            "model": {
-                "request_mode": request.mode,
-                "detector_source": detection_source,
-                "depth_source": depth_runtime_source,
-                "yolo_adapter_selected": bool(
-                    isinstance(self.detector, CompositeFurnitureDetector)
-                    and self.detector._primary is not None
-                ),
-                "depth_anything_adapter_selected": bool(
-                    isinstance(self.depth_estimator, CompositeDepthEstimator)
-                    and self.depth_estimator._primary is not None
-                ),
-            },
-            "aruco": {
-                "pose_method": pose_res.pose_method,
-                "marker_corners_px": marker_corners,
-                "reprojection_error_mean_px": pose_res.reprojection_error_mean_px,
-                "reprojection_error_max_px": pose_res.reprojection_error_max_px,
-            },
-            "depth": {
-                "anchor_relative_depths": [float(value) for value in anchor_rel],
-                "anchor_metric_depths_m": [
+        self.last_diagnostics = VisionDiagnostics(
+            model=VisionModelDiagnostics(
+                request_mode=request.mode,
+                detector_source=detection_source,
+                depth_source=depth_runtime_source,
+                yolo_adapter_selected=isinstance(self.detector, CompositeFurnitureDetector)
+                and self.detector._primary is not None,
+                depth_anything_adapter_selected=isinstance(
+                    self.depth_estimator, CompositeDepthEstimator
+                )
+                and self.depth_estimator._primary is not None,
+            ),
+            aruco=ArucoDiagnostics(
+                pose_method=pose_res.pose_method,
+                marker_corners_px=marker_corners,
+                reprojection_error_mean_px=pose_res.reprojection_error_mean_px,
+                reprojection_error_max_px=pose_res.reprojection_error_max_px,
+            ),
+            depth=DepthCalibrationDiagnostics(
+                anchor_relative_depths=[float(value) for value in anchor_rel],
+                anchor_metric_depths_m=[
                     float(value) for value in pose_res.marker_corner_depths_metric
                 ],
-                "alpha": depth_calib.alpha,
-                "beta": depth_calib.beta,
-                "residual_rmse_m": residual_rmse,
-            },
-        }
+                alpha=depth_calib.alpha,
+                beta=depth_calib.beta,
+                residual_rmse_m=residual_rmse,
+            ),
+        )
 
         return pose_res, depth_calib, estimated_items
