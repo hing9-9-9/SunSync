@@ -1,0 +1,22 @@
+/* Placeholders while the server list has not answered (SpaceSkeleton.tsx). Colours come from the existing tokens. */
+.sk-bar { display: block; border-radius: 4px; background: var(--c-hairline); max-width: 100%; }
+.sk-text { display: inline-block; max-width: 100%; vertical-align: top; color: transparent; user-select: none; background: linear-gradient(var(--c-hairline), var(--c-hairline)) center / 100% 64% no-repeat; border-radius: 4px; }
+.sk-plan { width: 100%; height: auto; aspect-ratio: 5 / 6; border-radius: 4px; }
+.sk-status { min-height: 82px; box-sizing: border-box; }
+.sk-card { pointer-events: none; }
+.sk-card:hover { translate: none !important; border-color: inherit !important; }
+.sk-copy { display: grid; gap: 10px; align-content: start; }
+.sk-card .sk-copy { padding: 18px 20px 20px; }
+.room-card.sk-card .sk-copy { padding: 0; gap: 8px; }
+@media (prefers-reduced-motion: no-preference) {
+  .sk-bar, .sk-text, .sk-card [class*="-art"], .sk-card .award-room-visual { animation: sk-pulse 1.4s ease-in-out infinite; }
+}
+@keyframes sk-pulse { 50% { opacity: .55; } }
+.award-room-card.sk-card .award-room-copy { min-height: 170px; box-sizing: border-box; }
+.app .room-card.sk-card { min-height: 124px; box-sizing: border-box; }
+.room-card.sk-card .sk-copy { width: 100%; }
+.sk-home-today { min-height: 205px; box-sizing: border-box; }
+.sk-home-status { min-height: 72px; box-sizing: border-box; display: flex; align-items: center; }
+.sk-home-preview { min-height: 223px; box-sizing: border-box; padding: var(--space-4); }
+.app .sk-home-guide { min-height: 69px; height: 69px; box-sizing: border-box; display: flex; align-items: center; padding: 0 var(--space-4); }
+.sk-home-preview .sk-copy { gap: 36px; }

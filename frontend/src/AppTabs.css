@@ -358,7 +358,7 @@
 .app.award-mobile.mode-app .page-heading .back-button {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   min-height: 44px;
   margin: 0 0 4px -8px;
   padding: 0 8px;
@@ -368,10 +368,10 @@
   font-size: 16px;
   font-weight: 500;
 }
-.app.award-mobile.mode-app .page-heading .back-button span {
-  font-size: 26px;
-  line-height: 1;
-  margin-top: -3px;
+.app.award-mobile.mode-app .page-heading .back-button svg {
+  flex: none;
+  width: 7px;
+  height: 12px;
 }
 .app.award-mobile.mode-app .page-heading .back-button:active {
   opacity: 0.55;

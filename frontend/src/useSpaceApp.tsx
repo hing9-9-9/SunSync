@@ -234,6 +234,14 @@ export function useSpaceApp() {
     "loading" | "online" | "offline"
   >("loading");
   const [serverError, setServerError] = useState("");
+  // The browser keeps the last list so screens open without a wait, but until the server answers once it can be out of date.
+  // Pages that show spaces keep a placeholder up until then, so an old drawing is never shown and swapped.
+  const [serverAnswered, setServerAnswered] = useState(editorExample);
+  useEffect(() => {
+    // A server that never answers must not hold the placeholder forever; the saved copy is shown after a while.
+    const giveUp = setTimeout(() => setServerAnswered(true), 8000);
+    return () => clearTimeout(giveUp);
+  }, []);
   const [unavailable, setUnavailable] = useState<UnavailableScene[]>([]);
   const [conflict, setConflict] = useState(false);
   const [locationStatus, setLocationStatus] = useState("");
@@ -407,6 +415,7 @@ export function useSpaceApp() {
     return () => { stopped = true; clearTimeout(timer); };
   }, [page, active?.id, active?.serverRevision, authStatus]);
   const space = editing ? draft : active;
+  const spacesPending = !editorExample && !serverAnswered && authStatus !== "out" && (page === "home" || page === "spaces" || page === "detail");
   // When sunlight reaches each protected area (simplified demo calculation). Blocking itself only
   // happens inside the time range the user sets.
   // FR-01: the saved space's real sun times for today. Results are keyed by scene revision, so a
@@ -604,9 +613,11 @@ export function useSpaceApp() {
   useEffect(() => {
     if (editorExample || authStatus !== "in") return;
     const controller = new AbortController();
+    const giveUp = setTimeout(() => setServerAnswered(true), 8000);
     listServerSpaces(controller.signal)
       .then((result) => {
         if (controller.signal.aborted) return;
+        setServerAnswered(true);
         setSpaces((current) => mergeServerSpaces(current, result.spaces, result.unavailable, result.deleted));
         setUnavailable(result.unavailable);
         setServerState("online");
@@ -621,12 +632,21 @@ export function useSpaceApp() {
       })
       .catch((error) => {
         if (controller.signal.aborted) return;
+        setServerAnswered(true);
         setServerState("offline");
         setServerError(
           userMessage(error, "서버 연결을 확인해 주세요."),
         );
       });
-    return () => controller.abort();
+    return () => {
+      controller.abort();
+      clearTimeout(giveUp);
+    };
+  }, [authStatus]);
+  useEffect(() => {
+    // The next sign-in loads its own list first.
+    // eslint-disable-next-line react/set-state-in-effect -- Reset when the session ends.
+    if (authStatus === "out") setServerAnswered(false);
   }, [authStatus]);
   async function refreshServer() {
     if (editorExample || authStatus !== "in") return;
@@ -1612,7 +1632,8 @@ export function useSpaceApp() {
     measurementReady,
     setMeasurementReady,
     account,
-    spaces,
+    spaces: spacesPending ? [] : spaces,
+    spacesPending,
     setSpaces,
     page,
     setPageState,
@@ -1681,9 +1702,9 @@ export function useSpaceApp() {
     draftPage,
     takePendingWebAction,
     rememberQrReturn,
-    active,
+    active: spacesPending ? undefined : active,
     editing,
-    space,
+    space: spacesPending ? undefined : space,
     sunSchedule,
     shadingDraft,
     setShadingDraft,
