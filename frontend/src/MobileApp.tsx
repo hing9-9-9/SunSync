@@ -636,7 +636,7 @@ function MobileApp() {
                     <div className="capture-intro">
                       <div className="capture-title-with-marker">
                         <TestMarkerPreview key={captureMarker?.session_id} session={captureMarker} />
-                        {import.meta.env.DEV && new URLSearchParams(location.search).has("test") && captureMarker && <TestMarkerSize
+                        {captureMarker && <TestMarkerSize
                           key={captureMarker.session_id}
                           sideM={markerSizeOverride?.sessionId === captureMarker.session_id ? markerSizeOverride?.sideM : undefined}
                           onApply={sideM => setMarkerSizeOverride(sideM === undefined
