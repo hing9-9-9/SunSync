@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 358" width="860" height="358" role="img" aria-label="SunSync-AI End-to-End 3-Track AIML System Architecture">
+<title>SunSync-AI End-to-End 3-Track AIML System Architecture</title>
+<rect x="0" y="0" width="860" height="358" fill="#FFFFFF" rx="4"/>
+<defs><marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1 L 10 5 L 0 9 z" fill="#1B365D"/></marker></defs>
+<text x="430.0" y="22" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13.5" font-weight="700" fill="#111827">SunSync-AI End-to-End Architecture: Vision 3D Sensing, Probabilistic Nowcasting, and Adaptive Control</text>
+<rect x="16" y="36" width="822" height="92" fill="#F8FAFC" stroke="#1B365D" stroke-width="1.3" rx="6"/>
+<rect x="16" y="36" width="822" height="22" fill="#1B365D" rx="5"/>
+<rect x="16" y="52" width="822" height="6" fill="#1B365D"/>
+<text x="26" y="50.5" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="9.8" font-weight="700" fill="#FFFFFF">Track 2: Hybrid Vision AI 3D Sensing &amp; Guided ArUco Fallback (FR-03 &amp; FR-06)</text>
+<rect x="28" y="68" width="178" height="48" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.1" rx="4"/>
+<text x="117.0" y="86" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="9.2" font-weight="700" fill="#111827">Indoor Photo + 6x6 ArUco</text>
+<text x="117.0" y="101" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="8.0" fill="#4B5563">s = 0.6 m, solvePnP IPPE_SQUARE</text>
+<rect x="228" y="68" width="196" height="48" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.1" rx="4"/>
+<text x="326.0" y="86" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="9.2" font-weight="700" fill="#111827">YOLOv8m + Depth Anything V2</text>
+<text x="326.0" y="101" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="8.0" fill="#4B5563">SUNSYNC_VISION_AI lock + contour FB</text>
+<rect x="446" y="68" width="184" height="48" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.1" rx="4"/>
+<text x="538.0" y="86" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="9.2" font-weight="700" fill="#111827">3D Cuboids &amp; VisionPreview</text>
+<text x="538.0" y="101" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="8.0" fill="#4B5563">Quality score + 2D room floorplan</text>
+<rect x="652" y="68" width="174" height="48" fill="#FFFFFF" stroke="#C2520F" stroke-width="1.1" rx="4"/>
+<text x="739.0" y="86" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="9.2" font-weight="700" fill="#111827">Stage-2 Guided ArUco</text>
+<text x="739.0" y="101" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="8.0" fill="#4B5563">P1-P4 corner capture -&gt; Scene DB</text>
+<line x1="206.0" y1="92.0" x2="226.0" y2="92.0" stroke="#1B365D" stroke-width="1.4" marker-end="url(#arr)"/>
+<line x1="424.0" y1="92.0" x2="444.0" y2="92.0" stroke="#1B365D" stroke-width="1.4" marker-end="url(#arr)"/>
+<line x1="630.0" y1="92.0" x2="650.0" y2="92.0" stroke="#1B365D" stroke-width="1.4" marker-end="url(#arr)"/>
+<rect x="16" y="148" width="822" height="92" fill="#F0FDFA" stroke="#0F766E" stroke-width="1.3" rx="6"/>
+<rect x="16" y="148" width="822" height="22" fill="#0F766E" rx="5"/>
+<rect x="16" y="164" width="822" height="6" fill="#0F766E"/>
+<text x="26" y="162.5" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="9.8" font-weight="700" fill="#FFFFFF">Track 1: Sub-Hourly Probabilistic Solar Nowcasting (FR-01.4)</text>
+<rect x="28" y="180" width="178" height="48" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.1" rx="4"/>
+<text x="117.0" y="198" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="9.2" font-weight="700" fill="#111827">KMA GK2A + Open-Meteo</text>
+<text x="117.0" y="213" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="8.0" fill="#4B5563">10-min DSR/CA + IFS025 (+7h delay)</text>
+<rect x="228" y="180" width="196" height="48" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.1" rx="4"/>
+<text x="326.0" y="198" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="9.2" font-weight="700" fill="#111827">Erbs Prior &amp; Clear-Sky Norm</text>
+<text x="326.0" y="213" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="8.0" fill="#4B5563">k = DNI / DNI_clear (5 fixed features)</text>
+<rect x="446" y="180" width="184" height="48" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.1" rx="4"/>
+<text x="538.0" y="198" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="9.2" font-weight="700" fill="#111827">Frozen Linear Quantile V1</text>
+<text x="538.0" y="213" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="8.0" fill="#4B5563">L-BFGS-B P10 / P50 / P90 (10/30/60m)</text>
+<rect x="652" y="180" width="174" height="48" fill="#FFFFFF" stroke="#0F766E" stroke-width="1.1" rx="4"/>
+<text x="739.0" y="198" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="9.2" font-weight="700" fill="#111827">Operational Policy &amp; UI</text>
+<text x="739.0" y="213" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="8.0" fill="#4B5563">10/30m V1, 60m OM, Provenance bar</text>
+<line x1="206.0" y1="204.0" x2="226.0" y2="204.0" stroke="#1B365D" stroke-width="1.4" marker-end="url(#arr)"/>
+<line x1="424.0" y1="204.0" x2="444.0" y2="204.0" stroke="#1B365D" stroke-width="1.4" marker-end="url(#arr)"/>
+<line x1="630.0" y1="204.0" x2="650.0" y2="204.0" stroke="#1B365D" stroke-width="1.4" marker-end="url(#arr)"/>
+<rect x="16" y="260" width="822" height="86" fill="#F8FAFC" stroke="#334155" stroke-width="1.3" rx="6"/>
+<rect x="16" y="260" width="822" height="22" fill="#334155" rx="5"/>
+<rect x="16" y="276" width="822" height="6" fill="#334155"/>
+<text x="26" y="274.5" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="9.8" font-weight="700" fill="#FFFFFF">Track 3: Rolling Time-Bucket Precomputation &amp; Adaptive Smart Film Control (FR-02 / FR-04)</text>
+<rect x="28" y="290" width="192" height="46" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.1" rx="4"/>
+<text x="124.0" y="308" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="9.2" font-weight="700" fill="#111827">Geometry Cache + Fingerprint</text>
+<text x="124.0" y="323" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="8.0" fill="#4B5563">_GEOMETRY_CACHE + SHA-256 weather</text>
+<rect x="242" y="290" width="196" height="46" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.1" rx="4"/>
+<text x="340.0" y="308" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="9.2" font-weight="700" fill="#111827">10-min Rolling &amp; Event Sync</text>
+<text x="340.0" y="323" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="8.0" fill="#4B5563">SQLite scenario_snapshots + single-flight</text>
+<rect x="460" y="290" width="184" height="46" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.1" rx="4"/>
+<text x="552.0" y="308" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="9.2" font-weight="700" fill="#111827">FR-04 Stabilization / DP</text>
+<text x="552.0" y="323" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="8.0" fill="#4B5563">smooth_fr02 (default) / SGF 5-lvl DP</text>
+<rect x="666" y="290" width="160" height="46" fill="#FFFFFF" stroke="#1B365D" stroke-width="1.1" rx="4"/>
+<text x="746.0" y="308" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="9.2" font-weight="700" fill="#111827">Read-First UI &amp; ThinQ ON</text>
+<text x="746.0" y="323" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="8.0" fill="#4B5563">GET /scenario &amp; LG_THINQ_ON_SGF_V1</text>
+<line x1="220.0" y1="313.0" x2="240.0" y2="313.0" stroke="#1B365D" stroke-width="1.4" marker-end="url(#arr)"/>
+<line x1="438.0" y1="313.0" x2="458.0" y2="313.0" stroke="#1B365D" stroke-width="1.4" marker-end="url(#arr)"/>
+<line x1="644.0" y1="313.0" x2="664.0" y2="313.0" stroke="#1B365D" stroke-width="1.4" marker-end="url(#arr)"/>
+<polyline points="838,92 850,92 850,305 840,305" fill="none" stroke="#1B365D" stroke-width="1.5" marker-end="url(#arr)"/>
+<line x1="124.0" y1="240.0" x2="124.0" y2="258.0" stroke="#1B365D" stroke-width="1.4" marker-end="url(#arr)"/>
+<text x="430" y="141" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="8.1" font-weight="600" fill="#1B365D">Track 2 registers 3D ENU Occluders &amp; Protected Regions (right bus -> Track 3 Geometry Cache &amp; Invalidation)</text>
+<text x="470" y="253" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="8.1" font-weight="600" fill="#0F766E">Track 1 Quantile DNI (P10 / P50 / P90) &amp; weather_fingerprint feed Track 3 Rolling Precomputation</text>
+</svg>
