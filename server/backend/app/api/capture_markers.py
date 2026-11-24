@@ -18,6 +18,7 @@ from app.models.scene import SceneRecord
 from app.schemas.film import MarkerModeRequest, MarkerPairingRequest
 from app.schemas.scene import Window
 from app.services.film import generate_aruco_4x4_pattern, pair_marker_for_scene, set_marker_mode
+from app.services.hub_client import is_hub_enabled
 from app.services.stored_scene import load_stored_scene
 from app.ui_scene import UISpace, UISpaceRecord, canonical_id
 
@@ -29,6 +30,9 @@ class CaptureMarkerSession(SQLModel, table=True):
     marker_json: str
     expires_at: str
     active: bool = True
+    display_status: str = "virtual_applied"
+    hub_command_id: str | None = None
+    hub_applied_at: str | None = None
 
 
 class StartCapture(BaseModel):
@@ -118,7 +122,9 @@ def describe(row: CaptureMarkerSession, db: Session) -> dict:
             "marker_center_uv_m": [u, v],
         },
         "expires_at": row.expires_at,
-        "display_status": "virtual_applied",
+        "display_status": row.display_status,
+        "hub_command_id": row.hub_command_id,
+        "hub_applied_at": row.hub_applied_at,
         "marker": marker,
         "board": {
             "board_id": "window_board",
@@ -225,7 +231,8 @@ def start_capture(scene_id: str, request: StartCapture, db: DB) -> dict:
         ),
         commit=False,
     )
-    set_marker_mode(
+    remote_hub = is_hub_enabled()
+    marker_state = set_marker_mode(
         db,
         scene_id,
         MarkerModeRequest(
@@ -236,7 +243,15 @@ def start_capture(scene_id: str, request: StartCapture, db: DB) -> dict:
             start_col=start_col,
         ),
         commit=False,
+        require_hub_ack=remote_hub,
     )
+    if remote_hub and marker_state.sync_status != "synced":
+        db.rollback()
+        raise HTTPException(
+            503,
+            f"Remote hub did not confirm capture marker display ({marker_state.sync_status}): "
+            f"{marker_state.sync_error or 'hub unavailable'}",
+        )
     scene = load_stored_scene(record.scene_json)
     marker = next(m for m in scene.markers if m.window_id == window.window_id)
     row = previous or CaptureMarkerSession(
@@ -251,6 +266,14 @@ def start_capture(scene_id: str, request: StartCapture, db: DB) -> dict:
     row.marker_json = marker.model_dump_json()
     row.expires_at = (datetime.now(UTC) + timedelta(minutes=60)).isoformat()
     row.active = True
+    if remote_hub:
+        row.display_status = "hub_applied"
+        row.hub_command_id = marker_state.last_command_id
+        row.hub_applied_at = marker_state.last_synced_at
+    else:
+        row.display_status = "virtual_applied"
+        row.hub_command_id = None
+        row.hub_applied_at = None
     db.add(row)
     db.flush()
     response = describe(row, db)

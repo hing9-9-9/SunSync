@@ -26,3 +26,36 @@ def vision_ai_mode() -> Literal["auto", "on", "off"]:
     if value not in VISION_AI_MODES:
         raise ValueError("SUNSYNC_VISION_AI must be auto, on or off")
     return cast(Literal["auto", "on", "off"], value)
+
+
+def hub_base_url() -> str:
+    """Return the configured Film & ThinQ Hub base URL, or empty string for local virtual mode."""
+
+    return os.environ.get("SUNSYNC_HUB_BASE_URL", "").strip().rstrip("/")
+
+
+def hub_shared_secret() -> str:
+    """Return the shared HMAC-SHA256 secret used to sign backend-to-hub requests."""
+
+    return os.environ.get("SUNSYNC_HUB_SHARED_SECRET", "").strip()
+
+
+def hub_key_id() -> str:
+    """Return the active HMAC signing key identifier (`SUNSYNC_HUB_KEY_ID`, default `v1`)."""
+
+    return os.environ.get("SUNSYNC_HUB_KEY_ID", "").strip() or "v1"
+
+
+def hub_timeout_seconds() -> float:
+    """Return the HTTP timeout in seconds for backend-to-hub calls (default 2.5s)."""
+
+    raw = os.environ.get("SUNSYNC_HUB_TIMEOUT_SECONDS", "").strip()
+    if not raw:
+        return 2.5
+    try:
+        timeout = float(raw)
+    except ValueError as exc:
+        raise ValueError("SUNSYNC_HUB_TIMEOUT_SECONDS must be a positive number") from exc
+    if timeout <= 0:
+        raise ValueError("SUNSYNC_HUB_TIMEOUT_SECONDS must be a positive number")
+    return timeout

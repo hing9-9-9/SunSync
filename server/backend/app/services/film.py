@@ -13,7 +13,7 @@ from shapely.geometry import Point, Polygon
 from shapely.ops import nearest_points
 from sqlmodel import Session, col, select
 
-from app.models.film import FilmApplicationLogRecord, FilmStateRecord
+from app.models.film import FilmApplicationLogRecord, FilmStateRecord, HubCommandRecord
 from app.models.scene import SceneRecord
 from app.schemas.film import (
     AppliedCellState,
@@ -39,6 +39,14 @@ from app.schemas.scene import (
     Window,
 )
 from app.schemas.shading_plan import ShadingPlan, WindowPlan
+from app.services.hub_client import (
+    dispatch_command,
+    enqueue_hub_command,
+    extract_base_cells_and_overlay,
+    is_hub_enabled,
+    normalize_delivery_status,
+    normalize_sync_status,
+)
 from app.services.stored_scene import load_scene_for_pairing, load_stored_scene
 from app.ui_scene import UISpaceRecord
 
@@ -67,6 +75,50 @@ def opacity_to_applied_state(opacity: float) -> AppliedCellState:
     if abs(opacity - 1.0) <= 1e-6:
         return "opaque"
     return "dimmed"
+
+
+def _build_window_state_response(
+    *,
+    scene_id: str,
+    window_id: str,
+    film_type: str,
+    film_rows: int,
+    film_cols: int,
+    cells: list[list[float]],
+    evaluated_at: str,
+    updated_at: str,
+    record: FilmStateRecord | None = None,
+) -> WindowFilmStateResponse:
+    remote_mode = is_hub_enabled()
+    reported_cells = (
+        json.loads(record.reported_cells_json)
+        if record is not None and record.reported_cells_json
+        else None
+    )
+    return WindowFilmStateResponse(
+        scene_id=scene_id,
+        window_id=window_id,
+        film_type="PDLC" if film_type not in ("PDLC", "SPD") else film_type,  # type: ignore[arg-type]
+        film_rows=film_rows,
+        film_cols=film_cols,
+        cells=cells,
+        states=[[opacity_to_applied_state(c) for c in row] for row in cells],
+        marker_mode_active=record.marker_mode_active if record is not None else False,
+        marker_code_id=record.marker_code_id if record is not None else None,
+        active_plan_id=record.active_plan_id if record is not None else None,
+        evaluated_at=evaluated_at,
+        updated_at=updated_at,
+        sync_mode="remote_hub" if remote_mode else "local",
+        sync_status=(
+            normalize_sync_status(record.sync_status) if record is not None else "local_only"
+        ),
+        desired_version=record.desired_version if record is not None else 0,
+        reported_version=record.reported_version if record is not None else 0,
+        reported_cells=reported_cells,
+        last_command_id=record.last_command_id if record is not None else None,
+        last_synced_at=record.last_synced_at if record is not None else None,
+        sync_error=record.sync_error if record is not None else None,
+    )
 
 
 _ARUCO_CACHE: dict[int, list[list[float]]] = {}
@@ -333,7 +385,11 @@ def apply_schedule_to_scene(
 
     applied_count = 0
     target_unmet_count = 0
-    window_responses: list[WindowFilmStateResponse] = []
+    window_entries: list[tuple[FilmStateRecord, list[list[float]]]] = []
+    pending_dispatches: list[
+        tuple[FilmStateRecord, HubCommandRecord, list[FilmApplicationLogRecord]]
+    ] = []
+    remote_enabled = is_hub_enabled()
     now_iso = normalize_iso_timestamp(datetime.now(UTC))
 
     for window_plan in plan.windows:
@@ -355,6 +411,8 @@ def apply_schedule_to_scene(
             )
         else:
             initial_cells = json.loads(record.cells_json)
+
+        window_logs: list[FilmApplicationLogRecord] = []
 
         # Replay cell transitions chronologically for logging
         for cell_plan in window_plan.cells:
@@ -411,6 +469,7 @@ def apply_schedule_to_scene(
                             created_at=now_iso,
                         )
                         session.add(log_rec)
+                        window_logs.append(log_rec)
                         if seg_status == "target_unmet":
                             target_unmet_count += 1
                         else:
@@ -443,6 +502,7 @@ def apply_schedule_to_scene(
                             created_at=now_iso,
                         )
                         session.add(log_rec)
+                        window_logs.append(log_rec)
                         applied_count += 1
                     current_op = 0.0
 
@@ -452,26 +512,69 @@ def apply_schedule_to_scene(
         record.active_plan_id = resolved_plan_id
         record.active_plan_json = plan.model_dump_json()
         record.updated_at = now_iso
-        session.add(record)
 
-        window_responses.append(
-            WindowFilmStateResponse(
+        if remote_enabled:
+            record.desired_version += 1
+            base_cells, _, overlay = extract_base_cells_and_overlay(record)
+            shadow_payload = {
+                "desired_version": record.desired_version,
+                "hardware_mode": record.film_type,
+                "rows": record.film_rows,
+                "cols": record.film_cols,
+                "base_cells": base_cells,
+                "marker_overlay": overlay,
+                "metadata": {
+                    "source": "schedule_apply",
+                    "plan_id": resolved_plan_id,
+                    "evaluated_at": evaluated_at_str,
+                },
+            }
+            cmd_rec = enqueue_hub_command(
+                session,
                 scene_id=scene_id,
                 window_id=window_plan.window_id,
-                film_type="PDLC" if record.film_type not in ("PDLC", "SPD") else record.film_type,  # type: ignore[arg-type]
-                film_rows=record.film_rows,
-                film_cols=record.film_cols,
-                cells=grid_at,
-                states=[[opacity_to_applied_state(c) for c in row] for row in grid_at],
-                marker_mode_active=record.marker_mode_active,
-                marker_code_id=record.marker_code_id,
-                active_plan_id=record.active_plan_id,
-                evaluated_at=evaluated_at_str,
-                updated_at=record.updated_at,
+                operation="shadow_put",
+                desired_version=record.desired_version,
+                payload=shadow_payload,
+                now_iso=now_iso,
             )
-        )
+            record.last_command_id = cmd_rec.command_id
+            record.sync_status = "pending"
+            record.sync_error = None
+            for log_rec in window_logs:
+                log_rec.command_id = cmd_rec.command_id
+                log_rec.delivery_status = "pending"
+            pending_dispatches.append((record, cmd_rec, window_logs))
+
+        session.add(record)
+        window_entries.append((record, grid_at))
 
     session.commit()
+
+    if pending_dispatches:
+        for record, cmd_rec, window_logs in pending_dispatches:
+            dispatch_command(
+                session,
+                cmd_rec,
+                film_record=record,
+                log_records=window_logs,
+            )
+        session.commit()
+
+    window_responses = [
+        _build_window_state_response(
+            scene_id=scene_id,
+            window_id=record.window_id,
+            film_type=record.film_type,
+            film_rows=record.film_rows,
+            film_cols=record.film_cols,
+            cells=grid_at,
+            evaluated_at=evaluated_at_str,
+            updated_at=record.updated_at,
+            record=record,
+        )
+        for record, grid_at in window_entries
+    ]
     return ScheduleApplyResponse(
         scene_id=scene_id,
         plan_id=resolved_plan_id,
@@ -549,6 +652,7 @@ def apply_film_commands(
     )
     now_iso = normalize_iso_timestamp(datetime.now(UTC))
 
+    created_logs: list[FilmApplicationLogRecord] = []
     for r, c, prev_op, new_op in transitions:
         log_entry = FilmApplicationLogRecord(
             scene_id=scene_id,
@@ -567,26 +671,68 @@ def apply_film_commands(
             created_at=now_iso,
         )
         session.add(log_entry)
+        created_logs.append(log_entry)
 
     record.cells_json = json.dumps(device.get_grid())
+    if device.marker_backup is not None:
+        record.marker_backup_json = json.dumps(device.marker_backup)
+    if request.film_type is not None:
+        record.film_type = request.film_type
     record.updated_at = now_iso
+
+    cmd_rec: HubCommandRecord | None = None
+    if is_hub_enabled():
+        record.desired_version += 1
+        cmd_payload = {
+            "desired_version": record.desired_version,
+            "commands": [
+                {"row": r, "col": c, "opacity": new_op} for r, c, _, new_op in transitions
+            ],
+            "timestamp": timestamp,
+            "note": request.note,
+            "hardware_mode": record.film_type,
+            "rows": record.film_rows,
+            "cols": record.film_cols,
+        }
+        cmd_rec = enqueue_hub_command(
+            session,
+            scene_id=scene_id,
+            window_id=target_window_id,
+            operation="cell_commands",
+            desired_version=record.desired_version,
+            payload=cmd_payload,
+            now_iso=now_iso,
+        )
+        record.last_command_id = cmd_rec.command_id
+        record.sync_status = "pending"
+        record.sync_error = None
+        for log_entry in created_logs:
+            log_entry.command_id = cmd_rec.command_id
+            log_entry.delivery_status = "pending"
+
     session.add(record)
     session.commit()
 
+    if cmd_rec is not None:
+        dispatch_command(
+            session,
+            cmd_rec,
+            film_record=record,
+            log_records=created_logs,
+        )
+        session.commit()
+
     grid = device.get_grid()
-    return WindowFilmStateResponse(
+    return _build_window_state_response(
         scene_id=scene_id,
         window_id=target_window_id,
-        film_type="PDLC" if record.film_type not in ("PDLC", "SPD") else record.film_type,  # type: ignore[arg-type]
+        film_type=record.film_type,
         film_rows=record.film_rows,
         film_cols=record.film_cols,
         cells=grid,
-        states=[[opacity_to_applied_state(c) for c in row] for row in grid],
-        marker_mode_active=record.marker_mode_active,
-        marker_code_id=record.marker_code_id,
-        active_plan_id=record.active_plan_id,
         evaluated_at=timestamp,
         updated_at=record.updated_at,
+        record=record,
     )
 
 
@@ -596,6 +742,7 @@ def set_marker_mode(
     request: MarkerModeRequest,
     *,
     commit: bool = True,
+    require_hub_ack: bool = False,
 ) -> WindowFilmStateResponse:
     """FR-05.2: Toggle 6x6 ArUco marker display on smart film window."""
     scene_record = session.get(SceneRecord, scene_id)
@@ -689,49 +836,98 @@ def set_marker_mode(
     )
     now_iso = normalize_iso_timestamp(datetime.now(UTC))
 
+    created_logs: list[FilmApplicationLogRecord] = []
     for r in range(device.rows):
         for c in range(device.cols):
             if abs(old_grid[r][c] - new_grid[r][c]) > 1e-6:
-                session.add(
-                    FilmApplicationLogRecord(
-                        scene_id=scene_id,
-                        window_id=target_window_id,
-                        timestamp=timestamp,
-                        row=r,
-                        col=c,
-                        previous_opacity=old_grid[r][c],
-                        new_opacity=new_grid[r][c],
-                        previous_state=opacity_to_applied_state(old_grid[r][c]),
-                        new_state=opacity_to_applied_state(new_grid[r][c]),
-                        plan_id=None,
-                        status="applied",
-                        note="marker_mode",
-                        reasons_json="[]",
-                        created_at=now_iso,
-                    )
+                log_entry = FilmApplicationLogRecord(
+                    scene_id=scene_id,
+                    window_id=target_window_id,
+                    timestamp=timestamp,
+                    row=r,
+                    col=c,
+                    previous_opacity=old_grid[r][c],
+                    new_opacity=new_grid[r][c],
+                    previous_state=opacity_to_applied_state(old_grid[r][c]),
+                    new_state=opacity_to_applied_state(new_grid[r][c]),
+                    plan_id=None,
+                    status="applied",
+                    note="marker_mode",
+                    reasons_json="[]",
+                    created_at=now_iso,
                 )
+                session.add(log_entry)
+                created_logs.append(log_entry)
 
     record.cells_json = json.dumps(new_grid)
     record.updated_at = now_iso
+
+    cmd_rec: HubCommandRecord | None = None
+    if is_hub_enabled():
+        record.desired_version += 1
+        marker_payload = {
+            "desired_version": record.desired_version,
+            "enabled": request.enabled,
+            "code_id": record.marker_code_id,
+            "start_row": record.marker_start_row,
+            "start_col": record.marker_start_col,
+            "rows": record.film_rows,
+            "cols": record.film_cols,
+            "hardware_mode": record.film_type,
+        }
+        cmd_rec = enqueue_hub_command(
+            session,
+            scene_id=scene_id,
+            window_id=target_window_id,
+            operation="marker_overlay",
+            desired_version=record.desired_version,
+            payload=marker_payload,
+            now_iso=now_iso,
+        )
+        record.last_command_id = cmd_rec.command_id
+        record.sync_status = "pending"
+        record.sync_error = None
+        for log_entry in created_logs:
+            log_entry.command_id = cmd_rec.command_id
+            log_entry.delivery_status = "pending"
+
     session.add(record)
     if commit:
         session.commit()
     else:
         session.flush()
 
-    return WindowFilmStateResponse(
+    if cmd_rec is not None:
+        dispatch_res = dispatch_command(
+            session,
+            cmd_rec,
+            film_record=record,
+            log_records=created_logs,
+        )
+        if require_hub_ack and dispatch_res.sync_status != "synced":
+            session.rollback()
+            raise HTTPException(
+                status_code=503,
+                detail=(
+                    f"Remote hub failed to display capture marker ({dispatch_res.command_status}): "
+                    f"{dispatch_res.error or 'hub unavailable'}"
+                ),
+            )
+        if commit:
+            session.commit()
+        else:
+            session.flush()
+
+    return _build_window_state_response(
         scene_id=scene_id,
         window_id=target_window_id,
-        film_type="PDLC" if record.film_type not in ("PDLC", "SPD") else record.film_type,  # type: ignore[arg-type]
+        film_type=record.film_type,
         film_rows=record.film_rows,
         film_cols=record.film_cols,
         cells=new_grid,
-        states=[[opacity_to_applied_state(c) for c in row] for row in new_grid],
-        marker_mode_active=record.marker_mode_active,
-        marker_code_id=record.marker_code_id,
-        active_plan_id=record.active_plan_id,
         evaluated_at=timestamp,
         updated_at=record.updated_at,
+        record=record,
     )
 
 
@@ -813,19 +1009,16 @@ def get_scene_film_state(
                 grid = [[0.0 for _ in range(cols)] for _ in range(rows)]
 
         responses.append(
-            WindowFilmStateResponse(
+            _build_window_state_response(
                 scene_id=scene_id,
                 window_id=w_id,
-                film_type="PDLC" if film_type not in ("PDLC", "SPD") else film_type,  # type: ignore[arg-type]
+                film_type=film_type,
                 film_rows=rows,
                 film_cols=cols,
                 cells=grid,
-                states=[[opacity_to_applied_state(c) for c in row] for row in grid],
-                marker_mode_active=record.marker_mode_active if record else False,
-                marker_code_id=record.marker_code_id if record else None,
-                active_plan_id=record.active_plan_id if record else None,
                 evaluated_at=evaluated_at_str,
                 updated_at=record.updated_at if record else datetime.now(UTC).isoformat(),
+                record=record,
             )
         )
 
@@ -893,6 +1086,9 @@ def get_film_logs(
                 note=rec.note,
                 reasons=reasons,
                 created_at=rec.created_at,
+                command_id=rec.command_id,
+                delivery_status=normalize_delivery_status(rec.delivery_status),
+                hub_ack_at=rec.hub_ack_at,
             )
         )
 
@@ -1276,7 +1472,9 @@ def pair_marker_for_scene(
         if record.marker_backup_json:
             device.marker_backup = json.loads(record.marker_backup_json)
 
+    cmd_rec: HubCommandRecord | None = None
     if request.enable_marker_display:
+        now_iso = normalize_iso_timestamp(datetime.now(UTC))
         device.enable_marker_mode(
             code_id=assigned_code,
             start_row=start_row,
@@ -1290,7 +1488,31 @@ def pair_marker_for_scene(
             json.dumps(device.marker_backup) if device.marker_backup is not None else None
         )
         record.cells_json = json.dumps(device.get_grid())
-        record.updated_at = datetime.now(UTC).isoformat()
+        record.updated_at = now_iso
+        if is_hub_enabled():
+            record.desired_version += 1
+            marker_payload = {
+                "desired_version": record.desired_version,
+                "enabled": True,
+                "code_id": assigned_code,
+                "start_row": start_row,
+                "start_col": start_col,
+                "rows": record.film_rows,
+                "cols": record.film_cols,
+                "hardware_mode": record.film_type,
+            }
+            cmd_rec = enqueue_hub_command(
+                session,
+                scene_id=scene_id,
+                window_id=target_window.window_id,
+                operation="marker_overlay",
+                desired_version=record.desired_version,
+                payload=marker_payload,
+                now_iso=now_iso,
+            )
+            record.last_command_id = cmd_rec.command_id
+            record.sync_status = "pending"
+            record.sync_error = None
         session.add(record)
 
     if commit:
@@ -1298,20 +1520,28 @@ def pair_marker_for_scene(
     else:
         session.flush()
 
+    if cmd_rec is not None:
+        dispatch_command(
+            session,
+            cmd_rec,
+            film_record=record,
+        )
+        if commit:
+            session.commit()
+        else:
+            session.flush()
+
     grid = device.get_grid()
-    film_resp = WindowFilmStateResponse(
+    film_resp = _build_window_state_response(
         scene_id=scene_id,
         window_id=target_window.window_id,
-        film_type="PDLC" if record.film_type not in ("PDLC", "SPD") else record.film_type,  # type: ignore[arg-type]
+        film_type=record.film_type,
         film_rows=record.film_rows,
         film_cols=record.film_cols,
         cells=grid,
-        states=[[opacity_to_applied_state(c) for c in row] for row in grid],
-        marker_mode_active=record.marker_mode_active,
-        marker_code_id=record.marker_code_id,
-        active_plan_id=record.active_plan_id,
         evaluated_at=datetime.now(UTC).isoformat(),
         updated_at=record.updated_at,
+        record=record,
     )
 
     return MarkerPairingResponse(

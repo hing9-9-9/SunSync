@@ -1,6 +1,6 @@
 # Keep the draft Room table for existing databases; SceneRecord stores FR06 scenes.
 from app.models.auth import AuthSession, AuthUser, LoginAttempt
-from app.models.film import FilmApplicationLogRecord, FilmStateRecord
+from app.models.film import FilmApplicationLogRecord, FilmStateRecord, HubCommandRecord
 from app.models.room import Room
 from app.models.scenario_snapshot import ScenarioSnapshotRecord
 from app.models.scene import SceneRecord
@@ -11,6 +11,7 @@ __all__ = [
     "AuthUser",
     "FilmApplicationLogRecord",
     "FilmStateRecord",
+    "HubCommandRecord",
     "LoginAttempt",
     "Room",
     "ScenarioSnapshotRecord",
