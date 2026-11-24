@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 368" width="860" height="368" role="img" aria-label="FR-04 Adaptive Shading Control Flicker Reduction and Real 1-Minute Replay">
+<title>FR-04 Adaptive Shading Control Flicker Reduction and Real 1-Minute Replay</title>
+<rect x="0" y="0" width="860" height="368" fill="#FFFFFF" rx="4"/>
+<text x="430.0" y="24" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13.5" font-weight="700" fill="#111827">FR-04 Adaptive Control: Synthetic Benchmark &amp; Real Measured 1-Min Irradiance Replay</text>
+<text x="244.5" y="46" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11.2" font-weight="600" fill="#111827">(a) Synthetic Benchmark: Flicker Reduction (%)</text>
+<line x1="62" y1="266.0" x2="427" y2="266.0" stroke="#E5E7EB" stroke-width="1"/>
+<text x="54" y="269.5" text-anchor="end" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10" fill="#4B5563">0%</text>
+<line x1="62" y1="219.8" x2="427" y2="219.8" stroke="#E5E7EB" stroke-width="1"/>
+<text x="54" y="223.3" text-anchor="end" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10" fill="#4B5563">20%</text>
+<line x1="62" y1="173.6" x2="427" y2="173.6" stroke="#E5E7EB" stroke-width="1"/>
+<text x="54" y="177.1" text-anchor="end" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10" fill="#4B5563">40%</text>
+<line x1="62" y1="127.3" x2="427" y2="127.3" stroke="#E5E7EB" stroke-width="1"/>
+<text x="54" y="130.8" text-anchor="end" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10" fill="#4B5563">60%</text>
+<line x1="62" y1="81.1" x2="427" y2="81.1" stroke="#E5E7EB" stroke-width="1"/>
+<text x="54" y="84.6" text-anchor="end" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10" fill="#4B5563">80%</text>
+<line x1="62" y1="266" x2="427" y2="266" stroke="#111827" stroke-width="1.2"/>
+<line x1="62" y1="58" x2="62" y2="266" stroke="#111827" stroke-width="1.2"/>
+<text x="18" y="162.0" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10" fill="#111827" transform="rotate(-90 18 162.0)">Opacity-Change Reduction (%)</text>
+<rect x="79.3" y="266.0" width="23" height="0.0" fill="#64748B" rx="2"/>
+<text x="90.8" y="262.0" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="7.4" font-weight="600" fill="#111827">+0.0%</text>
+<rect x="111.3" y="121.6" width="23" height="144.4" fill="#1B365D" rx="2"/>
+<text x="122.8" y="117.6" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="7.4" font-weight="600" fill="#111827">+62.5%</text>
+<rect x="143.3" y="121.6" width="23" height="144.4" fill="#0F766E" rx="2"/>
+<text x="154.8" y="117.6" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="7.4" font-weight="600" fill="#111827">+62.5%</text>
+<text x="122.8" y="282" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="9.5" font-weight="600" fill="#111827">Sunny</text>
+<text x="122.8" y="295" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="8.5" font-weight="600" fill="#0F766E">SGF daylight +5.9%</text>
+<rect x="201.0" y="167.0" width="23" height="99.0" fill="#64748B" rx="2"/>
+<text x="212.5" y="163.0" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="7.4" font-weight="600" fill="#111827">+42.9%</text>
+<rect x="233.0" y="84.4" width="23" height="181.6" fill="#1B365D" rx="2"/>
+<text x="244.5" y="80.4" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="7.4" font-weight="600" fill="#111827">+78.6%</text>
+<rect x="265.0" y="84.4" width="23" height="181.6" fill="#0F766E" rx="2"/>
+<text x="276.5" y="80.4" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="7.4" font-weight="600" fill="#111827">+78.6%</text>
+<text x="244.5" y="282" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="9.5" font-weight="600" fill="#111827">Partly Cloudy</text>
+<text x="244.5" y="295" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="8.5" font-weight="600" fill="#0F766E">SGF daylight +7.7%</text>
+<rect x="322.7" y="167.0" width="23" height="99.0" fill="#64748B" rx="2"/>
+<text x="334.2" y="163.0" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="7.4" font-weight="600" fill="#111827">+42.9%</text>
+<rect x="354.7" y="84.4" width="23" height="181.6" fill="#1B365D" rx="2"/>
+<text x="366.2" y="80.4" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="7.4" font-weight="600" fill="#111827">+78.6%</text>
+<rect x="386.7" y="84.4" width="23" height="181.6" fill="#0F766E" rx="2"/>
+<text x="398.2" y="80.4" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="7.4" font-weight="600" fill="#111827">+78.6%</text>
+<text x="366.2" y="282" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="9.5" font-weight="600" fill="#111827">Uncertain Squall</text>
+<text x="366.2" y="295" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="8.5" font-weight="600" fill="#0F766E">SGF daylight +1.3%</text>
+<rect x="68" y="305" width="10" height="10" fill="#64748B" rx="1.5"/>
+<text x="83" y="313.5" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="9.2" fill="#111827">FR-04 smooth_fr02 (default)</text>
+<rect x="68" y="319" width="10" height="10" fill="#1B365D" rx="1.5"/>
+<text x="83" y="327.5" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="9.2" fill="#111827">FR-04 replace (PDLC)</text>
+<rect x="68" y="333" width="10" height="10" fill="#0F766E" rx="1.5"/>
+<text x="83" y="341.5" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="9.2" fill="#111827">FR-04 replace (LG SGF 5-lvl)</text>
+<text x="664.0" y="46" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11.2" font-weight="600" fill="#111827">(b) Real 1-Min SURFRAD Replay: Cell Switches</text>
+<line x1="496" y1="266.0" x2="832" y2="266.0" stroke="#E5E7EB" stroke-width="1"/>
+<text x="488" y="269.5" text-anchor="end" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10" fill="#4B5563">0</text>
+<line x1="496" y1="218.0" x2="832" y2="218.0" stroke="#E5E7EB" stroke-width="1"/>
+<text x="488" y="221.5" text-anchor="end" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10" fill="#4B5563">150</text>
+<line x1="496" y1="170.0" x2="832" y2="170.0" stroke="#E5E7EB" stroke-width="1"/>
+<text x="488" y="173.5" text-anchor="end" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10" fill="#4B5563">300</text>
+<line x1="496" y1="122.0" x2="832" y2="122.0" stroke="#E5E7EB" stroke-width="1"/>
+<text x="488" y="125.5" text-anchor="end" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10" fill="#4B5563">450</text>
+<line x1="496" y1="74.0" x2="832" y2="74.0" stroke="#E5E7EB" stroke-width="1"/>
+<text x="488" y="77.5" text-anchor="end" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10" fill="#4B5563">600</text>
+<line x1="496" y1="266" x2="832" y2="266" stroke="#111827" stroke-width="1.2"/>
+<line x1="496" y1="58" x2="496" y2="266" stroke="#111827" stroke-width="1.2"/>
+<text x="456" y="162.0" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10" fill="#111827" transform="rotate(-90 456 162.0)">Switch Count (1-min step)</text>
+<rect x="514.0" y="213.5" width="34" height="52.5" fill="#C2520F" rx="2"/>
+<text x="531.0" y="209.5" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="9" font-weight="600" fill="#111827">164</text>
+<rect x="556.0" y="213.5" width="34" height="52.5" fill="#1B365D" rx="2"/>
+<text x="573.0" y="209.5" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="9" font-weight="600" fill="#111827">164</text>
+<text x="552.0" y="281" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="9.5" font-weight="600" fill="#111827">Clear</text>
+<text x="552.0" y="293" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="8.5" fill="#4B5563">(Oct 11)</text>
+<rect x="626.0" y="216.4" width="34" height="49.6" fill="#C2520F" rx="2"/>
+<text x="643.0" y="212.4" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="9" font-weight="600" fill="#111827">155</text>
+<rect x="668.0" y="226.0" width="34" height="40.0" fill="#1B365D" rx="2"/>
+<text x="685.0" y="222.0" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="9" font-weight="600" fill="#111827">125</text>
+<text x="664.0" y="281" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="9.5" font-weight="600" fill="#111827">Intermittent</text>
+<text x="664.0" y="293" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="8.5" fill="#4B5563">(Oct 02)</text>
+<text x="664.0" y="305" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="8.8" font-weight="700" fill="#0F766E">-19.4% switches</text>
+<rect x="738.0" y="72.7" width="34" height="193.3" fill="#C2520F" rx="2"/>
+<text x="755.0" y="68.7" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="9" font-weight="600" fill="#111827">604</text>
+<rect x="780.0" y="200.1" width="34" height="65.9" fill="#1B365D" rx="2"/>
+<text x="797.0" y="196.1" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="9" font-weight="600" fill="#111827">206</text>
+<text x="776.0" y="281" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="9.5" font-weight="600" fill="#111827">Restless</text>
+<text x="776.0" y="293" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="8.5" fill="#4B5563">(Oct 22)</text>
+<text x="776.0" y="305" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="8.8" font-weight="700" fill="#0F766E">-65.9% switches</text>
+<rect x="504" y="316" width="10" height="10" fill="#C2520F" rx="1.5"/>
+<text x="519" y="324.5" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="9.2" fill="#111827">FR-02 Rule Baseline (1-min)</text>
+<rect x="504" y="330" width="10" height="10" fill="#1B365D" rx="1.5"/>
+<text x="519" y="338.5" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="9.2" fill="#111827">FR-04 smooth_fr02 (1-min)</text>
+</svg>
