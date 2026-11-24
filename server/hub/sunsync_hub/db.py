@@ -52,11 +52,12 @@ engine = create_hub_engine()
 
 def init_db(database_engine: Engine | None = None) -> Engine:
     """Register hub tables and create them on the target engine."""
-    from sunsync_hub.models import HubCommandReceipt, HubWindowShadow
+    from sunsync_hub import models as _models  # noqa: F401  (register tables)
 
     target = database_engine if database_engine is not None else engine
-    SQLModel.metadata.create_all(
-        target,
-        tables=[HubWindowShadow.__table__, HubCommandReceipt.__table__],
-    )
+    hub_tables = [
+        SQLModel.metadata.tables["hub_window_shadows"],
+        SQLModel.metadata.tables["hub_command_receipts"],
+    ]
+    SQLModel.metadata.create_all(target, tables=hub_tables)
     return target
