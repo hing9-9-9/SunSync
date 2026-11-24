@@ -422,7 +422,7 @@ async function put(url: string, body: unknown) {
 
 export type CaptureMarker = {
   session_id: string; scene_id: string; window_id: string; expires_at: string;
-  display_status: "virtual_applied"; board: Board; film_cells: number[][];
+  display_status: "virtual_applied" | "hub_applied"; board: Board; film_cells: number[][];
   marker: FilmMarker & { start_row?: number; start_col?: number; marker_rows?: number; marker_cols?: number };
   film_module?: { row: number; col: number; rows: number; cols: number; side_m: number; marker_center_uv_m: [number, number] };
 };

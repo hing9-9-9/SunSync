@@ -13,6 +13,19 @@ from app.schemas.shading_plan import Reason, ShadingPlan, ShadingPlanRequest
 FilmType = Literal["PDLC", "SPD"]
 AppliedCellState = Literal["transparent", "opaque", "dimmed"]
 LogStatus = Literal["applied", "target_unmet", "unknown_intensity"]
+SyncMode = Literal["local", "remote_hub"]
+SyncStatus = Literal["local_only", "synced", "pending", "drifted", "rejected", "failed"]
+DeliveryStatus = Literal[
+    "local_only",
+    "pending",
+    "dispatched",
+    "acked",
+    "applied",
+    "failed",
+    "timed_out",
+    "superseded",
+    "rejected",
+]
 
 
 def _validate_cell_opacity(v: Any) -> float:
@@ -139,6 +152,14 @@ class WindowFilmStateResponse(FilmBaseModel):
     active_plan_id: str | None = None
     evaluated_at: str
     updated_at: str
+    sync_mode: SyncMode = "local"
+    sync_status: SyncStatus = "local_only"
+    desired_version: int = 0
+    reported_version: int = 0
+    reported_cells: list[list[float]] | None = None
+    last_command_id: str | None = None
+    last_synced_at: str | None = None
+    sync_error: str | None = None
 
 
 class SceneFilmStateResponse(FilmBaseModel):
@@ -163,6 +184,9 @@ class FilmApplicationLogEntry(FilmBaseModel):
     note: str
     reasons: list[Reason] = Field(default_factory=list)
     created_at: str
+    command_id: str | None = None
+    delivery_status: DeliveryStatus = "local_only"
+    hub_ack_at: str | None = None
 
 
 class FilmApplicationLogListResponse(FilmBaseModel):
@@ -188,3 +212,54 @@ class MarkerPairingResponse(FilmBaseModel):
     code_id: int
     clamped_furniture_ids: list[str]
     film_state: WindowFilmStateResponse
+
+
+class HubWindowStatusEntry(FilmBaseModel):
+    window_id: str
+    desired_version: int
+    reported_version: int
+    sync_status: SyncStatus
+    last_command_id: str | None = None
+    last_synced_at: str | None = None
+    hub_device_id: str | None = None
+    sync_error: str | None = None
+    state_digest: str
+    pending_commands: int = 0
+
+
+class HubStatusResponse(FilmBaseModel):
+    scene_id: str
+    sync_mode: SyncMode
+    hub_url: str | None = None
+    reachable: bool
+    hub_status: Literal["local_only", "online", "degraded", "offline"]
+    hub_id: str | None = None
+    hub_boot_id: str | None = None
+    simulated_fault_mode: str | None = None
+    pending_outbox_count: int = 0
+    error: str | None = None
+    checked_at: str
+    windows: list[HubWindowStatusEntry] = Field(default_factory=list)
+
+
+class HubReconcileWindowResult(FilmBaseModel):
+    window_id: str
+    action: Literal["in_sync", "flushed", "healed", "failed", "local_only"]
+    desired_version: int
+    reported_version: int
+    sync_status: SyncStatus
+    command_id: str | None = None
+    error: str | None = None
+
+
+class HubReconcileResponse(FilmBaseModel):
+    scene_id: str
+    sync_mode: SyncMode
+    hub_boot_id: str | None = None
+    superseded_commands: int = 0
+    dispatched_commands: int = 0
+    healed_windows: int = 0
+    failed_windows: int = 0
+    in_sync_windows: int = 0
+    reconciled_at: str
+    windows: list[HubReconcileWindowResult] = Field(default_factory=list)

@@ -138,6 +138,12 @@ class ThinQHubDevicePayload(AdaptiveBaseModel):
     dimmed_cells: int
     energy_daylight_score: float
     decision_summary_ko: str
+    command_id: str | None = None
+    sync_status: Literal["local_only", "synced", "pending", "drifted", "rejected", "failed"] = (
+        "local_only"
+    )
+    reported_version: int = 0
+    hub_ack_at: str | None = None
 
 
 class ThinQHubSyncResponse(AdaptiveBaseModel):
@@ -146,3 +152,8 @@ class ThinQHubSyncResponse(AdaptiveBaseModel):
     synced_at: str
     metrics: AdaptiveComparisonMetrics
     devices: list[ThinQHubDevicePayload]
+    sync_mode: Literal["local", "remote_hub"] = "local"
+    hub_url: str | None = None
+    sync_status: Literal["local_only", "synced", "pending", "partial", "rejected", "failed"] = (
+        "local_only"
+    )

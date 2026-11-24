@@ -6,7 +6,7 @@ schema and record their progress in SQLite's built-in ``user_version``.
 
 from sqlalchemy import Engine
 
-LATEST_VERSION = 6
+LATEST_VERSION = 7
 
 
 def _upgrade_1(connection) -> None:  # type: ignore[no-untyped-def]
@@ -211,6 +211,96 @@ def _upgrade_6(connection) -> None:  # type: ignore[no-untyped-def]
 
 
 MIGRATIONS[6] = _upgrade_6
+
+
+def _upgrade_7(connection) -> None:  # type: ignore[no-untyped-def]
+    """Add Device Shadow sync metadata, delivery tracking, and hub_commands outbox."""
+
+    film_state_cols = [
+        row[1] for row in connection.exec_driver_sql("PRAGMA table_info(film_states)")
+    ]
+    if film_state_cols:
+        for col_name, col_ddl in (
+            ("desired_version", "INTEGER NOT NULL DEFAULT 0"),
+            ("reported_version", "INTEGER NOT NULL DEFAULT 0"),
+            ("reported_cells_json", "TEXT"),
+            ("sync_status", "TEXT NOT NULL DEFAULT 'local_only'"),
+            ("last_command_id", "TEXT"),
+            ("last_synced_at", "TEXT"),
+            ("hub_device_id", "TEXT"),
+            ("sync_error", "TEXT"),
+        ):
+            if col_name not in film_state_cols:
+                connection.exec_driver_sql(
+                    f"ALTER TABLE film_states ADD COLUMN {col_name} {col_ddl}"
+                )
+
+    log_cols = [
+        row[1] for row in connection.exec_driver_sql("PRAGMA table_info(film_application_logs)")
+    ]
+    if log_cols:
+        for col_name, col_ddl in (
+            ("command_id", "TEXT"),
+            ("delivery_status", "TEXT NOT NULL DEFAULT 'local_only'"),
+            ("hub_ack_at", "TEXT"),
+        ):
+            if col_name not in log_cols:
+                connection.exec_driver_sql(
+                    f"ALTER TABLE film_application_logs ADD COLUMN {col_name} {col_ddl}"
+                )
+        connection.exec_driver_sql(
+            "CREATE INDEX IF NOT EXISTS ix_film_application_logs_command_id "
+            "ON film_application_logs(command_id)"
+        )
+
+    capture_cols = [
+        row[1] for row in connection.exec_driver_sql("PRAGMA table_info(capturemarkersession)")
+    ]
+    if capture_cols:
+        for col_name, col_ddl in (
+            ("display_status", "TEXT NOT NULL DEFAULT 'virtual_applied'"),
+            ("hub_command_id", "TEXT"),
+            ("hub_applied_at", "TEXT"),
+        ):
+            if col_name not in capture_cols:
+                connection.exec_driver_sql(
+                    f"ALTER TABLE capturemarkersession ADD COLUMN {col_name} {col_ddl}"
+                )
+
+    connection.exec_driver_sql(
+        """
+        CREATE TABLE IF NOT EXISTS hub_commands (
+          command_id TEXT PRIMARY KEY,
+          scene_id TEXT NOT NULL,
+          window_id TEXT NOT NULL,
+          operation TEXT NOT NULL,
+          desired_version INTEGER NOT NULL DEFAULT 0,
+          payload_json TEXT NOT NULL,
+          status TEXT NOT NULL DEFAULT 'pending',
+          attempts INTEGER NOT NULL DEFAULT 0,
+          next_retry_at TEXT,
+          last_error TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        )
+        """
+    )
+    connection.exec_driver_sql(
+        "CREATE INDEX IF NOT EXISTS ix_hub_commands_scene_id ON hub_commands(scene_id)"
+    )
+    connection.exec_driver_sql(
+        "CREATE INDEX IF NOT EXISTS ix_hub_commands_window_id ON hub_commands(window_id)"
+    )
+    connection.exec_driver_sql(
+        "CREATE INDEX IF NOT EXISTS ix_hub_commands_status ON hub_commands(status)"
+    )
+    connection.exec_driver_sql(
+        "CREATE INDEX IF NOT EXISTS ix_hub_commands_scene_window_version "
+        "ON hub_commands(scene_id, window_id, desired_version)"
+    )
+
+
+MIGRATIONS[7] = _upgrade_7
 
 
 def upgrade_database(engine: Engine) -> None:
