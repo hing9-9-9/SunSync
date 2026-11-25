@@ -298,7 +298,7 @@ function TestSpatialCapture({ count, onFinish, session, testMarkerSideM, onVisio
     {!confirmed && <section className="vision-assist" aria-label="사진으로 가구 찾기">
       <div className="vision-assist-head">
         <h3>사진으로 가구 찾기</h3>
-        <p className="muted small">창문 마커와 가구가 같이 보이게 한 장 찍어 주세요.</p>
+        <p className="muted small">휴대폰을 가로로 돌려 QR 마커와 가구가 같이 보이게 한 장 찍어 주세요.</p>
       </div>
       <button type="button" className="primary vision-shoot" aria-label={visionBusy ? undefined : "사진으로 촬영 시작"} disabled={visionBusy || checking} onClick={() => typeof navigator.mediaDevices?.getUserMedia === "function" ? setVisionCamera(true) : visionInput.current?.click()}>
         {visionBusy ? "사진 분석 중…" : "촬영 시작"}

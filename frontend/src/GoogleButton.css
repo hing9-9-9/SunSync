@@ -1,6 +1,6 @@
 /* "Google로 계속하기" on every login surface: white, 1px darker grey border, ink text, Google's own mark (no circle).
    Height follows the platform (web 48px, app 50px via --btn-h); the web login modal keeps its original 52px. */
-:root { --c-google-line: #747775; /* Google's light-theme button stroke */ }
+:root { --c-google-line: #DADCE0; /* Google's light-theme button stroke, the soft variant */ }
 .app button.google-btn {
   display: inline-flex;
   align-items: center;

@@ -24,6 +24,15 @@ export default function VisionCamera({ session, board, onPhoto, onClose }: {
   const [phase, setPhase] = useState<"idle" | "capturing" | "choosing">("idle");
   const [hint, setHint] = useState<Hint | null>(null);
   const [message, setMessage] = useState("");
+  const [portrait, setPortrait] = useState(() => window.matchMedia("(orientation: portrait)").matches);
+
+  // The marker and the furniture fit in one shot far more easily with the phone turned sideways.
+  useEffect(() => {
+    const query = window.matchMedia("(orientation: portrait)");
+    const update = () => setPortrait(query.matches);
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -112,8 +121,14 @@ export default function VisionCamera({ session, board, onPhoto, onClose }: {
       <strong>사진으로 가구 찾기</strong>
       <button type="button" className="text-button" disabled={busy} onClick={onClose}>카메라 닫기</button>
     </div>
+    {phase === "idle" && !portrait && <div className="marker-frame" aria-hidden="true"><i /><i /><i /><i /><span>QR 마커 크기</span></div>}
+    {portrait && !busy && <div className="rotate-guide" role="status">
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="7" y="2.5" width="10" height="19" rx="1" /><path d="M11 18.5h2" /></svg>
+      <strong>휴대폰을 가로로 돌려 주세요</strong>
+      <span>가로로 찍으면 QR 마커와 가구가 한 장에 담겨요.</span>
+    </div>}
     <div className="camera-stage-bottom">
-      {phaseText ? <p role="status">{phaseText}</p> : hint ? <p role="status" className={`capture-hint ${hint.tone}`}>{hint.text}</p> : <p role="status">창문 마커와 가구가 같이 보이게 맞춰 주세요.</p>}
+      {phaseText ? <p role="status">{phaseText}</p> : hint ? <p role="status" className={`capture-hint ${hint.tone}`}>{hint.text}</p> : <p role="status">QR 마커와 가구가 같이 보이게 맞춰 주세요.</p>}
       {message && <p role="alert">{message}</p>}
       <button type="button" className="primary" disabled={!ready || busy || hint?.tone === "stop"} onClick={() => void shoot()}>
         {busy ? "촬영 중…" : "촬영"}
