@@ -181,3 +181,7 @@ curl -sS -X POST "http://localhost:8000/api/scenes/scene_demo_001/marker-pairing
 ## FR-03 공용 규격 확정 (2026-11-06)
 
 1m × 1m 필름의 10cm 셀 100개 중 중앙 6×6셀을 사용하는 60cm 단일 ArUco 마커를 채택합니다. 공용 ID는 0이며 기존 다른 ID API는 유지합니다. 좌표계 및 측정 연결은 [단일 마커 계약](../fr03/single_marker.md)을 따릅니다.
+
+## 원격 허브 모드 (선택, 2026-11-25)
+
+기본 동작은 위의 인프로세스 가상 필름이다. `SUNSYNC_HUB_BASE_URL`을 설정하면 백엔드가 제어 명령을 별도 허브 서버(`sunsync-hub`, `127.0.0.1:8002`)로 보내고, 허브가 실제로 적용한 `reported` 상태를 돌려준다. 설정하지 않으면 이 문서의 동작(`sync_mode="local"`) 그대로다. 구조, 서명, 재시도, 서버 운영 절차는 [ops/hub-sync-architecture.md](../ops/hub-sync-architecture.md)에 있다.

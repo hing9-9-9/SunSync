@@ -6,11 +6,11 @@ This document provides the mathematical derivations, architectural design, API s
 
 ## 1. Architectural Overview
 
-Monocular RGB images inherently suffer from depth scale ambiguity: an object in a 2D bounding box can be small and close or large and far away. Standard monocular depth networks (such as *Depth Anything V2* or *MiDaS*) output relative or affine-invariant inverse depth $d_{\text{rel}}$, but lack metric scale (metres). Furthermore, single-view 3D estimation can degrade for partial occlusions, far objects, or fallback contour detections.
+Monocular RGB images inherently suffer from depth scale ambiguity: an object in a 2D bounding box can be small and close or large and far away. Standard monocular depth networks (such as *Depth Anything V2* or *MiDaS*) output relative or affine-invariant inverse depth $d_{\text{rel}}$, but lack metric scale (metres). The default checkpoint since 2026-11-25 is the metric indoor model *Depth-Anything-V2-Metric-Indoor-Small-hf*, which predicts metres directly (see "Depth checkpoints" below). Furthermore, single-view 3D estimation can degrade for partial occlusions, far objects, or fallback contour detections.
 
 SunSync pairs monocular Vision AI with a **2-Stage Coarse-to-Fine Hybrid Pipeline** anchored on the smart film window's $6 \times 6$ ArUco marker (DICT_4X4_50, side length $s = 0.6\,\text{m}$):
 1. **Metric Anchor**: The window ArUco marker has confirmed metric dimensions and confirmed ENU transform $T_{\text{ENU}, \text{marker}}$ on the window plane.
-2. **Stage 1 — Default Neural Detection & Depth with Safe Fallback**: `VisionRegistrationPipeline` enables `prefer_yolo=True` and `prefer_monocular=True` by default via `CompositeFurnitureDetector` (`YoloV8DetectorAdapter` with expanded indoor classes and `_merge_book_clusters` → fallback `GeometricSyntheticDetector`) and `CompositeDepthEstimator` (`MonocularDepthAdapter` → fallback `GeometricSyntheticDepthEstimator`).
+2. **Stage 1 — Default Neural Detection & Depth with Safe Fallback**: `VisionRegistrationPipeline` enables `prefer_yolo=True` and `prefer_monocular=True` by default via `CompositeFurnitureDetector` (`YoloV8DetectorAdapter` with expanded indoor classes, `_merge_book_clusters` and a class-agnostic NMS that drops duplicate boxes of different classes on one object → fallback `GeometricSyntheticDetector`) and `CompositeDepthEstimator` (`MonocularDepthAdapter` → fallback `GeometricSyntheticDepthEstimator`).
 3. **Camera Pose & Metric Depth Calibration**: OpenCV's `cv2.solvePnP` with `SOLVEPNP_IPPE_SQUARE` computes $T_{\text{ENU}, \text{camera}}$ and exact metric depths $Z_{\text{true}}$ of the marker corners, calibrating $Z_{\text{metric}}(u, v) = \alpha \cdot d_{\text{rel}}(u, v) + \beta$ (falling back to proportional scaling $\beta = 0$ when anchor depth spread is narrow).
 4. **Floor-Standing 3D Cuboid Unprojection & Per-Item Uncertainty Scoring**: 2D bounding boxes are unprojected into 3D, constrained to the floor ($z_{\text{base}} = 0$), clamped via `clamp_cuboid_to_room`, assigned optical `ProtectedRegion`s, and scored via `_assess_estimation_quality` (`estimation_quality`, `needs_aruco_refinement`, `uncertainty_reason_ko`, `aruco_capture_guidance_ko`, `estimated_corners_enu_m`).
 5. **Stage 2 — Guided ArUco Corner Capture (Human-in-the-Loop Refinement)**: In `SpatialCapture.tsx` (*"사진 1장으로 가구 먼저 찾기"*), high-uncertainty or user-selected estimates launch *"이 가구 위치로 가서 ArUco 정밀 촬영"*, guiding the user with an on-screen ENU spatial prompt to walk to the estimated furniture location and capture the window ArUco marker at corners `P1~P4` (or confirm directly as an AI draft via *"AI 추정 치수로 바로 도면에 배치"*).
@@ -48,6 +48,17 @@ $$T_{\text{ENU}, c} = \begin{pmatrix} R_{\text{ENU}, c} & t_{\text{ENU}, c} \\ 0
 
 The true metric depths of the 4 marker corners in the camera optical frame ($Z_c$) are:
 $$Z_{\text{true}, i} = \left[R_{c\_m} P_{m, i} + t_{c\_m}\right]_z \quad (i = 0, 1, 2, 3)$$
+
+### Depth checkpoints
+
+`MonocularDepthAdapter` loads the checkpoint named by `SUNSYNC_DEPTH_MODEL` (default `depth-anything/Depth-Anything-V2-Metric-Indoor-Small-hf`):
+
+| Checkpoint kind | Model id contains `metric` | What the adapter does |
+| --- | --- | --- |
+| Metric indoor (default) | yes | uses the prediction as depth in metres, replaces NaN and clips it to 0.001 to 100 m |
+| Relative (for example `Depth-Anything-V2-Small-hf`) | no | treats the prediction as inverse depth and converts it with `_disparity_to_relative_depth` (inverse, divided by the median) |
+
+Step 2 below runs for both kinds. On two real indoor photos the marker calibration residual of the metric checkpoint was 0.92 cm and 3.61 cm against 3.90 cm and 12.96 cm for the relative one (measured in PR #200, [decision log](../overview/decisions.md)); two photos do not prove an accuracy. On the server the checkpoint is downloaded once ([deploy](../ops/deploy.md)).
 
 ### Step 2 — Linear Depth Calibration
 
@@ -205,6 +216,12 @@ Output:
 - Exact camera pose recovery error (typically $0.0\,\text{cm}$)
 - Metric depth calibration equation ($Z_{\text{metric}} = \alpha \cdot d_{\text{rel}} + \beta$)
 - Per-object 3D center error, dimension error, and yaw orientation error.
+
+### Looking at each stage of one photo
+`server/tools/ai_experiments/visualize_fr03_pipeline.py` runs the real stack (ArUco pose, YOLOv8, Depth Anything, calibration, cuboid back-projection) on one indoor photo and writes a PNG per stage and a JSON summary:
+```bash
+PYTHONPATH=server/backend:server .venv/bin/python server/tools/ai_experiments/visualize_fr03_pipeline.py --image /path/to/photo.jpg --out-dir /tmp/vision_viz --marker-side-m 0.14
+```
 
 ### Running with Real-World Photographs
 1. **Camera Calibration**: Note your camera's resolution and intrinsics ($f_x, f_y, c_x, c_y$).

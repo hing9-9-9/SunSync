@@ -131,6 +131,7 @@ server/
   engine/           sunlight prediction (FR-01), shading plan (FR-02), stable control (FR-04), Vision AI
   measure/          ArUco measurement server (/measure) and its registration core
     mobile/         native camera adapters (Android, iOS)
+  hub/              smart film and ThinQ ON hub simulator (127.0.0.1:8002, optional)
   tests/            tests of the Python code
   tools/            experiments, mock validation and dummy data scripts
 frontend/           React + Vite (TypeScript)
