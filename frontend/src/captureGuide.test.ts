@@ -6,7 +6,7 @@ const box = (x0: number, y0: number, x1: number, y1: number): [number, number][]
 const seen = (corners: [number, number][][], extra = {}) => ({ detections: corners.map((c) => ({ corners_px: c })), width: 1920, height: 1080, ...extra });
 
 test("live hint says what is wrong with the marker, most important first", () => {
-  assert.deepEqual([liveHint(seen([])).tone, liveHint(seen([])).text], ["stop", "마커가 인식되고 있지 않아요. 창문 필름의 마커 전체가 화면에 들어오게 해 주세요."]);
+  assert.deepEqual([liveHint(seen([])).tone, liveHint(seen([])).text], ["stop", "QR 마커가 안 보여요. 창문 필름의 QR 마커 전체가 화면에 들어오게 해 주세요."]);
   assert.equal(liveHint(seen([box(100, 100, 400, 400), box(600, 100, 900, 400)])).tone, "stop");
   assert.match(liveHint(seen([box(0, 100, 400, 500)])).text, /잘려요/);
   assert.match(liveHint(seen([box(900, 400, 1000, 500)])).text, /너무 작게/);
