@@ -22,10 +22,10 @@ jobs:
           cache: pip
       - run: python -m pip install -r requirements-dev.txt
       - run: python -m pip install -e "./server/measure[api,test]"
-      - run: ruff check server/backend server/tests
-      - run: ruff format --check server/backend server/tests
-      - run: mypy server/backend/app
-      - run: python -m pytest -q
+      - run: ruff check server/backend server/hub server/tests
+      - run: ruff format --check server/backend server/hub server/tests
+      - run: mypy server/backend/app server/hub/sunsync_hub
+      - run: python -m pytest server/hub/tests server/tests -q
       - run: PYTHONPATH=server/backend python -m app.scene_cli schema --check
   registration:
     runs-on: ubuntu-latest

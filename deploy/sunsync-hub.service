@@ -1,0 +1,18 @@
+[Unit]
+Description=SunSync Smart Film & ThinQ ON Hub Simulator
+After=network.target
+
+[Service]
+User=sunsync
+WorkingDirectory=/opt/sunsync/server/hub
+EnvironmentFile=/etc/sunsync/sunsync.env
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=/opt/sunsync/.venv/bin/uvicorn sunsync_hub.api:app --host 127.0.0.1 --port 8002
+Restart=on-failure
+NoNewPrivileges=true
+UMask=0077
+PrivateTmp=true
+ProtectSystem=full
+
+[Install]
+WantedBy=multi-user.target

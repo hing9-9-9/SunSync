@@ -12,8 +12,8 @@ vision = [
 ]
 
 [tool.pytest.ini_options]
-testpaths = ["server/tests"]
-pythonpath = ["server/backend", "server/measure", "server"]
+testpaths = ["server/tests", "server/hub/tests"]
+pythonpath = ["server/backend", "server/measure", "server/hub", "server"]
 
 [tool.ruff]
 target-version = "py311"
@@ -22,7 +22,7 @@ src = ["server"]
 
 [tool.mypy]
 python_version = "3.11"
-mypy_path = "server/backend"
+mypy_path = "server/backend:server/hub:server"
 explicit_package_bases = true
 ignore_missing_imports = true
 check_untyped_defs = true

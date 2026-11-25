@@ -13,6 +13,8 @@ from app.db import get_session
 from app.models.scene import SceneRecord
 from app.schemas.film import (
     FilmApplicationLogListResponse,
+    HubReconcileResponse,
+    HubStatusResponse,
     MarkerModeRequest,
     MarkerPairingRequest,
     MarkerPairingResponse,
@@ -33,6 +35,7 @@ from app.services.film import (
     pair_marker_for_scene,
     set_marker_mode,
 )
+from app.services.hub_client import get_scene_hub_status, reconcile_scene_with_hub
 from app.services.scenario_store import get_or_compute_shading_plan
 
 router = APIRouter(tags=["film"])
@@ -164,3 +167,27 @@ def pair_marker(
 ) -> MarkerPairingResponse:
     """Auto-bind PPT ArUco marker, clamp furniture into room boundaries, and activate marker display."""
     return pair_marker_for_scene(session=session, scene_id=scene_id, request=request)
+
+
+@router.get(
+    "/scenes/{scene_id}/hub-status",
+    response_model=HubStatusResponse,
+)
+def read_hub_status(
+    scene_id: str,
+    session: SessionDependency,
+) -> HubStatusResponse:
+    """Inspect Film & ThinQ Hub reachability, boot ID, pending outbox depth, and per-window sync state."""
+    return get_scene_hub_status(session=session, scene_id=scene_id)
+
+
+@router.post(
+    "/scenes/{scene_id}/hub-reconcile",
+    response_model=HubReconcileResponse,
+)
+def reconcile_hub(
+    scene_id: str,
+    session: SessionDependency,
+) -> HubReconcileResponse:
+    """Flush pending outbox commands and heal any drifted/missing window shadows on the remote hub."""
+    return reconcile_scene_with_hub(session=session, scene_id=scene_id)

@@ -31,6 +31,9 @@ mkdir -p "$WEB"
 rsync -a --delete frontend/dist/ "$WEB"/
 
 systemctl restart sunsync-api sunsync-measure
+if systemctl is-enabled --quiet sunsync-hub 2>/dev/null || systemctl is-active --quiet sunsync-hub 2>/dev/null; then
+  systemctl restart sunsync-hub
+fi
 systemctl restart sunsync-worker.timer sunsync-kma-worker.timer sunsync-ai-nowcast-worker.timer
 # auto-update.sh compares main with this commit to see whether anything is new.
 git rev-parse HEAD > "$STATE/deployed-commit"

@@ -12,7 +12,8 @@ from fastapi import HTTPException
 from sqlalchemy import Engine, text
 from sqlmodel import Session
 
-from app.models.film import FilmApplicationLogRecord, FilmStateRecord
+from app.config import hub_base_url
+from app.models.film import FilmApplicationLogRecord, FilmStateRecord, HubCommandRecord
 from app.models.scene import SceneRecord
 from app.nowcast.repository import utc_z
 from app.schemas.adaptive_control import (
@@ -34,6 +35,12 @@ from app.services.film import (
     apply_schedule_to_scene,
     normalize_iso_timestamp,
     opacity_to_applied_state,
+)
+from app.services.hub_client import (
+    dispatch_command,
+    enqueue_hub_command,
+    extract_base_cells_and_overlay,
+    is_hub_enabled,
 )
 from app.services.shading import _caps, _exposed_tiles, _film_windows, shading_plan_from_prediction
 from app.services.sunpath import SunpathValidationError, predict_scene
@@ -457,6 +464,9 @@ def _build_adaptive_response(
         )
         # Update FilmStateRecord if continuous
         if request.mode == "replace" and request.hardware_mode in ("LG_SGF", "SPD"):
+            pending_continuous: list[tuple[FilmStateRecord, HubCommandRecord]] = []
+            now_iso = _iso(datetime.now(UTC))
+            remote_enabled = is_hub_enabled()
             for win_id, (rows, cols) in windows_grid.items():
                 state_key = f"{scene_id}:{win_id}"
                 rec = session.get(FilmStateRecord, state_key)
@@ -467,8 +477,37 @@ def _build_adaptive_response(
                             grid[traj.row][traj.col] = traj.steps[0].opacity
                     rec.cells_json = json.dumps(grid)
                     rec.film_type = "SPD"
+                    rec.updated_at = now_iso
+                    if remote_enabled:
+                        rec.desired_version += 1
+                        base_cells, _, overlay = extract_base_cells_and_overlay(rec)
+                        cmd = enqueue_hub_command(
+                            session,
+                            scene_id=scene_id,
+                            window_id=win_id,
+                            operation="shadow_put",
+                            desired_version=rec.desired_version,
+                            payload={
+                                "desired_version": rec.desired_version,
+                                "hardware_mode": request.hardware_mode,
+                                "rows": rec.film_rows,
+                                "cols": rec.film_cols,
+                                "base_cells": base_cells,
+                                "marker_overlay": overlay,
+                                "metadata": {"source": "adaptive_plan_apply"},
+                            },
+                            now_iso=now_iso,
+                        )
+                        rec.last_command_id = cmd.command_id
+                        rec.sync_status = "pending"
+                        rec.sync_error = None
+                        pending_continuous.append((rec, cmd))
                     session.add(rec)
             session.commit()
+            if pending_continuous:
+                for rec, cmd in pending_continuous:
+                    dispatch_command(session, cmd, film_record=rec)
+                session.commit()
 
     return AdaptiveShadingPlanResponse(
         scene_id=scene.scene_id,
@@ -594,8 +633,19 @@ def sync_to_thinq_hub(
         normalize_iso_timestamp(request.target_timestamp)
     ).astimezone(UTC)
     synced_at = _iso(datetime.now(UTC))
+    target_iso = _iso(target_dt)
+    configured_hub_url = hub_base_url()
+    remote_enabled = bool(configured_hub_url)
 
     devices: list[ThinQHubDevicePayload] = []
+    pending_dispatches: list[
+        tuple[
+            int,
+            FilmStateRecord,
+            HubCommandRecord,
+            list[FilmApplicationLogRecord],
+        ]
+    ] = []
 
     for win in scene.windows:
         rows, cols = win.film_rows, win.film_cols
@@ -646,6 +696,7 @@ def sync_to_thinq_hub(
         state_key = f"{scene_id}:{win.window_id}"
         rec = session.get(FilmStateRecord, state_key)
         film_type_str = "SPD" if request.hardware_mode in ("LG_SGF", "SPD") else "PDLC"
+        win_logs: list[FilmApplicationLogRecord] = []
 
         if rec is None:
             rec = FilmStateRecord(
@@ -656,6 +707,7 @@ def sync_to_thinq_hub(
                 film_rows=rows,
                 film_cols=cols,
                 cells_json=json.dumps(opacity_matrix),
+                hub_device_id=request.hub_device_id,
                 updated_at=synced_at,
             )
             session.add(rec)
@@ -663,6 +715,7 @@ def sync_to_thinq_hub(
             prev_grid = json.loads(rec.cells_json)
             rec.film_type = film_type_str
             rec.cells_json = json.dumps(opacity_matrix)
+            rec.hub_device_id = request.hub_device_id
             rec.updated_at = synced_at
             session.add(rec)
 
@@ -672,24 +725,62 @@ def sync_to_thinq_hub(
                     prev_op = prev_grid[r][c]
                     new_op = opacity_matrix[r][c]
                     if abs(prev_op - new_op) > 0.01:
-                        session.add(
-                            FilmApplicationLogRecord(
-                                scene_id=scene_id,
-                                window_id=win.window_id,
-                                timestamp=_iso(target_dt),
-                                row=r,
-                                col=c,
-                                previous_opacity=prev_op,
-                                new_opacity=new_op,
-                                previous_state=opacity_to_applied_state(prev_op),
-                                new_state=opacity_to_applied_state(new_op),
-                                plan_id=f"thinq_sync_{int(datetime.now(UTC).timestamp())}",
-                                status="applied",
-                                note="LG ThinQ ON SGF sync",
-                                reasons_json="[]",
-                                created_at=synced_at,
-                            )
+                        log_entry = FilmApplicationLogRecord(
+                            scene_id=scene_id,
+                            window_id=win.window_id,
+                            timestamp=target_iso,
+                            row=r,
+                            col=c,
+                            previous_opacity=prev_op,
+                            new_opacity=new_op,
+                            previous_state=opacity_to_applied_state(prev_op),
+                            new_state=opacity_to_applied_state(new_op),
+                            plan_id=f"thinq_sync_{int(datetime.now(UTC).timestamp())}",
+                            status="applied",
+                            note="LG ThinQ ON SGF sync",
+                            reasons_json="[]",
+                            created_at=synced_at,
                         )
+                        session.add(log_entry)
+                        win_logs.append(log_entry)
+
+        dev_idx = len(devices)
+        cmd_id: str | None = None
+        if remote_enabled:
+            rec.desired_version += 1
+            thinq_payload = {
+                "hub_device_id": request.hub_device_id,
+                "protocol_version": "LG_THINQ_ON_SGF_V1",
+                "scene_id": scene_id,
+                "window_id": win.window_id,
+                "timestamp": target_iso,
+                "hardware_mode": request.hardware_mode,
+                "cell_opacity_matrix": opacity_matrix,
+                "cell_transmittance_matrix": trans_matrix,
+                "active_shaded_cells": active_count,
+                "dimmed_cells": dimmed_count,
+                "energy_daylight_score": daylight_score,
+                "decision_summary_ko": decision_summary,
+                "desired_version": rec.desired_version,
+            }
+            cmd_rec = enqueue_hub_command(
+                session,
+                scene_id=scene_id,
+                window_id=win.window_id,
+                operation="thinq_sync",
+                desired_version=rec.desired_version,
+                payload=thinq_payload,
+                now_iso=synced_at,
+            )
+            cmd_id = cmd_rec.command_id
+            rec.last_command_id = cmd_id
+            rec.sync_status = "pending"
+            rec.sync_error = None
+            for log_entry in win_logs:
+                log_entry.command_id = cmd_id
+                log_entry.delivery_status = "pending"
+            session.add(rec)
+            pending_dispatches.append((dev_idx, rec, cmd_rec, win_logs))
 
         devices.append(
             ThinQHubDevicePayload(
@@ -697,7 +788,7 @@ def sync_to_thinq_hub(
                 protocol_version="LG_THINQ_ON_SGF_V1",
                 scene_id=scene_id,
                 window_id=win.window_id,
-                timestamp=_iso(target_dt),
+                timestamp=target_iso,
                 hardware_mode=request.hardware_mode,
                 cell_opacity_matrix=opacity_matrix,
                 cell_transmittance_matrix=trans_matrix,
@@ -705,13 +796,60 @@ def sync_to_thinq_hub(
                 dimmed_cells=dimmed_count,
                 energy_daylight_score=daylight_score,
                 decision_summary_ko=decision_summary,
+                command_id=cmd_id,
+                sync_status="pending" if remote_enabled else "local_only",
+                reported_version=rec.reported_version if remote_enabled else 0,
+                hub_ack_at=None,
             )
         )
 
     session.commit()
 
+    if not remote_enabled:
+        return ThinQHubSyncResponse(
+            synced_at=synced_at,
+            metrics=plan_resp.metrics,
+            devices=devices,
+            sync_mode="local",
+            hub_url=None,
+            sync_status="local_only",
+        )
+
+    for dev_idx, rec, cmd_rec, win_logs in pending_dispatches:
+        res = dispatch_command(
+            session,
+            cmd_rec,
+            film_record=rec,
+            log_records=win_logs,
+        )
+        devices[dev_idx] = devices[dev_idx].model_copy(
+            update={
+                "command_id": res.command_id,
+                "sync_status": res.sync_status,
+                "reported_version": res.reported_version,
+                "hub_ack_at": res.hub_ack_at,
+            }
+        )
+    session.commit()
+
+    statuses = {d.sync_status for d in devices}
+    agg_status: Any
+    if not statuses or statuses == {"synced"}:
+        agg_status = "synced"
+    elif "synced" in statuses:
+        agg_status = "partial"
+    elif statuses == {"pending"} or "pending" in statuses:
+        agg_status = "pending"
+    elif "rejected" in statuses:
+        agg_status = "rejected"
+    else:
+        agg_status = "failed"
+
     return ThinQHubSyncResponse(
         synced_at=synced_at,
         metrics=plan_resp.metrics,
         devices=devices,
+        sync_mode="remote_hub",
+        hub_url=configured_hub_url,
+        sync_status=agg_status,
     )
