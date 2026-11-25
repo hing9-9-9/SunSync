@@ -25,12 +25,15 @@ from test_fr03_vision_ai import (  # noqa: F401
 
 from engine.vision_ai import protocols
 from engine.vision_ai.protocols import (
+    DEFAULT_METRIC_DEPTH_MODEL,
     CompositeDepthEstimator,
     CompositeFurnitureDetector,
     DetectedObject2D,
     MonocularDepthAdapter,
     VisionModelUnavailable,
     YoloV8DetectorAdapter,
+    _deduplicate_overlapping_detections,
+    _disparity_to_relative_depth,
     shared_depth_adapter,
     shared_yolo_adapter,
 )
@@ -43,6 +46,7 @@ def fresh_shared_adapters(monkeypatch):
     monkeypatch.setattr(protocols, "_shared_yolo", None)
     monkeypatch.setattr(protocols, "_shared_depth", None)
     monkeypatch.delenv("SUNSYNC_YOLO_WEIGHTS", raising=False)
+    monkeypatch.delenv("SUNSYNC_DEPTH_MODEL", raising=False)
     monkeypatch.delenv("SUNSYNC_VISION_AI", raising=False)
 
 
@@ -308,3 +312,105 @@ def test_a_bad_switch_value_is_a_visible_server_error(
         headers={"Content-Type": "image/png"},
     )
     assert response.status_code == 503
+
+
+def test_disparity_to_relative_depth_preserves_near_far_order_and_ratios():
+    # High disparity = near (4.0), low disparity = far (1.0) -> far/near depth ratio = 4.0
+    disparity = np.array([[4.0, 2.0], [1.0, 2.0]], dtype=np.float32)
+    rel_depth = _disparity_to_relative_depth(disparity)
+    assert rel_depth[0, 0] < rel_depth[0, 1] < rel_depth[1, 0]
+    assert np.isclose(rel_depth[1, 0] / rel_depth[0, 0], 4.0, rtol=1e-4)
+    assert np.isclose(rel_depth[0, 1] / rel_depth[0, 0], 2.0, rtol=1e-4)
+
+
+def test_monocular_depth_adapter_defaults_to_metric_indoor_and_respects_env(monkeypatch):
+    default_adapter = shared_depth_adapter()
+    assert default_adapter.model_name == DEFAULT_METRIC_DEPTH_MODEL
+    assert default_adapter.is_metric_depth is True
+
+    monkeypatch.setattr(protocols, "_shared_depth", None)
+    monkeypatch.setenv("SUNSYNC_DEPTH_MODEL", "depth-anything/Depth-Anything-V2-Small-hf")
+    rel_adapter = shared_depth_adapter()
+    assert rel_adapter.model_name == "depth-anything/Depth-Anything-V2-Small-hf"
+    assert rel_adapter.is_metric_depth is False
+
+
+def test_monocular_depth_adapter_metric_mode_preserves_metres_directly():
+    # Metric indoor model outputs depth in metres directly (near = 0.9 m, far = 2.7 m)
+    pred = np.vstack(
+        [np.full((16, 32), 0.9, dtype=np.float32), np.full((16, 32), 2.7, dtype=np.float32)]
+    )
+
+    class FakeMetricPipe:
+        def __call__(self, _pil_img):
+            return {"predicted_depth": pred, "depth": np.zeros((32, 32), dtype=np.uint8)}
+
+    adapter = MonocularDepthAdapter()
+    adapter._pipe = FakeMetricPipe()
+    depth = adapter.estimate_relative_depth(IMAGE, 32, 32)
+    assert np.isclose(float(np.median(depth[:16, :])), 0.9, rtol=1e-4)
+    assert np.isclose(float(np.median(depth[16:, :])), 2.7, rtol=1e-4)
+
+
+def test_monocular_depth_adapter_relative_mode_inverts_disparity():
+    # Relative model outputs inverse depth (near = 5.0 disparity, far = 1.25 disparity)
+    pred = np.vstack(
+        [np.full((16, 32), 5.0, dtype=np.float32), np.full((16, 32), 1.25, dtype=np.float32)]
+    )
+
+    class FakeRelativePipe:
+        def __call__(self, _pil_img):
+            return {"predicted_depth": pred, "depth": np.zeros((32, 32), dtype=np.uint8)}
+
+    adapter = MonocularDepthAdapter(model_name="depth-anything/Depth-Anything-V2-Small-hf")
+    adapter._pipe = FakeRelativePipe()
+    rel = adapter.estimate_relative_depth(IMAGE, 32, 32)
+    near_val = float(np.median(rel[:16, :]))
+    far_val = float(np.median(rel[16:, :]))
+    assert near_val < far_val
+    assert np.isclose(far_val / near_val, 4.0, rtol=1e-4)
+
+
+def test_deduplicate_overlapping_detections_resolves_cross_class_duplicates():
+    same_box = (60.0, 420.0, 560.0, 1000.0)
+    near_same_box = (61.0, 422.0, 559.0, 1015.0)
+    separate_box = (100.0, 220.0, 220.0, 255.0)
+
+    # Ambiguous chair back detected as both tv (other, 0.48) and chair (0.30) -> chair wins
+    deduped = _deduplicate_overlapping_detections(
+        [
+            DetectedObject2D(same_box, "other", 0.48, "tv"),
+            DetectedObject2D(near_same_box, "chair", 0.30, "chair"),
+            DetectedObject2D(separate_box, "bookshelf", 0.27, "book"),
+        ]
+    )
+    assert [d.label for d in deduped] == ["chair", "bookshelf"]
+
+    # High-confidence appliance (tv, 0.88) beats weak spurious chair (0.28) on same box
+    tv_wins = _deduplicate_overlapping_detections(
+        [
+            DetectedObject2D(same_box, "other", 0.88, "tv"),
+            DetectedObject2D(near_same_box, "chair", 0.28, "chair"),
+        ]
+    )
+    assert [d.label for d in tv_wins] == ["other"]
+
+    # Two overlapping specific furniture classes -> higher confidence wins
+    specific = _deduplicate_overlapping_detections(
+        [
+            DetectedObject2D(same_box, "chair", 0.55, "chair"),
+            DetectedObject2D(near_same_box, "desk", 0.72, "dining table"),
+        ]
+    )
+    assert [d.label for d in specific] == ["desk"]
+
+
+def test_overlaps_any_box_keeps_large_furniture_touching_small_marker():
+    marker_box = (128.0, 157.0, 199.0, 234.0)
+    large_chair_box = (98.7, 193.3, 564.6, 1023.7)
+    marker_contour_box = (124.0, 154.0, 203.0, 238.0)
+    inner_marker_bit = (140.0, 170.0, 180.0, 210.0)
+
+    assert protocols._overlaps_any_box(large_chair_box, [marker_box]) is False
+    assert protocols._overlaps_any_box(marker_contour_box, [marker_box]) is True
+    assert protocols._overlaps_any_box(inner_marker_bit, [marker_box]) is True

@@ -207,7 +207,7 @@ The database and its copies hold e-mail addresses once the Google login is on, s
 
 ## Vision AI models
 
-The photo furniture estimate (FR-03) uses YOLOv8 for detection and Depth Anything V2 Small for depth when they are installed. Without them it uses contour and geometric fallbacks. The switch is `SUNSYNC_VISION_AI` in `/etc/sunsync/sunsync.env`:
+The photo furniture estimate (FR-03) uses YOLOv8 for detection and Depth Anything V2 Metric Indoor Small (`depth-anything/Depth-Anything-V2-Metric-Indoor-Small-hf`, overridable via `SUNSYNC_DEPTH_MODEL`) for depth when they are installed. Without them it uses contour and geometric fallbacks. The switch is `SUNSYNC_VISION_AI` in `/etc/sunsync/sunsync.env`:
 
 | Value | Behaviour |
 | --- | --- |
@@ -221,9 +221,9 @@ Install on the server (one time, as root; `/opt/sunsync` and the venv are root-o
 
 1. Check memory first: the server has 1.9 GB of RAM and swap. The two models add roughly 1 GB while loaded; watch `free -m` and `journalctl -k | grep -i oom` after the first photo. If the API gets killed, set `off` and consider a larger instance.
 2. Install the CPU build of torch, then the rest, into the existing venv, with the versions pinned and recorded in the server notes: `/opt/sunsync/.venv/bin/pip install torch --index-url https://download.pytorch.org/whl/cpu`, then `/opt/sunsync/.venv/bin/pip install -r /opt/sunsync/requirements-vision.txt`.
-3. Put the weights and the Hugging Face cache outside `/opt/sunsync`, in a directory the service can read and write, for example `/var/lib/sunsync/models` (owner `sunsync`). Set `SUNSYNC_YOLO_WEIGHTS` to the weights file, and `HF_HOME` to a directory there so the depth model is downloaded once and not into a home directory the service does not have.
+3. Put the weights and the Hugging Face cache outside `/opt/sunsync`, in a directory the service can read and write, for example `/var/lib/sunsync/models` (owner `sunsync`). Set `SUNSYNC_YOLO_WEIGHTS` to the weights file, and `HF_HOME` to a directory there so the depth model is downloaded once and not into a home directory the service does not have. To avoid a download delay on the first live photo request, pre-warm the depth checkpoint once as `sunsync`: `sudo -u sunsync HF_HOME=/var/lib/sunsync/models /opt/sunsync/.venv/bin/python -c 'from transformers import pipeline; pipeline("depth-estimation", model="depth-anything/Depth-Anything-V2-Metric-Indoor-Small-hf", device="cpu")'`.
 4. Set `SUNSYNC_VISION_AI=on`, restart `sunsync-api`, send one photo and check that `detection_source` is `yolov8` and the load line is in the log.
-5. Roll back by setting `off` (or `auto`) and restarting; nothing else changes.
+5. Roll back by setting `off` (or `auto`) and restarting, or switch back to the previous relative depth checkpoint via `SUNSYNC_DEPTH_MODEL=depth-anything/Depth-Anything-V2-Small-hf`; nothing else changes.
 
 Security notes: YOLO weights are pickle checkpoints, so use only the official file, record its sha256 and do not accept weights from anyone else. Pin the package versions; an unpinned install at update time can change behaviour. The automatic update does not install these packages; they stay as installed until someone updates them on purpose.
 
