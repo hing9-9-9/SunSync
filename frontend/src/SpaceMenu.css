@@ -84,3 +84,6 @@
 .app.mode-app .rp-room-wrap > .space-menu .space-menu-trigger::after,
 .app.mode-app .room-entry > .space-menu .space-menu-trigger::after,
 .app.mode-app .award-room-card > .space-menu .space-menu-trigger::after { content: ""; position: absolute; inset: -4px; }
+
+/* The open list must sit above the next card's own ⋯ button (cards share z-index 5, later ones paint over earlier ones). */
+.app.app .rp-room-wrap > .space-menu.open, .app.app .room-entry > .space-menu.open, .app.app .award-room-card > .space-menu.open { z-index: 30; }

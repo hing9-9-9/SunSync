@@ -294,6 +294,19 @@ def test_measurement_jobs_sync_without_connection_code(client, payload):
     )
 
 
+def test_cancelled_measurement_is_removed_but_completed_one_is_kept(client, payload):
+    saved = client.post("/api/ui/spaces", json=payload).json()
+    token = client.post("/api/ui/measurements", json={"space_id": saved["id"]}).json()["token"]
+    client.post(f"/api/ui/measurements/{token}/connect")
+    assert client.delete(f"/api/ui/measurements/{token}").status_code == 204
+    assert client.get("/api/ui/measurements").json() == []
+    assert client.delete(f"/api/ui/measurements/{token}").status_code == 404
+    token = client.post("/api/ui/measurements", json={"space_id": saved["id"]}).json()["token"]
+    client.post(f"/api/ui/measurements/{token}/connect")
+    client.post(f"/api/ui/measurements/{token}/complete", json=saved)
+    assert client.delete(f"/api/ui/measurements/{token}").status_code == 409
+
+
 def test_standalone_protection_area_survives_server_save(client, payload):
     payload["furniture"] = []
     payload["regions"][0]["furnitureId"] = None

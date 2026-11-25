@@ -6,8 +6,37 @@ import { analyseImage } from "./captureCheck";
 import { liveHint } from "./captureGuide";
 import type { Hint } from "./captureGuide";
 import type { Board, Camera, CaptureMarker, Frame } from "./measureApi";
+import type { CapturePoint, Shape } from "./capturePlan";
 
 export type CapturePhase = "idle" | "capturing" | "analyzing";
+export type PointPlan = { shape: Shape; points: CapturePoint[]; corner: number; done: boolean[] };
+
+/** The furniture's top drawn small, window side up: finished points white, the point to shoot now purple, the rest dashed. */
+function PointMap({ plan }: { plan: PointPlan }) {
+  const { shape, points, corner, done } = plan;
+  // Push the drawing down only as far as needed to keep the window bar clear of the topmost point (a triangle's P1 sits right at the top).
+  const TOP = Math.max(2, 23 - Math.min(...points.map((q) => q.y)));
+  const xs = points.map((q) => q.x), ys = points.map((q) => q.y + TOP);
+  const cx = (Math.min(...xs) + Math.max(...xs)) / 2;
+  const size = Math.max(Math.max(...xs) - Math.min(...xs) + 26, Math.max(...ys) + 12);
+  const bar = size * 0.42;
+  return <div className="vision-map" aria-hidden="true">
+    <svg viewBox={`${cx - size / 2} 0 ${size} ${size}`}>
+      <rect className="map-window" x={cx - bar / 2} y="0" width={bar} height={size * 0.045} />
+      <text className="map-window-label" x={cx + bar / 2 + 3} y={size * 0.075}>창문</text>
+      {shape === "circle" ? <circle className="map-outline" cx="50" cy={50 + TOP} r="34" />
+        : shape === "ellipse" ? <ellipse className="map-outline" cx="50" cy={50 + TOP} rx="40" ry="25" />
+        : <polygon className="map-outline" points={points.map((q) => `${q.x},${q.y + TOP}`).join(" ")} />}
+      {points.map((q, i) => {
+        const now = i === corner, finished = !!done[i];
+        return <g key={i} className={now ? "map-now" : finished ? "map-done" : "map-todo"}>
+          <circle cx={q.x} cy={q.y + TOP} r={now ? 9 : 7.5} />
+          <text x={q.x} y={q.y + TOP + 3.6} textAnchor="middle">{i + 1}</text>
+        </g>;
+      })}
+    </svg>
+  </div>;
+}
 
 /** Test-only video stream. Its calibration is deliberately separate from still-photo profiles. */
 export default function BurstCamera({
@@ -15,6 +44,7 @@ export default function BurstCamera({
   board,
   active,
   pointLabel,
+  plan,
   actionTarget,
   disabled,
   getTicket,
@@ -27,6 +57,7 @@ export default function BurstCamera({
   board: Board;
   active: boolean;
   pointLabel: string;
+  plan?: PointPlan;
   actionTarget: HTMLElement | null;
   disabled: boolean;
   getTicket: () => number;
@@ -164,7 +195,7 @@ export default function BurstCamera({
           setViews(next);
           setCamera(profile);
           onReady?.(profile);
-          setMessage("카메라 준비가 완료됐어요.");
+          setMessage("");
         }
       } else {
         setViews(next);
@@ -239,21 +270,32 @@ export default function BurstCamera({
   function closeCamera() {
     stop();setRunning(false);setCamera(null);onReady?.(null);setViews([]);
   }
+  const shutterLabel = phase === "analyzing" ? "사진 분석 중" : phase === "capturing" ? "촬영 중" : busy ? "카메라 준비 중" : !running ? "카메라 열기" : !camera ? `카메라 준비 사진 촬영 ${Math.min(views.length, 11)}/12` : `${pointLabel} 촬영`;
+  const noteText = phaseText || (hint ? (hint.tone === "ok" ? `QR 마커가 잘 보여요. 표시된 ${pointLabel}에서 촬영해 주세요.` : hint.text) : camera ? `표시된 ${pointLabel}에서 QR 마커가 보이게 맞춰 주세요.` : `마커 전체가 보이도록 위치와 기울기를 바꾸며 찍어 주세요. (${Math.min(views.length, 11)}/12)`);
+  const noteTone = phaseText ? "ok" : hint?.tone ?? "ok";
   return (
     <section className="point-camera" style={{display:active?undefined:"none",width:"100%"}}>
       {/* While the camera is open the stage fills the phone screen; closed, it is only the idle video element. */}
-      <div className={`camera-stage${stageOpen ? " open" : ""}`}>
+      <div className={`camera-stage${stageOpen ? " open vision-camera" : ""}`}>
         <video ref={video} className="camera-video" autoPlay muted playsInline style={{width:"100%",maxHeight:320,display:running?"block":"none"}} />
-        {stageOpen && <div className="camera-stage-top">
-          <strong>{camera ? pointLabel : "카메라 준비"}</strong>
-          <button type="button" className="text-button" disabled={busy||disabled} onClick={closeCamera}>카메라 닫기</button>
-        </div>}
-        {stageOpen && <div className="camera-stage-bottom">
-          {!camera && <p>마커 전체가 보이도록 위치와 기울기를 바꾸며 찍어 주세요. ({Math.min(views.length, 11)}/12)</p>}
-          {phaseText ? <p role="status">{phaseText}</p> : hint && <p role="status" className={`capture-hint ${hint.tone}`}>{hint.text}</p>}
-          {message && <p role="status">{message}</p>}
-          {action}
-        </div>}
+        {stageOpen && <>
+          <div className="vision-top">
+            <strong className="vision-title">마커로 정밀 촬영</strong>
+            <button type="button" className="secondary vision-close" disabled={busy || disabled} onClick={closeCamera}>닫기</button>
+          </div>
+          <div className="vision-row">
+            {plan && camera && <PointMap plan={plan} />}
+          </div>
+          <div className="vision-low">
+            {message && <p role="alert" className="vision-error">{message}</p>}
+            <p role="status" className={`capture-hint vision-note ${noteTone}`}>{noteText}</p>
+          </div>
+          <div className="vision-bottom">
+            <button type="button" className="vision-shutter" aria-label={shutterLabel} aria-busy={busy || phase !== "idle"}
+              disabled={busy || disabled || (running && !!camera && hint?.tone === "stop")}
+              onClick={() => void (!running ? open() : !camera ? setup() : shoot())}><i aria-hidden="true" /></button>
+          </div>
+        </>}
       </div>
       {active && actionTarget && !stageOpen && createPortal(action,actionTarget)}
       {!stageOpen && message && <p role="status">{message}</p>}

@@ -19,7 +19,7 @@ import type { CheckedMeasurement, Camera, Frame, CaptureMarker, FilmTargetWindow
 type Photo = { file: File; url: string; issue: PhotoIssue | null; metrics: { brightness: number; sharpness: number }; frame?: Frame };
 
 // MAR3.2: stand at each of the four corners of one piece of furniture and photograph the window marker.
-type SpatialCaptureProps = { sceneId?: string; markerSizeOverride?: { sessionId: string; sideM: number }; count: number; onFinish: (items: CapturedFurniture[]) => void; onMarkerChange?: (session: CaptureMarker | null) => void; onVisionRegistered?: (addedCount: number) => Promise<void> | void; space?: Space };
+type SpatialCaptureProps = { sceneId?: string; markerSizeOverride?: { sessionId: string; sideM: number }; count: number; onFinish: (items: CapturedFurniture[]) => void; onCancel?: () => void; onMarkerChange?: (session: CaptureMarker | null) => void; onVisionRegistered?: (addedCount: number) => Promise<void> | void; onFilmChange?: (row: number, col: number) => Promise<void>; space?: Space };
 
 export default function SpatialCapture(props: SpatialCaptureProps) {
   if (!browserCaptureEnabled) return <section role="status">
@@ -71,10 +71,18 @@ function SessionSpatialCapture(props: SpatialCaptureProps) {
     catch(e) {setError(e instanceof Error ? e.message : "필름을 선택하지 못했어요.");}
     finally {setBusy(false);}
   }
+  // Once a film is saved for the space, picking another one changes that saved choice (the server only accepts the saved film).
+  function pickFilm(r: number, c: number) {
+    if (!savedSelection) { setRow(r); setCol(c); return; }
+    if ((r === row && c === col) || !props.onFilmChange) return;
+    setBusy(true); setError("");
+    props.onFilmChange(r, c).then(() => setRetry(n => n + 1))
+      .catch(e => { setError(e instanceof Error ? e.message : "필름을 바꾸지 못했어요."); setBusy(false); });
+  }
   async function cancel() {
     if (!session || busy) return;
     setBusy(true); setError("");
-    try { await endCaptureMarker(session); setSession(null); }
+    try { await endCaptureMarker(session); setSession(null); props.onCancel?.(); }
     catch (e) { setError(e instanceof Error ? e.message : "촬영을 종료하지 못했어요."); }
     finally { setBusy(false); }
   }
@@ -88,14 +96,13 @@ function SessionSpatialCapture(props: SpatialCaptureProps) {
   if (!session) {
     const win=windows.find(w=>w.window_id===windowId);
     return <section className="film-select">
-      <h3>{savedSelection ? "선택한 필름으로 촬영" : "마커를 띄울 필름 선택"}</h3>
+      <h3>마커를 띄울 필름 선택</h3>
       {!windows.length && <p className="muted small">촬영할 필름이 없어요. 창문 크기와 위치를 먼저 저장해 주세요.</p>}
       {!savedSelection && windows.length > 1 && <label className="field"><span>창문</span><select value={windowId} onChange={e=>{setWindowId(e.target.value);setRow(0);setCol(0);}}>
         {windows.map((w,i)=><option key={w.window_id} value={w.window_id}>창 {i+1}</option>)}
       </select></label>}
       {win && <>
-        {!savedSelection && <FilmModulePicker rows={win.rows} cols={win.cols} topRemainder={win.top_remainder_m} rightRemainder={win.right_remainder_m} row={row} col={col} onChange={(r,c)=>{setRow(r);setCol(c);}} />}
-        {savedSelection && <p>창문 입력 단계에서 선택한 필름 정보를 가져왔어요.</p>}
+        <FilmModulePicker rows={win.rows} cols={win.cols} topRemainder={win.top_remainder_m} rightRemainder={win.right_remainder_m} row={row} col={col} onChange={savedSelection && !props.onFilmChange ? undefined : pickFilm} />
         <p className="film-select-choice" role="status">아래에서 {row+1}번째 · 왼쪽에서 {col+1}번째 필름</p>
       </>}
       {error && <div className="film-error" role="alert">
@@ -359,7 +366,8 @@ function TestSpatialCapture({ count, onFinish, session, testMarkerSideM, onVisio
     {(() => {
       const plan = (
     <section className={`shape-plan${confirmed?" compact":""}`} aria-label="형태별 촬영 계획">
-      <svg viewBox={confirmed&&points.length?tightBox(points):"0 0 100 100"} role="img" aria-label={`${shapes[shape].label} 촬영 순서`} onClick={e=>{if(shape!=='polygon'||confirmed)return; const r=e.currentTarget.getBoundingClientRect();setCustom(p=>[...p,{x:Math.max(8,Math.min(92,(e.clientX-r.left)/r.width*100)),y:Math.max(8,Math.min(92,(e.clientY-r.top)/r.height*100))}]);}}>
+      <svg className={shape==='polygon'&&!confirmed?"drawing":undefined} viewBox={confirmed&&points.length?tightBox(points):shape==='polygon'?"0 0 100 100":"0 0 100 101"} role="img" aria-label={`${shapes[shape].label} 촬영 순서`} onClick={e=>{if(shape!=='polygon'||confirmed)return; const at=padPoint(e.currentTarget,e.clientX,e.clientY); if(at)setCustom(p=>[...p,at]);}}>
+        {shape==='polygon'&&!confirmed&&<rect x="0" y="0" width="100" height="100" className="shape-pad"/>}
         {shape==='circle'?<circle cx="50" cy="50" r="35" className="shape-outline"/>:shape==='ellipse'?<ellipse cx="50" cy="50" rx="40" ry="25" className="shape-outline"/>:<polygon points={points.map(p=>`${p.x},${p.y}`).join(' ')} className="shape-outline"/>}
         {points.map((p,i)=>{
           // The label sits outside the outline: on the outward side of the corner (reversed at an inward corner).
@@ -370,12 +378,12 @@ function TestSpatialCapture({ count, onFinish, session, testMarkerSideM, onVisio
           const turn=(p.x-prev.x)*(next.y-p.y)-(p.y-prev.y)*(next.x-p.x);
           const mx=points.reduce((t,q)=>t+q.x,0)/n, my=points.reduce((t,q)=>t+q.y,0)/n;
           const bis=n>=3&&area&&Math.hypot(a.x+c.x,a.y+c.y)>.2?unit((a.x+c.x)*(turn*area>0?1:-1),(a.y+c.y)*(turn*area>0?1:-1)):unit(p.x-mx,p.y-my);
-          const anchor=bis.x>.85?'start':bis.x<-.85?'end':'middle', lx=Math.max(anchor==='middle'?9:2,Math.min(anchor==='middle'?91:98,p.x+bis.x*(anchor==='middle'?11:7))), ly=Math.max(9,Math.min(91,p.y+bis.y*(anchor==='middle'?11:0)))+3;
+          const anchor=bis.x>.85?'start':bis.x<-.85?'end':'middle', lx=Math.max(anchor==='middle'?9:2,Math.min(anchor==='middle'?91:98,p.x+bis.x*(anchor==='middle'?11:7))), ly=Math.max(4,Math.min(96,p.y+bis.y*(anchor==='middle'?11:0)))+3;
           return <g key={i}><circle cx={p.x} cy={p.y} r="3" className={confirmed&&!complete&&i===corner?'point-current':'point'}/><text x={lx} y={ly} textAnchor={anchor}>P{i+1}</text></g>;
         })}
       </svg>
       <div className="shape-plan-body">
-      <p>{shape==='polygon'&&!confirmed?'꼭짓점을 순서대로 눌러 모양 구성':confirmed?`${shapes[shape].label} · ${points.length}개 지점`:`${points.length}개 지점 · 지점마다 촬영 한 번`}</p>
+      {(shape==='polygon'||confirmed)&&<p>{confirmed?`${shapes[shape].label} · ${points.length}개 지점`:'꼭짓점을 순서대로 눌러 모양 구성'}</p>}
       {!confirmed ? <div className="actions">
         {shape==='polygon'&&<button type="button" className="secondary" disabled={!custom.length} onClick={()=>setCustom(p=>p.slice(0,-1))}>마지막 점 취소</button>}
         <button type="button" className="primary" aria-label="마커로 촬영 시작" disabled={shape==='polygon'&&!validPolygon(custom)} onClick={()=>{setConfirmed(true);setError('');}}>촬영 시작</button>
@@ -387,7 +395,7 @@ function TestSpatialCapture({ count, onFinish, session, testMarkerSideM, onVisio
       <div className="shape-field">
       <div className="shape-field-head">
         <h3 className="shape-field-title">마커로 정밀 촬영</h3>
-        <p>가구별 위치로 가서 찍어 주세요.</p>
+        <p>가구별 위치로 가서 찍어 주세요. 창문을 바라보는 방향에서 골라 주세요.</p>
       </div>
       <label className="field"><span>상판 형태</span>
         <select value={shape} disabled={confirmed||checking} onChange={e=>{reset();setShape(e.target.value as Shape);setCustom([]);}}>
@@ -414,7 +422,7 @@ function TestSpatialCapture({ count, onFinish, session, testMarkerSideM, onVisio
     </ol>
     </>}
     <figure className="capture-viewfinder" style={{display: confirmed && !(complete && !verifying) ? undefined : "none"}}>
-      <BurstCamera session={session} board={board} active={confirmed&&!complete} pointLabel={`P${corner+1}`} actionTarget={actionTarget}
+      <BurstCamera session={session} board={board} active={confirmed&&!complete} pointLabel={`P${corner+1}`} plan={{shape,points,corner,done:points.map((_,i)=>(photos[i]??[]).filter(x=>x&&!x.issue).length>=photosPerPoint)}} actionTarget={actionTarget}
         disabled={checking} getTicket={()=>version.current} phase={capturePhase} onPhaseChange={setCapturePhase} onReady={setCaptureCamera} onBatch={takeBatch}/>
       {(capturePhase !== "idle" || verifying || complete || !captureCamera) && <figcaption role="status">{capturePhase === "analyzing" || verifying ? "촬영 완료! 휴대폰을 내려도 돼요. 사진 분석 중…" : capturePhase === "capturing" ? "촬영 중… 휴대폰 위치를 유지해 주세요." : complete ? "모든 지점 촬영 완료" : "카메라 준비 · 마커가 보이도록 12장 촬영해 주세요"}</figcaption>}
     </figure>
@@ -437,6 +445,14 @@ function TestSpatialCapture({ count, onFinish, session, testMarkerSideM, onVisio
 }
 
 // The small summary drawing is cropped to the shape itself, so it sits flush with the card padding.
+/** Screen point to the 0..100 drawing pad. The svg letterboxes its square pad, so the element's own box is not the pad. */
+function padPoint(svg: SVGSVGElement, clientX: number, clientY: number) {
+  const m = svg.getScreenCTM();
+  if (!m) return null;
+  const at = new DOMPoint(clientX, clientY).matrixTransform(m.inverse());
+  if (at.x < 0 || at.x > 100 || at.y < 0 || at.y > 100) return null;
+  return { x: Math.max(8, Math.min(92, at.x)), y: Math.max(8, Math.min(92, at.y)) };
+}
 function tightBox(points: { x: number; y: number }[]) {
   const xs = points.map((p) => p.x), ys = points.map((p) => p.y);
   const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);

@@ -2,7 +2,7 @@ import { validateShadingPlan } from "./shading";
 import { browserCaptureEnabled } from "./captureEnvironment";
 import { MeasureError, measureAndRegister, savedCamera, endCaptureMarker } from "./measureApi";
 import type { ShadingResult } from "./shading";
-import { createHandoff, connectHandoff, completeHandoff, listMeasurements, predictSunpath, predictShadingPlan } from "./spaceApi";
+import { cancelMeasurement, createHandoff, connectHandoff, completeHandoff, listMeasurements, predictSunpath, predictShadingPlan } from "./spaceApi";
 import type { HandoffSession, SunpathPrediction } from "./spaceApi";
 import { blockingSchedule, predictionDay, scheduleFromPrediction } from "./sunlight";
 import { estimatedSchedule } from "./sunEstimate";
@@ -154,6 +154,8 @@ export function useSpaceApp() {
   );
   const [measurementJobs, setMeasurementJobs] = useState<HandoffSession[]>([]);
   const [mobileToken, setMobileToken] = useState<string | null>(null);
+  // The space a held phone request belongs to: editing another space must not finish that request.
+  const tokenSpaceId = useRef<string | null>(null);
   const [measurementReady, setMeasurementReady] = useState(false);
   const [storedAccount, setAccount] = useState<Account | null>(initial.account);
   const account = authStatus === "out" ? null : storedAccount;
@@ -268,10 +270,12 @@ export function useSpaceApp() {
     setToast("휴대폰 측정 결과 도착 · 도면 확인 가능");
   }, []);
   function joinMeasurement(session: HandoffSession) {
+    tokenSpaceId.current = null;
     setMobileToken(session.token);
     connectHandoff(session.token)
       .then((data) => {
         if (!data.space) return;
+        tokenSpaceId.current = data.space.id;
         setDraft(data.space);
         setActiveId(data.space.id);
         setSelectedFurniture(null);
@@ -285,12 +289,16 @@ export function useSpaceApp() {
       );
   }
   useEffect(() => {
+    if (mobileToken && tokenSpaceId.current && draft?.id !== tokenSpaceId.current) setMobileToken(null);
+  }, [mobileToken, draft?.id]);
+  useEffect(() => {
     const token = new URLSearchParams(location.search).get("handoff");
     if (!token || authStatus !== "in") return;
     let cancelled = false;
     connectHandoff(token)
       .then((data) => {
         if (cancelled || !data.space) return;
+        tokenSpaceId.current = data.space.id;
         setMobileToken(token);
         setDraft(data.space);
         setActiveId(data.space.id);
@@ -405,8 +413,11 @@ export function useSpaceApp() {
       try {
         const saved = await getServerSpace(id);
         if (!stopped && saved.serverRevision !== seen) {
+          // Starting or cancelling a capture on this device also moves the revision; only real edits get the notice.
+          const before = latest.current.spaces.find(s => s.id === id);
+          const edited = !before || hasUnsavedChanges(saved, [before]);
           setSpaces(current => current.map(old => old.id !== id ? old : {...saved, zone: saved.zones.includes(old.zone) ? old.zone : saved.zone}));
-          setToast("다른 기기에서 바뀐 내용을 불러왔습니다.");
+          if (edited) setToast("다른 기기에서 바뀐 내용을 불러왔습니다.");
         }
       } catch { /* Preserve the visible space during a temporary network failure. */ }
       if (!stopped) timer = setTimeout(refreshDetail, 3000);
@@ -714,6 +725,19 @@ export function useSpaceApp() {
       cancelled = true;
     };
   }, [isApp, authStatus]);
+  // A phone capture moves the server revision (the film shows its marker), which makes this copy look outdated.
+  // When nobody edited the space itself, take the new revision instead of reporting a conflict.
+  async function saveKeepingRevision(space: Space): Promise<Space> {
+    try {
+      return await saveServerSpace(withWindowPosition(space));
+    } catch (e) {
+      if (!(e instanceof SpaceApiError && e.status === 409)) throw e;
+      const known = spaces.find((s) => s.id === space.id);
+      const latest = await getServerSpace(space.id);
+      if (!known || hasUnsavedChanges(latest, [known])) throw e;
+      return saveServerSpace(withWindowPosition({ ...space, serverRevision: latest.serverRevision }));
+    }
+  }
   async function transferSpace(target: "app" | "web") {
     if (editorExample) {
       setToast("둘러보기 화면에서는 휴대폰 연결을 쓸 수 없습니다.");
@@ -738,7 +762,7 @@ export function useSpaceApp() {
       const saved =
         target === "web" && mobileToken
           ? await completeHandoff(mobileToken, draft)
-          : await saveServerSpace(withWindowPosition(draft));
+          : await saveKeepingRevision(draft);
       if (target === "web" && mobileToken) {
         setMobileToken(null);
         setToast("촬영 결과 저장 완료 · PC에서 도면 확인 가능");
@@ -1160,10 +1184,6 @@ export function useSpaceApp() {
       setError(message);
       return false;
     }
-    if (page !== "register" && !draft.furniture.length && !draft.regions.length) {
-      setError("가구 또는 보호 영역을 추가해 주세요.");
-      return false;
-    }
     if (!draft.site) {
       setPage("register");
       setError("서버 저장에 필요한 건물의 위도·경도를 입력해 주세요.");
@@ -1193,7 +1213,9 @@ export function useSpaceApp() {
           ? "둘러보기 공간 저장 완료"
           : finishing
             ? "측정 결과를 저장했습니다. PC에서 배치를 확인할 수 있어요."
-            : "공간과 보호 영역을 서버에 저장했습니다.",
+            : saved.furniture.length
+              ? "공간과 보호 영역을 서버에 저장했습니다."
+              : "공간을 서버에 저장했습니다.",
       );
       return true;
     } catch (error) {
@@ -1323,6 +1345,18 @@ export function useSpaceApp() {
       measuring.current = false;
     }
     setPageState(qrReturnPage.current);
+  }
+  // 촬영 취소: the marker is already ended by the capture screen; leave the capture flow for where the QR step began.
+  function cancelCapture() {
+    setAddingByQr(false);
+    // The cancelled request must not come back as "촬영 이어하기". A failed delete only leaves it listed.
+    const token = mobileToken ?? measurementJobs.find((j) => j.space_id === draft?.id && j.status !== "completed")?.token;
+    if (token) {
+      setMobileToken(null);
+      setMeasurementJobs((jobs) => jobs.filter((j) => j.token !== token));
+      cancelMeasurement(token).catch(() => undefined);
+    }
+    navigate(draft && spaces.some((s) => s.id === draft.id) ? "detail" : "spaces");
   }
   function finishCapture(items: CapturedFurniture[]) {
     if (!browserCaptureEnabled) return;
@@ -1478,6 +1512,26 @@ export function useSpaceApp() {
   function continueManually(form: HTMLFormElement | null) {
     if (checkRegistration(form, false)) setPage("review");
   }
+  // "공간만 저장": the space info alone is enough to keep it; furniture can follow later.
+  function saveSpaceOnly(form: HTMLFormElement | null) {
+    if (checkRegistration(form, false)) void save();
+  }
+  // Choosing another film on the capture screen edits the same saved selection as the window step, so both screens agree.
+  async function changeCaptureFilm(row: number, col: number) {
+    if (!draft?.windowDimensions || saving) return;
+    const next = { ...draft.windowDimensions, captureModule: { row, col, rowOrigin: "bottom" as const } };
+    const resolved = resolveWindow({ ...draft, windowDimensions: next }) ?? next;
+    setSaving(true);
+    try {
+      const saved = await saveServerSpace(withWindowPosition({ ...draft, windowDimensions: { ...resolved, marker: undefined } }));
+      setDraft(saved);
+      setSpaces(current => upsertSpace(current, saved));
+    } catch (error) {
+      throw new Error(saveErrorMessage(error, "필름을 바꾸지 못했어요. 다시 시도해 주세요."));
+    } finally {
+      setSaving(false);
+    }
+  }
   async function registerSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!draft || saving || !checkRegistration(e.currentTarget, true)) return;
@@ -1612,6 +1666,7 @@ export function useSpaceApp() {
     deleteSpace,
     deleting,
     continueManually,
+    saveSpaceOnly,
     sunSource,
     predictionPill,
     filmPrediction,
@@ -1745,7 +1800,9 @@ export function useSpaceApp() {
     addZone,
     zoneTabs,
     finishCapture,
+    cancelCapture,
     completeVisionRegistration,
+    changeCaptureFilm,
     namePrompt,
     addFurniture,
     addManualFurniture,

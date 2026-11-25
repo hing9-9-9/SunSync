@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
-import { readHandoff, userMessage } from "./spaceApi";
+import { SpaceApiError, readHandoff, userMessage } from "./spaceApi";
 import type { HandoffSession } from "./spaceApi";
 import type { Space } from "./model";
 export function DeviceHandoff({
@@ -13,7 +13,8 @@ export function DeviceHandoff({
   onComplete: (space: Space) => void;
 }) {
   const [status, setStatus] = useState(session.status),
-    [error, setError] = useState("");
+    [error, setError] = useState(""),
+    [gone, setGone] = useState(false);
   const [base] = useState(
     import.meta.env.VITE_PUBLIC_URL || location.origin,
   );
@@ -50,6 +51,7 @@ export function DeviceHandoff({
   useEffect(() => {
     let stopped = false;
     let timer: ReturnType<typeof setTimeout>;
+    setGone(false);
     const controller = new AbortController();
     async function poll() {
       try {
@@ -63,6 +65,8 @@ export function DeviceHandoff({
         }
       } catch (e) {
         if (stopped) return;
+        // The phone cancelled and the server dropped the request: its link no longer works, so stop waiting.
+        if (e instanceof SpaceApiError && e.status === 404) { setError(""); setGone(true); return; }
         setError(userMessage(e, "휴대폰 연결 상태를 확인하지 못했습니다. 잠시 후 다시 확인합니다."));
       }
       if (!stopped) timer = setTimeout(poll, 2500);
@@ -77,14 +81,18 @@ export function DeviceHandoff({
   return (
     <section className="device-handoff" aria-label="휴대폰 촬영 연결">
       <h3>
-        {status === "completed"
+        {gone
+          ? "휴대폰 촬영 취소됨"
+          : status === "completed"
           ? "측정 완료 · 도면 확인"
           : status === "connected"
             ? "측정 진행 중 · 결과 대기"
             : "측정 대기"}
       </h3>
-      <p>같은 계정으로 로그인한 앱의 내 공간에서 ‘촬영 시작’ 선택</p>
-      {valid && <details><summary>휴대폰에서 바로 열기</summary>
+      {gone
+        ? <p>휴대폰에서 촬영을 취소했어요. 다시 하려면 새로 연결해 주세요.</p>
+        : <p>같은 계정으로 로그인한 앱의 내 공간에서 ‘촬영 시작’ 선택</p>}
+      {valid && !gone && <details><summary>휴대폰에서 바로 열기</summary>
         {qr && <img src={qr} width="224" height="224" alt="공간 촬영 화면 바로가기 QR" />}
         <a className="secondary handoff-link" href={link} target="_blank" rel="noreferrer">촬영 화면 열기</a>
       </details>}

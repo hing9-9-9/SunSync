@@ -1,0 +1,13 @@
+/* Inspector rhythm (web panel and app sheet): 16px between rows, 20px before a section or divider, 12px from a section title to its content. */
+.app.app :is(.mobile-editor-sheet-body, .inspector) { display: flex !important; flex-direction: column !important; gap: 16px !important; }
+.app.app :is(.mobile-editor-sheet-body, .inspector) > * { margin-block: 0 !important; flex: none; }
+.app.app :is(.mobile-editor-sheet-body, .inspector) > .divider { margin-block: 4px !important; }
+.app.app :is(.mobile-editor-sheet-body, .inspector) > fieldset { margin-top: 4px !important; padding-block: 0 !important; }
+.app.app :is(.mobile-editor-sheet-body, .inspector) > fieldset > legend { margin-bottom: 12px !important; padding-block: 0 !important; }
+.app.app :is(.mobile-editor-sheet-body, .inspector) > .grade-description { margin-top: -4px !important; padding-block: 0 !important; min-height: 0 !important; }
+.app.app :is(.mobile-editor-sheet-body, .inspector) > .furniture-actions { padding-block: 0 !important; }
+.app.app :is(.mobile-editor-sheet-body, .inspector) > :is(.rotate-field, .dimensions, .two-fields) { margin-block: 0 !important; }
+
+.app.app :is(.mobile-editor-sheet-body, .inspector) > .furniture-actions > button { margin-block: 0 !important; }
+.app.app :is(.mobile-editor-sheet-body, .inspector) > p { padding-block: 0 !important; }
+.app.app :is(.mobile-editor-sheet-body, .inspector) :is(.dimensions, .two-fields) > .field { margin-block: 0 !important; }

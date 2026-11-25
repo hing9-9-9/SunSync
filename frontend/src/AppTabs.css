@@ -35,7 +35,7 @@
     filter var(--at-release),
     background-color var(--at-release);
 }
-/* The only add action stays easy to find without shouting: a white circle with a purple plus, like the 배치 편집 and ⋯ buttons. */
+/* The only add action stays easy to find without shouting: a white circle with a purple plus, like the 가구 편집 and ⋯ buttons. */
 .app.award-mobile.mode-app:is(.page-home, .page-spaces) .icon-button.plus {
   background: var(--c-white);
   color: var(--at-accent);

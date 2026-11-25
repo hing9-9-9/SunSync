@@ -228,6 +228,9 @@ export const createHandoff = (space_id: string) =>
     method: "POST",
     body: JSON.stringify({ space_id }),
   });
+/** The phone measurement was cancelled: the server drops the request so it is no longer offered for resuming. */
+export const cancelMeasurement = (token: string) =>
+  request<null>(`/api/ui/measurements/${encodeURIComponent(token)}`, { method: "DELETE" });
 export const readHandoff = async (token: string, signal?: AbortSignal): Promise<HandoffSession> => {
   const encoded = encodeURIComponent(token);
   try {
