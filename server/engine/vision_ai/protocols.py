@@ -8,7 +8,7 @@ import os
 import threading
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import ClassVar, Literal, Protocol, runtime_checkable
+from typing import Any, ClassVar, Literal, Protocol, runtime_checkable
 
 import numpy as np
 
@@ -129,19 +129,24 @@ def _overlaps_any_box(
     box: tuple[float, float, float, float],
     exclude_boxes: Sequence[tuple[float, float, float, float]],
 ) -> bool:
-    """Return True if a candidate box's center lies inside or strongly overlaps an excluded box."""
+    """Return True if a candidate box represents an excluded region (e.g. an ArUco marker).
+
+    Checks overlap relative to the *candidate* box area so that a large foreground
+    furniture box whose corner merely touches a small background window marker is
+    not erroneously discarded.
+    """
     bx1, by1, bx2, by2 = box
     cx, cy = (bx1 + bx2) / 2.0, (by1 + by2) / 2.0
     b_area = max(1.0, (bx2 - bx1) * (by2 - by1))
     for ex1, ey1, ex2, ey2 in exclude_boxes:
-        if ex1 <= cx <= ex2 and ey1 <= cy <= ey2:
+        e_area = max(1.0, (ex2 - ex1) * (ey2 - ey1))
+        if ex1 <= cx <= ex2 and ey1 <= cy <= ey2 and b_area <= e_area * 4.0:
             return True
         ix1, iy1 = max(bx1, ex1), max(by1, ey1)
         ix2, iy2 = min(bx2, ex2), min(by2, ey2)
         if ix2 > ix1 and iy2 > iy1:
             inter = (ix2 - ix1) * (iy2 - iy1)
-            e_area = max(1.0, (ex2 - ex1) * (ey2 - ey1))
-            if inter / min(b_area, e_area) > 0.3:
+            if inter / b_area > 0.4:
                 return True
     return False
 
@@ -179,6 +184,67 @@ class GeometricSyntheticDepthEstimator:
                 depth_map[cy1:cy2, cx1:cx2] = float(d_val)
 
         return depth_map
+
+
+def _box_iou(
+    a: tuple[float, float, float, float],
+    b: tuple[float, float, float, float],
+) -> float:
+    """Compute intersection-over-union between two xyxy bounding boxes."""
+    ix1, iy1 = max(a[0], b[0]), max(a[1], b[1])
+    ix2, iy2 = min(a[2], b[2]), min(a[3], b[3])
+    if ix2 <= ix1 or iy2 <= iy1:
+        return 0.0
+    inter = (ix2 - ix1) * (iy2 - iy1)
+    area_a = max(0.0, (a[2] - a[0]) * (a[3] - a[1]))
+    area_b = max(0.0, (b[2] - b[0]) * (b[3] - b[1]))
+    union = area_a + area_b - inter
+    return inter / union if union > 0.0 else 0.0
+
+
+def _deduplicate_overlapping_detections(
+    detections: list[DetectedObject2D],
+    iou_thresh: float = 0.65,
+) -> list[DetectedObject2D]:
+    """Suppress duplicate cross-class boxes on the same object (class-agnostic NMS).
+
+    When a specific furniture class (bookshelf/desk/chair) and generic ``other``
+    (e.g. ``tv``) fire on the same bounding box with comparable confidence,
+    prefer the specific furniture class while letting high-confidence ``other``
+    detections win on genuinely non-furniture appliances.
+    """
+    if len(detections) <= 1:
+        return detections
+
+    def _priority(det: DetectedObject2D) -> tuple[float, float]:
+        bonus = 0.20 if det.label != "other" else 0.0
+        return (det.confidence + bonus, det.confidence)
+
+    ordered = sorted(detections, key=_priority, reverse=True)
+    kept: list[DetectedObject2D] = []
+    for candidate in ordered:
+        if any(_box_iou(candidate.box_xyxy, prev.box_xyxy) >= iou_thresh for prev in kept):
+            continue
+        kept.append(candidate)
+    return kept
+
+
+def _disparity_to_relative_depth(disparity: np.ndarray) -> np.ndarray:
+    """Convert positive inverse depth (disparity) to scale-preserving relative depth.
+
+    Depth Anything V2 outputs affine-invariant inverse depth (larger = closer).
+    Inverting ``1 / max(disp, floor)`` and dividing by its median preserves the
+    zero origin required by proportional ArUco calibration (``Z = alpha * d_rel``).
+    """
+    arr = np.asarray(disparity, dtype=np.float32)
+    arr = np.nan_to_num(arr, nan=0.0, posinf=0.0, neginf=0.0)
+    p95 = float(np.percentile(arr, 95)) if arr.size > 0 else 0.0
+    floor = max(p95 * 0.02, 1e-3)
+    inv = 1.0 / np.maximum(arr, floor)
+    median = float(np.median(inv)) if inv.size > 0 else 1.0
+    if not np.isfinite(median) or median <= 1e-6:
+        return np.ones_like(arr, dtype=np.float32)
+    return (inv / median).astype(np.float32)
 
 
 def _merge_book_clusters(detections: list[DetectedObject2D]) -> list[DetectedObject2D]:
@@ -255,7 +321,7 @@ class YoloV8DetectorAdapter:
     def __init__(self, model_path: str = "yolov8m.pt", conf_thresh: float = 0.25) -> None:
         self.model_path = model_path
         self.conf_thresh = conf_thresh
-        self._model = None
+        self._model: Any = None
         # The adapter is shared by all requests: load once, run one inference at a time.
         self._lock = threading.RLock()
 
@@ -310,7 +376,7 @@ class YoloV8DetectorAdapter:
                             raw_class_name=raw_name,
                         )
                     )
-        return _merge_book_clusters(detections)
+        return _deduplicate_overlapping_detections(_merge_book_clusters(detections))
 
 
 class CompositeFurnitureDetector:
@@ -367,20 +433,30 @@ class CompositeFurnitureDetector:
         return self._fallback.detect(image_rgb, exclude_boxes=exclude_boxes)
 
 
+DEFAULT_METRIC_DEPTH_MODEL = "depth-anything/Depth-Anything-V2-Metric-Indoor-Small-hf"
+
+
 class MonocularDepthAdapter:
-    """Monocular depth adapter supporting Depth Anything V2 or MiDaS via torch / transformers.
+    """Monocular depth adapter supporting Depth Anything V2 (metric indoor or relative disparity).
 
     Lazy-loads PyTorch/Transformers models and provides clear fallback messages in CI.
+    Metric indoor checkpoints predict depth directly in metres (smaller = nearer),
+    whereas relative checkpoints predict affine-invariant inverse depth (disparity)
+    and are converted via ``_disparity_to_relative_depth``.
     """
 
     def __init__(
         self,
-        model_name: str = "depth-anything-v2-small",
+        model_name: str = DEFAULT_METRIC_DEPTH_MODEL,
         device: str = "cpu",
+        is_metric_depth: bool | None = None,
     ) -> None:
         self.model_name = model_name
         self.device = device
-        self._pipe = None
+        self.is_metric_depth = (
+            ("metric" in model_name.lower()) if is_metric_depth is None else is_metric_depth
+        )
+        self._pipe: Any = None
         # The adapter is shared by all requests: load once, run one inference at a time.
         self._lock = threading.RLock()
 
@@ -397,10 +473,10 @@ class MonocularDepthAdapter:
 
             self._pipe = pipeline(
                 task="depth-estimation",
-                model="depth-anything/Depth-Anything-V2-Small-hf",
+                model=self.model_name,
                 device=self.device,
             )
-            logger.info("vision model loaded: Depth Anything V2 Small")
+            logger.info("vision model loaded: %s", self.model_name)
 
     def estimate_relative_depth(
         self,
@@ -418,17 +494,27 @@ class MonocularDepthAdapter:
             self._ensure_loaded()
             assert self._pipe is not None
             result = self._pipe(pil_image)
-        depth_pil = result["depth"]
-        depth_arr = np.array(depth_pil, dtype=np.float32)
+
+        raw_pred = result.get("predicted_depth")
+        if raw_pred is not None:
+            if hasattr(raw_pred, "detach"):
+                raw_arr = raw_pred.detach().cpu().numpy().astype(np.float32)
+            else:
+                raw_arr = np.asarray(raw_pred, dtype=np.float32)
+        else:
+            raw_arr = np.asarray(result["depth"], dtype=np.float32)
+
+        if self.is_metric_depth:
+            clean = np.nan_to_num(raw_arr, nan=1.0, posinf=100.0, neginf=1e-3)
+            depth_arr = np.clip(clean, 1e-3, 100.0).astype(np.float32)
+        else:
+            depth_arr = _disparity_to_relative_depth(raw_arr)
 
         import cv2
 
         if depth_arr.shape[:2] != (height, width):
             depth_arr = cv2.resize(depth_arr, (width, height), interpolation=cv2.INTER_LINEAR)
 
-        min_v, max_v = float(depth_arr.min()), float(depth_arr.max())
-        if max_v - min_v > 1e-4:
-            depth_arr = (depth_arr - min_v) / (max_v - min_v) * 9.9 + 0.1
         return depth_arr.astype(np.float32)
 
 
@@ -496,11 +582,18 @@ def shared_yolo_adapter() -> YoloV8DetectorAdapter:
 
 
 def shared_depth_adapter() -> MonocularDepthAdapter:
-    """The one monocular depth adapter of the process (loaded once, one inference at a time)."""
+    """The one monocular depth adapter of the process (loaded once, one inference at a time).
+
+    `SUNSYNC_DEPTH_MODEL` overrides the HuggingFace model id; without it the indoor metric
+    checkpoint `depth-anything/Depth-Anything-V2-Metric-Indoor-Small-hf` is used.
+    """
     global _shared_depth
     with _shared_lock:
         if _shared_depth is None:
-            _shared_depth = MonocularDepthAdapter()
+            model_id = (
+                os.environ.get("SUNSYNC_DEPTH_MODEL", "").strip() or DEFAULT_METRIC_DEPTH_MODEL
+            )
+            _shared_depth = MonocularDepthAdapter(model_name=model_id)
         return _shared_depth
 
 
