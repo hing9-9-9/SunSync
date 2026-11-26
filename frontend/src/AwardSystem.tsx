@@ -6,7 +6,8 @@ import { resolveWindow, isWidthWall } from "./model";
 import type { Page } from "./navigation";
 import type { HandoffSession } from "./spaceApi";
 import { GuideIllustration } from "./MoodIcons";
-import { guideSteps } from "./guideContent";
+import { guideExtras, guideSteps } from "./guideContent";
+import { grades, type Grade } from "./model";
 import { GuideMethods } from "./GuideMethods";
 import AwardPreview, { Arrow, Scribble, SunMark } from "./AwardPreview";
 import { SyncBadge, SyncRetry } from "./ShellParts";
@@ -194,15 +195,12 @@ export function AwardSpaces({
   onEdit?: (s: Space, at?: "register") => void;
   onDelete?: (s: Space) => void;
 }) {
-  const [query, setQuery] = useState(""),
-    [building, setBuilding] = useState("all");
-  const buildings = [...new Set(spaces.map((s) => s.building))];
-  const filtered = spaces.filter(
-    (s) =>
-      (building === "all" || s.building === building) &&
-      `${s.name} ${s.building} ${s.floor}`
-        .toLowerCase()
-        .includes(query.trim().toLowerCase()),
+  const [query, setQuery] = useState("");
+  // One search box covers name, building and floor.
+  const filtered = spaces.filter((s) =>
+    `${s.name} ${s.building} ${s.floor}`
+      .toLowerCase()
+      .includes(query.trim().toLowerCase()),
   );
   return (
     <div className="award-spaces">
@@ -231,20 +229,6 @@ export function AwardSpaces({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
-        </label>
-        <label className="award-building-filter">
-          <span className="award-control-label">건물 선택</span>
-          <select
-            value={building}
-            onChange={(e) => setBuilding(e.target.value)}
-          >
-            <option value="all">전체 건물</option>
-            {buildings.map((b) => (
-              <option key={b} value={b}>
-                {b}
-              </option>
-            ))}
-          </select>
         </label>
         <button className="primary" onClick={onStart}>
           ＋ 공간 등록
@@ -323,16 +307,14 @@ export function AwardSpaces({
           </h3>
           <p>
             {spaces.length
-              ? "다른 이름으로 검색하거나 전체 건물을 선택해 보세요."
+              ? "다른 이름이나 건물, 층으로 검색해 보세요."
               : "공간과 창문의 크기를 입력하면 가구와 보호 영역을 설정할 수 있어요."}
           </p>
           <button
             className="primary"
             onClick={() => {
-              if (spaces.length) {
-                setQuery("");
-                setBuilding("all");
-              } else onStart();
+              if (spaces.length) setQuery("");
+              else onStart();
             }}
           >
             {spaces.length ? "전체 공간 보기" : "공간 등록하기"}
@@ -343,6 +325,45 @@ export function AwardSpaces({
   );
 }
 // Steps that have a real screen to show get the app's own fragment; the rest are text only.
+// 등급 기준 as four rows (badge, blocking rate, plain description); the same rows are used under 더보기 in the app.
+export function GradeList() {
+  return (
+    <ul className="guide-grades">
+      {(Object.entries(grades) as [Grade, string][]).map(([g, text]) => {
+        const [rate, how] = text.split(" · ");
+        return (
+          <li key={g}>
+            <span className={`furniture-grade grade-${g}`}>{g}</span>
+            <span className="grade-line"><strong>{rate}</strong><small>{how}</small></span>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+export function GuideExtraIcon({ art, size = 20 }: { art: number; size?: number }) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      {art === 6 && (
+        <>
+          <rect x="4" y="14" width="4" height="6" rx="1" /><rect x="10" y="9" width="4" height="11" rx="1" /><rect x="16" y="4" width="4" height="16" rx="1" />
+        </>
+      )}
+      {art === 7 && (
+        <>
+          <rect x="4" y="4" width="16" height="16" rx="2" /><path d="M12 4v16M4 12h16" /><rect x="12" y="12" width="8" height="8" rx="0" fill="currentColor" fillOpacity=".25" stroke="none" />
+        </>
+      )}
+      {art === 2 && (
+        <>
+          <path d="M4 8h3l1.5-2h7L17 8h3v11H4z" /><circle cx="12" cy="13" r="3.2" />
+        </>
+      )}
+    </svg>
+  );
+}
+
 export function AwardGuide({
   index,
   onIndex,
@@ -385,7 +406,7 @@ export function AwardGuide({
     let frame = 0;
     const update = () => {
       frame = 0;
-      const sections = guideSteps.map((_, i) => document.getElementById(`award-guide-${i}`));
+      const sections = Array.from({ length: guideSteps.length + guideExtras.length }, (_, i) => document.getElementById(`award-guide-${i}`));
       const header = document.querySelector(".award-header")?.getBoundingClientRect().height ?? 64;
       const headerBottom = document.querySelector(".award-header")?.getBoundingClientRect().bottom ?? 0;
       document.getElementById("award-guide-main")?.style.setProperty("--guide-header-offset", `${Math.max(8, headerBottom + 8)}px`);
@@ -425,6 +446,21 @@ export function AwardGuide({
               <Arrow diagonal />
             </button>
           ))}
+          <hr className="ap-guide-nav-rule" aria-hidden="true" />
+          {guideExtras.map((extra, j) => {
+            const i = guideSteps.length + j;
+            return (
+              <button
+                key={extra.title}
+                className={activeSection === i ? "active" : ""}
+                aria-current={activeSection === i ? "step" : undefined}
+                onClick={() => { openStep(i); if (index === i) requestAnimationFrame(() => scrollToStep(i)); else onIndex(i); }}
+              >
+                {extra.title}
+                <Arrow diagonal />
+              </button>
+            );
+          })}
         </nav>
         <div className="ap-guide-sections">
           {guideSteps.map((step, i) => (
@@ -455,6 +491,37 @@ export function AwardGuide({
               </div>
             </section>
           ))}
+          {guideExtras.map((extra, j) => {
+            const i = guideSteps.length + j;
+            return (
+              <section
+                id={`award-guide-${i}`}
+                key={extra.title}
+                className={`ap-guide-step ap-guide-extra is-open ${activeSection === i ? "is-current" : ""}`}
+              >
+                <h2 className="ap-guide-step-title">
+                  <span className="ap-guide-step-head">
+                    <span className="guide-extra-mark" aria-hidden="true"><GuideExtraIcon art={extra.art} /></span>
+                    <span className="guide-step-name">{extra.title}</span>
+                  </span>
+                </h2>
+                <div className="ap-guide-step-body" id={`award-guide-body-${i}`}>
+                  <div className="ap-guide-art">
+                    <GuideIllustration step={extra.art} />
+                  </div>
+                  <div className="guide-step-copy">
+                    <p>{extra.text}</p>
+                    {extra.grades && <GradeList />}
+                    {extra.detail && (
+                      <ul className="guide-step-notes">
+                        {extra.detail.split(/(?<=\.)\s+/u).map(note => <li key={note}>{note}</li>)}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+              </section>
+            );
+          })}
         </div>
       </div>
       <div className="ap-guide-bottom">

@@ -1,7 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import type { Account, Grade, Space } from "./model";
-import { gradeCounts, grades } from "./model";
-import { Arrow, Scribble, SunMark } from "./AwardPreview";
+import { guideExtras, guideSteps } from "./guideContent";
+import { Arrow, SunMark } from "./AwardPreview";
 import { AuthLead } from "./AuthNotice";
 import { GoogleButton } from "./GoogleMark";
 import { BUILD_LABEL } from "./buildLabel";
@@ -11,121 +11,107 @@ const gradeOrder: Grade[] = ["A", "B", "C", "D"];
 export function AccountOverview({
   account,
   spaces,
-  serverState,
   onOpen,
   onRegister,
   onGuide,
-  onRefresh,
   onLogout,
+  onSpaces,
 }: {
   account: Account;
   spaces: Space[];
-  serverState: "loading" | "online" | "offline";
+  serverState?: "loading" | "online" | "offline";
   onOpen: (s: Space) => void;
   onRegister: () => void;
-  onGuide: () => void;
-  onRefresh: () => void;
+  onGuide: (index?: number) => void;
+  onRefresh?: () => void;
   onLogout: () => void;
+  onSpaces: () => void;
 }) {
+  const protectedSpaces = spaces.filter((s) => s.regions.some((r) => r.grade !== "D"));
   const regions = spaces.flatMap((s) => s.regions.filter((r) => r.grade !== "D"));
-  const buildings = [...new Set(spaces.map((s) => s.building || "건물 미지정"))];
+  // Reference topics open the matching section of the guide: 등급 기준, 차광 필름 (after the six steps), 촬영 방법 (step 3).
+  const help = [
+    { title: guideExtras[0].title, text: "가구마다 햇빛을 막는 정도를 A~D로 정해요.", index: guideSteps.length, grades: true },
+    { title: guideExtras[1].title, text: "창문 필름이 칸마다 햇빛을 막는 방식이에요.", index: guideSteps.length + 1, grades: false },
+    { title: "촬영 방법", text: "창문 마커와 가구를 정확히 찍는 법이에요.", index: 2, grades: false },
+  ];
   return (
-    <div className="acct">
+    <div className="acct acct-v2">
       <header className="acct-page-heading"><h1>내 계정</h1></header>
-      <section className="acct-hero" aria-label="계정 정보">
-        <div className="acct-id">
+      <div className="acct-layout">
+        <aside className="acct-profile" aria-label="계정 정보">
           <span className="acct-avatar" aria-hidden="true">{account.name.slice(0, 1)}</span>
-          <div>
-            <span className="acct-kicker">로그인 계정</span>
-            <h2>{account.name}</h2>
-            <p>{account.email}</p>
-          </div>
-        </div>
-        <button type="button" className="acct-logout" onClick={onLogout}>
-          로그아웃
-        </button>
-      </section>
+          <h2>{account.name}</h2>
+          <p>{account.email}</p>
+          <button type="button" className="acct-logout" onClick={onLogout}>
+            로그아웃
+          </button>
+        </aside>
 
-      <dl className="ap-spec acct-spec">
-        <div>
-          <dt>등록한 공간</dt>
-          <dd>{spaces.length}곳</dd>
-        </div>
-        <div>
-          <dt>보호 영역</dt>
-          <dd>{regions.length}곳</dd>
-        </div>
-      </dl>
+        <div className="acct-main">
+          <dl className="ap-spec acct-spec">
+            <div><dt>등록한 공간</dt><dd>{spaces.length}곳</dd></div>
+            <div><dt>보호 설정 완료</dt><dd>{protectedSpaces.length}곳</dd></div>
+            <div><dt>보호 영역</dt><dd>{regions.length}곳</dd></div>
+          </dl>
 
-      <section className="acct-spaces" aria-labelledby="acct-spaces-title">
-        <div className="acct-head">
-          <h2 id="acct-spaces-title">
-            공간과 보호 정보
-          </h2>
-          <div className="acct-sync">
-            {serverState !== "online" && <span role="status">{serverState === "loading" ? "불러오는 중…" : "서버에 연결되지 않음"}</span>}
-            <button type="button" className="text-button" disabled={serverState === "loading"} onClick={onRefresh}>
-              새로고침
-            </button>
-          </div>
-        </div>
-
-        {spaces.length ? (
-          buildings.map((b) => (
-            <div className="acct-building" key={b}>
-              <h3>{b}</h3>
-              <ul>
-                {spaces
-                  .filter((s) => (s.building || "건물 미지정") === b)
-                  .map((s) => {
-                    const perGrade = gradeCounts(s);
-                    const counts = gradeOrder.map((g) => [g, perGrade[g]] as const);
-                    return (
-                      <li className="acct-space" key={s.id}>
-                        <div className="acct-space-open">
-                          <span className="acct-space-name">
-                            <strong>{s.name || "이름 없는 공간"}</strong>
-                            <small>
-                              {s.floor}
-                            </small>
-                          </span>
-                          <span className="acct-grades" aria-label="등급별 가구·영역 수">
-                            {counts.map(([g, n]) => (
-                              <span key={g} className={`acct-grade grade-${g} ${n ? "" : "is-empty"}`} title={grades[g]}>
-                                <i aria-hidden="true" />
-                                <span>{g}</span><span className="acct-grade-count">{n}</span>
-                              </span>
-                            ))}
-                          </span>
-                        </div>
-                        <button type="button" className="secondary acct-edit" onClick={() => onOpen(s)} aria-label={`${s.name} 공간 열기`}>
-                          공간 열기
-                        </button>
-                      </li>
-                    );
-                  })}
-              </ul>
+          <section className="acct-spaces" aria-labelledby="acct-spaces-title">
+            <div className="acct-head">
+              <h2 id="acct-spaces-title">내 공간</h2>
+              {spaces.length > 0 && <button type="button" className="acct-more-link" onClick={onSpaces}>전체 보기<Arrow /></button>}
             </div>
-          ))
-        ) : (
-          <div className="acct-empty">
-            <SunMark />
-            <p>아직 등록한 공간이 없어요. 공간을 등록하면 보호 정보가 여기에 모입니다.</p>
-            <button type="button" className="primary" onClick={onRegister}>
-              공간 등록하기
-            </button>
-          </div>
-        )}
-      </section>
+            {spaces.length ? (
+              <ul className="acct-rooms">
+                {spaces.slice(0, 3).map((s) => {
+                  const count = s.regions.filter((r) => r.grade !== "D").length;
+                  return (
+                    <li key={s.id}>
+                      <button type="button" className="acct-room" onClick={() => onOpen(s)} aria-label={`${s.name || "이름 없는 공간"} 열기`}>
+                        <span className="acct-room-name">
+                          <strong>{s.name || "이름 없는 공간"}</strong>
+                          <small>{[s.building, s.floor].filter(Boolean).join(" · ")}{" · "}보호 영역 {count}곳</small>
+                        </span>
+                        <span className={`acct-pill ${count ? "done" : "todo"}`}>{count ? "보호 중" : "설정 전"}</span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <div className="acct-empty">
+                <SunMark />
+                <p>아직 등록한 공간이 없어요. 공간을 등록하면 보호 정보가 여기에 모입니다.</p>
+                <button type="button" className="primary" onClick={onRegister}>
+                  공간 등록하기
+                </button>
+              </div>
+            )}
+          </section>
 
-      <div className="acct-foot">
-        <button type="button" className="ap-round-link" onClick={onGuide}>
-          <Scribble />
-          <span>사용 가이드</span>
-          <b>
-            <Arrow diagonal />
-          </b>
-        </button>
+          <section className="acct-help" aria-labelledby="acct-help-title">
+            <div className="acct-head">
+              <h2 id="acct-help-title">사용 도움말</h2>
+              <button type="button" className="acct-more-link" onClick={() => onGuide()}>사용 가이드 열기<Arrow /></button>
+            </div>
+            <ul className="acct-help-list">
+              {help.map((item) => (
+                <li key={item.title}>
+                  <button type="button" onClick={() => onGuide(item.index)}>
+                    <span className="acct-help-top">
+                      <strong>{item.title}</strong>
+                      {item.grades && (
+                        <span className="acct-help-grades" aria-hidden="true">
+                          {gradeOrder.map((g) => <span key={g} className={`furniture-grade grade-${g}`}>{g}</span>)}
+                        </span>
+                      )}
+                    </span>
+                    <small>{item.text}</small>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        </div>
       </div>
     </div>
   );

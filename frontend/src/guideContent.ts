@@ -47,3 +47,25 @@ export const guideSteps: {
     detail: "차단 시간 설정을 켜고 시작·종료 시간을 정하세요. 정한 시간 안에 햇빛이 보호 영역에 닿으면 해당 필름 칸을 가려요. 설정을 끄면 필름을 가리지 않아요.",
   },
 ];
+
+// Reference pages shown after the numbered steps (web guide) and under 더보기 (app). `art` is the GuideIllustration index.
+export const guideExtras: {
+  title: string;
+  art: number;
+  text: string;
+  detail?: string;
+  grades?: boolean;
+}[] = [
+  {
+    title: "등급 기준",
+    art: 6,
+    text: "가구마다 햇빛을 막는 정도를 등급으로 정해요.",
+    grades: true,
+  },
+  {
+    title: "차광 필름",
+    art: 7,
+    text: "창문의 필름은 여러 칸으로 나뉘어 있고, 칸마다 따로 어두워져요.",
+    detail: "가구에 닿는 햇빛이 지나는 칸만 닫아요. 나머지 칸은 투명해서 방은 밝게 유지돼요.",
+  },
+];

@@ -16,8 +16,8 @@
 }
 .app.award-mobile.mode-app:is(.page-home, .page-spaces, .page-guide, .page-more)
   main.main {
-  /* Clears the floating tab bar (64px + 12px gap) and the home indicator. */
-  padding-bottom: calc(104px + env(safe-area-inset-bottom));
+  /* Clears the floating tab bar (56px + 8px gap) and the home indicator. */
+  padding-bottom: calc(92px + env(safe-area-inset-bottom));
 }
 
 /* Buttons on the tab screens. */
@@ -203,13 +203,13 @@
   /* Centred like the original bar: inside the 480px app frame on a computer, full width less 32px on a phone. */
   left: 50%;
   right: auto;
-  width: min(448px, calc(100% - 32px));
+  width: min(448px, calc(100% - 40px));
   transform: translateX(-50%);
-  bottom: calc(12px + env(safe-area-inset-bottom));
+  bottom: calc(8px + env(safe-area-inset-bottom));
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  height: 64px;
-  padding: 6px;
+  height: 56px;
+  padding: 4px;
   border: 0;
   border-radius: 999px;
   background: var(--c-glass);
@@ -221,10 +221,10 @@
 .app.award-mobile.mode-app nav.mobile-nav::before {
   content: "";
   position: absolute;
-  top: 6px;
-  bottom: 6px;
-  left: 6px;
-  width: calc((100% - 12px) / 4);
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: calc((100% - 8px) / 4);
   border-radius: 999px;
   background: var(--at-tint);
   transform: translateX(calc(var(--tab) * 100%));
@@ -248,7 +248,7 @@
 .app.award-mobile.mode-app nav.mobile-nav button {
   position: relative;
   z-index: 1;
-  height: 52px;
+  height: 48px;
   min-height: 44px;
   border-radius: 999px;
   background: transparent;
@@ -332,7 +332,7 @@
   right: auto;
   width: min(448px, calc(100% - 32px));
   transform: translateX(-50%);
-  bottom: calc(12px + 64px + 10px + env(safe-area-inset-bottom));
+  bottom: calc(8px + 56px + 10px + env(safe-area-inset-bottom));
   padding: 0;
   border: 0;
   background: transparent;
@@ -350,7 +350,7 @@
 }
 .app.award-mobile.mode-app.has-action-bar main.main {
   padding-bottom: calc(
-    12px + 64px + 10px + 50px + 24px + env(safe-area-inset-bottom)
+    8px + 56px + 10px + 50px + 24px + env(safe-area-inset-bottom)
   );
 }
 
@@ -358,20 +358,20 @@
 .app.award-mobile.mode-app .page-heading .back-button {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   min-height: 44px;
   margin: 0 0 4px -8px;
-  padding: 0 8px;
+  padding: 0 12px 0 6px;
   border: 0;
   background: transparent;
   color: var(--at-accent-ink);
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 500;
 }
 .app.award-mobile.mode-app .page-heading .back-button svg {
   flex: none;
-  width: 7px;
-  height: 12px;
+  width: 11px;
+  height: 18px;
 }
 .app.award-mobile.mode-app .page-heading .back-button:active {
   opacity: 0.55;
@@ -652,7 +652,7 @@
   }
 }
 /* Guide shortcut (kept from the earlier home): a quiet row under the list. */
-.app.award-mobile.mode-app.page-home .home-guide {
+.app.award-mobile.mode-app:is(.page-home, .page-more) .home-guide {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
@@ -671,7 +671,7 @@
   color: var(--at-ink);
   transition: background-color var(--at-release);
 }
-.app.award-mobile.mode-app.page-home .home-guide > span:first-child {
+.app.award-mobile.mode-app:is(.page-home, .page-more) .home-guide > span:first-child {
   grid-row: span 2;
   display: inline-grid;
   place-items: center;
@@ -682,18 +682,18 @@
   color: var(--at-accent-ink);
   font-weight: 700;
 }
-.app.award-mobile.mode-app.page-home .home-guide small {
+.app.award-mobile.mode-app:is(.page-home, .page-more) .home-guide small {
   grid-column: 2;
   font-size: 13px;
   font-weight: 400;
   color: var(--at-muted);
 }
-.app.award-mobile.mode-app.page-home .home-guide > span:last-child {
+.app.award-mobile.mode-app:is(.page-home, .page-more) .home-guide > span:last-child {
   grid-column: 3;
   grid-row: 1 / span 2;
   color: var(--at-muted);
 }
-.app.award-mobile.mode-app.page-home .home-guide:active {
+.app.award-mobile.mode-app:is(.page-home, .page-more) .home-guide:active {
   background-color: var(--c-pressed);
   transition: background-color var(--at-press);
 }
@@ -723,15 +723,15 @@
   justify-content: center;
   gap: 2px;
   padding: 0;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 500;
-  line-height: 14px;
+  line-height: 13px;
   letter-spacing: -0.01em;
   color: var(--at-muted);
 }
 .app.award-mobile.mode-app nav.mobile-nav button > svg {
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   flex-shrink: 0;
   stroke-width: 1.7;
 }
@@ -860,3 +860,4 @@
 /* Home "전체 보기": same look, 44px tap height. */
 .app.mode-app .home-preview-head .text-button { position: relative; }
 .app.mode-app .home-preview-head .text-button::after { content: ""; position: absolute; inset: -8px -10px; }
+
