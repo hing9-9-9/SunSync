@@ -99,3 +99,13 @@ def complete(token: str, space: UISpace, session: DB):
     session.add(row)
     session.commit()
     return saved
+
+
+@router.delete("/{token}", status_code=204)
+def cancel(token: str, session: DB):
+    """The user cancelled the phone measurement: drop the request so it is no longer offered for resuming."""
+    row = get_job(token, session)
+    if row.status == "completed":
+        raise HTTPException(409, "이미 완료된 측정입니다.")
+    session.delete(row)
+    session.commit()

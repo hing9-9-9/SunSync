@@ -483,6 +483,10 @@ export async function resumeCaptureMarker(sceneId:string):Promise<CaptureMarker|
     throw e;
   }
 }
+/** True while this tab still holds a capture session for the space, so "resume" really has something to resume. */
+export function hasStoredCapture(sceneId: string): boolean {
+  try { return !!sessionStorage.getItem(markerKey(sceneId)); } catch { return false; }
+}
 export async function cancelStoredCapture(sceneId:string):Promise<void> {
   // Ends whatever session the server still holds for this space, including one left by another tab or device.
   try { await post(`${markerUrl(sceneId)}/end-active`,{}); }

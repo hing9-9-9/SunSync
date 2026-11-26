@@ -99,7 +99,9 @@ function App() {
     save,
     zoneTabs,
     finishCapture,
+    cancelCapture,
     completeVisionRegistration,
+    changeCaptureFilm,
     addFurniture,
     addManualFurniture,
     confirmReview,
@@ -220,7 +222,7 @@ function App() {
                 )}
                 {page === "detail" && active && (
                   <div className="heading-actions">
-                    <button type="button" className="secondary" onClick={() => editSpace(active)}><SpaceMenuGlyph name="layout" />배치 편집</button>
+                    <button type="button" className="secondary" onClick={() => editSpace(active)}><SpaceMenuGlyph name="layout" />가구 편집</button>
                     <SpaceMenu
                       label="공간 더보기"
                       items={[
@@ -317,7 +319,9 @@ function App() {
                             : 0
                         }
                         onFinish={finishCapture}
+                        onCancel={cancelCapture}
                         onVisionRegistered={completeVisionRegistration}
+                        onFilmChange={changeCaptureFilm}
                         space={draft}
                       />
                     ) : (

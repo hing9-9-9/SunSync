@@ -36,7 +36,7 @@ export function SpaceMenu({ label, items }: { label: string; items: SpaceMenuIte
     };
   }, [open]);
   return (
-    <div className="space-menu" ref={box}>
+    <div className={`space-menu${open ? " open" : ""}`} ref={box}>
       <button type="button" className="space-menu-trigger" aria-label={label} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
         <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.7" /><circle cx="12" cy="12" r="1.7" /><circle cx="19" cy="12" r="1.7" /></svg>
       </button>

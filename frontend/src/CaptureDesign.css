@@ -51,6 +51,7 @@
 .app.award-mobile.mode-app.page-capture .shape-plan { margin-top:16px; padding:16px; background:var(--c-white); border-radius:var(--radius-card); box-shadow:var(--at-card-shadow); }
 .app.award-mobile.mode-app.page-capture .shape-plan svg { display:block; width:100%; height:180px; touch-action:manipulation; }
 .shape-plan .shape-outline { fill:var(--c-protect); stroke:var(--c-action-ink); stroke-width:1; }
+.shape-plan .shape-pad { fill:none; stroke:var(--c-block, #E9E9E9); stroke-width:1; vector-effect:non-scaling-stroke; }
 .shape-plan .point { fill:var(--c-action-ink); }
 .shape-plan .point-current { fill:var(--c-danger); }
 .shape-plan text { font-size:5px; fill:var(--c-ink); }
@@ -155,9 +156,11 @@
 
 /* Before the shape is confirmed: a smaller plan, the caption centred under it, and the action as wide as the other buttons. */
 .app.award-mobile.mode-app.page-capture .shape-plan:not(.compact) svg { height:136px; }
+.app.award-mobile.mode-app.page-capture .shape-plan:not(.compact) svg.drawing { height:240px; }
+.app.award-mobile.mode-app.page-capture .shape-plan:not(.compact) svg.drawing text { font-size:5px; }
 .app.award-mobile.mode-app.page-capture .shape-plan:not(.compact) svg text { font-size:9px; font-weight:500; }
 .app.award-mobile.mode-app.page-capture .shape-plan.compact svg text { display:none; }
-.app.award-mobile.mode-app.page-capture .shape-plan:not(.compact) .shape-plan-body { justify-items:stretch; gap:var(--space-3); margin-top:0; }
+.app.award-mobile.mode-app.page-capture .shape-plan:not(.compact) .shape-plan-body { justify-items:stretch; gap:var(--space-3); margin-top:var(--space-3); }
 .app.award-mobile.mode-app.page-capture .shape-plan:not(.compact) .shape-plan-body > p { text-align:center; }
 .app.award-mobile.mode-app.page-capture .shape-plan:not(.compact) .actions { display:grid; gap:var(--space-2); margin:0; }
 .app.award-mobile.mode-app.page-capture .shape-plan:not(.compact) .actions > button { width:100%; }
@@ -225,7 +228,7 @@
 .vision-camera .rotate-guide { position:absolute; z-index:2; top:50%; left:50%; width:min(280px, calc(100% - 2 * var(--space-4))); transform:translate(-50%,-50%); display:grid; justify-items:center; gap:var(--space-2); padding:var(--space-4); border-radius:var(--radius-card); background:var(--c-white); color:var(--c-ink); text-align:center; box-shadow:0 8px 24px rgba(0,0,0,.28); pointer-events:none; animation:rotate-guide-in var(--dur-enter) var(--ease-out) both; }
 .vision-camera .rotate-guide svg { width:40px; height:40px; fill:none; stroke:#6660E5; stroke-width:1.6; stroke-linecap:square; stroke-linejoin:miter; transform-origin:50% 50%; animation:rotate-guide-turn 900ms var(--ease-out) 400ms both; }
 .vision-camera .rotate-guide strong { font-size:16px; font-weight:600; line-height:1.4; }
-.vision-camera .rotate-guide span { font-size:14px; line-height:1.5; color:var(--at-muted); text-wrap:balance; }
+.vision-camera .rotate-guide span { font-size:14px; line-height:1.5; color:var(--at-muted); text-wrap:balance; word-break:keep-all; }
 @keyframes rotate-guide-in { from { opacity:0; transform:translate(-50%,-46%); } to { opacity:1; transform:translate(-50%,-50%); } }
 @keyframes rotate-guide-turn { to { transform:rotate(-90deg); } }
 @media (prefers-reduced-motion:reduce) {
@@ -233,9 +236,38 @@
   .vision-camera .rotate-guide svg { transform:rotate(-90deg); }
 }
 
-/* Sideways phone: the hint and the shutter share one row so the live view keeps its height. */
+/* Vision camera (2026-11-25): title chip and close pill on top, the hint under them, one shutter button at the bottom.
+   Sideways, the hint sits between title and close and the shutter moves to the right edge. */
+.vision-camera .vision-top { position:absolute; z-index:2; top:0; left:0; right:0; display:flex; align-items:center; justify-content:space-between; gap:var(--space-3); padding:calc(12px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right)) 0 calc(12px + env(safe-area-inset-left)); pointer-events:none; }
+.vision-camera .vision-title { display:inline-flex; align-items:center; height:36px; padding:0 14px; border-radius:999px; background:rgba(20,20,24,.55); color:#fff; font-size:13px; font-weight:500; line-height:1; backdrop-filter:blur(8px); }
+.app.award-mobile.mode-app.page-capture .spatial-capture .vision-camera .vision-close.vision-close, .app.award-mobile.mode-app.page-capture .vision-camera .vision-close.vision-close { pointer-events:auto; display:inline-flex; align-items:center; width:auto; min-height:36px !important; height:36px !important; padding:0 14px; border:0 !important; border-radius:999px; background:rgba(20,20,24,.55) !important; color:#fff !important; font-size:13px; font-weight:500; line-height:1; box-shadow:none !important; backdrop-filter:blur(8px); }
+.app.award-mobile.mode-app.page-capture .vision-camera .vision-close.vision-close:disabled { opacity:.5; }
+.vision-camera .vision-note { position:absolute; z-index:2; top:calc(60px + env(safe-area-inset-top)); left:50%; transform:translateX(-50%); width:max-content; max-width:calc(100% - 24px); margin:0; padding:10px 16px; word-break:keep-all; border-radius:20px; font-size:13px; line-height:1.45; text-align:center; text-wrap:balance; pointer-events:none; }
+.vision-camera .vision-bottom { position:absolute; z-index:2; left:0; right:0; bottom:0; display:grid; gap:var(--space-2); padding:var(--space-4) calc(12px + env(safe-area-inset-right)) calc(14px + env(safe-area-inset-bottom)) calc(12px + env(safe-area-inset-left)); background:linear-gradient(transparent,rgba(0,0,0,.45)); }
+.vision-camera .vision-row { position:absolute; z-index:2; top:calc(60px + env(safe-area-inset-top)); left:calc(12px + env(safe-area-inset-left)); right:calc(12px + env(safe-area-inset-right)); display:flex; align-items:flex-start; gap:8px; pointer-events:none; }
+.vision-camera .vision-low { position:absolute; z-index:2; left:calc(12px + env(safe-area-inset-left)); right:calc(12px + env(safe-area-inset-right)); bottom:calc(14px + 72px + 12px + env(safe-area-inset-bottom)); display:grid; grid-template-columns:minmax(0,1fr); justify-items:center; gap:8px; pointer-events:none; }
+.vision-camera .vision-low .vision-note { position:static; transform:none; top:auto; width:max-content; max-width:100%; }
+.vision-camera .vision-low .vision-error { max-width:100%; padding:6px 14px; border-radius:16px; background:rgba(20,20,24,.6); backdrop-filter:blur(8px); }
+.vision-camera .vision-map { flex:none; width:104px; padding:8px; border-radius:16px; background:rgba(20,20,24,.55); backdrop-filter:blur(8px); }
+.vision-camera .vision-map svg { display:block; width:88px; height:88px; overflow:visible; }
+.vision-camera .map-window { fill:#fff; }
+.vision-camera .map-outline { fill:rgba(255,255,255,.14); stroke:#fff; stroke-width:1.6; stroke-linejoin:miter; }
+.vision-camera .map-done circle { fill:#fff; }
+.vision-camera .map-done text { fill:#1D1C22; }
+.vision-camera .map-now circle { fill:#6660E5; stroke:#fff; stroke-width:2.4; }
+.vision-camera .map-now text { fill:#fff; }
+.vision-camera .map-todo circle { fill:rgba(20,20,24,.5); stroke:#fff; stroke-width:1.6; stroke-dasharray:3.5 2.5; }
+.vision-camera .map-todo text { fill:#fff; }
+.vision-camera .vision-map text { font-size:9px; font-weight:700; }
+.vision-camera .vision-map text.map-window-label { font-size:8px; font-weight:500; fill:rgba(255,255,255,.78); }
+.vision-camera .vision-error { margin:0; font-size:13px; line-height:1.45; text-align:center; color:#fff; }
+.app.award-mobile.mode-app.page-capture .vision-camera .vision-shutter.vision-shutter { justify-self:center; display:grid; place-items:center; width:72px; min-width:72px; height:72px; min-height:72px; padding:0; border:3px solid #fff !important; border-radius:50%; background:transparent !important; box-shadow:0 0 0 1px rgba(0,0,0,.25), 0 2px 10px rgba(0,0,0,.35) !important; transition:transform var(--dur-press,90ms) var(--ease-out,ease-out), opacity 160ms; }
+.vision-camera .vision-shutter i { display:block; width:54px; height:54px; border-radius:50%; background:#fff; transition:transform 90ms var(--ease-out,ease-out), background-color 160ms; }
+.app.award-mobile.mode-app.page-capture .vision-camera .vision-shutter.vision-shutter:not(:disabled):active i { transform:scale(.88); }
+.app.award-mobile.mode-app.page-capture .vision-camera .vision-shutter.vision-shutter:disabled { opacity:.45 !important; cursor:not-allowed; }
+.app.award-mobile.mode-app.page-capture .vision-camera .vision-shutter.vision-shutter:disabled i { background:#d6d6dc; }
 @media (orientation:landscape) and (max-height:520px) {
-  .vision-camera .camera-stage-bottom { grid-template-columns:minmax(0,1fr) 168px; align-items:center; column-gap:var(--space-4); row-gap:var(--space-1); padding-top:var(--space-4); padding-bottom:calc(var(--space-3) + env(safe-area-inset-bottom)); padding-left:calc(var(--space-4) + env(safe-area-inset-left)); padding-right:calc(var(--space-4) + env(safe-area-inset-right)); }
-  .vision-camera .camera-stage-bottom > p { grid-column:1; }
-  .vision-camera .camera-stage-bottom > button { grid-column:2; grid-row:1 / span 2; }
+  .vision-camera .vision-note { top:calc(12px + env(safe-area-inset-top)); max-width:min(420px, calc(100% - 2 * 190px - 24px)); }
+  .vision-camera .vision-low { left:calc(150px + env(safe-area-inset-left)); right:calc(150px + env(safe-area-inset-right)); bottom:calc(12px + env(safe-area-inset-bottom)); }
+  .vision-camera .vision-bottom { left:auto; top:50%; bottom:auto; transform:translateY(-50%); width:120px; padding:0 calc(12px + env(safe-area-inset-right)) 0 0; background:none; }
 }

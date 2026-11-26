@@ -316,10 +316,16 @@
   background: var(--c-action) !important;
   color: var(--c-white) !important;
 }
-:is(.app.award-app, .app.award-mobile) :is(button.secondary, .furniture-delete, .zone-action, .item-add, .chip:not(.active), .item-tabs button:not(.active), .zone-tabs button:not(.active)) {
+:is(.app.award-app, .app.award-mobile) :is(button.secondary, .zone-action, .item-add, .chip:not(.active), .item-tabs button:not(.active), .zone-tabs button:not(.active)) {
   border: 1px solid var(--c-block) !important;
   background: var(--c-white) !important;
   color: var(--c-protect-ink) !important;
+}
+/* Deleting furniture or a protected area looks like the confirm dialog's delete: grey fill, ink text, no border (2026-11-25). */
+:is(.app.award-app, .app.award-mobile) button.furniture-delete {
+  border: 0 !important;
+  background: var(--c-block) !important;
+  color: var(--c-danger) !important;
 }
 :is(.app.award-app, .app.award-mobile) :is(.chip.active, .item-tabs button.active, .zone-tabs button.active) {
   border: 1px solid transparent !important;
@@ -375,6 +381,11 @@
 :is(.app.award-app, .app.award-mobile) .temp-drafts .destructive-text { color: var(--c-danger) !important; }
 :is(.app.award-app, .app.award-mobile) .temp-drafts .status-pill { flex-shrink: 0; white-space: nowrap; }
 :is(.app.award-app, .app.award-mobile) .temp-drafts small { word-break: keep-all; }
+:is(.app.award-app, .app.award-mobile) .temp-drafts .row { align-items: center; padding: 0; }
+:is(.app.award-app, .app.award-mobile) .temp-draft-open { padding: var(--space-3) var(--space-4); }
+:is(.app.award-app, .app.award-mobile) .temp-draft-text { display: grid; gap: 4px; min-width: 0; }
+:is(.app.award-app, .app.award-mobile) .temp-draft-name { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+:is(.app.award-app, .app.award-mobile) .temp-drafts .row > .destructive-text { flex: none; min-height: 44px; margin-right: var(--space-2); padding: 0 var(--space-3); white-space: nowrap; }
 .app.award-mobile .temp-drafts .row { background: var(--c-white); border: 0; border-radius: 16px; }
 /* Editor header ends with the same hairline as the space detail header. */
 .app.award-app .editor-command-bar { border-bottom: 1px solid var(--c-bdbac5) !important; margin-bottom: 0 !important; }

@@ -13,7 +13,7 @@ import { Card } from "./ShellParts";
  */
 export function RegisterForm({ app, split }: { app: SpaceApp; split: boolean }) {
   const { isApp, spaces, draft, draftWarning, saving, locationStatus, locating, locateBuilding, change, save, zoneTabs,
-    registerSubmit, draftWindow, changeWindow, draftSite, continueManually } = app;
+    registerSubmit, draftWindow, changeWindow, draftSite, continueManually, saveSpaceOnly } = app;
   if (!draft) return null;
   const info = (
     <>
@@ -274,6 +274,16 @@ export function RegisterForm({ app, split }: { app: SpaceApp; split: boolean }) 
                         onClick={(e) => continueManually(e.currentTarget.form)}
                       >
                         직접 가구 추가·수정
+                      </button>
+                    )}
+                    {!spaces.some((s) => s.id === draft.id) && (
+                      <button
+                        type="button"
+                        className="secondary"
+                        disabled={saving}
+                        onClick={(e) => saveSpaceOnly(e.currentTarget.form)}
+                      >
+                        {saving ? "저장 중…" : "공간만 저장"}
                       </button>
                     )}
                   </div>

@@ -115,23 +115,26 @@ export default function VisionCamera({ session, board, onPhoto, onClose }: {
   }
 
   const phaseText = phase === "capturing" ? "촬영 중… 휴대폰 위치를 유지해 주세요." : phase === "choosing" ? "촬영 완료! 휴대폰을 내려도 돼요. 사진 분석 중…" : "";
+  const note = phaseText ? { tone: "ok", text: phaseText } : hint ?? { tone: "ok", text: "QR 마커와 가구가 같이 보이게 맞춰 주세요." };
   return <div className="camera-stage open vision-camera">
     <video ref={video} className="camera-video" autoPlay muted playsInline />
-    <div className="camera-stage-top">
-      <strong>사진으로 가구 찾기</strong>
-      <button type="button" className="text-button" disabled={busy} onClick={onClose}>카메라 닫기</button>
+    <div className="vision-top">
+      <strong className="vision-title">사진으로 가구 찾기</strong>
+      <button type="button" className="secondary vision-close" disabled={busy} onClick={onClose}>닫기</button>
     </div>
     {phase === "idle" && !portrait && <div className="marker-frame" aria-hidden="true"><i /><i /><i /><i /><span>QR 마커 크기</span></div>}
     {portrait && !busy && <div className="rotate-guide" role="status">
       <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="7" y="2.5" width="10" height="19" rx="1" /><path d="M11 18.5h2" /></svg>
       <strong>휴대폰을 가로로 돌려 주세요</strong>
-      <span>가로로 찍으면 QR 마커와 가구가 한 장에 담겨요.</span>
+      <span>돌려도 화면이 그대로면 화면 회전 잠금을 풀어 주세요.</span>
     </div>}
-    <div className="camera-stage-bottom">
-      {phaseText ? <p role="status">{phaseText}</p> : hint ? <p role="status" className={`capture-hint ${hint.tone}`}>{hint.text}</p> : <p role="status">QR 마커와 가구가 같이 보이게 맞춰 주세요.</p>}
-      {message && <p role="alert">{message}</p>}
-      <button type="button" className="primary" disabled={!ready || busy || hint?.tone === "stop"} onClick={() => void shoot()}>
-        {busy ? "촬영 중…" : "촬영"}
+    <div className="vision-low">
+      {message && <p role="alert" className="vision-error">{message}</p>}
+      <p role="status" className={`capture-hint vision-note ${note.tone}`}>{note.text}</p>
+    </div>
+    <div className="vision-bottom">
+      <button type="button" className="vision-shutter" aria-label={busy ? "촬영 중" : "촬영"} aria-busy={busy} disabled={!ready || busy || hint?.tone === "stop"} onClick={() => void shoot()}>
+        <i aria-hidden="true" />
       </button>
     </div>
   </div>;

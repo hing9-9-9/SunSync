@@ -261,7 +261,7 @@ export function AwardSpaces({
               <article className="award-room-card" key={s.id}>
                 {onEdit && onDelete && (
                   <SpaceMenu label={`${s.name} 더보기`} items={[
-                    { label: "배치 편집", icon: "layout", onSelect: () => onEdit(s) },
+                    { label: "가구 편집", icon: "layout", onSelect: () => onEdit(s) },
                     { label: "공간 정보 수정", icon: "info", onSelect: () => onEdit(s, "register") },
                     { label: "공간 삭제", icon: "trash", danger: true, onSelect: () => onDelete(s) },
                   ]} />

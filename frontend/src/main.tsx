@@ -31,6 +31,7 @@ import "./CaptureDesign.css";
 import "./EditorPlan.css";
 import "./MobileConsistency.css";
 import "./ControlSystem.css";
+import "./InspectorRhythm.css";
 import "./LogoFont.css";
 import { registerServiceWorker } from "./swUpdate.ts";
 

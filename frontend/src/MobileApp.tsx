@@ -10,6 +10,7 @@ import { applyRegionShading, formatMinute } from "./sunlight";
 import SpatialCapture from "./SpatialCapture";
 import TestMarkerPreview, { TestMarkerSize } from "./TestMarkerPreview";
 import type { CaptureMarker } from "./measureApi";
+import { hasStoredCapture } from "./measureApi";
 
 import {
   defaultShadingTime,
@@ -124,7 +125,9 @@ function MobileApp() {
     save,
     zoneTabs,
     finishCapture,
+    cancelCapture,
     completeVisionRegistration,
+    changeCaptureFilm,
     namePrompt,
     addFurniture,
     addManualFurniture,
@@ -287,7 +290,7 @@ function MobileApp() {
                   .map((s) => (
                     <div className="room-entry" key={s.id}>
                       <SpaceMenu label={`${s.name} 더보기`} items={[
-                        { label: "배치 편집", icon: "layout", onSelect: () => editSpace(s) },
+                        { label: "가구 편집", icon: "layout", onSelect: () => editSpace(s) },
                         { label: "공간 정보 수정", icon: "info", onSelect: () => editSpace(s, "register") },
                         { label: "공간 삭제", icon: "trash", danger: true, onSelect: () => { setActiveId(s.id); setModal("delete-space"); } },
                       ]} />
@@ -314,9 +317,12 @@ function MobileApp() {
                       {(() => {
                         const job = measurementJobs.find(j => j.space_id === s.id);
                         if (!job) return null;
+                        // "Connected" stays on the server after a cancelled shoot; only a live capture session is resumable.
+                        const resumable = job.status === "connected"
+                          && (hasStoredCapture(s.serverSceneId ?? s.id) || (draft?.id === s.id && draftPage.current === "capture"));
                         return <div className="space-measurement-status" role="status">
-                          <span>{job.status === "completed" ? "측정 완료" : job.status === "connected" ? "측정 진행 중" : "측정 대기"}</span>
-                          {isApp && job.status !== "completed" && <button type="button" className="primary" aria-label={`${s.name} ${job.status === "connected" ? "촬영 이어하기" : "촬영 시작"}`} onClick={()=>{if(draft?.id === s.id && draftPage.current === "capture") setPage("capture"); else joinMeasurement(job);}}>{job.status === "connected" ? "촬영 이어하기" : "촬영 시작"}</button>}
+                          <span>{job.status === "completed" ? "측정 완료" : resumable ? "측정 진행 중" : "측정 대기"}</span>
+                          {isApp && job.status !== "completed" && <button type="button" className="primary" aria-label={`${s.name} ${resumable ? "촬영 이어하기" : "촬영 시작"}`} onClick={()=>{if(draft?.id === s.id && draftPage.current === "capture") setPage("capture"); else joinMeasurement(job);}}>{resumable ? "촬영 이어하기" : "촬영 시작"}</button>}
                           {!isApp && job.status === "completed" && <button className="secondary" onClick={async()=>{ try { const saved=await getServerSpace(s.id);selectSpace(saved);setSpaces(current=>upsertSpace(current,saved)); }catch(e){setError(userMessage(e, "공간을 불러오지 못했습니다. 목록을 새로고침해 주세요."));} }}>도면 확인</button>}
                         </div>;
                       })()}
@@ -522,9 +528,20 @@ function MobileApp() {
                     ?
                   </button>
                 )}
+                {isApp && draft && (page === "review" || page === "protect") && (
+                  <div className="heading-actions">
+                    <button type="button" className="secondary" disabled={saving || !!draftWarning} onClick={save}>{saving ? "저장 중…" : "저장"}</button>
+                    <SpaceMenu
+                      label="공간 더보기"
+                      items={[
+                        { label: "공간 정보 수정", icon: "info", onSelect: () => setPage("register") },
+                      ]}
+                    />
+                  </div>
+                )}
                 {page === "detail" && active && (
                   <div className="heading-actions">
-                    <button type="button" className="secondary" onClick={() => editSpace(active)}><SpaceMenuGlyph name="layout" />배치 편집</button>
+                    <button type="button" className="secondary" onClick={() => editSpace(active)}><SpaceMenuGlyph name="layout" />가구 편집</button>
                     <SpaceMenu
                       label="공간 더보기"
                       items={[
@@ -635,9 +652,9 @@ function MobileApp() {
                   <div>
                     <div className="capture-intro">
                       <div className="capture-title-with-marker">
-                        <TestMarkerPreview key={captureMarker?.session_id} session={captureMarker} />
+                        <TestMarkerPreview key={`preview:${captureMarker?.session_id}`} session={captureMarker} />
                         {captureMarker && <TestMarkerSize
-                          key={captureMarker.session_id}
+                          key={`size:${captureMarker.session_id}`}
                           sideM={markerSizeOverride?.sessionId === captureMarker.session_id ? markerSizeOverride?.sideM : undefined}
                           onApply={sideM => setMarkerSizeOverride(sideM === undefined
                             ? undefined : { sessionId: captureMarker.session_id, sideM })}
@@ -659,7 +676,9 @@ function MobileApp() {
                             : 0
                         }
                         onFinish={finishCapture}
+                        onCancel={cancelCapture}
                         onVisionRegistered={completeVisionRegistration}
+                        onFilmChange={changeCaptureFilm}
                         space={draft}
                       />
                     ) : (

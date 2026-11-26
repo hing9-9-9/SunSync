@@ -13,13 +13,15 @@ export function TempDraftsSection({ app }: { app: SpaceApp }) {
         {tempDrafts.map((t) => (
           <div className="row" key={t.space.id}>
             <button type="button" className="temp-draft-open" onClick={() => resumeTempDraft(t)}>
-              <span>
-                {t.space.name || "이름 없는 공간"}
+              <span className="temp-draft-text">
+                <span className="temp-draft-name">
+                  {t.space.name || "이름 없는 공간"}
+                  <span className="status-pill todo">작성 중</span>
+                </span>
                 <small>
                   {[t.space.building, t.space.floor].filter(Boolean).join(" ") || "건물 정보 없음"} · {new Date(t.savedAt).toLocaleDateString("ko-KR", { month: "long", day: "numeric" })} 임시 저장
                 </small>
               </span>
-              <span className="status-pill todo">작성 중</span>
             </button>
             <button type="button" className="text-button destructive-text" onClick={() => askDeleteTempDraft(t.space.id)}>
               삭제
