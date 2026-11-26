@@ -39,6 +39,18 @@ export function StepIcon({ kind }: { kind: "scan" | "select" | "time" }) {
   );
 }
 
+// Eight evenly spaced rays around a disc; `skip` leaves out the angles (degrees) where a beam leaves the sun.
+function rayPath(cx: number, cy: number, r1: number, r2: number, skip: number[] = []) {
+  return [0, 45, 90, 135, 180, 225, 270, 315]
+    .filter(a => !skip.includes(a))
+    .map(a => {
+      const t = (a * Math.PI) / 180;
+      const f = (n: number) => n.toFixed(2);
+      return `M${f(cx + r1 * Math.cos(t))} ${f(cy + r1 * Math.sin(t))}L${f(cx + r2 * Math.cos(t))} ${f(cy + r2 * Math.sin(t))}`;
+    })
+    .join("");
+}
+
 export function GuideIllustration({ step }: { step: number }) {
   return (
     <svg className={`website-guide-art mood-guide-art art-${step}`} viewBox="40 22 200 108" fill="none" aria-hidden="true">
@@ -104,7 +116,7 @@ export function GuideIllustration({ step }: { step: number }) {
           <path d="M206 47h16M206 67h16M206 87h16M206 107h16" stroke="var(--c-9d9d9d)" strokeWidth="1.5" strokeLinecap="round" />
         </>
       )}
-      {step >= 5 && (
+      {step === 5 && (
         <>
           <circle cx="80" cy="63" r="23" {...line} fill="var(--c-white)" />
           <path d="M80 63 95.6 54a18 18 0 0 1-6.6 24.6Z" fill={protect} />
@@ -123,6 +135,42 @@ export function GuideIllustration({ step }: { step: number }) {
             <text x="222" y="124" textAnchor="end">24:00</text>
           </g>
         </>
+      )}
+      {step === 6 && (
+        <>
+          <circle cx="64" cy="76" r="11" fill={sun} />
+          <path d={rayPath(64, 76, 17, 23)} stroke={sun} strokeWidth="1.5" strokeLinecap="round" />
+          {[
+            { g: "A", c: iris, pass: 0 },
+            { g: "B", c: "var(--c-8c87ec)", pass: 1 },
+            { g: "C", c: "var(--c-bdbaf4)", pass: 2 },
+            { g: "D", c: "var(--c-white)", pass: 3 },
+          ].map(({ g, c, pass }, i) => {
+            const y = 38 + i * 26;
+            return (
+              <g key={g}>
+                {[-6, 0, 6].map(d => (
+                  <path key={`in${d}`} d={`M104 ${y + d}H134`} stroke={sun} strokeWidth="1.5" strokeLinecap="round" />
+                ))}
+                <rect x="138" y={y - 11} width="8" height="22" rx="2" fill={c} stroke={g === "D" ? ink : "none"} strokeWidth="1.2" strokeDasharray={g === "D" ? "2 2" : undefined} />
+                {[-6, 0, 6].filter((_, j) => (pass === 1 ? j === 1 : pass === 2 ? j !== 1 : pass === 3)).map(d => (
+                  <path key={`out${d}`} d={`M150 ${y + d}H190`} stroke={sun} strokeWidth="1.5" strokeLinecap="round" />
+                ))}
+                <text x="214" y={y + 4} fill={ink} fontFamily="inherit" fontSize="12" fontWeight="600" textAnchor="middle">{g}</text>
+              </g>
+            );
+          })}
+        </>
+      )}
+      {step === 7 && (
+        <g transform="translate(0 10)">
+          <rect x="60" y="30" width="120" height="72" {...line} />
+          <path d="M90 30v72M120 30v72M150 30v72M60 54h120M60 78h120" stroke={ink} strokeWidth="1" strokeOpacity=".35" />
+          <rect x="90" y="54" width="60" height="48" fill={protect} stroke={iris} strokeWidth="1.5" />
+          <path d="M120 54v48M90 78h60" stroke={iris} strokeWidth="1" strokeOpacity=".6" />
+          <circle cx="212" cy="46" r="10" fill={sun} />
+          <path d={rayPath(212, 46, 15, 20)} stroke={sun} strokeWidth="1.5" strokeLinecap="round" />
+        </g>
       )}
     </svg>
   );

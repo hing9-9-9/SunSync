@@ -30,7 +30,8 @@ import {
   getServerSpace,
   userMessage,
 } from "./spaceApi";
-import { guideSteps } from "./guideContent";
+import { guideExtras, guideSteps } from "./guideContent";
+import { GradeList, GuideExtraIcon } from "./AwardSystem";
 import { GuideMethods } from "./GuideMethods";
 import { GuideIllustration } from "./MoodIcons";
 import {
@@ -150,6 +151,33 @@ function MobileApp() {
   const editorPointer = useRef<{x:number;y:number;furnitureId:string|null;regionId:string|null} | null>(null);
   // WEB APP TEST ONLY: camera setup state for 더보기 › 카메라 준비.
   // Home shows whether blocking is on right now, so the clock ticks once a minute.
+  // 더보기 reference pages: 0 등급 기준, 1 차광 필름, 2 촬영 방법; null = the list.
+  const [moreView, setMoreView] = useState<number | null>(null);
+  useEffect(() => {
+    if (page === "more") return;
+    setMoreView(null);
+    // Entries pushed by other pages copy the old state; drop the detail marker so it cannot reappear on back.
+    if (typeof window.history.state?.moreView === "number") {
+      window.history.replaceState({ ...window.history.state, moreView: undefined }, "", window.location.href);
+    }
+  }, [page]);
+  // A detail page gets its own history entry so the phone's back gesture returns to the list instead of leaving 더보기.
+  const openMoreView = (i: number) => {
+    window.history.pushState({ ...window.history.state, moreView: i }, "", window.location.href);
+    setMoreView(i);
+  };
+  const closeMoreView = () => {
+    if (typeof window.history.state?.moreView === "number") window.history.back();
+    else setMoreView(null);
+  };
+  useEffect(() => {
+    const sync = () => {
+      const v = window.history.state?.moreView;
+      setMoreView(typeof v === "number" ? v : null);
+    };
+    window.addEventListener("popstate", sync);
+    return () => window.removeEventListener("popstate", sync);
+  }, []);
   const [clock, setClock] = useState(() => Date.now());
   useEffect(() => {
     const timer = setInterval(() => setClock(Date.now()), 60_000);
@@ -170,6 +198,12 @@ function MobileApp() {
   // App home shows today's blocking window first, then whether the spaces are set up, then a short list.
   // 공간 추가 lives in the 공간 tab; the guide keeps a quiet shortcut under the list.
   const protectedSpaces = spaces.filter((s) => s.regions.some((r) => r.grade !== "D"));
+  // Reference pages under 더보기 share their wording with the guide (one source: guideContent.ts).
+  const moreHelp = [
+    { title: guideExtras[0].title, hint: "가구별 차단 정도", art: guideExtras[0].art, text: guideExtras[0].text, detail: undefined, grades: true, methods: undefined },
+    { title: guideExtras[1].title, hint: "창문 필름이 햇빛을 막는 방식", art: guideExtras[1].art, text: guideExtras[1].text, detail: guideExtras[1].detail, grades: false, methods: undefined },
+    { title: "촬영 방법", hint: "창문과 가구를 정확히 찍는 법", art: 2, text: guideSteps[2].text, detail: guideSteps[2].detail, grades: false, methods: guideSteps[2].methods },
+  ];
   const needsSetup = spaces.find((s) => !s.regions.some((r) => r.grade !== "D"));
   const protectedRegionCount = spaces.reduce((n, s) => n + s.regions.filter((r) => r.grade !== "D").length, 0);
   // Today's blocking times lead the home screen: one big window when every space shares it, else one row per space.
@@ -488,6 +522,12 @@ function MobileApp() {
               {(isApp || (page !== "review" && page !== "protect")) && (
               <div className="page-heading">
                 <div>
+                  {isApp && page === "more" && moreView !== null && (
+                    <button className="back-button" onClick={closeMoreView}>
+                      <svg viewBox="0 0 12 20" width="12" height="20" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M10 2 2 10l8 8" /></svg>
+                      더보기
+                    </button>
+                  )}
                   {isApp && (page === "detail" || (draft && ["register", "review", "protect"].includes(page))) && (
                     <button
                       className="back-button"
@@ -504,7 +544,7 @@ function MobileApp() {
                     draft &&
                     spaces.some((s) => s.id === draft.id)
                       ? "공간 정보 수정"
-                      : page === "detail" && spacesPending ? <HeadingSkeleton /> : page === "detail" && active ? active.name : titles[page]}
+                      : page === "detail" && spacesPending ? <HeadingSkeleton /> : page === "detail" && active ? active.name : page === "more" && moreView !== null ? moreHelp[moreView].title : titles[page]}
                   </h1>
                   {page === "detail" && spacesPending && <SubtitleSkeleton />}
                   {page === "detail" && active && <p className="page-subtitle">{active.building} {active.floor} </p>}
@@ -940,35 +980,57 @@ function MobileApp() {
                   )}
                 </div>
               )}
-              {page === "more" && (
+              {page === "more" && moreView === null && (
                 <div className="more-content">
-                  <button
-                    className="row card account-row"
-                    onClick={() => setPage("account")}
-                  >
-                    <span className="account-avatar" aria-hidden="true">{account.name.slice(0, 1)}</span>
-                    <span>
-                      <strong>{account.name}</strong>
-                      <small>{account.email}</small>
-                    </span>
-                    <svg className="more-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m9 5 7 7-7 7" /></svg>
-                  </button>
-                  <h2 className="section-label">등급 기준</h2>
-                  <Card>
-                    {(Object.entries(grades) as [Grade, string][]).map(([g, text]) => {
-                      const [rate, how] = text.split(" · ");
-                      return (
-                        <div className="row info-row" key={g}>
-                          <span className={`furniture-grade grade-${g}`}>{g}</span>
-                          <span>
-                            <strong>{rate}</strong>
-                            <small>{how}</small>
+                  <section className="card more-profile" aria-label="계정">
+                    <button className="row account-row" onClick={() => setPage("account")}>
+                      <span className="account-avatar" aria-hidden="true">{account.name.slice(0, 1)}</span>
+                      <span>
+                        <strong>{account.name}</strong>
+                        <small>{account.email}</small>
+                      </span>
+                      <svg className="more-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m9 5 7 7-7 7" /></svg>
+                    </button>
+                    <dl className="more-stats">
+                      <div><dt>등록한 공간</dt><dd>{spaces.length}곳</dd></div>
+                      <div><dt>보호 설정 완료</dt><dd>{protectedSpaces.length}곳</dd></div>
+                    </dl>
+                  </section>
+                  <Card className="more-help">
+                    {moreHelp.map((item, i) => (
+                      <button className="row help-row" key={item.title} onClick={() => openMoreView(i)}>
+                        <span className="help-icon"><GuideExtraIcon art={item.art} size={24} /></span>
+                        <span>
+                          <strong>{item.title}</strong>
+                          <small>{item.hint}</small>
+                        </span>
+                        {i === 0 && (
+                          <span className="help-grades" aria-hidden="true">
+                            {(["A", "B", "C", "D"] as Grade[]).map((g) => <span key={g} className={`furniture-grade grade-${g}`}>{g}</span>)}
                           </span>
-                        </div>
-                      );
-                    })}
+                        )}
+                        <svg className="more-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m9 5 7 7-7 7" /></svg>
+                      </button>
+                    ))}
                   </Card>
-
+                  <button className="home-guide" onClick={() => navigate("guide")}>
+                    <span aria-hidden="true">?</span>사용 가이드
+                    <small>처음이라면 순서대로 따라 해 보세요</small>
+                    <span aria-hidden="true"><svg className="more-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="m9 5 7 7-7 7" /></svg></span>
+                  </button>
+                </div>
+              )}
+              {page === "more" && moreView !== null && (
+                <div className="more-content more-detail">
+                  <Card className="guide-detail">
+                    <div className="mobile-guide-visual" aria-hidden="true">
+                      <GuideIllustration step={moreHelp[moreView].art} />
+                    </div>
+                    {!moreHelp[moreView].methods && <p>{moreHelp[moreView].text}</p>}
+                    <GuideMethods methods={moreHelp[moreView].methods} />
+                    {moreHelp[moreView].grades && <GradeList />}
+                    {moreHelp[moreView].detail && <p className="muted">{moreHelp[moreView].detail}</p>}
+                  </Card>
                 </div>
               )}
               {page === "account" && (
@@ -1008,7 +1070,11 @@ function MobileApp() {
                     strokeLinejoin="round"
                   >
                     {item.page === "home" && (
-                      <path d="m3 10 9-7 9 7M5 9v12h5v-7h4v7h5V9" />
+                      <>
+                        {/* One closed silhouette carries the active tint so the roof and walls do not leave a seam. */}
+                        <path d="M5 9.4 12 4l7 5.4V21h-5v-7h-4v7H5z" stroke="none" />
+                        <path d="m3 10 9-7 9 7M5 9v12h5v-7h4v7h5V9" fill="none" />
+                      </>
                     )}
                     {item.page === "spaces" && (
                       <path d="M4 4h16v16H4zM4 12h16M12 4v16" />

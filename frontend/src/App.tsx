@@ -542,11 +542,10 @@ function App() {
                 <AccountOverview
                   account={account}
                   spaces={spaces}
-                  serverState={serverState}
                   onOpen={selectSpace}
                   onRegister={begin}
-                  onGuide={() => navigate("guide")}
-                  onRefresh={refreshServer}
+                  onGuide={(index) => { navigate("guide"); setGuideIndex(index ?? null); }}
+                  onSpaces={() => navigate("spaces")}
                   onLogout={() => setModal("logout")}
                 />
               )}

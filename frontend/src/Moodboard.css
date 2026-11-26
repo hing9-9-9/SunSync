@@ -181,7 +181,7 @@
 .app.award-app .ap-final-disc > svg { color: var(--mb-sun); }
 
 /* ---------- Footer: cropped wordmark ---------- */
-.app.award-app .ap-footer { position: relative; overflow: hidden; flex-wrap: wrap; border-top: 1px solid var(--mb-ink); background: var(--c-white); color: var(--mb-muted); }
+.app.award-app .ap-footer { position: relative; overflow: hidden; flex-wrap: wrap; border-top: 1px solid var(--c-e3dee9); background: var(--c-white); color: var(--mb-muted); }
 
 /* ---------- Header ---------- */
 

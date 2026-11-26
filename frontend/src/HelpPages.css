@@ -1,0 +1,173 @@
+/* Reference pages: 등급 기준, 차광 필름, 촬영 방법.
+   Web: two extra sections at the end of the guide, and a 내 계정 page with a profile column, summary, spaces and help links.
+   App: grouped rows under 더보기 and a detail view that reuses the guide detail card. */
+
+/* ---------- Web guide: sections after the six steps ---------- */
+.app.award-app.mode-web .guide-refresh .ap-guide-nav-rule { display:block; width:auto; height:1px; margin:8px 14px; border:0; background:var(--guide-line); opacity:.5; }
+.app.award-app.mode-web .guide-refresh .ap-guide-nav-rule ~ button { padding-left:46px; }
+.app.award-app.mode-web .guide-refresh .guide-extra-mark > svg { width:20px; height:20px; }
+.guide-grades { display:grid; margin:0 0 18px; padding:0; list-style:none; }
+.guide-grades li { display:flex; align-items:center; gap:14px; padding:12px 0; border-bottom:1px solid color-mix(in srgb, var(--c-bdbac5) 45%, var(--c-white)); }
+.guide-grades li:last-child { border-bottom:0; }
+.guide-grades .furniture-grade { flex:none; width:36px; min-width:36px; height:36px; padding:0; border-radius:8px; font-size:16px; font-weight:700; }
+.guide-grades li > span:last-child { display:grid; gap:2px; }
+.guide-grades strong { font-size:16px; font-weight:500; line-height:1.4; color:var(--c-232326); }
+.guide-grades small { font-size:14px; line-height:1.5; color:var(--c-494650); }
+@media (max-width:700px) {
+  .app.award-app.mode-web .guide-refresh .ap-guide-nav-rule { display:none; }
+  .app.award-app.mode-web .guide-refresh .ap-guide-nav-rule ~ button { padding-left:12px; }
+}
+
+/* ---------- Web 내 계정 ---------- */
+.app.award-app.mode-web .acct-v2 { gap:32px; }
+.app.award-app.mode-web .acct-layout { display:grid; grid-template-columns:300px minmax(0,1fr); gap:72px; align-items:start; }
+.app.award-app.mode-web .acct-profile { display:block; padding:0; }
+.app.award-app.mode-web .acct-profile h2 { margin:18px 0 2px; font-size:22px; line-height:1.4; font-weight:500; color:var(--account-ink); overflow-wrap:anywhere; }
+.app.award-app.mode-web .acct-profile p { margin:0; font-size:15px; line-height:1.6; color:var(--account-text); overflow-wrap:anywhere; }
+.app.award-app.mode-web .acct-login-kind { display:flex; justify-content:space-between; gap:12px; margin:24px 0 0; padding-top:16px; border-top:1px solid var(--account-line); font-size:14px; line-height:1.6; }
+.app.award-app.mode-web .acct-login-kind dt { color:var(--account-text); }
+.app.award-app.mode-web .acct-login-kind dd { margin:0; color:var(--account-ink); }
+.app.award-app.mode-web .acct-profile .acct-logout { display:inline-flex; align-items:center; justify-content:center; width:auto; min-width:96px; margin-top:20px; padding:10px 24px; }
+.app.award-app.mode-web .acct-main { display:grid; gap:36px; min-width:0; }
+.app.award-app.mode-web .acct-main .acct-head { display:flex; align-items:baseline; justify-content:space-between; }
+.app.award-app.mode-web .acct-more-link { display:inline-flex; align-items:center; gap:4px; min-height:44px; padding:0; border:0; background:transparent; color:var(--account-accent); font-size:14px; font-weight:500; cursor:pointer; }
+.app.award-app.mode-web .acct-more-link > svg { width:16px; height:16px; }
+.app.award-app.mode-web .acct-rooms { margin:8px 0 0; padding:0; list-style:none; }
+.app.award-app.mode-web .acct-room { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:16px; width:100%; min-height:76px; padding:12px 8px; border:0; border-bottom:1px solid var(--account-line); border-radius:0; background:transparent; color:var(--account-ink); text-align:left; box-shadow:none; transform:none; translate:none; transition:background-color 140ms var(--account-ease); cursor:pointer; }
+.app.award-app.mode-web .acct-rooms li:last-child .acct-room { border-bottom:0; }
+.app.award-app.mode-web .acct-room:hover { background:var(--account-soft); }
+.app.award-app.mode-web .acct-room-name { display:grid; gap:2px; min-width:0; }
+.app.award-app.mode-web .acct-room-name strong { font-size:17px; line-height:1.5; font-weight:500; }
+.app.award-app.mode-web .acct-room-name small { font-size:14px; line-height:1.6; color:var(--account-text); }
+.app.award-app.mode-web .acct-room > svg { width:18px; height:18px; color:var(--account-text); }
+.app.award-app.mode-web .acct-pill { display:inline-flex; align-items:center; padding:4px 10px; border-radius:999px; font-size:13px; font-weight:500; }
+.app.award-app.mode-web .acct-pill.done { background:var(--c-protect); color:var(--c-protect-text); }
+.app.award-app.mode-web .acct-pill.todo { background:var(--c-block); color:var(--c-494650); }
+.app.award-app.mode-web .acct-help-list { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; margin:12px 0 0; padding:0; list-style:none; }
+.app.award-app.mode-web .acct-help-list button { display:grid; align-content:start; gap:10px; width:100%; min-height:112px; padding:20px; border:1px solid color-mix(in srgb, var(--account-line) 45%, var(--c-white)); border-radius:12px; background:var(--account-paper); color:var(--account-ink); text-align:left; box-shadow:none; transform:none; translate:none; transition:background-color 140ms var(--account-ease); cursor:pointer; }
+.app.award-app.mode-web .acct-help-list button:hover { background:var(--account-soft); }
+.app.award-app.mode-web .acct-help-top { display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:28px; }
+.app.award-app.mode-web .acct-help-top strong { font-size:17px; font-weight:500; line-height:1.4; }
+.app.award-app.mode-web .acct-help-list small { font-size:14px; line-height:1.6; color:var(--account-text); }
+.app.award-app.mode-web .acct-help-grades { display:inline-flex; gap:4px; }
+.app.award-app.mode-web .acct-help-grades .furniture-grade { min-width:22px; height:22px; padding:0; border-radius:6px; font-size:11px; }
+@media (max-width:980px) {
+  .app.award-app.mode-web .acct-layout { grid-template-columns:minmax(0,1fr); gap:32px; }
+  .app.award-app.mode-web .acct-help-list { grid-template-columns:minmax(0,1fr); }
+}
+
+/* ---------- App 더보기 ---------- */
+.app.award-mobile.mode-app.page-more .more-content { display:grid; gap:16px; }
+.app.award-mobile.mode-app.page-more .more-content > section.more-profile { padding:0; overflow:hidden; }
+.app.award-mobile.mode-app.page-more .more-profile > .account-row { width:100%; border:0; border-radius:0; background:transparent; box-shadow:none; }
+.app.award-mobile.mode-app.page-more .more-profile .more-chevron { margin-left:auto; }
+.app.award-mobile.mode-app.page-more .more-stats { display:flex; margin:0 20px; padding:14px 0 18px; border-top:1px solid var(--c-hairline); }
+.app.award-mobile.mode-app.page-more .more-stats > div { flex:1; min-width:0; }
+.app.award-mobile.mode-app.page-more .more-stats dt { font-size:13px; line-height:1.4; color:var(--c-muted); }
+.app.award-mobile.mode-app.page-more .more-stats dd { margin:2px 0 0; font-size:18px; line-height:1.4; font-weight:700; color:var(--c-ink); font-variant-numeric:tabular-nums; }
+.app.award-mobile.mode-app.page-more .more-help .help-row { display:flex; align-items:center; gap:14px; width:100%; min-height:64px; padding:12px 16px; }
+.app.award-mobile.mode-app.page-more .more-help .help-row > span:not(.help-grades):not(.help-icon) { display:grid; flex:1; gap:1px; min-width:0; }
+.app.award-mobile.mode-app.page-more .more-help .help-row strong { font-size:16px; font-weight:500; line-height:1.35; color:var(--c-ink); }
+.app.award-mobile.mode-app.page-more .more-help .help-row small { font-size:13px; line-height:1.4; color:var(--c-muted); }
+.app.award-mobile.mode-app.page-more .more-help .help-grades { display:inline-flex; gap:4px; flex:none; }
+.app.award-mobile.mode-app.page-more .more-help .help-grades .furniture-grade { min-width:20px; height:20px; padding:0; border-radius:5px; font-size:10px; }
+.app.award-mobile.mode-app.page-more .more-help .more-chevron { flex:none; margin-left:0; }
+.app.award-mobile.mode-app.page-more .more-help section.card > .help-row + .help-row::before,
+.app.award-mobile.mode-app.page-more .more-help > .help-row + .help-row::before { left:54px; }
+.app.award-mobile.mode-app.page-more .more-detail .guide-grades { margin:4px 0 0; }
+.app.award-mobile.mode-app.page-more .more-detail .guide-detail > p { margin:0 0 12px; }
+.app.award-mobile.mode-app.page-more .more-detail .guide-detail > .muted { margin:12px 0 0; }
+.app.award-mobile.mode-app.page-more .more-detail > section.guide-detail { padding:20px; gap:16px; }
+.app.award-mobile.mode-app.page-more .more-detail .guide-detail > p { font-size:15px; line-height:1.7; }
+.app.award-mobile.mode-app.page-more .more-detail .guide-detail > .muted { color:var(--c-muted); font-size:14px; }
+.app.award-mobile.mode-app.page-more .more-content section.card.more-help > button.row.help-row { padding:14px 16px; min-height:68px; }
+.app.award-mobile.mode-app.page-more .more-content section.card.more-profile > button.row.account-row { padding:16px 20px; min-height:72px; }
+
+/* ---------- Round 2 (feedback 11/26) ---------- */
+/* Grade rows: rate and description on one line. */
+.guide-grades li { padding:10px 0; }
+.guide-grades li > span.grade-line { display:flex; align-items:baseline; flex-wrap:wrap; gap:0 8px; min-width:0; }
+.guide-grades li > span.grade-line > small::before { content:"·"; margin-right:8px; color:var(--c-9d9d9d); }
+.guide-grades li > span.grade-line > strong { white-space:nowrap; }
+/* Web guide extras: text block centred against the picture, like the numbered steps. */
+.app.award-app.mode-web .guide-refresh .ap-guide-step-body { align-items:center; }
+/* App help icon slot: same 40px leading column as the avatar and the guide badge. */
+.app.award-mobile.mode-app.page-more .more-help .help-icon { display:grid; place-items:center; flex:none; width:40px; height:40px; color:var(--at-accent-ink); }
+.app.award-mobile.mode-app.page-more .more-help .help-icon > svg { width:24px; height:24px; }
+.app.award-mobile.mode-app.page-more .more-content section.card.more-help > button.row.help-row,
+.app.award-mobile.mode-app.page-more .more-content section.card.more-profile > button.row.account-row { gap:12px; padding-left:16px; padding-right:16px; }
+.app.award-mobile.mode-app.page-more .more-profile .account-avatar { width:40px; height:40px; }
+.app.award-mobile.mode-app.page-more .more-stats { margin:0 16px; }
+.app.award-mobile.mode-app.page-more .more-help section.card > .help-row + .help-row::before,
+.app.award-mobile.mode-app.page-more .more-help > .help-row + .help-row::before { left:68px; }
+/* The 사용 가이드 card: same 40px badge and 16px edge as the rows, same press and hover as the rows. */
+.app.award-mobile.mode-app.page-more .home-guide { padding:12px 16px; gap:12px; }
+.app.award-mobile.mode-app.page-more .home-guide > span:first-child { width:40px; height:40px; flex:none; }
+@media (hover: hover) and (pointer: fine) {
+  .app.award-mobile.mode-app.page-more .home-guide:hover { background-color:var(--c-pressed); }
+}
+/* Detail card spans the column like every other card (flex column + auto margins made it shrink). */
+.app.award-mobile.mode-app.page-more .more-detail > section.guide-detail { width:100%; max-width:none; margin:0; }
+.app.award-mobile.mode-app.page-more .home-guide > span:last-child { display:grid; place-items:center; }
+/* 더보기 uses the same gradient page as the other app tabs (no flat grey, so no band behind the tab bar). */
+.app.award-mobile.mode-app.page-more.more-page { background:linear-gradient(120deg,var(--c-edf1fb) 0,var(--c-f5f8fa) 42%,var(--c-e4f2ec) 100%); }
+.app.award-mobile.mode-app.page-more .home-guide { grid-template-rows:auto auto; align-content:center; row-gap:1px; min-height:68px; }
+.app.award-mobile.mode-app.page-more .home-guide > span:first-child { align-self:center; }
+.app.award-mobile.mode-app.page-more .more-detail .guide-detail > p,
+.app.award-mobile.mode-app.page-more .more-detail .guide-detail > .muted { margin:0; }
+
+/* ---------- Web 내 계정 spacing (feedback 11/26: gaps looked too big) ---------- */
+.app.award-app.mode-web .acct-v2 { gap:20px; }
+.app.award-app.mode-web .acct-layout { grid-template-columns:240px minmax(0,1fr); gap:48px; }
+.app.award-app.mode-web .acct-profile h2 { margin:14px 0 2px; }
+.app.award-app.mode-web .acct-profile .acct-logout { margin-top:16px; }
+.app.award-app.mode-web .acct-main { gap:28px; }
+.app.award-app.mode-web .acct-spec { padding:16px 24px; }
+.app.award-app.mode-web .acct-spec dd { margin-top:4px; font-size:22px; }
+.app.award-app.mode-web .acct-main .acct-head { min-height:32px; }
+.app.award-app.mode-web .acct-more-link { min-height:32px; }
+.app.award-app.mode-web .acct-rooms { margin-top:4px; }
+.app.award-app.mode-web .acct-rooms li { border-bottom:1px solid var(--account-line); }
+.app.award-app.mode-web .acct-rooms li:last-child { border-bottom:0; }
+.app.award-app.mode-web .acct-room { min-height:64px; width:calc(100% + 24px); margin:0 -12px; padding:10px 12px; border-bottom:0; border-radius:8px; }
+.app.award-app.mode-web .acct-help-list { gap:12px; margin-top:8px; }
+.app.award-app.mode-web .acct-help-list button { min-height:0; padding:16px 20px; gap:8px; }
+.app.award-app.mode-web .acct-help-top { min-height:24px; }
+
+/* ---------- Web 내 계정 layout B: full-width profile banner, summary strip, then spaces | help ---------- */
+.app.award-app.mode-web .acct-layout { display:flex; flex-direction:column; gap:28px; width:100%; }
+.app.award-app.mode-web .acct-layout > * { width:100%; box-sizing:border-box; }
+.app.award-app.mode-web .acct-profile { display:grid; grid-template-columns:72px minmax(0,1fr) auto; grid-template-rows:auto auto; column-gap:20px; align-items:center; padding:20px 24px; border:1px solid color-mix(in srgb, var(--account-line) 60%, var(--c-white)); border-radius:12px; }
+.app.award-app.mode-web .acct-profile .acct-avatar { grid-row:1 / 3; margin:0; width:72px; height:72px; }
+.app.award-app.mode-web .acct-profile h2 { margin:0; align-self:end; }
+.app.award-app.mode-web .acct-profile p { align-self:start; }
+.app.award-app.mode-web .acct-profile .acct-logout { grid-column:3; grid-row:1 / 3; margin:0; }
+.app.award-app.mode-web .acct-main { grid-template-columns:minmax(0,1.4fr) minmax(0,1fr); column-gap:48px; row-gap:28px; align-items:start; }
+.app.award-app.mode-web .acct-main > .acct-spec { grid-column:1 / -1; }
+.app.award-app.mode-web .acct-help-list { grid-template-columns:minmax(0,1fr); }
+@media (max-width:980px) {
+  .app.award-app.mode-web .acct-main { grid-template-columns:minmax(0,1fr); }
+}
+@media (max-width:560px) {
+  .app.award-app.mode-web .acct-profile { grid-template-columns:56px minmax(0,1fr); padding:16px; }
+  .app.award-app.mode-web .acct-profile .acct-avatar { width:56px; height:56px; }
+  .app.award-app.mode-web .acct-profile .acct-logout { grid-column:1 / -1; grid-row:auto; margin-top:12px; width:100%; }
+}
+
+/* 내 공간: one search box (it already matches building and floor) next to the register button. */
+.app.award-app.mode-web.page-spaces .award-list-tools { grid-template-columns:minmax(0,1fr) auto; }
+
+/* Very narrow phones (320px): drop the grade chips and the dot so nothing wraps awkwardly. */
+@media (max-width:340px) {
+  .app.award-mobile.mode-app.page-more .more-help .help-grades { display:none; }
+  .guide-grades li > span.grade-line > small::before { content:none; }
+  .guide-grades li > span.grade-line { flex-direction:column; gap:0; }
+}
+
+/* Summary strip stays three across until phone width. */
+@media (min-width:561px) and (max-width:980px) {
+  .app.award-app.mode-web .acct-spec { grid-template-columns:repeat(3,minmax(0,1fr)); gap:0; }
+  .app.award-app.mode-web .acct-spec > div { padding:0 20px; border-right:1px solid var(--account-line); }
+  .app.award-app.mode-web .acct-spec > div:first-child { padding-left:0; }
+  .app.award-app.mode-web .acct-spec > div:last-child { border:0; }
+}

@@ -33,6 +33,7 @@ import "./MobileConsistency.css";
 import "./ControlSystem.css";
 import "./InspectorRhythm.css";
 import "./LogoFont.css";
+import "./HelpPages.css";
 import { registerServiceWorker } from "./swUpdate.ts";
 
 // Only the layout in use is downloaded: the web layout and the app layout are separate chunks.
