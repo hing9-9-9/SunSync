@@ -82,7 +82,10 @@ def detect_any_aruco_marker(
 
 
 def build_default_window_marker_transform(
-    room_width: float, room_depth: float, marker_height_m: float
+    room_width: float,
+    room_depth: float,
+    marker_height_m: float,
+    marker_x_m: float | None = None,
 ) -> list[float]:
     """Place window marker on the North wall (y = room_depth) facing South (-y) into the room."""
     u_win = np.array([1.0, 0.0, 0.0], dtype=np.float64)
@@ -92,7 +95,8 @@ def build_default_window_marker_transform(
     t_enu_m[0:3, 0] = u_win
     t_enu_m[0:3, 1] = v_win
     t_enu_m[0:3, 2] = n_win
-    t_enu_m[0:3, 3] = [room_width / 2.0, room_depth, marker_height_m]
+    mx = room_width / 2.0 if marker_x_m is None else marker_x_m
+    t_enu_m[0:3, 3] = [mx, room_depth, marker_height_m]
     return [float(v) for v in t_enu_m.flatten()]
 
 
@@ -196,7 +200,7 @@ def render_stage1_aruco(
     reproj_txt = f"{reproj:.2f}px" if reproj is not None else "n/a"
     cam = pose_res.camera_position_enu_m
     sub = (
-        f"ID={code_id} | side={marker_side_m:.2f}m | reproj={reproj_txt} | "
+        f"ID={code_id} | fx={camera.fx:.0f}px | reproj={reproj_txt} | "
         f"cam ENU=({cam[0]:.2f}, {cam[1]:.2f}, {cam[2]:.2f})m"
     )
     return draw_header_bar(canvas, "1. ArUco Marker & Camera Pose (solvePnP)", sub)
@@ -354,10 +358,9 @@ def render_stage4_calibrated_overlay(
         draw_label_pill(canvas, dim_tag, x1, by, (34, 42, 56), font_scale=0.38)
 
     sub = (
-        f"Inner yellow box = central 60% depth median patch | "
-        f"alpha={depth_calib.alpha:.3f}, beta={depth_calib.beta:.2f}m"
+        f"3D ENU point-cloud sampling | alpha={depth_calib.alpha:.3f}, beta={depth_calib.beta:.2f}m"
     )
-    return draw_header_bar(canvas, "4. Metric Calibration & 60% Depth Sampling", sub)
+    return draw_header_bar(canvas, "4. Calibrated Depth & 3D Sampling", sub)
 
 
 def render_stage5_floorplan(
@@ -368,6 +371,7 @@ def render_stage5_floorplan(
     T_enu_marker: list[float],
     pose_res: Any,
     estimated_items: list[Any],
+    gt_boxes_enu: list[dict[str, Any]] | None = None,
 ) -> np.ndarray:
     """Stage 5: Top-down 2D ENU room floorplan with camera pose and 3D furniture footprints."""
     canvas = np.full((target_h, target_w, 3), (248, 250, 252), dtype=np.uint8)
@@ -437,6 +441,47 @@ def render_stage5_floorplan(
         1,
         cv2.LINE_AA,
     )
+
+    # Optional Ground Truth footprints (dashed outline)
+    if gt_boxes_enu:
+        for gt_box in gt_boxes_enu:
+            x_min, x_max = gt_box["x_range"]
+            y_min, y_max = gt_box["y_range"]
+            gt_corners = [
+                to_px(x_min, y_min),
+                to_px(x_max, y_min),
+                to_px(x_max, y_max),
+                to_px(x_min, y_max),
+            ]
+            for i_edge in range(4):
+                p_a = gt_corners[i_edge]
+                p_b = gt_corners[(i_edge + 1) % 4]
+                seg_len = max(1.0, math.hypot(p_b[0] - p_a[0], p_b[1] - p_a[1]))
+                steps = max(2, int(seg_len // 14))
+                for s_i in range(0, steps, 2):
+                    t0 = s_i / steps
+                    t1 = min(1.0, (s_i + 1) / steps)
+                    q0 = (
+                        round(p_a[0] + t0 * (p_b[0] - p_a[0])),
+                        round(p_a[1] + t0 * (p_b[1] - p_a[1])),
+                    )
+                    q1 = (
+                        round(p_a[0] + t1 * (p_b[0] - p_a[0])),
+                        round(p_a[1] + t1 * (p_b[1] - p_a[1])),
+                    )
+                    cv2.line(canvas, q0, q1, (40, 145, 70), 2, cv2.LINE_AA)
+            lbl = gt_box.get("label", "GT")
+            lbl_pt = to_px(x_min + 0.05, y_max - 0.12)
+            cv2.putText(
+                canvas,
+                f"GT:{lbl}",
+                lbl_pt,
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.38,
+                (30, 120, 55),
+                1,
+                cv2.LINE_AA,
+            )
 
     # Furniture footprints
     for idx, item in enumerate(estimated_items, start=1):
@@ -588,6 +633,29 @@ def main() -> None:
         "--marker-height-m", type=float, default=1.2, help="Marker center height above floor (m)."
     )
     parser.add_argument(
+        "--marker-x-m",
+        type=float,
+        default=None,
+        help="Marker center East X coordinate (m; defaults to room_width / 2).",
+    )
+    parser.add_argument(
+        "--focal-length-35mm",
+        type=float,
+        default=None,
+        help="Optional 35mm-equivalent focal length override (mm).",
+    )
+    parser.add_argument(
+        "--fov-deg",
+        type=float,
+        default=None,
+        help="Optional horizontal/long-side field of view override (degrees).",
+    )
+    parser.add_argument(
+        "--gt-json",
+        default=None,
+        help="Optional JSON file with list of GT boxes: [{label, x_range:[x0,x1], y_range:[y0,y1]}].",
+    )
+    parser.add_argument(
         "--conf-thresh", type=float, default=0.25, help="YOLO confidence threshold."
     )
     parser.add_argument("--yolo-weights", default="yolov8m.pt", help="YOLOv8 weights path/name.")
@@ -603,28 +671,29 @@ def main() -> None:
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    image_bgr = cv2.imread(str(img_path), cv2.IMREAD_COLOR)
-    if image_bgr is None or image_bgr.size == 0:
-        raise SystemExit(f"Could not read image: {img_path}")
-    image_rgb = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
+    import base64
+
+    raw_bytes = img_path.read_bytes()
+    b64_img = base64.b64encode(raw_bytes).decode("ascii")
+    image_rgb, _exif_fx = VisionRegistrationPipeline.decode_image_base64_with_exif(b64_img)
+    image_bgr = cv2.cvtColor(image_rgb, cv2.COLOR_RGB2BGR)
     h_img, w_img = image_rgb.shape[:2]
 
-    focal = float(max(w_img, h_img)) * 0.9
-    camera = CameraIntrinsicsInput(
-        width=w_img, height=h_img, fx=focal, fy=focal, cx=w_img / 2.0, cy=h_img / 2.0
-    )
+    gt_boxes_enu: list[dict[str, Any]] | None = None
+    if args.gt_json:
+        gt_boxes_enu = json.loads(Path(args.gt_json).read_text(encoding="utf-8"))
 
     timings_ms: dict[str, float] = {}
 
-    # Stage 1: ArUco detection + camera pose
+    # Stage 1: ArUco detection
     t0 = time.perf_counter()
     code_id, marker_corners = detect_any_aruco_marker(image_rgb, args.code_id)
     t_enu_marker = build_default_window_marker_transform(
-        args.room_width, args.room_depth, args.marker_height_m
+        args.room_width, args.room_depth, args.marker_height_m, args.marker_x_m
     )
     timings_ms["aruco_detect"] = round((time.perf_counter() - t0) * 1000.0, 1)
 
-    # Stage 2: Real YOLOv8m detection
+    # Stage 2: Real YOLOv8m detection (with P0-3 marker-host TV exclusion + book cluster filter)
     yolo_adapter = YoloV8DetectorAdapter(model_path=args.yolo_weights, conf_thresh=args.conf_thresh)
     t0 = time.perf_counter()
     raw_coco_boxes = inspect_raw_yolo_coco(yolo_adapter, image_rgb)
@@ -633,7 +702,13 @@ def main() -> None:
     ys = [pt[1] for pt in marker_corners]
     exclude_boxes = [(min(xs), min(ys), max(xs), max(ys))]
     sunsync_detections = [
-        d for d in sunsync_detections if not _overlaps_any_box(d.box_xyxy, exclude_boxes)
+        d
+        for d in sunsync_detections
+        if not _overlaps_any_box(
+            d.box_xyxy,
+            exclude_boxes,
+            exclude_container=(d.label == "other" or d.raw_class_name == "tv"),
+        )
     ]
     timings_ms["yolov8"] = round((time.perf_counter() - t0) * 1000.0, 1)
 
@@ -644,7 +719,7 @@ def main() -> None:
     raw_min, raw_max = float(rel_depth_map.min()), float(rel_depth_map.max())
     timings_ms["depth_anything_v2"] = round((time.perf_counter() - t0) * 1000.0, 1)
 
-    # Stage 4 & 5: Full SunSync VisionRegistrationPipeline (using precomputed maps/adapters)
+    # Stage 4 & 5: Full SunSync VisionRegistrationPipeline (EXIF + 1D focal search + 3D ENU PC)
     class _FixedDepthAdapter:
         def estimate_relative_depth(self, _img: np.ndarray | None, _w: int, _h: int) -> np.ndarray:
             return rel_depth_map
@@ -667,7 +742,8 @@ def main() -> None:
 
     t0 = time.perf_counter()
     request = VisionFurnitureEstimateRequest(
-        camera=camera,
+        fov_deg=args.fov_deg,
+        focal_length_35mm=args.focal_length_35mm,
         marker_anchor=MarkerAnchorInput(
             code_id=code_id,
             side_length_m=args.marker_side_m,
@@ -676,7 +752,7 @@ def main() -> None:
         mode="experiment",
         apply_to_scene=False,
         auto_create_protected_regions=True,
-        image_base64="placeholder",
+        image_base64=b64_img,
     )
     pose_res, depth_calib, estimated_items = pipeline.run(
         scene_id="local_viz",
@@ -691,9 +767,18 @@ def main() -> None:
         T_ENU_marker=t_enu_marker,
         request=request,
         observation_id="obs_local_viz",
-        image_rgb=image_rgb,
     )
     timings_ms["pipeline_3d"] = round((time.perf_counter() - t0) * 1000.0, 1)
+
+    resolved_fx = (
+        pipeline.last_diagnostics.aruco.resolved_fx_px
+        if pipeline.last_diagnostics is not None
+        and pipeline.last_diagnostics.aruco.resolved_fx_px is not None
+        else float(max(w_img, h_img)) * 0.68
+    )
+    camera = CameraIntrinsicsInput(
+        width=w_img, height=h_img, fx=resolved_fx, fy=resolved_fx, cx=w_img / 2.0, cy=h_img / 2.0
+    )
 
     # Render all 5 stages + combined overview
     s1 = render_stage1_aruco(
@@ -713,7 +798,14 @@ def main() -> None:
         image_bgr, rel_depth_map, marker_corners, estimated_items, depth_calib
     )
     s5 = render_stage5_floorplan(
-        h_img, w_img, args.room_width, args.room_depth, t_enu_marker, pose_res, estimated_items
+        h_img,
+        w_img,
+        args.room_width,
+        args.room_depth,
+        t_enu_marker,
+        pose_res,
+        estimated_items,
+        gt_boxes_enu=gt_boxes_enu,
     )
     overview = make_overview_grid([s1, s2, s3, s4, s5], panel_height=680)
 

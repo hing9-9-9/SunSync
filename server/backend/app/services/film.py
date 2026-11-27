@@ -1106,7 +1106,12 @@ def clamp_cuboid_to_room(
     floor_poly: Polygon,
     room_height: float,
 ) -> tuple[tuple[float, float, float], tuple[float, float, float], bool]:
-    """Clamp furniture cuboid footprint and height inside the room boundaries."""
+    """Clamp furniture cuboid footprint and height inside the room boundaries.
+
+    Prefers minimal inward translation (preserving physical width and depth) before
+    resorting to dimension clipping only when the footprint physically exceeds the
+    room span along an axis.
+    """
     cx, cy, cz = base_center
     w, d, h = dimensions
     was_clamped = False
@@ -1121,42 +1126,84 @@ def clamp_cuboid_to_room(
         cz = max(0.0, round(room_height - h, 4))
         was_clamped = True
 
-    footprint = Polygon([(p[0], p[1]) for p in cuboid_footprint((cx, cy, cz), (w, d, h), yaw)])
+    def _footprint_poly(px: float, py: float, pw: float, pd: float) -> Polygon:
+        return Polygon([(p[0], p[1]) for p in cuboid_footprint((px, py, cz), (pw, pd, h), yaw)])
+
+    footprint = _footprint_poly(cx, cy, w, d)
     if not floor_poly.buffer(1e-4).covers(footprint):
         was_clamped = True
         if not floor_poly.buffer(1e-4).covers(Point(cx, cy)):
             pt = nearest_points(floor_poly, Point(cx, cy))[0]
             cx, cy = pt.x, pt.y
-        centroid = floor_poly.representative_point()
-        for _ in range(100):
-            footprint = Polygon(
-                [(p[0], p[1]) for p in cuboid_footprint((cx, cy, cz), (w, d, h), yaw)]
-            )
+
+        # Phase A: non-destructive minimal inward translation along violated boundary normals
+        for _ in range(24):
+            corners = cuboid_footprint((cx, cy, cz), (w, d, h), yaw)
+            footprint = Polygon([(p[0], p[1]) for p in corners])
             if floor_poly.buffer(1e-5).covers(footprint):
                 break
-            cx = 0.85 * cx + 0.15 * centroid.x
-            cy = 0.85 * cy + 0.15 * centroid.y
-            w = max(0.1, w * 0.95)
-            d = max(0.1, d * 0.95)
+            pos_dx = 0.0
+            neg_dx = 0.0
+            pos_dy = 0.0
+            neg_dy = 0.0
+            for px, py, _ in corners:
+                corner_pt = Point(px, py)
+                if floor_poly.buffer(1e-6).covers(corner_pt):
+                    continue
+                nearest = nearest_points(floor_poly, corner_pt)[0]
+                dx = nearest.x - px
+                dy = nearest.y - py
+                pos_dx = max(pos_dx, dx)
+                neg_dx = min(neg_dx, dx)
+                pos_dy = max(pos_dy, dy)
+                neg_dy = min(neg_dy, dy)
+            shift_x = pos_dx + neg_dx
+            shift_y = pos_dy + neg_dy
+            if abs(shift_x) <= 1e-7 and abs(shift_y) <= 1e-7:
+                break
+            cx += shift_x
+            cy += shift_y
+
+        # Phase B: if translation alone still overhangs, pull toward interior without shrinking first
+        centroid = floor_poly.representative_point()
+        if not floor_poly.buffer(1e-5).covers(_footprint_poly(cx, cy, w, d)):
+            tx, ty = cx, cy
+            for _ in range(25):
+                tx = 0.85 * tx + 0.15 * centroid.x
+                ty = 0.85 * ty + 0.15 * centroid.y
+                if floor_poly.buffer(1e-5).covers(_footprint_poly(tx, ty, w, d)):
+                    cx, cy = tx, ty
+                    break
+
+        # Phase C: only shrink dimensions when the cuboid physically exceeds room span
+        if not floor_poly.buffer(1e-5).covers(_footprint_poly(cx, cy, w, d)):
+            for _ in range(100):
+                footprint = _footprint_poly(cx, cy, w, d)
+                if floor_poly.buffer(1e-5).covers(footprint):
+                    break
+                cx = 0.85 * cx + 0.15 * centroid.x
+                cy = 0.85 * cy + 0.15 * centroid.y
+                w = max(0.1, w * 0.95)
+                d = max(0.1, d * 0.95)
 
     rcx, rcy, rcz = round(cx, 4), round(cy, 4), round(cz, 4)
     rw, rd, rh = round(w, 4), round(d, 4), round(h, 4)
-    r_footprint = Polygon(
-        [(p[0], p[1]) for p in cuboid_footprint((rcx, rcy, rcz), (rw, rd, rh), yaw)]
-    )
-    if not floor_poly.buffer(1e-4).covers(r_footprint):
+    if not floor_poly.buffer(1e-4).covers(_footprint_poly(rcx, rcy, rw, rd)):
         was_clamped = True
         centroid = floor_poly.representative_point()
+        # Try rounding-nudge translation first before shrinking
+        for _ in range(10):
+            rcx = round(0.98 * rcx + 0.02 * centroid.x, 4)
+            rcy = round(0.98 * rcy + 0.02 * centroid.y, 4)
+            if floor_poly.buffer(1e-5).covers(_footprint_poly(rcx, rcy, rw, rd)):
+                break
         for _ in range(20):
+            if floor_poly.buffer(1e-5).covers(_footprint_poly(rcx, rcy, rw, rd)):
+                break
             rcx = round(0.9 * rcx + 0.1 * centroid.x, 4)
             rcy = round(0.9 * rcy + 0.1 * centroid.y, 4)
             rw = max(0.1, round(rw * 0.95, 4))
             rd = max(0.1, round(rd * 0.95, 4))
-            r_footprint = Polygon(
-                [(p[0], p[1]) for p in cuboid_footprint((rcx, rcy, rcz), (rw, rd, rh), yaw)]
-            )
-            if floor_poly.buffer(1e-5).covers(r_footprint):
-                break
 
     return (
         (rcx, rcy, rcz),

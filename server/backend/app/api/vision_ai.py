@@ -354,6 +354,8 @@ async def estimate_furniture_3d_from_photo(
     session: SessionDependency,
     code_id: Annotated[int, Query(ge=0, lt=50)] = 0,
     side_length_m: Annotated[float, Query(gt=0.0, le=5.0)] = 0.6,
+    fov_deg: Annotated[float | None, Query(gt=10.0, lt=170.0)] = None,
+    focal_length_35mm: Annotated[float | None, Query(gt=5.0, lt=300.0)] = None,
     mode: VisionRequestMode = "normal",
     apply_to_scene: Annotated[bool, Query()] = True,
     auto_create_protected_regions: Annotated[bool, Query()] = True,
@@ -371,6 +373,8 @@ async def estimate_furniture_3d_from_photo(
     try:
         request = VisionFurnitureEstimateRequest(
             image_base64=image_b64,
+            fov_deg=fov_deg,
+            focal_length_35mm=focal_length_35mm,
             marker_anchor=MarkerAnchorInput(code_id=code_id, side_length_m=side_length_m),
             mode=mode,
             apply_to_scene=apply_to_scene,

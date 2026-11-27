@@ -295,7 +295,10 @@ def test_dry_run_response_contains_model_aruco_depth_and_furniture_diagnostics(
     assert diagnostics["aruco"]["marker_corners_px"] is not None
     assert diagnostics["depth"]["anchor_relative_depths"]
     furniture = body["estimated_items"][0]["diagnostics"]
-    assert furniture["representative_depth_rule"] == "central_60_percent_median"
+    assert furniture["representative_depth_rule"] in (
+        "enu_pointcloud_bbox",
+        "central_60_percent_median",
+    )
     assert furniture["representative_depth_region_xyxy_px"] is not None
     assert furniture["valid_depth_pixel_count"] > 0
     assert set(furniture["dimension_sources"]) == {"width", "depth", "height", "position"}
@@ -410,7 +413,31 @@ def test_overlaps_any_box_keeps_large_furniture_touching_small_marker():
     large_chair_box = (98.7, 193.3, 564.6, 1023.7)
     marker_contour_box = (124.0, 154.0, 203.0, 238.0)
     inner_marker_bit = (140.0, 170.0, 180.0, 210.0)
+    host_tv_box = (40.0, 90.0, 360.0, 310.0)
 
     assert protocols._overlaps_any_box(large_chair_box, [marker_box]) is False
     assert protocols._overlaps_any_box(marker_contour_box, [marker_box]) is True
     assert protocols._overlaps_any_box(inner_marker_bit, [marker_box]) is True
+    # P0-3: TV display hosting >=80% of ArUco marker excluded when exclude_container=True
+    assert protocols._overlaps_any_box(host_tv_box, [marker_box], exclude_container=True) is True
+    assert (
+        protocols._overlaps_any_box(large_chair_box, [marker_box], exclude_container=True) is False
+    )
+
+
+def test_monocular_depth_adapter_resizes_large_input_to_1024_and_restores_output_shape():
+    seen_sizes: list[tuple[int, int]] = []
+
+    class _SpyPipe:
+        def __call__(self, pil_img):
+            seen_sizes.append(pil_img.size)
+            w, h = pil_img.size
+            return {"predicted_depth": np.full((h, w), 2.5, dtype=np.float32)}
+
+    big_img = np.zeros((3024, 4032, 3), dtype=np.uint8)
+    adapter = MonocularDepthAdapter()
+    adapter._pipe = _SpyPipe()
+    depth = adapter.estimate_relative_depth(big_img, 4032, 3024)
+    assert seen_sizes == [(1024, 768)]
+    assert depth.shape == (3024, 4032)
+    assert np.isclose(float(np.median(depth)), 2.5, rtol=1e-4)

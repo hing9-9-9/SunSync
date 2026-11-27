@@ -82,6 +82,8 @@ class VisionFurnitureEstimateRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True, allow_inf_nan=False)
 
     camera: CameraIntrinsicsInput = Field(default_factory=CameraIntrinsicsInput)
+    fov_deg: Annotated[float, Field(gt=10.0, lt=170.0)] | None = None
+    focal_length_35mm: Annotated[float, Field(gt=5.0, lt=300.0)] | None = None
     marker_anchor: MarkerAnchorInput = Field(default_factory=MarkerAnchorInput)
     T_ENU_camera: Annotated[list[float], Field(min_length=16, max_length=16)] | None = None
     depth_scale_alpha: float | None = None
@@ -160,6 +162,8 @@ class ArucoDiagnostics(BaseModel):
     marker_corners_px: list[tuple[float, float]] | None = None
     reprojection_error_mean_px: float | None = None
     reprojection_error_max_px: float | None = None
+    resolved_fx_px: float | None = None
+    intrinsics_source: str | None = None
 
 
 class DepthCalibrationDiagnostics(BaseModel):
