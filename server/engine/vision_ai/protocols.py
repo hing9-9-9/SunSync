@@ -128,12 +128,16 @@ class GeometricSyntheticDetector:
 def _overlaps_any_box(
     box: tuple[float, float, float, float],
     exclude_boxes: Sequence[tuple[float, float, float, float]],
+    *,
+    exclude_container: bool = False,
 ) -> bool:
     """Return True if a candidate box represents an excluded region (e.g. an ArUco marker).
 
     Checks overlap relative to the *candidate* box area so that a large foreground
     furniture box whose corner merely touches a small background window marker is
-    not erroneously discarded.
+    not erroneously discarded. When ``exclude_container`` is True (for ``tv`` / ``other``
+    display appliances), a box containing at least 80% of an excluded marker is also
+    discarded so a TV/display hosting the ArUco marker is not registered as furniture.
     """
     bx1, by1, bx2, by2 = box
     cx, cy = (bx1 + bx2) / 2.0, (by1 + by2) / 2.0
@@ -147,6 +151,8 @@ def _overlaps_any_box(
         if ix2 > ix1 and iy2 > iy1:
             inter = (ix2 - ix1) * (iy2 - iy1)
             if inter / b_area > 0.4:
+                return True
+            if exclude_container and inter / e_area >= 0.80:
                 return True
     return False
 
@@ -247,12 +253,21 @@ def _disparity_to_relative_depth(disparity: np.ndarray) -> np.ndarray:
     return (inv / median).astype(np.float32)
 
 
-def _merge_book_clusters(detections: list[DetectedObject2D]) -> list[DetectedObject2D]:
-    """Merge clusters of detected books into unified bookshelf bounding boxes."""
+def _merge_book_clusters(
+    detections: list[DetectedObject2D],
+    *,
+    min_cluster_size: int = 3,
+) -> list[DetectedObject2D]:
+    """Merge clusters of >= ``min_cluster_size`` detected books into bookshelf boxes.
+
+    Isolated ``book`` detections (fewer than ``min_cluster_size`` proximate items, such
+    as a closed laptop or single notebook on a desk) are discarded instead of spawning
+    spurious 1.8 m tall bookshelf occluders. Native ``bookshelf`` detections are kept.
+    """
     books = [det for det in detections if det.raw_class_name == "book"]
-    if len(books) <= 1:
-        return detections
     non_books = [det for det in detections if det.raw_class_name != "book"]
+    if len(books) < min_cluster_size:
+        return non_books
 
     visited = [False] * len(books)
     merged_books: list[DetectedObject2D] = []
@@ -276,9 +291,7 @@ def _merge_book_clusters(detections: list[DetectedObject2D]) -> list[DetectedObj
                 if not visited[j] and _near(books[cur], books[j]):
                     visited[j] = True
                     stack.append(j)
-        if len(cluster) == 1:
-            merged_books.append(cluster[0])
-        else:
+        if len(cluster) >= min_cluster_size:
             x1 = min(d.box_xyxy[0] for d in cluster)
             y1 = min(d.box_xyxy[1] for d in cluster)
             x2 = max(d.box_xyxy[2] for d in cluster)
@@ -414,7 +427,15 @@ class CompositeFurnitureDetector:
             try:
                 raw = self._primary.detect(image_rgb)
                 if exclude_boxes:
-                    raw = [d for d in raw if not _overlaps_any_box(d.box_xyxy, exclude_boxes)]
+                    raw = [
+                        d
+                        for d in raw
+                        if not _overlaps_any_box(
+                            d.box_xyxy,
+                            exclude_boxes,
+                            exclude_container=(d.label == "other" or d.raw_class_name == "tv"),
+                        )
+                    ]
                 if len(raw) > 0:
                     self.last_source = "yolov8"
                     return raw
@@ -478,6 +499,8 @@ class MonocularDepthAdapter:
             )
             logger.info("vision model loaded: %s", self.model_name)
 
+    MAX_INFERENCE_SIDE_PX: ClassVar[int] = 1024
+
     def estimate_relative_depth(
         self,
         image_rgb: np.ndarray | None,
@@ -487,13 +510,33 @@ class MonocularDepthAdapter:
         if image_rgb is None:
             return np.ones((height, width), dtype=np.float32)
 
+        from contextlib import nullcontext
+
+        import cv2
         from PIL import Image
 
-        pil_image = Image.fromarray(image_rgb)
+        h_in, w_in = image_rgb.shape[:2]
+        max_side = max(h_in, w_in)
+        if max_side > self.MAX_INFERENCE_SIDE_PX:
+            scale = float(self.MAX_INFERENCE_SIDE_PX) / float(max_side)
+            new_w = max(1, round(w_in * scale))
+            new_h = max(1, round(h_in * scale))
+            resized_rgb = cv2.resize(image_rgb, (new_w, new_h), interpolation=cv2.INTER_AREA)
+            pil_image = Image.fromarray(resized_rgb)
+        else:
+            pil_image = Image.fromarray(image_rgb)
+
+        ctx: Any = nullcontext()
+        if _installed("torch"):
+            import torch
+
+            ctx = torch.inference_mode()
+
         with self._lock:
             self._ensure_loaded()
             assert self._pipe is not None
-            result = self._pipe(pil_image)
+            with ctx:
+                result = self._pipe(pil_image)
 
         raw_pred = result.get("predicted_depth")
         if raw_pred is not None:
@@ -509,8 +552,6 @@ class MonocularDepthAdapter:
             depth_arr = np.clip(clean, 1e-3, 100.0).astype(np.float32)
         else:
             depth_arr = _disparity_to_relative_depth(raw_arr)
-
-        import cv2
 
         if depth_arr.shape[:2] != (height, width):
             depth_arr = cv2.resize(depth_arr, (width, height), interpolation=cv2.INTER_LINEAR)

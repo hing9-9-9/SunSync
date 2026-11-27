@@ -851,7 +851,7 @@ def test_vision_estimate_syncs_ui_space_furniture_regions_and_revision(client: T
 
 
 def test_merge_book_clusters_combines_nearby_books_into_bookshelf() -> None:
-    """Clustered YOLO book boxes should merge into one bookshelf while keeping isolated items."""
+    """Only >=3 proximate book boxes merge into one bookshelf; isolated 1-2 books are discarded."""
     detections = [
         DetectedObject2D(
             box_xyxy=(100.0, 100.0, 130.0, 160.0),
@@ -863,6 +863,12 @@ def test_merge_book_clusters_combines_nearby_books_into_bookshelf() -> None:
             box_xyxy=(140.0, 105.0, 175.0, 165.0),
             label="bookshelf",
             confidence=0.85,
+            raw_class_name="book",
+        ),
+        DetectedObject2D(
+            box_xyxy=(180.0, 102.0, 210.0, 162.0),
+            label="bookshelf",
+            confidence=0.78,
             raw_class_name="book",
         ),
         DetectedObject2D(
@@ -879,14 +885,224 @@ def test_merge_book_clusters_combines_nearby_books_into_bookshelf() -> None:
         ),
     ]
     merged = _merge_book_clusters(detections)
-    assert len(merged) == 3
+    assert len(merged) == 2
     assert merged[0].label == "chair"
 
     clustered = [d for d in merged if d.raw_class_name == "book_cluster_bookshelf"]
     assert len(clustered) == 1
-    assert clustered[0].box_xyxy == (100.0, 100.0, 175.0, 165.0)
+    assert clustered[0].box_xyxy == (100.0, 100.0, 210.0, 165.0)
     assert clustered[0].confidence == pytest.approx(0.85)
-    assert any(d.box_xyxy == (700.0, 300.0, 740.0, 360.0) for d in merged)
+    # Isolated lone book (e.g. closed laptop on desk) is discarded
+    assert not any(d.box_xyxy == (700.0, 300.0, 740.0, 360.0) for d in merged)
+
+
+def test_calibrate_monocular_depth_proportional_for_oblique_single_marker() -> None:
+    """Single 60cm planar marker viewed obliquely (ptp < 1.5m) uses proportional beta=0."""
+    rel_depths = [4.10, 4.72, 4.45, 3.92]
+    metric_depths = [2.98, 2.66, 2.94, 3.28]  # ptp = 0.62 m (< 1.5 m)
+    res = VisionRegistrationPipeline.calibrate_monocular_depth(rel_depths, metric_depths)
+    assert res.beta == pytest.approx(0.0)
+    assert res.alpha == pytest.approx(float(np.mean(metric_depths) / np.mean(rel_depths)))
+
+
+def test_exif_orientation_and_focal_length_extraction() -> None:
+    """EXIF Orientation=6 and FocalLengthIn35mmFilm are applied during base64 decode."""
+    import base64
+    import io
+
+    from PIL import Image
+
+    img = Image.new("RGB", (400, 200), color=(120, 140, 160))
+    exif = Image.Exif()
+    exif[274] = 6  # Orientation: rotate 90 deg CW -> upright 200x400
+    exif_ifd = exif.get_ifd(0x8769)
+    exif_ifd[41989] = 24  # FocalLengthIn35mmFilm = 24 mm
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG", exif=exif.tobytes())
+    b64 = base64.b64encode(buf.getvalue()).decode("ascii")
+
+    rgb, fx_exif = VisionRegistrationPipeline.decode_image_base64_with_exif(b64)
+    assert rgb.shape == (400, 200, 3)
+    assert fx_exif == pytest.approx(400.0 * (24.0 / 36.0), abs=1e-2)
+
+
+def test_1d_focal_search_recovers_ultrawide_fx_without_exif() -> None:
+    """EXIF-stripped 0.5x ultrawide image recovers accurate focal length and inside-room camera."""
+    w, h = 4032, 3024
+    true_fx = 1568.0
+    K = np.array([[true_fx, 0.0, w / 2.0], [0.0, true_fx, h / 2.0], [0.0, 0.0, 1.0]])
+    T_enu_m = np.array(
+        [
+            [1.0, 0.0, 0.0, 1.5],
+            [0.0, 0.0, -1.0, 4.1],
+            [0.0, 1.0, 0.0, 1.5],
+            [0.0, 0.0, 0.0, 1.0],
+        ]
+    )
+    # Camera inside 3.3 x 4.1 x 2.5 room looking obliquely toward marker
+    cam_pos = np.array([2.8, 1.0, 1.8])
+    fwd = np.array([1.5, 4.1, 1.5]) - cam_pos
+    fwd /= np.linalg.norm(fwd)
+    right = np.cross(fwd, np.array([0.0, 0.0, 1.0]))
+    right /= np.linalg.norm(right)
+    down = np.cross(fwd, right)
+    T_enu_c = np.eye(4)
+    T_enu_c[:3, 0] = right
+    T_enu_c[:3, 1] = down
+    T_enu_c[:3, 2] = fwd
+    T_enu_c[:3, 3] = cam_pos
+
+    s = 0.6
+    obj_pts = np.array(
+        [[-s / 2, s / 2, 0], [s / 2, s / 2, 0], [s / 2, -s / 2, 0], [-s / 2, -s / 2, 0]]
+    )
+    T_c_m = np.linalg.inv(T_enu_c) @ T_enu_m
+    corners_px = []
+    for pt in obj_pts:
+        pc = T_c_m[:3, :3] @ pt + T_c_m[:3, 3]
+        uv = K @ pc / pc[2]
+        corners_px.append((float(uv[0]), float(uv[1])))
+
+    room_poly = Polygon([(0.0, 0.0), (3.3, 0.0), (3.3, 4.1), (0.0, 4.1)])
+    fx_opt = VisionRegistrationPipeline._search_optimal_focal_length(
+        marker_corners=corners_px,
+        side_length_m=s,
+        T_ENU_marker=[float(v) for v in T_enu_m.flatten()],
+        width=w,
+        height=h,
+        room_floor_poly=room_poly,
+        room_height_m=2.5,
+    )
+    assert abs(fx_opt - true_fx) / true_fx < 0.03
+
+
+def test_pipeline_runs_depth_when_client_detections_lack_depth_hint() -> None:
+    """P0-4: Client-supplied 2D boxes without observed_depth_rel trigger monocular depth inference."""
+    from app.schemas.vision_ai import VisionFurnitureEstimateRequest
+
+    depth_calls = {"count": 0}
+
+    class _CountingDepth:
+        def estimate_relative_depth(self, _img: Any, width: int, height: int) -> np.ndarray:
+            depth_calls["count"] += 1
+            return np.full((height, width), 2.0, dtype=np.float32)
+
+    pipeline = VisionRegistrationPipeline(
+        detector=GeometricSyntheticDetector(),
+        depth_estimator=CompositeDepthEstimator(primary=_CountingDepth(), mode="on"),
+    )
+    T_enu_m = [1.0, 0.0, 0.0, 1.5, 0.0, 0.0, -1.0, 4.1, 0.0, 1.0, 0.0, 1.5, 0.0, 0.0, 0.0, 1.0]
+    req = VisionFurnitureEstimateRequest(
+        marker_anchor=MarkerAnchorInput(
+            code_id=0,
+            side_length_m=0.6,
+            corners_px=[(550.0, 210.0), (730.0, 210.0), (730.0, 390.0), (550.0, 390.0)],
+        ),
+        detections=[
+            Detection2DInput(box_xyxy=(420.0, 360.0, 820.0, 620.0), label="desk", confidence=0.95)
+        ],
+        apply_to_scene=False,
+    )
+    dummy_rgb = np.zeros((720, 1280, 3), dtype=np.uint8)
+    _pose, _calib, items = pipeline.run(
+        scene_id="s1",
+        room_id="r1",
+        room_floor_vertices=[(0.0, 0.0), (3.3, 0.0), (3.3, 4.1), (0.0, 4.1)],
+        room_height_m=2.5,
+        T_ENU_marker=T_enu_m,
+        request=req,
+        observation_id="obs_1",
+        image_rgb=dummy_rgb,
+    )
+    assert depth_calls["count"] == 1
+    assert len(items) == 1
+    assert items[0].diagnostics is not None
+    assert items[0].diagnostics.depth_source == "depth_map"
+
+
+def test_outside_room_yolo_detection_rejected_and_window_distance_in_guidance() -> None:
+    """P0-3 + P2-2: Hallway YOLO false positive outside room is dropped; guidance uses window distance."""
+    from app.schemas.vision_ai import VisionFurnitureEstimateRequest
+
+    class _TwoBoxYolo:
+        def detect(self, _img: Any, hints: Any = None) -> list[DetectedObject2D]:
+            del hints
+            return [
+                # Inside-room desk near image center
+                DetectedObject2D((440.0, 380.0, 840.0, 640.0), "desk", 0.90, "dining table"),
+                # Outside-room hallway chair far to the right (x >> 3.3 m)
+                DetectedObject2D((1180.0, 280.0, 1275.0, 460.0), "chair", 0.72, "chair"),
+            ]
+
+    class _TwoDepthMap:
+        def estimate_relative_depth(self, _img: Any, width: int, height: int) -> np.ndarray:
+            d = np.full((height, width), 3.0, dtype=np.float32)
+            # Desk pixels closer (~2.0 m from camera -> ~1.0 m from marker wall)
+            d[360:660, 420:860] = 2.0
+            # Hallway chair far away (6.5 m -> well outside x=3.3 m wall)
+            d[260:480, 1160:1280] = 6.5
+            return d
+
+    pipeline = VisionRegistrationPipeline(
+        detector=CompositeFurnitureDetector(primary_detector=_TwoBoxYolo(), mode="on"),
+        depth_estimator=CompositeDepthEstimator(primary=_TwoDepthMap(), mode="on"),
+    )
+    T_enu_m = [1.0, 0.0, 0.0, 1.5, 0.0, 0.0, -1.0, 4.1, 0.0, 1.0, 0.0, 1.5, 0.0, 0.0, 0.0, 1.0]
+    req = VisionFurnitureEstimateRequest(
+        image_base64="placeholder",
+        marker_anchor=MarkerAnchorInput(
+            code_id=0,
+            side_length_m=0.6,
+            corners_px=[(550.0, 270.0), (730.0, 270.0), (730.0, 450.0), (550.0, 450.0)],
+        ),
+        apply_to_scene=False,
+    )
+    dummy_rgb = np.zeros((720, 1280, 3), dtype=np.uint8)
+    _pose, _calib, items = pipeline.run(
+        scene_id="s1",
+        room_id="r1",
+        room_floor_vertices=[(0.0, 0.0), (3.3, 0.0), (3.3, 4.1), (0.0, 4.1)],
+        room_height_m=2.5,
+        T_ENU_marker=T_enu_m,
+        request=req,
+        observation_id="obs_1",
+        image_rgb=dummy_rgb,
+    )
+    assert [it.occluder.type for it in items] == ["desk"]
+    # Window distance (~1.0 m) differs from camera optical depth (~2.0 m)
+    assert (
+        "창문에서 약 0." in items[0].aruco_capture_guidance_ko
+        or "창문에서 약 1." in items[0].aruco_capture_guidance_ko
+    )
+
+
+def test_non_destructive_clamp_preserves_dimensions_when_translating() -> None:
+    """P1-3: clamp_cuboid_to_room translates wall-overhanging furniture without shrinking w/d."""
+    from app.services.film import clamp_cuboid_to_room
+
+    floor = Polygon([(0.0, 0.0), (3.3, 0.0), (3.3, 4.1), (0.0, 4.1)])
+    # Desk overhanging the right wall by 0.25 m (w=1.20, d=1.78 fits easily inside 3.3x4.1)
+    base, dims, was_clamped = clamp_cuboid_to_room(
+        base_center=(2.95, 2.0, 0.0),
+        dimensions=(1.20, 1.78, 0.76),
+        yaw=0.0,
+        floor_poly=floor,
+        room_height=2.5,
+    )
+    assert was_clamped is True
+    assert dims == pytest.approx((1.20, 1.78, 0.76), abs=1e-4)
+    assert base[0] <= 2.7001
+
+    # Oversized cuboid exceeding room width must still clip to fit
+    _base2, dims2, was_clamped2 = clamp_cuboid_to_room(
+        base_center=(1.65, 2.0, 0.0),
+        dimensions=(5.0, 1.0, 0.76),
+        yaw=0.0,
+        floor_poly=floor,
+        room_height=2.5,
+    )
+    assert was_clamped2 is True
+    assert dims2[0] <= 3.3001
 
 
 def test_composite_detector_uses_primary_and_falls_back_gracefully() -> None:
