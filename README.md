@@ -37,7 +37,7 @@ Places where daylight is welcome but direct sunlight should be avoided, such as 
 **Reports**
 - [Requirements report (PDF)](docs/reports/SunSync_Requirements.pdf): what the system must do (LaTeX source in `docs/reports/requirements`)
 - [Specification report (PDF)](docs/reports/SunSync_Specification.pdf): how the system is designed (LaTeX source in `docs/reports/specification`)
-- [AI & Applications proposal](docs/ai_applications/README.md): project proposal blog for ITE 351 (Task 1 & Task 3)
+- [AI & Applications final blog](docs/ai_applications/README.md) ([IEEE PDF](docs/ai_applications/SunSync_AI_Applications_Blog.pdf), [demo video](https://youtu.be/Fp4ip1Duu2s)): final project blog, paper PDF, and presentation video for ITE 351
 - Meeting notes: shared Google document (not in the repository)
 
 **Overview** (all documents by topic: [docs index](docs/README.md))
@@ -52,7 +52,7 @@ Places where daylight is welcome but direct sunlight should be avoided, such as 
 - [Google login](docs/ops/auth.md): how it works, the settings, the Google console and how to switch it on
 
 <details>
-<summary><b>Space data and measurement (FR-06, FR-03) · 6 docs</b></summary>
+<summary><b>Space data and measurement (FR-06, FR-03) · 7 docs</b></summary>
 
 - [FR-06 space data](docs/fr06/design.md) and [JSON schema](docs/fr06/scene_schema.json): how rooms, windows, furniture and protected regions are stored (examples: [full scene](docs/examples/fr06_scene_example.json), [room only](docs/examples/fr06_manual_room.json))
 - [Single 60 cm marker](docs/fr03/single_marker.md): the one printed marker used for measuring
@@ -60,6 +60,7 @@ Places where daylight is welcome but direct sunlight should be avoided, such as 
 - [Robust estimation](docs/fr03/robust_measurement.md): choosing good photos and fitting shapes to reduce measurement error
 - [Selected film](docs/fr03/selected_film.md): connecting the film chosen for the window to the photo session
 - [Vision AI 3D furniture estimation](docs/fr03/vision_ai_3d_estimation.md): estimating furniture size from a photo with the marker as a reference
+- [Vision AI field depth & GPU benchmark](docs/experiments/fr03_depthtest_experiment_report.md): real-room multi-model depth comparison, P0/P1 ablations, and Colab T4 GPU optimal study
 
 </details>
 

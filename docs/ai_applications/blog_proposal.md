@@ -2,7 +2,13 @@
 
 **Track:** Prototype Service with AIML Integration and Smart Appliance Ecosystem  
 **Repository:** [https://github.com/hing9-9-9/SunSync](https://github.com/hing9-9-9/SunSync)  
-**Codebase Reference:** `main` (`882521e`, November 24, 2026)
+**Final Presentation & Demo Video:** [https://youtu.be/Fp4ip1Duu2s](https://youtu.be/Fp4ip1Duu2s)  
+**IEEE Conference Paper (PDF):** [SunSync_AI_Applications_Blog.pdf](SunSync_AI_Applications_Blog.pdf)  
+**Codebase Reference:** `main` (`de2eb5f`, November 28, 2026)
+
+[![SunSync-AI Final Presentation & Demo Video](https://img.youtube.com/vi/Fp4ip1Duu2s/hqdefault.jpg)](https://youtu.be/Fp4ip1Duu2s)
+
+*Watch the final SunSync-AI demonstration and presentation video on YouTube: [https://youtu.be/Fp4ip1Duu2s](https://youtu.be/Fp4ip1Duu2s)*
 
 ## Members
 
@@ -56,7 +62,7 @@ Deterministic ray tracing alone leaves three practical failure modes unsolved:
 
 ### B. System Capabilities
 
-SunSync-AI integrates three AIML tracks directly into our live FastAPI, SQLite, and React/Three.js web and mobile application. Table 1 summarizes the implemented capabilities on `main` (`882521e`).
+SunSync-AI integrates three AIML tracks directly into our live FastAPI, SQLite, and React/Three.js web and mobile application. Table 1 summarizes the implemented capabilities on `main` (`de2eb5f`).
 
 | AIML / System Track | Implemented Capabilities on `main` | Key Code & Evaluation Artifacts |
 | --- | --- | --- |
@@ -426,7 +432,7 @@ Table 6 summarizes our real KMA 10-minute replay and measured 1-minute NOAA SURF
 
 ### D. Automated Verification
 
-On `main` (`882521e`), our automated test suite verifies every AIML contract, leakage check, runtime lock, diagnostic schema, replay pipeline, and frontend integration flow:
+On `main` (`de2eb5f`), our automated test suite verifies every AIML contract, leakage check, runtime lock, diagnostic schema, replay pipeline, and frontend integration flow:
 
 - **Backend & Engine (`pytest server/tests`):** `856 passed, 0 failed` baseline tests on `main` (`882521e`), plus **8 new Vision AI P0/P1 regression tests** (`102 passed, 0 failed` across the Vision AI, window-marker, and film-clamping suites, with `ruff check`, `ruff format --check`, `mypy` across 78 files, and `app.scene_cli schema --check` all reporting 0 errors) covering solar geometry (`pvlib`), KMA/Open-Meteo anti-leakage dataset builders, frozen V1 artifact round-trip fidelity, EXIF/1D-focal recovery, proportional single-marker calibration, 3D ENU point-cloud fitting, non-destructive clamping, `mode=experiment` diagnostics, FR-04 smoothing/DP/real-weather replays, and rolling scenario precomputation.
 - **Frontend (`npm --prefix frontend test`):** `207 passed, 0 failed` unit tests covering in-app Vision camera flow, `VisionPreview` geometry, `estimateVisionFurniture`, `weatherProvenance` segment merging, ArUco burst capture verification, and offline-first sync.
