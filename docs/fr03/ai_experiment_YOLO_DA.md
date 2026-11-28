@@ -1,5 +1,7 @@
 # FR-03/FR-06 사진 1장 기반 가구 자동 인식: 구현 및 현장 실험
 
+> 2026-11-25: 기본 깊이 모델이 상대 깊이 모델(`Depth-Anything-V2-Small-hf`)에서 미터 단위 실내 모델(`Depth-Anything-V2-Metric-Indoor-Small-hf`)로 바뀌었다. 이 문서의 "상대 깊이" 서술은 당시 실험 기록이며, 현재 동작은 [vision_ai_3d_estimation.md](vision_ai_3d_estimation.md)의 "Depth checkpoints"를 따른다.
+
 ## 개발 목적
 
 기존 ArUco 방식은 가구의 각 측정 지점에 카메라를 놓고 창문 마커를 향해 여러 번 촬영하여 3D 좌표를 계산한다.

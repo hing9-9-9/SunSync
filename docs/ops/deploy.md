@@ -7,6 +7,7 @@ phone / PC --https--> Caddy (443)
                        |- /api/*      -> API (uvicorn, 127.0.0.1:8000) -- /var/lib/sunsync/sunsync.db
                        |- /measure/*  -> measurement server (uvicorn, 127.0.0.1:8001)
                        '- everything else -> built web app in /var/www/sunsync
+  optional: API --signed REST--> film hub (uvicorn, 127.0.0.1:8002), see "Film hub" below
   every hour: forecast worker; every 10 minutes: KMA worker, AI nowcast worker --> same database file
 ```
 
@@ -19,7 +20,8 @@ Why https: phone browsers usually allow the camera only on `https`, and the QR c
 | `/opt/sunsync` | The repository (owned by root; the services only read it) |
 | `/opt/sunsync/.venv` | Python environment shared by the API, the worker and the measurement server |
 | `/etc/sunsync/sunsync.env` | Settings, mode 600, never committed |
-| `/var/lib/sunsync` | `sunsync.db` and `backups/` (the only place the services write) |
+| `/var/lib/sunsync` | `sunsync.db`, `backups/`, and `sunsync-hub.db` if the hub is on (the only place the services write) |
+| `/var/lib/sunsync/models` | YOLO weights and the Hugging Face cache (`hf/`), only if the vision models are on (owner `sunsync`, mode 700) |
 | `/var/www/sunsync` | The built web app |
 
 ## One-time setup
@@ -87,6 +89,8 @@ sudo /opt/sunsync/deploy/update.sh
 ```
 
 It fast-forwards to `origin/main`, installs the packages, builds the web app, copies it to `/var/www/sunsync` and restarts the API and the measurement server. Do not deploy on the day before a demo (code freeze: 11/19 and 12/10).
+
+**When a change moves files that `update.sh` or the unit files use** (as the move to `server/` did on 2026-11-20), the first run still executes the old script, which fails at the package install. Do this instead: remove the switch file (`sudo rm /etc/sunsync/autoupdate`) before the merge, make a backup, merge, then `sudo git -C /opt/sunsync pull --ff-only origin main` and only then `sudo /opt/sunsync/deploy/update.sh`, check the services and switch the automatic update on again (`sudo touch /etc/sunsync/autoupdate`). `git` as the `ubuntu` user stops with "dubious ownership" in the root-owned folder: use `sudo git -C`.
 
 ## Automatic update
 
@@ -203,7 +207,17 @@ The first block lists each site with the time of its last Open-Meteo snapshot an
 The database and its copies hold e-mail addresses once the Google login is on, so they must not be readable by other users. The services now create their files private (`UMask=0077`; copy the unit files to `/etc/systemd/system/` and run `sudo systemctl daemon-reload` to apply this) and `backup.sh` writes private copies. One time, for the files that already exist: `sudo chmod -R go-rwx /var/lib/sunsync` (the owner keeps access, so the services keep working).
 
 - A daily timer copies the database to `/var/lib/sunsync/backups` and keeps the 14 newest copies. The copy uses SQLite's own backup, because the database runs in WAL mode and a plain file copy can be broken. Download a copy now and then with `scp`; a backup on the same disk does not survive losing the server.
-- Logs: `journalctl -u sunsync-api -u sunsync-measure -u caddy`.
+- Logs: `journalctl -u sunsync-api -u sunsync-measure -u caddy` (and `-u sunsync-hub` if the hub is on).
+
+## Film hub (optional)
+
+`deploy/sunsync-hub.service` runs a separate smart film and ThinQ ON hub simulator on `127.0.0.1:8002` (design, signing and recovery: [hub-sync-architecture.md](hub-sync-architecture.md)). It is off by default and the API works without it: while `SUNSYNC_HUB_BASE_URL` is not set, the API uses the in-process virtual film as before.
+
+- `install-units.sh` copies the unit but does not enable a service (only timers are enabled). `update.sh` restarts `sunsync-hub` only if it is enabled or running.
+- To turn it on, add `SUNSYNC_HUB_BASE_URL`, `SUNSYNC_HUB_SHARED_SECRET` (random, at least 32 bytes) and the other `SUNSYNC_HUB_*` values of `deploy/env.example` to `/etc/sunsync/sunsync.env`, then `sudo systemctl enable --now sunsync-hub` and `sudo systemctl restart sunsync-api`. The secret stays in that file only.
+- Port 8002 stays on loopback. Do not open it in the security group, and add it to Caddy only if the hub inspector must be reached from outside.
+- The hub is a third Python process on a 1.9 GB server: check `free -m` after enabling it.
+- `backup.sh` copies only `sunsync.db`; the hub database `sunsync-hub.db` is not in the daily backup yet.
 
 ## Vision AI models
 
@@ -221,7 +235,7 @@ Install on the server (one time, as root; `/opt/sunsync` and the venv are root-o
 
 1. Check memory first: the server has 1.9 GB of RAM and swap. The two models add roughly 1 GB while loaded; watch `free -m` and `journalctl -k | grep -i oom` after the first photo. If the API gets killed, set `off` and consider a larger instance.
 2. Install the CPU build of torch, then the rest, into the existing venv, with the versions pinned and recorded in the server notes: `/opt/sunsync/.venv/bin/pip install torch --index-url https://download.pytorch.org/whl/cpu`, then `/opt/sunsync/.venv/bin/pip install -r /opt/sunsync/requirements-vision.txt`.
-3. Put the weights and the Hugging Face cache outside `/opt/sunsync`, in a directory the service can read and write, for example `/var/lib/sunsync/models` (owner `sunsync`). Set `SUNSYNC_YOLO_WEIGHTS` to the weights file, and `HF_HOME` to a directory there so the depth model is downloaded once and not into a home directory the service does not have. To avoid a download delay on the first live photo request, pre-warm the depth checkpoint once as `sunsync`: `sudo -u sunsync HF_HOME=/var/lib/sunsync/models /opt/sunsync/.venv/bin/python -c 'from transformers import pipeline; pipeline("depth-estimation", model="depth-anything/Depth-Anything-V2-Metric-Indoor-Small-hf", device="cpu")'`.
+3. Put the weights and the Hugging Face cache outside `/opt/sunsync`, in a directory the service can read and write, for example `/var/lib/sunsync/models` (owner `sunsync`, mode 700). Set `SUNSYNC_YOLO_WEIGHTS` to the weights file, and `HF_HOME` to `/var/lib/sunsync/models/hf` so the depth model is downloaded once and not into a home directory the service does not have. To avoid a download delay on the first live photo request, pre-warm the depth checkpoint once as `sunsync` (the same command again whenever a deployment changes the default checkpoint; the old one stays in the cache for the rollback): `sudo -u sunsync env HF_HOME=/var/lib/sunsync/models/hf PYTHONDONTWRITEBYTECODE=1 /opt/sunsync/.venv/bin/python -c 'from transformers import pipeline; pipeline("depth-estimation", model="depth-anything/Depth-Anything-V2-Metric-Indoor-Small-hf", device="cpu"); print("depth ok")'`. The `models` folder is mode 700, so look into it with `sudo ls`.
 4. Set `SUNSYNC_VISION_AI=on`, restart `sunsync-api`, send one photo and check that `detection_source` is `yolov8` and the load line is in the log.
 5. Roll back by setting `off` (or `auto`) and restarting, or switch back to the previous relative depth checkpoint via `SUNSYNC_DEPTH_MODEL=depth-anything/Depth-Anything-V2-Small-hf`; nothing else changes.
 
