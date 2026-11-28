@@ -82,7 +82,7 @@ Solar irradiance nowcasting, quantile regression, monocular 3D estimation, ArUco
 \subsection{Motivation}
 Sunlit reading rooms, archives, and museum galleries must balance two competing objectives: preventing ultraviolet and high-intensity direct sunlight from damaging sensitive books or exhibits, and preserving natural daylight for human occupants. Conventional motorized blinds and full-pane electrochromic windows operate reactively after glare occurs and darken the entire glazed area even when a solar beam intersects only a single bookshelf or desk.
 
-Inspired by LG Chem Switchable Glazing Film (SGF) and the LG ThinQ ON smart-home ecosystem, we developed \textbf{SunSync-AI} (\url{https://github.com/hing9-9-9/SunSync}). SunSync partitions each window into a discrete grid of individually addressable cells (up to $10 \times 10$ per film module) and traces three-dimensional solar rays from the window plane to protected interior surfaces. Only the cells whose ray paths intersect a protected region above its irradiance threshold are darkened, as shown in Fig.~\ref{fig:3dview}.
+Inspired by LG Chem Switchable Glazing Film (SGF) and the LG ThinQ ON smart-home ecosystem, we developed \textbf{SunSync-AI} (\url{https://github.com/hing9-9-9/SunSync}; demo video: \url{https://youtu.be/Fp4ip1Duu2s}). SunSync partitions each window into a discrete grid of individually addressable cells (up to $10 \times 10$ per film module) and traces three-dimensional solar rays from the window plane to protected interior surfaces. Only the cells whose ray paths intersect a protected region above its irradiance threshold are darkened, as shown in Fig.~\ref{fig:3dview}.
 
 \begin{figure}[t]
 \centering
@@ -92,7 +92,7 @@ Inspired by LG Chem Switchable Glazing Film (SGF) and the LG ThinQ ON smart-home
 \end{figure}
 
 \begin{table*}[t]
-\caption{SunSync-AI Implemented Capabilities and Verification Artifacts (\texttt{main@882521e})}
+\caption{SunSync-AI Implemented Capabilities and Verification Artifacts (\texttt{main@de2eb5f})}
 \label{tab:scope}
 \centering
 \footnotesize
@@ -123,7 +123,7 @@ Deterministic geometric ray tracing alone leaves three operational problems unre
 \end{enumerate}
 
 \subsection{Implemented System Scope}
-SunSync-AI addresses all three gaps inside one FastAPI, SQLite, and React/Three.js application (codebase reference \texttt{main@882521e}). Table~\ref{tab:scope} summarizes the implemented AIML tracks and verification artifacts.
+SunSync-AI addresses all three gaps inside one FastAPI, SQLite, and React/Three.js application (codebase reference \texttt{main@de2eb5f}). Table~\ref{tab:scope} summarizes the implemented AIML tracks and verification artifacts.
 
 \section{Datasets}
 
