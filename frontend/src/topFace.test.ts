@@ -7,7 +7,11 @@ import { compactDay } from "./space3dServer.ts";
 import type { ShadingPlan } from "./shading.ts";
 import type { SunpathPrediction } from "./spaceApi.ts";
 
-const space = homeExampleSpace(); // bookcase region is grade A on a furniture; the other two are grade D
+// The first three pieces of the example room: the bookcase region is grade A, the other two are grade D.
+const space = (() => {
+  const s = homeExampleSpace(), furniture = s.furniture.slice(0, 3);
+  return { ...s, furniture, regions: s.regions.filter((r) => furniture.some((f) => f.id === r.furnitureId)) };
+})();
 const t = (h: number) => `2026-11-13T${String(h).padStart(2, "0")}:00:00+09:00`;
 const entry = (h: number, exposed: boolean) => ({ timestamp: t(h), status: exposed ? ("exposed" as const) : ("not_exposed" as const), sample_count: 4, exposed_sample_count: exposed ? 4 : 0, max_direct_irradiance_W_m2: exposed ? 100 : null });
 const region = (id: string, hours: number[]) => ({ region_id: id, timeline: [8, 9, 10, 11, 12].map((h) => entry(h, hours.includes(h))) });

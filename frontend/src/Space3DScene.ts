@@ -8,6 +8,8 @@ import type { Furniture, Region, Space, Wall } from "./model.ts";
 import { sunPosition } from "./sun3d.ts";
 import { createOffsetCache } from "./floorSun.ts";
 import { shelfFront } from "./shelfFront.ts";
+import { examplePerson, isExampleRoom } from "./exampleSpace.ts";
+import { standingPerson } from "./personMesh.ts";
 
 export type Level = "basic" | "sun" | "film";
 export type Lit = { open: Record<string, number>; film: Record<string, number>; blocked: number; cells: number };
@@ -288,6 +290,11 @@ export function createSpaceScene(host: HTMLElement, space: Space, events: Events
       part(0, w, h * 0.62, h, 0, d, glass, false).castShadow = false;
       part(w * 0.2, w * 0.45, h * 0.62, h * 0.62 + 0.04, d * 0.3, d * 0.7, new THREE.MeshStandardMaterial({ color: "#dcdbe1", roughness: 0.9 }));
       part(w * 0.55, w * 0.8, h * 0.62, h * 0.62 + 0.06, d * 0.25, d * 0.65, new THREE.MeshStandardMaterial({ color: "#e9e9e9", roughness: 0.9 }));
+    } else if (f.type === "chair") {
+      const leg = 0.035, seat = h * 0.52;
+      part(0, w, seat - 0.04, seat, 0, d);
+      for (const [x, z] of [[0, 0], [w - leg, 0], [0, d - leg], [w - leg, d - leg]]) part(x, x + leg, 0, seat - 0.04, z, z + leg);
+      part(0, w, seat, h, 0, 0.04); // the back is on the north side (z = 0): a chair with yaw 0 faces south
     } else part(0, w, 0, h, 0, d);
     // Selection is independent of protection grades: a tinted volume and a ground outline.
     // These decorations never participate in picking, shadowing or sunlight calculations.
@@ -320,6 +327,9 @@ export function createSpaceScene(host: HTMLElement, space: Space, events: Events
     scene.add(group);
     items.set(f.id, { f, group, mats, line, parts, selection });
   }
+
+  // Decoration only (not furniture: no selection, no region, no light blocking): one adult standing in the example room in front of the bookcase, looking out of the window.
+  if (isExampleRoom(space)) scene.add(standingPerson(at(examplePerson.x, examplePerson.y), 0.2)); // faces the window (south, +z), slightly turned
 
   // Protected regions are surfaces, as the server stores them. Only the grade chip is drawn (no
   // coloured face); the surface is kept for the light rays and the film preview.

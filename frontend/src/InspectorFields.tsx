@@ -10,7 +10,11 @@ import type { FurnitureType, Grade } from "./model";
  * `compact` is the app wording: units in the labels and no helper line.
  */
 export function InspectorFields({ app, compact }: { app: SpaceApp; compact: boolean }) {
-  const { page, draft, setSelectedFurniture, setSelectedRegion, askDelete, furniture, region, changeFurniture, patchRegion, protectFurniture } = app;
+  const { page, draft, furniture, region, changeFurniture, patchRegion, protectFurniture, deleteFurniture, deleteRegion } = app;
+  // A furniture's own region is just its grade (D = not protected): no name, no "지정"/"삭제" buttons. Only a drawn region can be deleted.
+  const hosted = !!region?.furnitureId;
+  const grade = region?.grade ?? "D";
+  const pickGrade = (g: Grade) => (region ? patchRegion({ grade: g }) : protectFurniture(g));
   if (!draft) return null;
   return (
     <>
@@ -87,42 +91,6 @@ export function InspectorFields({ app, compact }: { app: SpaceApp; compact: bool
                               }
                             />
                           </div>
-                          <div className="furniture-actions">
-                            {page === "protect" && !region && (
-                              <button
-                                className="secondary"
-                                onClick={protectFurniture}
-                              >
-                                보호 영역 지정
-                              </button>
-                            )}
-                            <button
-                              className="text-button furniture-delete"
-                              onClick={() => {
-                                const linked = draft.regions.filter((r) => r.furnitureId === furniture.id).length;
-                                askDelete(
-                                  {
-                                    ...draft,
-                                    revision: draft.revision + 1,
-                                    furniture: draft.furniture.filter(
-                                      (f) => f.id !== furniture.id,
-                                    ),
-                                    regions: draft.regions.filter(
-                                      (r) => r.furnitureId !== furniture.id,
-                                    ),
-                                  },
-                                  `'${furniture.name}'을 삭제할까요?`,
-                                  linked ? `이 가구에 지정한 보호 영역 ${linked}개도 함께 삭제됩니다.` : undefined,
-                                  () => {
-                                    setSelectedFurniture(null);
-                                    setSelectedRegion(null);
-                                  },
-                                );
-                              }}
-                            >
-                              가구 삭제
-                            </button>
-                          </div>
                         </>
                       ) : (
                         !region && (
@@ -131,19 +99,21 @@ export function InspectorFields({ app, compact }: { app: SpaceApp; compact: bool
                           </p>
                         )
                       )}
-                      {page === "protect" && region && (
+                      {page === "protect" && (region || furniture) && (
                         <>
-                          {(!compact || furniture) && <div className="divider" />}
-                          <label className="field">
-                            <span>보호 영역 이름</span>
-                            <input
-                              value={region.name}
-                              onChange={(e) =>
-                                patchRegion({ name: e.target.value })
-                              }
-                            />
-                          </label>
-                          <div className="two-fields">
+                          {!furniture && !compact && <div className="divider" />}
+                          {region && !hosted && (
+                            <label className="field">
+                              <span>보호 영역 이름</span>
+                              <input
+                                value={region.name}
+                                onChange={(e) =>
+                                  patchRegion({ name: e.target.value })
+                                }
+                              />
+                            </label>
+                          )}
+                          {region && <div className="two-fields">
                             <NumberField
                               label="시작 높이 (m)"
                               value={region.bottom}
@@ -157,8 +127,8 @@ export function InspectorFields({ app, compact }: { app: SpaceApp; compact: bool
                               max={furniture?.height ?? draft.height}
                               onChange={(top) => patchRegion({ top })}
                             />
-                          </div>
-                          {!region.furnitureId && (
+                          </div>}
+                          {region && !region.furnitureId && (
                             <>
                               <h3>
                                 영역 위치·크기 <small>m</small>
@@ -190,50 +160,44 @@ export function InspectorFields({ app, compact }: { app: SpaceApp; compact: bool
                             </>
                           )}
                           <fieldset className="grade-picker">
-                            <legend>보호 등급</legend>
+                            <legend>보호 등급 · D는 보호 안 함</legend>
                             {(Object.keys(grades) as Grade[]).map((g) => (
                               <button
                                 key={g}
-                                aria-pressed={region.grade === g}
-                                className={`chip ${region.grade === g ? "active" : ""}`}
-                                onClick={() => patchRegion({ grade: g })}
+                                aria-pressed={grade === g}
+                                className={`chip ${grade === g ? "active" : ""}`}
+                                onClick={() => pickGrade(g)}
                               >
                                 {g}
                               </button>
                             ))}
                           </fieldset>
                           <p className="grade-description" aria-live="polite">
-                            {grades[region.grade]}
+                            {grades[grade]}
                           </p>
-                          {region.grade !== "D" && (
+                          {region && region.grade !== "D" && (
                             <RegionTimeField
                               base={draft.shadingSchedule ?? defaultShadingTime}
                               value={region.shadingSchedule}
                               onChange={(shadingSchedule) => patchRegion({ shadingSchedule })}
                             />
                           )}
-                          <div className="furniture-actions">
-                            <button
-                              className="text-button furniture-delete region-delete"
-                              onClick={() => {
-                                askDelete(
-                                  {
-                                    ...draft,
-                                    revision: draft.revision + 1,
-                                    regions: draft.regions.filter(
-                                      (r) => r.id !== region.id,
-                                    ),
-                                  },
-                                  `'${region.name}'을 삭제할까요?`,
-                                  undefined,
-                                  () => setSelectedRegion(null),
-                                );
-                              }}
-                            >
-                              보호 영역 삭제
-                            </button>
-                          </div>
+                          {region && !hosted && !compact && (
+                            <div className="furniture-actions">
+                              <button className="text-button furniture-delete region-delete" onClick={deleteRegion}>
+                                보호 영역 삭제
+                              </button>
+                            </div>
+                          )}
                         </>
+                      )}
+                      {/* Last in the panel. In the app the sheet's footer holds the delete button instead. */}
+                      {!compact && furniture && (
+                        <div className="furniture-actions">
+                          <button className="text-button furniture-delete" onClick={deleteFurniture}>
+                            가구 삭제
+                          </button>
+                        </div>
                       )}
     </>
   );

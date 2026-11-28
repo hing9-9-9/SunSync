@@ -147,6 +147,11 @@ function MobileApp() {
   const settingsOpen = settings.page === page && settings.open;
   const openSettings = () => setSettings({ page, open: true });
   const closeSettings = () => setSettings({ page, open: false });
+  // What the sheet started from: "저장 안 함" goes back to it, and 닫기 asks only when the edits differ from it.
+  const sheetStart = useRef(draft);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- remembered only at the moment the sheet opens
+  useEffect(() => { if (settingsOpen) sheetStart.current = draft; }, [settingsOpen]);
+  const sheetChanged = () => !!draft && !!sheetStart.current && JSON.stringify([draft.furniture, draft.regions]) !== JSON.stringify([sheetStart.current.furniture, sheetStart.current.regions]);
   useEffect(() => { if (namePrompt) setSettings({ page, open: true }); }, [namePrompt]);
   const editorPointer = useRef<{x:number;y:number;furnitureId:string|null;regionId:string|null} | null>(null);
   // WEB APP TEST ONLY: camera setup state for 더보기 › 카메라 준비.
@@ -815,7 +820,11 @@ function MobileApp() {
                         onFurniture={id=>{chooseFurniture(id);openSettings();}}
                         onRegion={id=>{chooseRegion(id);openSettings();}} onAdd={addFurniture} />
                     </div>
-                    <MobileEditorSheet open={settingsOpen && !!(furniture || region)} title={furniture?.name ?? region?.name ?? "가구 설정"} onClose={closeSettings}>
+                    <MobileEditorSheet open={settingsOpen && !!(furniture || region)} title={furniture?.name ?? region?.name ?? "가구 설정"} onClose={closeSettings}
+                      isChanged={sheetChanged}
+                      onSave={() => { if (sheetChanged()) app.setToast("도면에 저장했어요."); closeSettings(); }}
+                      onDiscard={() => { if (sheetStart.current) app.setDraft(sheetStart.current); closeSettings(); }}
+                      onDelete={furniture ? { label: "가구 삭제", run: app.deleteFurniture } : region ? { label: "보호 영역 삭제", run: app.deleteRegion } : undefined}>
                       {draftWarning && <p className="error" role="alert">{draftWarning}</p>}
                       <InspectorFields app={app} compact />
                       {conflict && <button className="secondary" onClick={()=>setModal("reload-server")}>최신 내용 불러오기</button>}

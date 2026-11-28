@@ -261,7 +261,7 @@ export default function BurstCamera({
       onPhaseChange("idle");
     }
   }
-  const action = <button type="button" className="primary" disabled={busy || disabled || (running && !!camera && hint?.tone === "stop")}
+  const action = <button type="button" className="primary" disabled={busy || disabled || (running && hint?.tone === "stop")}
     onClick={() => void (!running ? open() : !camera ? setup() : shoot())}>
     {phase === "analyzing" ? "촬영 완료! 사진 분석 중…" : phase === "capturing" ? "촬영 중…" : busy ? "카메라 준비 중…" : !running ? "카메라 열기" : !camera ? `카메라 준비 사진 촬영 (${Math.min(views.length, 11)}/12)` : `${pointLabel} 촬영`}
   </button>;
@@ -271,7 +271,12 @@ export default function BurstCamera({
     stop();setRunning(false);setCamera(null);onReady?.(null);setViews([]);
   }
   const shutterLabel = phase === "analyzing" ? "사진 분석 중" : phase === "capturing" ? "촬영 중" : busy ? "카메라 준비 중" : !running ? "카메라 열기" : !camera ? `카메라 준비 사진 촬영 ${Math.min(views.length, 11)}/12` : `${pointLabel} 촬영`;
-  const noteText = phaseText || (hint ? (hint.tone === "ok" ? `QR 마커가 잘 보여요. 표시된 ${pointLabel}에서 촬영해 주세요.` : hint.text) : camera ? `표시된 ${pointLabel}에서 QR 마커가 보이게 맞춰 주세요.` : `마커 전체가 보이도록 위치와 기울기를 바꾸며 찍어 주세요. (${Math.min(views.length, 11)}/12)`);
+  // Until the 12 setup shots are done there is no point to shoot yet, so no text may name one (P1) here.
+  const setupCount = Math.min(views.length, 11);
+  const noteText = phaseText || (hint?.tone === "ok"
+    ? camera ? `QR 마커가 잘 보여요. ${pointLabel}에서 촬영해 주세요.` : `QR 마커가 잘 보여요. 위치와 기울기를 바꿔 가며 찍어 주세요. (${setupCount}/12)`
+    : hint ? hint.text
+    : camera ? `표시된 ${pointLabel}에서 QR 마커가 보이게 맞춰 주세요.` : `마커 전체가 보이게 위치와 기울기를 바꿔 가며 찍어 주세요. (${setupCount}/12)`);
   const noteTone = phaseText ? "ok" : hint?.tone ?? "ok";
   return (
     <section className="point-camera" style={{display:active?undefined:"none",width:"100%"}}>
@@ -292,7 +297,7 @@ export default function BurstCamera({
           </div>
           <div className="vision-bottom">
             <button type="button" className="vision-shutter" aria-label={shutterLabel} aria-busy={busy || phase !== "idle"}
-              disabled={busy || disabled || (running && !!camera && hint?.tone === "stop")}
+              disabled={busy || disabled || (running && hint?.tone === "stop")}
               onClick={() => void (!running ? open() : !camera ? setup() : shoot())}><i aria-hidden="true" /></button>
           </div>
         </>}

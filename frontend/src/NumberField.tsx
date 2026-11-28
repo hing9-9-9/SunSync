@@ -1,4 +1,4 @@
-import { useId, useState } from "react";
+import { useState } from "react";
 
 export default function NumberField({
   label,
@@ -19,15 +19,15 @@ export default function NumberField({
   precision?: number;
   disabled?: boolean;
 }) {
-  const descriptionId = useId();
   const [touched, setTouched] = useState(false);
-  const issue = !disabled && touched ? (!Number.isFinite(value) ? "숫자를 입력해 주세요." : value < min ? `${min} 이상으로 입력해 주세요.` : max !== undefined && value > max ? `${max} 이하로 입력해 주세요.` : "") : "";
+  // No message under the box: a row of fields keeps its shape. An empty box is reported when the person moves on (formIssues);
+  // a typed number outside the range only turns the box red.
+  const issue = !disabled && touched && Number.isFinite(value) && (value < min || (max !== undefined && value > max));
   return (
     <label className="field number">
       <span>{label}</span>
       <input
-        aria-invalid={!!issue}
-        aria-describedby={issue ? descriptionId : undefined}
+        aria-invalid={issue}
         onBlur={() => setTouched(true)}
         type="number"
         inputMode="decimal"
@@ -41,7 +41,6 @@ export default function NumberField({
           { setTouched(true); onChange(e.target.value === "" ? NaN : e.target.valueAsNumber); }
         }
       />
-      {issue && <small id={descriptionId} className="field-warning" role="alert">{issue}</small>}
     </label>
   );
 }

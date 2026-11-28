@@ -27,5 +27,5 @@ test("the example room given to a new account is a valid space", () => {
   const space = homeExampleSpace();
   assert.equal(validateSpace(space), null);
   assert.equal(space.site?.northConfirmed, true);
-  assert.equal(space.furniture.length, 3);
+  assert.equal(space.furniture.length, 7);
 });
