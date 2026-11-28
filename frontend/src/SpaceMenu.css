@@ -44,7 +44,7 @@
 .app.app.app.mode-app .space-menu-list button.danger { border-top: 0; margin-top: 0; border-radius: 8px; }
 .app.app.app.mode-app .effect-refresh { border: 0 !important; background: #f4f4f6 !important; box-shadow: none !important; }
 .app.app.app.mode-app .effect-card { border-top: 0; padding-top: var(--space-2); }
-.app.app.app.mode-app .effect-badge { border: 0; background: #f4f4f6; }
+.app.app.app.mode-app .effect-badge { border: 0; border-radius: 12px; background: #f4f4f6; }
 .app.app.app.mode-app .effect-badge.better { background: #efeefd; }
 /* Light purple was hard to see on the app's gradient: white fill, purple text. */
 .app.app.app.mode-app .heading-actions > .secondary { background: #fff !important; box-shadow: 0 1px 6px rgba(29, 28, 34, .08) !important; }

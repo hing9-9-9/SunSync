@@ -72,8 +72,8 @@
 }
 
 /* A validation message never moves neighbouring values to another baseline. */
-.app.award-app .dimensions, .app.award-mobile .dimensions { align-items: start; }
-.app.award-app .dimensions > .field, .app.award-mobile .dimensions > .field { justify-content: flex-start; }
+.app.award-app :is(.dimensions, .two-fields), .app.award-mobile :is(.dimensions, .two-fields) { align-items: start; }
+.app.award-app :is(.dimensions, .two-fields) > .field, .app.award-mobile :is(.dimensions, .two-fields) > .field { justify-content: flex-start; }
 .app.award-app .dimensions > .field > input, .app.award-mobile .dimensions > .field > input { height: 36px; min-height: 36px; }
 .app.award-app .field-warning, .app.award-mobile .field-warning { color: var(--c-a3293c); line-height: 1.55; }
 .app.award-app .field:has(input[aria-invalid="true"]) { border-color: var(--c-b02d3d); }

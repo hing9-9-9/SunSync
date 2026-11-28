@@ -13,16 +13,14 @@ export function markInvalidFields(form: HTMLFormElement, message?: string, check
       ? v.valueMissing
         ? "입력해 주세요."
         : v.rangeUnderflow
-          ? `${input.getAttribute("min")} 이상으로 입력해 주세요.`
+          ? `${input.getAttribute("min")} 이상이어야 해요.`
           : v.rangeOverflow
-            ? `${input.getAttribute("max")} 이하로 입력해 주세요.`
+            ? `${input.getAttribute("max")} 이하여야 해요.`
             : "형식을 확인해 주세요."
       : message?.includes(name)
         ? message
         : "";
-    // NumberField already shows its own message under the field.
-    const own = !!label.querySelector(".field-warning");
-    if (text && !own) label.dataset.issue = text;
+    if (text) label.dataset.issue = text;
     else delete label.dataset.issue;
     input.setAttribute("aria-invalid", String(!!text));
     if (text) issues.push({ label: name, input });

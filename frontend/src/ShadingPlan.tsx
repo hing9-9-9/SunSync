@@ -315,12 +315,17 @@ export function VirtualFilmControl({ space, prediction, hour, setting, children 
 
   if (!sceneId || !win) return null;
 
-  const total = windowState ? windowState.film_rows * windowState.film_cols : 0;
-  const covered = windowState ? windowState.states.reduce((sum, row) => sum + row.filter((cell) => cell === "opaque").length, 0) : 0;
+  // The film state belongs to the window it was read for. After the window changed (e.g. the example room's new full-wall window)
+  // the server can still answer for the old grid, so a count from it must never be mixed with the plan of the new window.
+  // Same grid rule as the film preview: a scene saved with the older rounding keeps its own cell counts.
+  const grid = filmGrid(win, windowState ? { rows: windowState.film_rows, cols: windowState.film_cols } : undefined);
+  const filmCurrent = !!windowState && windowState.film_rows === grid.rows && windowState.film_cols === grid.cols;
+  const total = grid.rows * grid.cols;
+  const covered = filmCurrent ? windowState.states.reduce((sum, row) => sum + row.filter((cell) => cell === "opaque").length, 0) : 0;
   const pending = !!plan && !error && loadedFor !== simulatedAt;
   // The server holds what was applied to the film; the plan is what the film should do. They differ until the plan is applied.
-  const shown = planned ?? covered;
-  const notApplied = !pending && planned !== undefined && planned !== covered;
+  const shown = Math.min(total, planned ?? covered);
+  const notApplied = !pending && filmCurrent && planned !== undefined && planned !== covered;
 
   return (
     <section className="film-card" aria-label="필름">

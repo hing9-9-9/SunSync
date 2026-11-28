@@ -9,7 +9,7 @@ import { estimatedSchedule } from "./sunEstimate";
 import type { BlockingSchedule } from "./sunlight";
 import { useEffect, useCallback, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
-import { editorExample, exampleState, homeExampleSpace } from "./exampleSpace";
+import { editorExample, exampleState, homeExampleSpace, refreshExample } from "./exampleSpace";
 import { markInvalidFields } from "./formIssues";
 import { saveErrorMessage } from "./spaceSync";
 import { EXPIRED_MESSAGE, LOGIN_FAILED_MESSAGE, currentPath, fetchSession, googleLoginUrl, logout, onUnauthorized } from "./auth";
@@ -605,6 +605,19 @@ export function useSpaceApp() {
   async function giveExampleSpace(email: string, signal: AbortSignal, existing: Space[]) {
     const example = homeExampleSpace();
     const key = `sunsync-example-given:${email || "local"}`;
+    // An example given earlier becomes the current room, once per room on this browser (later edits of the person are kept).
+    for (const old of existing) {
+      const done = `sunsync-example-refreshed:${old.id}`;
+      let seen = false;
+      try { seen = !!localStorage.getItem(done); } catch { /* treated as not done */ }
+      const fresh = seen ? null : refreshExample(old);
+      if (!fresh) continue;
+      try {
+        const saved = await saveServerSpace(fresh);
+        try { localStorage.setItem(done, "1"); } catch { /* not remembered */ }
+        if (!signal.aborted) setSpaces((current) => upsertSpace(current, saved));
+      } catch { /* the next sign-in tries again */ }
+    }
     // An account that already has spaces (on any device) never gets the example; remember that on this browser too.
     if (existing.length > 0) {
       try { localStorage.setItem(key, "1"); } catch { /* not remembered */ }
@@ -1141,16 +1154,37 @@ export function useSpaceApp() {
         ),
       });
   }
-  function protectFurniture() {
+  // A furniture without a region gets one at the picked grade (D means "not protected", so it is the same as having none).
+  function protectFurniture(grade?: Region["grade"]) {
     if (!draft || !furniture) return;
     const existing = draft.regions.find((r) => r.furnitureId === furniture.id);
     if (existing) {
       setSelectedRegion(existing.id);
+      if (grade) change({ regions: draft.regions.map((r) => (r.id === existing.id ? { ...r, grade } : r)) });
       return;
     }
-    const r = regionForFurniture(furniture);
+    const r = regionForFurniture(furniture, grade);
     change({ regions: [...draft.regions, r] });
     setSelectedRegion(r.id);
+  }
+  function deleteFurniture() {
+    if (!draft || !furniture) return;
+    const linked = draft.regions.filter((r) => r.furnitureId === furniture.id).length;
+    askDelete(
+      { ...draft, revision: draft.revision + 1, furniture: draft.furniture.filter((f) => f.id !== furniture.id), regions: draft.regions.filter((r) => r.furnitureId !== furniture.id) },
+      `'${furniture.name}'을 삭제할까요?`,
+      linked ? `이 가구에 지정한 보호 영역 ${linked}개도 함께 삭제됩니다.` : undefined,
+      () => { setSelectedFurniture(null); setSelectedRegion(null); },
+    );
+  }
+  function deleteRegion() {
+    if (!draft || !region) return;
+    askDelete(
+      { ...draft, revision: draft.revision + 1, regions: draft.regions.filter((r) => r.id !== region.id) },
+      `'${region.name}'을 삭제할까요?`,
+      undefined,
+      () => setSelectedRegion(null),
+    );
   }
   // Deletes on the server first, so a failed delete leaves the space everywhere as it was.
   const [deleting, setDeleting] = useState(false);
@@ -1794,6 +1828,8 @@ export function useSpaceApp() {
     chooseRegion,
     patchRegion,
     protectFurniture,
+    deleteFurniture,
+    deleteRegion,
     save,
     renameZone,
     switchZone,
